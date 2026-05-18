@@ -1,0 +1,230 @@
+openapi: 3.0.0
+
+info:
+  title: TravelNow API
+  version: 1.0.0
+  description: API documentation for TravelNow backend
+
+servers:
+  - url: http://localhost:9999/api
+
+tags:
+  - name: Users
+    description: User authentication APIs
+
+paths:
+  /users/register:
+    post:
+      summary: Register new user
+      description: |
+        Register a new user and send OTP to email.
+        If the email already exists with pending status, user information and OTP will be updated.
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fullName
+                - email
+                - phone
+                - password
+              properties:
+                fullName:
+                  type: string
+                  example: Nguyen Van A
+                email:
+                  type: string
+                  format: email
+                  example: test@gmail.com
+                phone:
+                  type: string
+                  example: "0987654321"
+                password:
+                  type: string
+                  example: "123456"
+                gender:
+                  type: string
+                  nullable: true
+                  enum:
+                    - MALE
+                    - FEMALE
+                    - OTHER
+                  example: MALE
+                dateOfBirth:
+                  type: string
+                  format: date
+                  nullable: true
+                  example: "2003-01-01"
+                address:
+                  type: string
+                  nullable: true
+                  example: Hanoi
+      responses:
+        "201":
+          description: Register successfully and OTP sent to email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Register successfully. Check your email for OTP.
+                  type:
+                    type: string
+                    example: new
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: 665f1a8b2c3d4e5f67890123
+                      fullName:
+                        type: string
+                        example: Nguyen Van A
+                      email:
+                        type: string
+                        example: test@gmail.com
+                      phone:
+                        type: string
+                        example: "0987654321"
+                  remainingTime:
+                    type: number
+                    example: 600000
+                    description: OTP expiration time in milliseconds
+                  nextResendIn:
+                    type: number
+                    example: 60000
+                    description: Resend OTP cooldown time in milliseconds
+
+        "403":
+          description: Account is suspended or banned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "404":
+          description: USER role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "422":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "500":
+          description: Register failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/verify-otp/{email}:
+    post:
+      summary: Verify OTP
+      description: Verify user email using OTP code.
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: email
+          required: true
+          schema:
+            type: string
+            format: email
+          example: test@gmail.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - otp
+              properties:
+                otp:
+                  type: string
+                  example: ABC123
+      responses:
+        "200":
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email verified successfully.
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: 665f1a8b2c3d4e5f67890123
+                      fullName:
+                        type: string
+                        example: Nguyen Van A
+                      email:
+                        type: string
+                        example: test@gmail.com
+                      phone:
+                        type: string
+                        example: "0987654321"
+                      status:
+                        type: string
+                        example: active
+
+        "400":
+          description: Invalid OTP, expired OTP, already verified, or invalid account status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "403":
+          description: Account is suspended or banned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "429":
+          description: Too many wrong OTP attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "500":
+          description: Email verification failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Error message
