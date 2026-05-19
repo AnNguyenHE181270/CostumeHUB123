@@ -8,6 +8,7 @@ import Register from "../pages/RegisterPage";
 import VerifyOtpPage from "../pages/VerifyOtpPage";
 // import LoginPage from "../pages/Auth/LoginPage";
 import HomePage from "../pages/HomePage";
+import CompleteProfilePage from "../pages/CompleteProfilePage";
 
 function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ function AppRoutes() {
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.REGISTER} element={<Register />} />
         <Route path={ROUTES.VERIFY} element={<VerifyOtpPage />} />
+        <Route path={ROUTES.COMPLETEWITHGOOGLE} element={<CompleteProfilePage/>} />
         {/* <Route path={ROUTES.LOGIN} element={<LoginPage />} /> */}
       </Route>
 

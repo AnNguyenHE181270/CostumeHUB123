@@ -67,7 +67,7 @@ const loginValidator = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
-const completeGoogleProfileValidator = [
+const completeWithGoogleValidator = [
   body("phone")
     .trim()
     .notEmpty()
@@ -109,5 +109,5 @@ module.exports = {
   registerValidator,
   verifyOtpValidator,
   loginValidator,
-  completeGoogleProfileValidator
+  completeWithGoogleValidator
 };
