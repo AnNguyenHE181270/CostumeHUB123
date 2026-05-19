@@ -395,7 +395,7 @@ const getProfile = async (req, res, next) => {
     }
 };
 
-const googleLogin = async (req, res) => {
+const googleLogin = async (req, res, next) => {
     try {
         const { accessToken } = req.body;
 
@@ -405,68 +405,103 @@ const googleLogin = async (req, res) => {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
-            },
+            }
         );
 
-        const googleUser = await response.json();
+        if (!response.ok) {
+            return next(new HttpError("Xác thực Google thất bại.", 401));
+        }
 
+        const googleUser = await response.json();
         const { sub, email, name, picture } = googleUser;
 
         let isNewUser = false;
 
-        let user = await User.findOne({
-            email,
-        });
+        let user = await User.findOne({ email });
 
-        // chưa có account
-        if (!user) {
+        if (user) {
+            if (user.provider !== "google") {
+                return next(
+                    new HttpError(
+                        "Email đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng mật khẩu.",
+                        400
+                    )
+                );
+            }
+
+            user.lastLogin = new Date();
+            await user.save();
+
+        } else {
             isNewUser = true;
 
             user = await User.create({
                 fullName: name,
-
                 email,
-
                 avatar: picture,
-
                 provider: "google",
-
                 providerId: sub,
-
                 isEmailVerified: true,
-
                 status: "active",
+                lastLogin: new Date(),
             });
         }
 
-        user.lastLogin = new Date();
+        // check neu co vao dau neu khong co vao home
+        const needsMoreInfo =
+            !user.phone ||
+            !user.gender ||
+            !user.dateOfBirth;
+
+        const token = jwt.sign(
+            { userId: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        return res.status(200).json({
+            token,
+            user,
+            isNewUser,
+            needsMoreInfo,
+        });
+
+    } catch (err) {
+        return next(
+            new HttpError(err.message || "Google login failed.", 500)
+        );
+    }
+};
+
+
+const completeWithGoogle = async (req, res, next) => {
+    try {
+        const { email } = req.params;
+        const { gender, dateOfBirth, phone } = req.body;
+
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return next(new HttpError("User not found.", 404));
+        }
+
+        user.gender = gender;
+        user.dateOfBirth = dateOfBirth;
+        user.phone = phone;
 
         await user.save();
 
-        const token = jwt.sign(
-            {
-                userId: user._id,
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: "7d",
-            },
-        );
+        const isProfileComplete = !!(user.phone && user.gender && user.dateOfBirth);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-
-            token,
-
-            user,
-
-            needsMoreInfo: isNewUser,
+            message: "Cập nhật hồ sơ thành công!",
+            user: user, 
+            isProfileComplete: isProfileComplete, // Giúp Frontend biết đã xong chưa
         });
     } catch (err) {
-    
-
         return next(
-            new HttpError(err.message || "Google login failed.", 500),
+            new HttpError(err.message || "Profile update failed.", 500)
         );
     }
 };
@@ -477,4 +512,5 @@ module.exports = {
     googleLogin,
     login,
     getProfile,
+    completeWithGoogle
 };
