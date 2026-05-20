@@ -496,7 +496,7 @@ const completeWithGoogle = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: "Cập nhật hồ sơ thành công!",
-            user: user, 
+            user: user,
             isProfileComplete: isProfileComplete, // Giúp Frontend biết đã xong chưa
         });
     } catch (err) {
