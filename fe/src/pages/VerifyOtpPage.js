@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
@@ -13,6 +13,7 @@ const TIMER_SECONDS = 60;
 export default function VerifyOtpPage() {
     const { email } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(""));
     const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
     const [isResending, setIsResending] = useState(false);
@@ -20,6 +21,12 @@ export default function VerifyOtpPage() {
     const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
     const decodedEmail = decodeURIComponent(email || "");
+
+    useEffect(() => {
+        if (!location.state?.fromRegister) {
+            navigate(ROUTES.REGISTER, { replace: true });
+        }
+    }, [location.state, navigate]);
 
     useEffect(() => {
         if (timeLeft <= 0) return;
@@ -90,7 +97,7 @@ export default function VerifyOtpPage() {
     return (
         <AuthLayout>
             <div className="w-full max-w-[420px] text-center">
-                <div className="lg:hidden mb-10"><span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">Vogue Rental</span></div>
+                <div className="lg:hidden mb-10"><span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">CostumeHUB</span></div>
                 <div className="mx-auto w-14 h-14 rounded-largeFeatures bg-ghost-fog flex items-center justify-center mb-8">
                     <FontAwesomeIcon icon={faShieldHalved} className="text-action-blue text-xl" />
                 </div>

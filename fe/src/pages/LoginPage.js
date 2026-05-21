@@ -13,10 +13,10 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext"; 
 
 export default function LoginPage() {
-  // ==========================================
-  // KHU VỰC STATE (BẠN TỰ KHAI BÁO VÀ QUẢN LÝ)
+
   // ==========================================
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -24,13 +24,11 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
 
   const navigate = useNavigate();
+  const { login,  isProfileComplete} = useAuth(); 
 
-  // ==========================================
-  // KHU VỰC LOGIC (BẠN TỰ CODE)
-  // ==========================================
+ 
 
   const handleChange = (e) => {
-    // TODO: Xử lý cập nhật state form khi người dùng gõ
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -51,10 +49,10 @@ export default function LoginPage() {
         setError(data.errors?.[0]?.msg || data.message || "Login failed.");
         return;
       }
+      await login(data.token);
 
       navigate(`/`);
       
-      localStorage.setItem("token", data.token);
     } catch (error) {
       setError("Network error. Please try again.");
     } finally {
@@ -82,16 +80,12 @@ const loginGoogle = useGoogleLogin({
         setError(data.message || "Google login failed");
         return;
       }
+      await login(data.token);
 
-      if (data.needsMoreInfo) {
+      if (!isProfileComplete) {
         navigate(`/complete-with-google/${encodeURIComponent(data.user.email)}`, {
-          state: {
-            token: data.token,
-            user: data.user,
-          },
         });
       } else {
-        localStorage.setItem("token", data.token);
         navigate("/"); 
       }
 
@@ -105,21 +99,18 @@ const loginGoogle = useGoogleLogin({
   },
 });
 
-  // Style chuẩn Sana
   const inputBase =
     "w-full bg-ghost-fog border border-sterling-gray rounded-cards px-4 py-3 text-[14px] text-midnight-ink outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white placeholder:text-midnight-ink/40";
 
   return (
     <AuthLayout>
       <div className="w-full max-w-[420px]">
-        {/* Mobile logo */}
         <div className="lg:hidden mb-10">
           <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            Vogue Rental
+            CostumeHUB
           </span>
         </div>
 
-        {/* Header */}
         <div className="mb-10">
           <p className="text-warning-orange text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Welcome Back
@@ -136,7 +127,6 @@ const loginGoogle = useGoogleLogin({
           </h2>
         </div>
 
-        {/* Google Button */}
         <Button
           icon={faGoogle}
           label="Continue with Google"
@@ -144,7 +134,6 @@ const loginGoogle = useGoogleLogin({
           onClick={() => loginGoogle()}
         />
 
-        {/* Divider */}
         <div className="my-8 flex items-center gap-4">
           <div className="h-px flex-1 bg-sterling-gray" />
           <span className="text-[10px] uppercase tracking-[0.2em] text-midnight-ink/50">
@@ -153,9 +142,7 @@ const loginGoogle = useGoogleLogin({
           <div className="h-px flex-1 bg-sterling-gray" />
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
           <Input
             label="Email"
             name="email"
@@ -166,24 +153,21 @@ const loginGoogle = useGoogleLogin({
             required
           />
 
-          {/* Password */}
           <Input
             label="Password"
             name="password"
-            type={showPw ? "text" : "password"} // Dynamic type
-            value={form.password} // Pass value
-            onChange={handleChange} // Pass onChange handler
+            type={showPw ? "text" : "password"}
+            value={form.password} 
+            onChange={handleChange} 
             placeholder="8+ characters"
             required
-            // Pass eye icon to rightIcon prop
+           
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
             }
-            // Pass toggle function to onRightIconClick prop
             onRightIconClick={() => setShowPw(!showPw)}
           />
 
-          {/* Forgot Password Link */}
           <div className="text-right">
             <a
               href="/forgot-password"
@@ -193,10 +177,8 @@ const loginGoogle = useGoogleLogin({
             </a>
           </div>
 
-          {/* Error Message (Chỉ hiện khi có lỗi) */}
           {error && <ErrorMessage message={error} />}
 
-          {/* Submit Button */}
           <Button
             type="submit"
             icon={faArrowRight}
@@ -205,7 +187,6 @@ const loginGoogle = useGoogleLogin({
             className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons"
           />
 
-          {/* Link to Register */}
           <p className="text-center text-[14px] text-midnight-ink/60">
             Don't have an account?{" "}
             <button

@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-10">
           <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            Vogue Rental
+            CostumeHUB
           </span>
         </div>
 

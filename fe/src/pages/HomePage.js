@@ -1,33 +1,35 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faShoppingBag, faArrowRight, faTruckFast, faShieldHalved, faUser, faShirt, faGem, faScissors } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faTruckFast, faShieldHalved, faSearch, faShirt } from "@fortawesome/free-solid-svg-icons";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ROUTES } from "../routes/routePaths";
+
+// Import Header và Footer
+import Header from "../components/layout/Header";
+import Footer from "../components/layout/Footer";
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen bg-canvas-white font-sans text-midnight-ink">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-canvas-white/90 backdrop-blur-lg border-b border-sterling-gray/50">
-        <div className="mx-auto max-w-[1200px] flex items-center justify-between h-16 px-6">
-          <a href="/" className="text-abyssal-black font-medium tracking-[-0.02em]" style={{ fontSize: '20px' }}>VOGUE RENTAL</a>
-          <nav className="hidden md:flex items-center gap-2">
-            {["Collections", "Services", "About Us", "Lookbook"].map((item) => (
-              <a key={item} href="#" className="px-4 py-2 text-[16px] font-normal text-midnight-ink hover:bg-ghost-fog rounded-navigation transition-colors" style={{ letterSpacing: '-0.064px' }}>{item}</a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-4">
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-ghost-fog rounded-full transition-colors"><FontAwesomeIcon icon={faSearch} className="text-[16px]" /></button>
-            <button className="relative w-10 h-10 flex items-center justify-center hover:bg-ghost-fog rounded-full transition-colors">
-              <FontAwesomeIcon icon={faShoppingBag} className="text-[16px]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-warning-orange rounded-full"></span>
-            </button>
-            <button className="hidden md:flex items-center gap-2 bg-abyssal-black text-canvas-white px-4 py-2 rounded-specialButtons text-[14px] font-medium hover:bg-midnight-ink transition-colors">
-              <FontAwesomeIcon icon={faUser} className="text-[12px]" />Login
-            </button>
-          </div>
-        </div>
-      </header>
+  const { token, isProfileComplete, user, loading } = useAuth();
 
-      <main>
-        {/* HERO */}
+  // Chờ load session F5
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-ghost-fog flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-action-blue"></div>
+      </div>
+    );
+  }
+
+  // Nếu người dùng đã đăng nhập nhưng chưa hoàn thành thông tin -> Bắt sang trang hoàn thành thông tin (chỉ chạy khi có sẵn email)
+  if (token && !isProfileComplete && user?.email) {
+    return <Navigate to={`/complete-with-google/${encodeURIComponent(user.email)}`} replace />;
+  }
+  return (
+    <div className="min-h-screen bg-canvas-white font-sans text-midnight-ink flex flex-col">
+      
+      <Header />
+
+      <main className="flex-1">
         <section className="bg-canvas-white pt-24 pb-32 px-6">
           <div className="mx-auto max-w-[1200px] text-center">
             <h1 className="text-abyssal-black font-normal mx-auto" style={{ fontSize: 'clamp(40px, 8vw, 83px)', lineHeight: 0.95, letterSpacing: '-0.03em', maxWidth: '900px' }}>Rent Your Style,<br />Without Limits</h1>
@@ -42,7 +44,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* FEATURED COLLECTIONS */}
         <section className="bg-ghost-fog py-24 px-6">
           <div className="mx-auto max-w-[1200px]">
             <div className="flex items-end justify-between mb-12">
@@ -64,7 +65,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
         <section className="bg-canvas-white py-24 px-6">
           <div className="mx-auto max-w-[1200px]">
             <div className="text-center mb-16">
@@ -83,7 +83,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA BANNER */}
         <section className="bg-ghost-fog py-24 px-6">
           <div className="mx-auto max-w-[900px] text-center">
             <h2 className="text-abyssal-black font-normal" style={{ fontSize: '48px', lineHeight: 1.1, letterSpacing: '-0.96px' }}>Ready to elevate your style?</h2>
@@ -95,21 +94,8 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-ghost-fog border-t border-sterling-gray pt-16 pb-8 px-6">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            <div className="md:col-span-1"><a href="/" className="text-abyssal-black font-medium tracking-[-0.02em]" style={{ fontSize: '20px' }}>VOGUE RENTAL</a><p className="mt-4 text-midnight-ink/50" style={{ fontSize: '14px', lineHeight: 1.49, letterSpacing: '-0.056px' }}>Vietnam's leading premium fashion rental platform.</p></div>
-            <div><h4 className="text-[14px] font-medium uppercase tracking-[-0.056px] text-midnight-ink/40 mb-4">Services</h4><ul className="space-y-3">{["Rent Outfits", "Style Consulting", "Event Booking", "Design Partners"].map((link) => (<li key={link}><a href="#" className="text-[16px] text-midnight-ink/70 hover:text-abyssal-black transition-colors" style={{ letterSpacing: '-0.064px' }}>{link}</a></li>))}</ul></div>
-            <div><h4 className="text-[14px] font-medium uppercase tracking-[-0.056px] text-midnight-ink/40 mb-4">Company</h4><ul className="space-y-3">{["About Us", "Careers", "Privacy Policy", "Terms of Service"].map((link) => (<li key={link}><a href="#" className="text-[16px] text-midnight-ink/70 hover:text-abyssal-black transition-colors" style={{ letterSpacing: '-0.064px' }}>{link}</a></li>))}</ul></div>
-            <div><h4 className="text-[14px] font-medium uppercase tracking-[-0.056px] text-midnight-ink/40 mb-4">Contact</h4><ul className="space-y-3">{["help@voguerental.vn", "0912 345 678", "Hanoi, Vietnam"].map((link) => (<li key={link}><a href="#" className="text-[16px] text-midnight-ink/70 hover:text-abyssal-black transition-colors" style={{ letterSpacing: '-0.064px' }}>{link}</a></li>))}</ul></div>
-          </div>
-          <div className="border-t border-sterling-gray pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-[14px] text-midnight-ink/40" style={{ letterSpacing: '-0.056px' }}>© 2026 Vogue Rental. All rights reserved.</p>
-            <div className="flex items-center gap-4">{["Instagram", "TikTok", "Pinterest"].map((social) => (<a key={social} href="#" className="text-[14px] text-midnight-ink/50 hover:text-abyssal-black transition-colors" style={{ letterSpacing: '-0.056px' }}>{social}</a>))}</div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      
     </div>
   );
 }
