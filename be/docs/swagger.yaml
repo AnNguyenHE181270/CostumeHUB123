@@ -1,16 +1,16 @@
 openapi: 3.0.0
 
 info:
-  title: TravelNow API
+  title: Vogue Rental API
   version: 1.0.0
-  description: API documentation for TravelNow backend
+  description: API documentation for Vogue Rental backend
 
 servers:
   - url: http://localhost:9999/api
 
 tags:
   - name: Users
-    description: User authentication APIs
+    description: User authentication & profile management APIs
 
 paths:
   /users/register:
@@ -30,7 +30,6 @@ paths:
               required:
                 - fullName
                 - email
-                - phone
                 - password
               properties:
                 fullName:
@@ -48,21 +47,15 @@ paths:
                   example: "123456"
                 gender:
                   type: string
-                  nullable: true
                   enum:
-                    - MALE
-                    - FEMALE
-                    - OTHER
-                  example: MALE
+                    - male
+                    - female
+                    - other
+                  example: male
                 dateOfBirth:
                   type: string
                   format: date
-                  nullable: true
                   example: "2003-01-01"
-                address:
-                  type: string
-                  nullable: true
-                  example: Hanoi
       responses:
         "201":
           description: Register successfully and OTP sent to email
@@ -100,28 +93,24 @@ paths:
                     type: number
                     example: 60000
                     description: Resend OTP cooldown time in milliseconds
-
         "403":
           description: Account is suspended or banned
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "404":
-          description: USER role not found
+          description: Customer role not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "422":
           description: User already exists
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "500":
           description: Register failed
           content:
@@ -184,35 +173,24 @@ paths:
                       status:
                         type: string
                         example: active
-
         "400":
           description: Invalid OTP, expired OTP, already verified, or invalid account status
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "403":
           description: Account is suspended or banned
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "404":
           description: User not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-        "429":
-          description: Too many wrong OTP attempts
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
         "500":
           description: Email verification failed
           content:
@@ -220,11 +198,398 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /users/login:
+    post:
+      summary: Local email/password login
+      description: Authenticate a user with email and password to receive a JWT access token.
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: test@gmail.com
+                password:
+                  type: string
+                  example: "123456"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Login successful.
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "400":
+          description: Account registered with Google or invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/google-login:
+    post:
+      summary: Authenticate with Google OAuth
+      description: Log in or register using Google credentials.
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accessToken
+              properties:
+                accessToken:
+                  type: string
+                  description: The access token obtained from Google OAuth.
+                  example: ya29.a0AfB_byD...
+      responses:
+        "200":
+          description: Google login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  isNewUser:
+                    type: boolean
+                    example: false
+                  needsMoreInfo:
+                    type: boolean
+                    example: false
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Email registered with password provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Google authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/complete-profile/{email}:
+    put:
+      summary: Complete user profile for Google login
+      description: Update missing details (phone, gender, date of birth) for Google accounts.
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: email
+          required: true
+          schema:
+            type: string
+            format: email
+          example: test@gmail.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - gender
+                - dateOfBirth
+              properties:
+                phone:
+                  type: string
+                  example: "0987654321"
+                gender:
+                  type: string
+                  enum:
+                    - male
+                    - female
+                    - other
+                  example: male
+                dateOfBirth:
+                  type: string
+                  format: date
+                  example: "2003-01-01"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Profile updated successfully!
+                  isProfileComplete:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/forgot-password:
+    post:
+      summary: Request password reset link
+      description: Send a password reset link to user's email if they forgot their password.
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: test@gmail.com
+      responses:
+        "200":
+          description: Password reset email sent or standard message (for security)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: If an account with this email exists, password reset instructions have been sent.
+        "400":
+          description: Account registered with Google (no password to reset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/reset-password/{token}:
+    post:
+      summary: Reset password using token
+      description: Update user's password with a valid, non-expired reset token.
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+          example: a1b2c3d4e5f6g7h8...
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  example: "newpassword123"
+      responses:
+        "200":
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password reset successful.
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/my-profile:
+    get:
+      summary: Get user profile
+      description: Retrieve profile info for the currently logged-in user (requires JWT token).
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Profile details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      fullName:
+                        type: string
+                        example: Nguyen Van A
+                      email:
+                        type: string
+                        example: test@gmail.com
+                      phone:
+                        type: string
+                        example: "0987654321"
+        "401":
+          description: Unauthorized / Token missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     ErrorResponse:
       type: object
       properties:
+        success:
+          type: boolean
+          example: false
         message:
           type: string
           example: Error message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 665f1a8b2c3d4e5f67890123
+        fullName:
+          type: string
+          example: Nguyen Van A
+        email:
+          type: string
+          example: test@gmail.com
+        phone:
+          type: string
+          nullable: true
+          example: "0987654321"
+        avatar:
+          type: string
+          example: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+        gender:
+          type: string
+          nullable: true
+          enum:
+            - male
+            - female
+            - other
+          example: male
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "2003-01-01"
+        provider:
+          type: string
+          enum:
+            - local
+            - google
+          example: local
+        status:
+          type: string
+          enum:
+            - active
+            - blocked
+            - pending
+          example: active
+        isEmailVerified:
+          type: boolean
+          example: true
