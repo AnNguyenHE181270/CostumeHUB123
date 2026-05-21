@@ -105,9 +105,26 @@ const completeWithGoogleValidator = [
     ),
 ];
 
+const forgotPasswordValidator = [
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid email"),
+
+  
+];
+
+const resetPasswordValidator = [
+  body("password").notEmpty().withMessage("Password is required"), 
+];
+
 module.exports = {
   registerValidator,
   verifyOtpValidator,
   loginValidator,
-  completeWithGoogleValidator
+  completeWithGoogleValidator,
+  forgotPasswordValidator,
+  resetPasswordValidator
 };
