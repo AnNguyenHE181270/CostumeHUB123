@@ -14,7 +14,7 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { useGoogleLogin } from "@react-oauth/google";
-
+import { useAuth } from "../context/AuthContext"; 
 export default function RegisterPage() {
   const [form, setForm] = useState({
     fullName: "",
@@ -30,6 +30,7 @@ export default function RegisterPage() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [matchPassword, setMatchPassword] = useState("");
+  const { login, isProfileComplete} = useAuth(); 
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -64,7 +65,7 @@ export default function RegisterPage() {
         setError(data.errors?.[0]?.msg || data.message || "Register failed.");
         return;
       }
-      navigate(`/verify-otp/${encodeURIComponent(form.email)}`);
+      navigate(`/verify-otp/${encodeURIComponent(form.email)}`, { state: { fromRegister: true } });
     } catch (error) {
       setError("Network error. Please try again.");
     } finally {
@@ -72,9 +73,7 @@ export default function RegisterPage() {
     }
   };
 
-  // ========= SỬA HÀM GOOGLE LOGIN =========
   const loginGoogle = useGoogleLogin({
-    flow: "auth-code", // Khai báo dùng authorization code
     onSuccess: async (tokenResponse) => {
       try {
         const response = await fetch(
@@ -82,8 +81,9 @@ export default function RegisterPage() {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // BẮT BUỘC gửi 'code', không phải 'accessToken' khi dùng flow: 'auth-code'
-            body: JSON.stringify({ code: tokenResponse.code }),
+            body: JSON.stringify({
+              accessToken: tokenResponse.access_token,
+            }),
           },
         );
 
@@ -94,19 +94,14 @@ export default function RegisterPage() {
           return;
         }
 
-        // Lưu token vào localStorage để duy trì đăng nhập
-        localStorage.setItem("token", data.token);
+        await login(data.token);
 
-        if (data.needsMoreInfo) {
+        if (!isProfileComplete) {
           navigate(
-            `/complete-with-google/${encodeURIComponent(data.user.email)}`,
-            {
-              state: { token: data.token, user: data.user },
-            },
+            `/complete-with-google/${encodeURIComponent(data.user.email)}`
           );
         } else {
           navigate("/");
-          localStorage.setItem("token", data.token);
         }
       } catch (error) {
         setError("Google login failed.");
@@ -117,7 +112,6 @@ export default function RegisterPage() {
     },
   });
 
-  // Style dùng cho thẻ Select và Date (vì nó dùng children)
   const inputBase =
     "w-full bg-ghost-fog border border-sterling-gray rounded-cards px-4 py-3 text-[14px] text-midnight-ink outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white placeholder:text-midnight-ink/40";
 
@@ -126,7 +120,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-[420px]">
         <div className="lg:hidden mb-10">
           <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            Vogue Rental
+            CostumeHUB
           </span>
         </div>
         <div className="mb-10">
@@ -162,7 +156,6 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* New usage for normal Input Text */}
             <Input
               label="Full Name"
               name="fullName"
@@ -193,7 +186,6 @@ export default function RegisterPage() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Children for Select */}
             <Input label="Gender">
               <select
                 name="gender"
@@ -207,7 +199,6 @@ export default function RegisterPage() {
                 <option value="other">Other</option>
               </select>
             </Input>
-            {/* Children for Date */}
             <Input label="Date of Birth">
               <input
                 type="date"
@@ -220,7 +211,6 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Dùng rightIcon cho Mật khẩu */}
             <Input
               label="Password"
               name="password"

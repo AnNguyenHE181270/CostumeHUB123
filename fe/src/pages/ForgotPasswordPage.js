@@ -50,14 +50,12 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
       <div className="w-full max-w-[420px]">
-        {/* Mobile logo */}
         <div className="lg:hidden mb-10">
           <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            Vogue Rental
+            CostumeHUB
           </span>
         </div>
 
-        {/* Header */}
         <div className="mb-10">
           <p className="text-warning-orange text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Recover Account
@@ -78,12 +76,10 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        {/* Form */}
         {title ? (
           <p>{title}</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Dùng component Input tự đóng, truyền props */}
             <Input
               label="Email"
               name="email"
@@ -94,10 +90,8 @@ export default function ForgotPasswordPage() {
               required
             />
 
-            {/* Error Message */}
             {error && <ErrorMessage message={error} />}
 
-            {/* Submit Button */}
             <Button
               type="submit"
               icon={faArrowRight}
@@ -106,7 +100,6 @@ export default function ForgotPasswordPage() {
               className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons"
             />
 
-            {/* Link back to Login */}
             <p className="text-center text-[14px] text-midnight-ink/60">
               Remembered your password?{" "}
               <button

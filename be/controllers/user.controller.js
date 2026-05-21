@@ -61,7 +61,7 @@ const register = async (req, res, next) => {
                     fullName,
                     phone,
                     password: passwordHash,
-                    role: [roleUser._id],
+                    roles: [roleUser._id],
                     gender: gender || null,
                     dateOfBirth: dateOfBirth || null,
 
@@ -95,7 +95,7 @@ const register = async (req, res, next) => {
             email,
             phone,
             password: passwordHash,
-            role: [roleUser._id],
+            roles: [roleUser._id],
             gender: gender,
             dateOfBirth: dateOfBirth,
 
@@ -366,7 +366,7 @@ const login = async (req, res, next) => {
                 role: existUser.roles
             },
             process.env.JWT_SECRET,
-            { expiresIn: "1h" },
+            { expiresIn: "7d" },
         );
 
         return res.status(200).json({
@@ -392,9 +392,14 @@ const getProfile = async (req, res, next) => {
         
         return res.status(200).json({
             user: {
+                id: user._id,
                 fullName: user.fullName,
                 email: user.email,
                 phone: user.phone,
+                gender: user.gender,
+                dateOfBirth: user.dateOfBirth,
+                provider: user.provider,
+                roles: user.roles,
             },
         });
     } catch (err) {
@@ -424,8 +429,6 @@ const googleLogin = async (req, res, next) => {
         const googleUser = await response.json();
         const { sub, email, name, picture } = googleUser;
 
-        let isNewUser = false;
-
         let user = await User.findOne({ email });
 
         if (user) {
@@ -442,7 +445,8 @@ const googleLogin = async (req, res, next) => {
             await user.save();
 
         } else {
-            isNewUser = true;
+            const roleUser = await Role.findOne({ name: "customer" });
+            const rolesArray = roleUser ? [roleUser._id] : [];
 
             user = await User.create({
                 fullName: name,
@@ -452,15 +456,10 @@ const googleLogin = async (req, res, next) => {
                 providerId: sub,
                 isEmailVerified: true,
                 status: "active",
+                roles: rolesArray,
                 lastLogin: new Date(),
             });
         }
-
-        // check neu co vao dau neu khong co vao home
-        const needsMoreInfo =
-            !user.phone ||
-            !user.gender ||
-            !user.dateOfBirth;
 
         const token = jwt.sign(
             {   id: user._id,
@@ -474,8 +473,6 @@ const googleLogin = async (req, res, next) => {
         return res.status(200).json({
             token,
             user,
-            isNewUser,
-            needsMoreInfo,
         });
 
     } catch (err) {

@@ -22,7 +22,7 @@ export default function AuthLayout({ children }) {
         <div className="relative z-10 flex flex-col justify-between p-f-100 h-full">
           {/* Logo */}
           <span className="text-cloud-white/60 text-[11px] font-medium tracking-[0.35em] uppercase">
-            Vogue Rental
+            CostumeHUB
           </span>
 
           {/* Hero content */}
@@ -83,7 +83,7 @@ export default function AuthLayout({ children }) {
           </div>
 
           <span className="text-muted-slate/25 text-[10px] tracking-[0.2em] uppercase">
-            © 2026 Vogue Rental • Hà Nội
+            © 2026 CostumeHUB • Hà Nội
           </span>
         </div>
       </div>

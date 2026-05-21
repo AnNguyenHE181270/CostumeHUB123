@@ -9,6 +9,7 @@ import {
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import { ROUTES } from "../routes/routePaths";
+import { useAuth } from "../context/AuthContext";
 
 export default function CompleteProfilePage() {
   const [form, setForm] = useState({ gender: "", phone: "", dateOfBirth: "" });
@@ -16,9 +17,8 @@ export default function CompleteProfilePage() {
   const [loading, setLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { token, user } = location.state || {};
   const { email } = useParams();
-
+  const { token, login } = useAuth();
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -28,6 +28,10 @@ export default function CompleteProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
+    if (!token) {
+      setError("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      return;
+    }
     try {
       const response = await fetch(
         `http://localhost:9999/api/users/complete-profile/${decodeURIComponent(email)}`,
@@ -45,10 +49,7 @@ export default function CompleteProfilePage() {
         setError(data.message || "Update failed.");
         return;
       }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-      localStorage.setItem("token", token); // Save token after success
+      await login(token);
       navigate(ROUTES.HOME);
     } catch (err) {
       setError("Network error. Please try again.");
@@ -102,7 +103,7 @@ export default function CompleteProfilePage() {
                   name="gender"
                   value={form.gender}
                   onChange={handleChange}
-                  className={`${inputBase} cursor-pointer}`}
+                  className={`${inputBase} cursor-pointer`}
                 >
                   <option value="">Select Gender</option>
                   <option value="female">Female</option>
