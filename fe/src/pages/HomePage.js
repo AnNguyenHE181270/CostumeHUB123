@@ -2,11 +2,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faTruckFast, faShieldHalved, faSearch, faShirt } from "@fortawesome/free-solid-svg-icons";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ROUTES } from "../routes/routePaths";
-
-// Import Header và Footer
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
 
 export default function HomePage() {
   const { token, isProfileComplete, user, loading } = useAuth();
@@ -14,8 +9,8 @@ export default function HomePage() {
   // Chờ load session F5
   if (loading) {
     return (
-      <div className="min-h-screen bg-ghost-fog flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-action-blue"></div>
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]"></div>
       </div>
     );
   }
@@ -25,11 +20,7 @@ export default function HomePage() {
     return <Navigate to={`/complete-with-google/${encodeURIComponent(user.email)}`} replace />;
   }
   return (
-    <div className="min-h-screen bg-canvas-white font-sans text-midnight-ink flex flex-col">
-      
-      <Header />
-
-      <main className="flex-1">
+    <>
         <section className="bg-canvas-white pt-24 pb-32 px-6">
           <div className="mx-auto max-w-[1200px] text-center">
             <h1 className="text-abyssal-black font-normal mx-auto" style={{ fontSize: 'clamp(40px, 8vw, 83px)', lineHeight: 0.95, letterSpacing: '-0.03em', maxWidth: '900px' }}>Rent Your Style,<br />Without Limits</h1>
@@ -92,10 +83,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-      </main>
-
-      <Footer />
-      
-    </div>
+    </>
   );
 }

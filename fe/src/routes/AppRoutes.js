@@ -11,10 +11,12 @@ import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "./../pages/ResetPasswordPage";
 
+import MainLayout from "../layouts/MainLayout";
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* 1. Public routes */}
+      {/* 1. Public routes (auth pages — no Navbar/Footer) */}
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.REGISTER} element={<Register />} />
         <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
@@ -23,9 +25,11 @@ function AppRoutes() {
         <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
       </Route>
 
-      {/* 2. Private routes */}
+      {/* 2. Private routes (wrapped with MainLayout — Navbar + Footer) */}
       <Route element={<PrivateRoutes />}>
-        <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route element={<MainLayout />}>
+          <Route path={ROUTES.HOME} element={<HomePage />} />
+        </Route>
       </Route>
 
       {/* 3. Fallback */}
