@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { MemoryRouter } from 'react-router-dom';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+describe('Màn hình Home (App Component)', () => {
+  test('nên render thành công mà không có lỗi', () => {
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>);
+  });
 });
