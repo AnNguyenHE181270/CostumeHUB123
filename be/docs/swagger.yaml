@@ -260,134 +260,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /users/google-login:
-    post:
-      summary: Authenticate with Google OAuth
-      description: Log in or register using Google credentials.
-      tags:
-        - Users
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - accessToken
-              properties:
-                accessToken:
-                  type: string
-                  description: The access token obtained from Google OAuth.
-                  example: ya29.a0AfB_byD...
-      responses:
-        "200":
-          description: Google login successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-                  isNewUser:
-                    type: boolean
-                    example: false
-                  needsMoreInfo:
-                    type: boolean
-                    example: false
-                  user:
-                    $ref: "#/components/schemas/User"
-        "400":
-          description: Email registered with password provider
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Google authentication failed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /users/complete-profile/{email}:
-    put:
-      summary: Complete user profile for Google login
-      description: Update missing details (phone, gender, date of birth) for Google accounts.
-      tags:
-        - Users
-      parameters:
-        - in: path
-          name: email
-          required: true
-          schema:
-            type: string
-            format: email
-          example: test@gmail.com
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - phone
-                - gender
-                - dateOfBirth
-              properties:
-                phone:
-                  type: string
-                  example: "0987654321"
-                gender:
-                  type: string
-                  enum:
-                    - male
-                    - female
-                    - other
-                  example: male
-                dateOfBirth:
-                  type: string
-                  format: date
-                  example: "2003-01-01"
-      responses:
-        "200":
-          description: Profile updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: Profile updated successfully!
-                  isProfileComplete:
-                    type: boolean
-                    example: true
-                  user:
-                    $ref: "#/components/schemas/User"
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /users/forgot-password:
     post:
       summary: Request password reset link
@@ -418,12 +290,6 @@ paths:
                   message:
                     type: string
                     example: If an account with this email exists, password reset instructions have been sent.
-        "400":
-          description: Account registered with Google (no password to reset)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
@@ -499,6 +365,9 @@ paths:
                   user:
                     type: object
                     properties:
+                      id:
+                        type: string
+                        example: 665f1a8b2c3d4e5f67890123
                       fullName:
                         type: string
                         example: Nguyen Van A
@@ -507,7 +376,30 @@ paths:
                         example: test@gmail.com
                       phone:
                         type: string
+                        nullable: true
                         example: "0987654321"
+                      gender:
+                        type: string
+                        nullable: true
+                        enum:
+                          - male
+                          - female
+                          - other
+                        example: male
+                      dateOfBirth:
+                        type: string
+                        format: date
+                        nullable: true
+                        example: "2003-01-01"
+                      provider:
+                        type: string
+                        enum:
+                          - local
+                          - google
+                        example: local
+                      roles:
+                        type: string
+                        example: 665f1a8b2c3d4e5f67890123
         "401":
           description: Unauthorized / Token missing or invalid
           content:
