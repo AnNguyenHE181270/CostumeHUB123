@@ -13,8 +13,8 @@ const registerValidator = [
     .notEmpty()
     .withMessage("Email is required")
     .isEmail()
-    .withMessage("Invalid email format")
-    .normalizeEmail(),
+    .withMessage("Invalid email format"),
+
 
   body("password")
     .notEmpty()
