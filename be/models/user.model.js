@@ -1,60 +1,26 @@
 const mongoose = require("mongoose");
 
+// ===== 1. SUB-SCHEMA: Địa chỉ =====
 const addressSchema = new mongoose.Schema(
   {
-    receiverName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    phone: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    city: {
-      type: String,
-      required: true,
-    },
-
-    district: {
-      type: String,
-      required: true,
-    },
-
-    ward: {
-      type: String,
-      required: true,
-    },
-
-    detailAddress: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    note: {
-      type: String,
-      default: "",
-    },
-
-    isDefault: {
-      type: Boolean,
-      default: false,
-    },
+    receiverName: { type: String, required: true, trim: true },
+    receiverPhone: { type: String, required: true, trim: true },
+    province: { type: String, required: true },
+    district: { type: String, required: true },
+    ward: { type: String, required: true },
+    addressDetail: { type: String, required: true, trim: true },
+    note: { type: String, default: "" },
+    isDefault: { type: Boolean, default: false },
   },
-  { _id: true },
+  { _id: true }
 );
 
-// ================= USER SCHEMA =================
+// ===== 2. MAIN SCHEMA: USER =====
 const userSchema = new mongoose.Schema(
   {
-    // Basic Info
     fullName: {
       type: String,
-      required: true,
+      required: [true, "Vui lòng nhập họ tên"],
       trim: true,
       minlength: 2,
       maxlength: 50,
@@ -62,7 +28,7 @@ const userSchema = new mongoose.Schema(
 
     email: {
       type: String,
-      required: true,
+      required: [true, "Vui lòng nhập email"],
       unique: true,
       lowercase: true,
       trim: true,
@@ -71,17 +37,15 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
+      required: [true, "Vui lòng nhập mật khẩu"],
       minlength: 6,
       select: false,
-      required: function () {
-        return this.provider === "local";
-      },
     },
 
     phone: {
       type: String,
       unique: true,
-      sparse: true,
+      sparse: true, 
       trim: true,
     },
 
@@ -97,95 +61,50 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
     },
 
-    // ================= ROLE (MỚI) =================
-    roles: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Role",
-      },
-    ],
-
-    // OAuth
-    provider: {
+    // ===== PHÂN QUYỀN =====
+    role: {
       type: String,
-      enum: ["local", "google"],
-      default: "local",
+      enum: ["store-owner", "receptionist", "online-customer"],
+      default: "online-customer",
     },
 
-    providerId: {
-      type: String,
-      default: null,
-    },
-
-    // Email verification
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-
-    otpCode: {
-      type: String,
-      select: false,
-    },
-
-    otpExpires: {
-      type: Date,
-      select: false,
-    },
-
-    otpCooldownUntil: {
-      type: Date,
-      select: false,
-    },
-
-    // Reset password
-    resetPasswordToken: {
-      type: String,
-      select: false,
-    },
-
-    resetPasswordExpire: {
-      type: Date,
-      select: false,
-    },
-
-    // Addresses
-    addresses: {
-      type: [addressSchema],
-      default: [],
-    },
-
-    // Account status
+    // ===== TRẠNG THÁI TÀI KHOẢN =====
     status: {
       type: String,
       enum: ["active", "blocked", "pending"],
       default: "active",
     },
 
-    // Wishlist
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ===== BẢO MẬT =====
+    otpCode: { type: String, select: false },
+    otpExpires: { type: Date, select: false },
+    otpCooldownUntil: { type: Date, select: false },
+
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpire: { type: Date, select: false },
+
+  
+    addresses: {
+      type: [addressSchema],
+      default: [],
+    },
+
+
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Costume",
+        ref: "Costume", 
       },
     ],
-
-    // Orders
-    rentalOrders: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "RentalOrder",
-      },
-    ],
-
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 module.exports = mongoose.model("User", userSchema);
