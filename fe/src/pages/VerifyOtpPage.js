@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
@@ -13,6 +13,7 @@ const TIMER_SECONDS = 60;
 export default function VerifyOtpPage() {
     const { email } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(""));
     const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
     const [isResending, setIsResending] = useState(false);
@@ -20,6 +21,12 @@ export default function VerifyOtpPage() {
     const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
     const decodedEmail = decodeURIComponent(email || "");
+
+    useEffect(() => {
+        if (!location.state?.fromRegister) {
+            navigate(ROUTES.REGISTER, { replace: true });
+        }
+    }, [location.state, navigate]);
 
     useEffect(() => {
         if (timeLeft <= 0) return;
@@ -66,23 +73,23 @@ export default function VerifyOtpPage() {
         try {
             const response = await fetch(`http://localhost:9999/api/users/resend-otp/${decodedEmail}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: decodedEmail }) });
             const data = await response.json();
-            if (!response.ok) { setError(data.message || "Gửi lại mã thất bại."); return; }
+            if (!response.ok) { setError(data.message || "Failed to resend code."); return; }
             setTimeLeft(TIMER_SECONDS); setOtp(new Array(OTP_LENGTH).fill("")); inputRefs.current[0]?.focus();
-        } catch (err) { setError("Lỗi mạng. Vui lòng thử lại."); } finally { setIsResending(false); }
+        } catch (err) { setError("Network error. Please try again."); } finally { setIsResending(false); }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (loading) return;
         const otpCode = otp.join("");
-        if (otpCode.length !== OTP_LENGTH) { setError("Vui lòng nhập đủ 6 ký tự."); return; }
+        if (otpCode.length !== OTP_LENGTH) { setError("Please enter all 6 characters."); return; }
         setLoading(true); setError("");
         try {
             const response = await fetch(`http://localhost:9999/api/users/verify-otp/${decodedEmail}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: decodedEmail, otp: otpCode }) });
             const data = await response.json();
-            if (!response.ok) { setError(data.message || "Xác thực thất bại. Mã OTP không đúng."); return; }
+            if (!response.ok) { setError(data.message || "Verification failed. Incorrect OTP."); return; }
             navigate(ROUTES.LOGIN);
-        } catch (err) { setError("Lỗi mạng. Vui lòng thử lại."); } finally { setLoading(false); }
+        } catch (err) { setError("Network error. Please try again."); } finally { setLoading(false); }
     };
 
     const formatTime = (seconds) => { const m = Math.floor(seconds / 60).toString().padStart(1, "0"); const s = (seconds % 60).toString().padStart(2, "0"); return `${m}:${s}`; };
@@ -90,13 +97,13 @@ export default function VerifyOtpPage() {
     return (
         <AuthLayout>
             <div className="w-full max-w-[420px] text-center">
-                <div className="lg:hidden mb-10"><span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">Vogue Rental</span></div>
+                <div className="lg:hidden mb-10"><span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">CostumeHUB</span></div>
                 <div className="mx-auto w-14 h-14 rounded-largeFeatures bg-ghost-fog flex items-center justify-center mb-8">
                     <FontAwesomeIcon icon={faShieldHalved} className="text-action-blue text-xl" />
                 </div>
                 <div className="mb-10">
-                    <h2 className="text-abyssal-black font-medium mb-3" style={{ fontSize: "43px", lineHeight: 1.05, letterSpacing: "-0.02em" }}>Xác thực OTP</h2>
-                    <p className="text-midnight-ink/60 text-[14px] leading-[1.5]">Mã xác nhận đã được gửi đến<br /><span className="text-abyssal-black font-medium">{decodedEmail}</span></p>
+                    <h2 className="text-abyssal-black font-medium mb-3" style={{ fontSize: "43px", lineHeight: 1.05, letterSpacing: "-0.02em" }}>Verify OTP</h2>
+                    <p className="text-midnight-ink/60 text-[14px] leading-[1.5]">A verification code has been sent to<br /><span className="text-abyssal-black font-medium">{decodedEmail}</span></p>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="flex justify-center gap-3" onPaste={handlePaste}>
@@ -106,11 +113,11 @@ export default function VerifyOtpPage() {
                         ))}
                     </div>
                     {error && <ErrorMessage message={error} />}
-                    <Button type="submit" icon={faArrowRight} label="Xác nhận" loading={loading} className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons w-full" />
+                    <Button type="submit" icon={faArrowRight} label="Confirm" loading={loading} className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons w-full" />
                     <div className="text-[14px] text-midnight-ink/60 pt-2">
-                        {timeLeft > 0 ? (<>Gửi lại mã sau <span className="text-warning-orange font-medium tabular-nums">{formatTime(timeLeft)}</span></>) : (
+                        {timeLeft > 0 ? (<>Resend code in <span className="text-warning-orange font-medium tabular-nums">{formatTime(timeLeft)}</span></>) : (
                             <button type="button" onClick={handleResendOtp} disabled={isResending} className="text-action-blue font-medium hover:text-blue-700 transition-colors disabled:opacity-50">
-                                {isResending ? "Đang gửi..." : "Gửi lại mã OTP"}
+                                {isResending ? "Sending..." : "Resend OTP"}
                             </button>
                         )}
                     </div>

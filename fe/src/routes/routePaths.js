@@ -3,5 +3,7 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY: "/verify-otp/:email",
-  COMPLETEWITHGOOGLE: "/complete-with-google/:email"
+  COMPLETEWITHGOOGLE: "/complete-with-google/:email",
+  FORGOTPASSWORD: "/forgot-password",
+  RESETPASSWORD: "/reset-password/:token"
 };
