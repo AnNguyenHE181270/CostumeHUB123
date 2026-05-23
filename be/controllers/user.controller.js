@@ -388,8 +388,7 @@ const getProfile = async (req, res, next) => {
         if (!user) {
             return next(new HttpError("User not found.", 404));
         }
-        
-        
+
         return res.status(200).json({
             user: {
                 id: user._id,
@@ -462,11 +461,14 @@ const googleLogin = async (req, res, next) => {
         }
 
         const token = jwt.sign(
-            {   id: user._id,
+
+            {
+                id: user._id,
                 email: user.email,
-                role: user.roles },
+                role: user.roles
+            },
             process.env.JWT_SECRET,
-            
+
             { expiresIn: "7d" }
         );
 
@@ -505,7 +507,7 @@ const completeWithGoogle = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully!",
-            user: user, 
+            user: user,
             isProfileComplete: isProfileComplete, // Giúp Frontend biết đã xong chưa
         });
     } catch (err) {
@@ -657,20 +659,19 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 const forgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
-        
         const user = await User.findOne({ email });
         if (!user) {
             return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
         }
 
         if (user.provider == "google") {
-                return next(
-                    new HttpError(
-                        "This email is registered with Google. Please sign in using Google.",
-                        400
-                    )
-                );
-            }
+            return next(
+                new HttpError(
+                    "This email is registered with Google. Please sign in using Google.",
+                    400
+                )
+            );
+        }
         // hash token reset
         const resetToken = crypto.randomBytes(32).toString("hex");
 
@@ -682,10 +683,8 @@ const forgotPassword = async (req, res, next) => {
         await user.save();
 
         const resetUrl = `http://localhost:3000/reset-password/${resetToken}`
-
-       await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
-       res.status(200).json({ message: "If an account with this email exists, password reset instructions have been sent." });
-        
+        await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
+        res.status(200).json({ message: "If an account with this email exists, password reset instructions have been sent." });
     } catch (err) {
         return next(
             new HttpError(err.message || "Error system.", 500)
@@ -703,7 +702,7 @@ const resetPassword = async (req, res, next) => {
 
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
-            resetPasswordExpire: { $gt: Date.now() }, 
+            resetPasswordExpire: { $gt: Date.now() },
         });
 
         if (!user) {
@@ -718,8 +717,6 @@ const resetPassword = async (req, res, next) => {
         await user.save();
 
         res.status(200).json({ message: "Password reset successful." });
-        
-
     } catch (err) {
         return next(new HttpError(err.message || "Password reset failed.", 500));
     }
@@ -733,5 +730,5 @@ module.exports = {
     getProfile,
     completeWithGoogle,
     forgotPassword,
-    resetPassword ,
+    resetPassword,
 };
