@@ -34,10 +34,10 @@ const register = async (req, res, next) => {
             );
         }
 
-        const roleUser = await Role.findOne({ name: "customer" });
+        const roleUser = await Role.findOne({ name: "online-customer" });
 
         if (!roleUser) {
-            return next(new HttpError("Customer role not found", 404));
+            return next(new HttpError("Online customer role not found", 404));
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -49,7 +49,6 @@ const register = async (req, res, next) => {
         const otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
         const otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
 
-        // CASE 1: EMAIL ĐÃ TỒN TẠI NHƯNG CHƯA VERIFY
         if (
             existUser &&
             existUser.status === "pending" &&
@@ -61,7 +60,7 @@ const register = async (req, res, next) => {
                     fullName,
                     phone,
                     password: passwordHash,
-                    roles: [roleUser._id],
+                    roles: roleUser._id,
                     gender: gender || null,
                     dateOfBirth: dateOfBirth || null,
 
@@ -95,7 +94,7 @@ const register = async (req, res, next) => {
             email,
             phone,
             password: passwordHash,
-            roles: [roleUser._id],
+            roles: roleUser._id,
             gender: gender,
             dateOfBirth: dateOfBirth,
 
@@ -120,10 +119,6 @@ const register = async (req, res, next) => {
             nextResendIn: 60 * 1000,
         });
     } catch (err) {
-        if (newUser) {
-            await User.findByIdAndDelete(newUser._id);
-        }
-
         return next(new HttpError(err.message || "Register failed.", 500));
     }
 };
@@ -408,114 +403,8 @@ const getProfile = async (req, res, next) => {
     }
 };
 
-const googleLogin = async (req, res, next) => {
-    try {
-        const { accessToken } = req.body;
-
-        const response = await fetch(
-            "https://www.googleapis.com/oauth2/v3/userinfo",
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        );
-
-        if (!response.ok) {
-            return next(new HttpError("Google authentication failed.", 401));
-        }
-
-        const googleUser = await response.json();
-        const { sub, email, name, picture } = googleUser;
-
-        let user = await User.findOne({ email });
-
-        if (user) {
-            if (user.provider !== "google") {
-                return next(
-                    new HttpError(
-                        "This email is already registered with a password. Please sign in using your password.",
-                        400
-                    )
-                );
-            }
-
-            user.lastLogin = new Date();
-            await user.save();
-
-        } else {
-            const roleUser = await Role.findOne({ name: "customer" });
-            const rolesArray = roleUser ? [roleUser._id] : [];
-
-            user = await User.create({
-                fullName: name,
-                email,
-                avatar: picture,
-                provider: "google",
-                providerId: sub,
-                isEmailVerified: true,
-                status: "active",
-                roles: rolesArray,
-                lastLogin: new Date(),
-            });
-        }
-
-        const token = jwt.sign(
-
-            {
-                id: user._id,
-                email: user.email,
-                role: user.roles
-            },
-            process.env.JWT_SECRET,
-
-            { expiresIn: "7d" }
-        );
-
-        return res.status(200).json({
-            token,
-            user,
-        });
-
-    } catch (err) {
-        return next(
-            new HttpError(err.message || "Google login failed.", 500)
-        );
-    }
-};
 
 
-const completeWithGoogle = async (req, res, next) => {
-    try {
-        const { email } = req.params;
-        const { gender, dateOfBirth, phone } = req.body;
-
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return next(new HttpError("User not found.", 404));
-        }
-
-        user.gender = gender;
-        user.dateOfBirth = dateOfBirth;
-        user.phone = phone;
-
-        await user.save();
-
-        const isProfileComplete = !!(user.phone && user.gender && user.dateOfBirth);
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile updated successfully!",
-            user: user,
-            isProfileComplete: isProfileComplete, // Giúp Frontend biết đã xong chưa
-        });
-    } catch (err) {
-        return next(
-            new HttpError(err.message || "Profile update failed.", 500)
-        );
-    }
-};
 
 const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
     await sendEmail({
@@ -664,15 +553,7 @@ const forgotPassword = async (req, res, next) => {
             return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
         }
 
-        if (user.provider == "google") {
-            return next(
-                new HttpError(
-                    "This email is registered with Google. Please sign in using Google.",
-                    400
-                )
-            );
-        }
-        // hash token reset
+
         const resetToken = crypto.randomBytes(32).toString("hex");
 
         const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
@@ -725,10 +606,8 @@ const resetPassword = async (req, res, next) => {
 module.exports = {
     register,
     verifyOtp,
-    googleLogin,
     login,
     getProfile,
-    completeWithGoogle,
     forgotPassword,
     resetPassword,
 };

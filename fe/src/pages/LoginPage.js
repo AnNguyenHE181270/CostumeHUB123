@@ -4,6 +4,7 @@ import {
   faEye,
   faEyeSlash,
   faArrowRight,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import Input from "../components/ui/Input";
@@ -13,20 +14,17 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { useGoogleLogin } from "@react-oauth/google";
-import { useAuth } from "../context/AuthContext"; 
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
-
   // ==========================================
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
-
+  const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
-  const { login,  isProfileComplete} = useAuth(); 
-
- 
+  const { login, isProfileComplete } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,55 +47,15 @@ export default function LoginPage() {
         setError(data.errors?.[0]?.msg || data.message || "Login failed.");
         return;
       }
-      await login(data.token);
+      await login(data.token, remember);
 
       navigate(`/`);
-      
     } catch (error) {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
-const loginGoogle = useGoogleLogin({
-  onSuccess: async (tokenResponse) => {
-    try {
-      const response = await fetch(
-        "http://localhost:9999/api/users/google-login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accessToken: tokenResponse.access_token,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Google login failed");
-        return;
-      }
-      await login(data.token);
-
-      if (!isProfileComplete) {
-        navigate(`/complete-with-google/${encodeURIComponent(data.user.email)}`, {
-        });
-      } else {
-        navigate("/"); 
-      }
-
-    } catch (error) {
-      setError("Google login failed.");
-    }
-  },
-
-  onError: () => {
-    setError("Google login failed.");
-  },
-});
 
   const inputBase =
     "w-full bg-ghost-fog border border-sterling-gray rounded-cards px-4 py-3 text-[14px] text-midnight-ink outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white placeholder:text-midnight-ink/40";
@@ -127,13 +85,6 @@ const loginGoogle = useGoogleLogin({
           </h2>
         </div>
 
-        <Button
-          icon={faGoogle}
-          label="Continue with Google"
-          className="bg-canvas-white text-abyssal-black border border-abyssal-black hover:bg-ghost-fog rounded-buttons"
-          onClick={() => loginGoogle()}
-        />
-
         <div className="my-8 flex items-center gap-4">
           <div className="h-px flex-1 bg-sterling-gray" />
           <span className="text-[10px] uppercase tracking-[0.2em] text-midnight-ink/50">
@@ -157,11 +108,10 @@ const loginGoogle = useGoogleLogin({
             label="Password"
             name="password"
             type={showPw ? "text" : "password"}
-            value={form.password} 
-            onChange={handleChange} 
+            value={form.password}
+            onChange={handleChange}
             placeholder="8+ characters"
             required
-           
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
             }
@@ -175,6 +125,30 @@ const loginGoogle = useGoogleLogin({
             >
               Forgot Password?
             </a>
+          </div>
+          <div className="flex items-start gap-3 pt-1">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={remember}
+              onClick={() => setRemember((prev) => !prev)}
+              className={`mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-navigation border flex items-center justify-center transition-all duration-200 ${
+                remember
+                  ? "bg-abyssal-black border-abyssal-black"
+                  : "bg-canvas-white border-sterling-gray hover:border-midnight-ink"
+              }`}
+            >
+              {remember && (
+                <FontAwesomeIcon
+                  icon={faCheck}
+                  className="text-canvas-white text-[9px]"
+                />
+              )}
+            </button>
+
+            <span className="text-[13px] text-midnight-ink/60 leading-[1.5]">
+              Remember me
+            </span>
           </div>
 
           {error && <ErrorMessage message={error} />}

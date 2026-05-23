@@ -73,44 +73,7 @@ export default function RegisterPage() {
     }
   };
 
-  const loginGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const response = await fetch(
-          "http://localhost:9999/api/users/google-login",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accessToken: tokenResponse.access_token,
-            }),
-          },
-        );
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          setError(data.message || "Google login failed");
-          return;
-        }
-
-        await login(data.token);
-
-        if (!isProfileComplete) {
-          navigate(
-            `/complete-with-google/${encodeURIComponent(data.user.email)}`
-          );
-        } else {
-          navigate("/");
-        }
-      } catch (error) {
-        setError("Google login failed.");
-      }
-    },
-    onError: () => {
-      setError("Google login failed.");
-    },
-  });
 
   const inputBase =
     "w-full bg-ghost-fog border border-sterling-gray rounded-cards px-4 py-3 text-[14px] text-midnight-ink outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white placeholder:text-midnight-ink/40";
@@ -139,12 +102,6 @@ export default function RegisterPage() {
           </h2>
         </div>
 
-        <Button
-          icon={faGoogle}
-          label="Continue with Google"
-          className="bg-canvas-white text-abyssal-black border border-abyssal-black hover:bg-ghost-fog rounded-buttons"
-          onClick={() => loginGoogle()}
-        />
 
         <div className="my-8 flex items-center gap-4">
           <div className="h-px flex-1 bg-sterling-gray" />
