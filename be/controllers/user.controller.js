@@ -347,11 +347,6 @@ const login = async (req, res, next) => {
         if(existUser.status == "blocked"){
           return next(new HttpError("User is blocked", 400))
         }
-        if (!existUser.password) {
-            return next(
-                new HttpError("This account was registered with Google. Please sign in using Google.", 400)
-            );
-        }
         const checkPassword = await bcrypt.compare(password, existUser.password);
         if (!checkPassword) {
             return next(new HttpError("Incorrect password.", 401));
