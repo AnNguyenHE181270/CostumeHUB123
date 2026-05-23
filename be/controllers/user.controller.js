@@ -388,8 +388,6 @@ const getProfile = async (req, res, next) => {
         if (!user) {
             return next(new HttpError("User not found.", 404));
         }
-
-
         return res.status(200).json({
             user: {
                 id: user._id,
@@ -468,7 +466,6 @@ const googleLogin = async (req, res, next) => {
                 role: user.roles
             },
             process.env.JWT_SECRET,
-
             { expiresIn: "7d" }
         );
 
@@ -659,7 +656,6 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 const forgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
-
         const user = await User.findOne({ email });
         if (!user) {
             return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
@@ -685,9 +681,9 @@ const forgotPassword = async (req, res, next) => {
 
         const resetUrl = `http://localhost:3000/reset-password/${resetToken}`
 
+
         await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
         res.status(200).json({ message: "If an account with this email exists, password reset instructions have been sent." });
-
     } catch (err) {
         return next(
             new HttpError(err.message || "Error system.", 500)
@@ -720,8 +716,6 @@ const resetPassword = async (req, res, next) => {
         await user.save();
 
         res.status(200).json({ message: "Password reset successful." });
-
-
     } catch (err) {
         return next(new HttpError(err.message || "Password reset failed.", 500));
     }
