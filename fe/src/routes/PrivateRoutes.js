@@ -3,7 +3,7 @@ import { ROUTES } from "./routePaths";
 import { useAuth } from "../context/AuthContext";
 
 function PrivateRoutes() {
-  const { token, loading, isProfileComplete, user } = useAuth();
+  const { token, loading } = useAuth();
 
   if (loading) {
     return (
@@ -15,10 +15,6 @@ function PrivateRoutes() {
 
   if (!token) {
     return <Navigate to={ROUTES.LOGIN} replace />;
-  }
-
-  if (!isProfileComplete && user?.email) {
-    return <Navigate to={`/complete-with-google/${encodeURIComponent(user.email)}`} replace />;
   }
 
   return <Outlet />;
