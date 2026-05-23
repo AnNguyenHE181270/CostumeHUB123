@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     };
 
     useEffect(() => {
-        const savedToken = localStorage.getItem("token");
+        const savedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
         if (savedToken) {
             setToken(savedToken);
             getProfile(savedToken).finally(() => setLoading(false)); // Xong thì tắt loading
@@ -52,8 +52,14 @@ export function AuthProvider({ children }) {
     }, []);
 
 
-    const login = async (newToken) => {
-        localStorage.setItem("token", newToken);
+    const login = async (newToken, remember) => {
+        if(remember)
+        {
+            localStorage.setItem("token", newToken);
+        }
+        else{
+            sessionStorage.setItem("token", newToken)
+        }
         setToken(newToken);
         await getProfile(newToken);
     };

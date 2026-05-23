@@ -7,7 +7,7 @@ export default function Header() {
 
     const navigate = useNavigate();
     const {user} = useAuth()
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token")
   return (
     <header className="sticky top-0 z-50 bg-canvas-white/90 backdrop-blur-lg border-b border-sterling-gray/50">
       <div className="mx-auto max-w-[1200px] flex items-center justify-between h-16 px-6">

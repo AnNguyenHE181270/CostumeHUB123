@@ -6,16 +6,20 @@ const roleSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      enum: ["customer", "store_owner", "admin"],
+      trim: true,
     },
-
     description: {
       type: String,
+      default: "",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 module.exports = mongoose.model("Role", roleSchema);

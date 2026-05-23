@@ -13,8 +13,8 @@ const registerValidator = [
     .notEmpty()
     .withMessage("Email is required")
     .isEmail()
-    .withMessage("Invalid email format")
-    .normalizeEmail(),
+    .withMessage("Invalid email format"),
+
 
   body("password")
     .notEmpty()
@@ -67,43 +67,6 @@ const loginValidator = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
-const completeWithGoogleValidator = [
-  body("phone")
-    .trim()
-    .notEmpty()
-    .withMessage(
-      "Phone is required"
-    )
-    .isMobilePhone()
-    .withMessage(
-      "Invalid phone number"
-    ),
-
-  body("gender")
-    .notEmpty()
-    .withMessage(
-      "Gender is required"
-    )
-    .isIn([
-      "male",
-      "female",
-      "other",
-    ])
-    .withMessage(
-      "Gender must be male, female, or other"
-    ),
-
-  body("dateOfBirth")
-    .notEmpty()
-    .withMessage(
-      "Date of birth is required"
-    )
-    .isISO8601()
-    .toDate()
-    .withMessage(
-      "Invalid date of birth"
-    ),
-];
 
 const forgotPasswordValidator = [
   body("email")
@@ -124,7 +87,6 @@ module.exports = {
   registerValidator,
   verifyOtpValidator,
   loginValidator,
-  completeWithGoogleValidator,
   forgotPasswordValidator,
   resetPasswordValidator
 };
