@@ -13,7 +13,6 @@ import { ROUTES } from "../routes/routePaths";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
-import { useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -132,11 +131,10 @@ export default function LoginPage() {
               role="checkbox"
               aria-checked={remember}
               onClick={() => setRemember((prev) => !prev)}
-              className={`mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-navigation border flex items-center justify-center transition-all duration-200 ${
-                remember
-                  ? "bg-abyssal-black border-abyssal-black"
-                  : "bg-canvas-white border-sterling-gray hover:border-midnight-ink"
-              }`}
+              className={`mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-navigation border flex items-center justify-center transition-all duration-200 ${remember
+                ? "bg-abyssal-black border-abyssal-black"
+                : "bg-canvas-white border-sterling-gray hover:border-midnight-ink"
+                }`}
             >
               {remember && (
                 <FontAwesomeIcon

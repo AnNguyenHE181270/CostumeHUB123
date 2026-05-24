@@ -1,7 +1,7 @@
 const Role = require('../models/role.model');
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
-const { login, register, forgotPassword } = require('../controllers/user.controller');
+const { login, register, forgotPassword, resetPassword } = require('../controllers/user.controller');
 const { sendEmail } = require("../services/email.service")
 const jwt = require('jsonwebtoken');
 
@@ -294,109 +294,237 @@ describe('Register customer', () => {
 
 });
 
-//describe('Forgot password', () => {
-//     beforeEach(() => { jest.clearAllMocks(); });
+describe('Forgot password', () => {
+    beforeEach(() => { jest.clearAllMocks(); });
 
-//     // 1. Email tồn tại
-//     test('Send OTP success', async () => {
-//         User.findOne.mockResolvedValue({
-//             email: 'mai@gmail.com',
-//             status: 'active'
-//         });
-//         bcrypt.genSalt.mockResolvedValue('salt');
-//         bcrypt.hash.mockResolvedValue('otpHash');
-//         sendEmailVerification.mockResolvedValue(true);
-//         await forgotPassword(req, res, next);
+    // 1. Email tồn tại
+    test('Send reset link email success', async () => {
+        const mockUser = {
+            email: 'mai@gmail.com',
+            status: 'active',
+            save: jest.fn().mockResolvedValue(true)
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
 
-//         expect(sendEmailVerification).toHaveBeenCalled();
-//         expect(res.status).toHaveBeenCalledWith(200);
+        const req = { body: { email: 'mai@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
-//     });
+        await forgotPassword(req, res, next);
 
-//     // 2. Email không tồn tại
-//     test('Email not found', async () => {
-//         // Giả lập không tìm thấy user mang email này
-//         User.findOne = jest.fn().mockResolvedValue(null);
-//         const req = { body: { email: 'notfound@gmail.com' } };
-//         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-//         const next = jest.fn();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.any(String)
+        }));
+    });
 
-//         await forgotPassword(req, res, next);
+    // 2. Email không tồn tại
+    test('Email not found', async () => {
+        // Giả lập không tìm thấy user mang email này
+        User.findOne = jest.fn().mockResolvedValue(null);
+        const req = { body: { email: 'notfound@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
-//         expect(User.findOne).toHaveBeenCalledWith({ email: 'notfound@gmail.com' });
-//         // Mong đợi hàm next(error) được gọi vì lỗi không tìm thấy người dùng
-//         expect(next).toHaveBeenCalled();
-//     });
+        await forgotPassword(req, res, next);
 
-//     // 3. Account pending verify
+        expect(User.findOne).toHaveBeenCalledWith({ email: 'notfound@gmail.com' });
+        // Mong đợi hàm next(error) được gọi vì lỗi không tìm thấy người dùng
+        expect(next).toHaveBeenCalled();
+    });
 
-//     // 4. Email rỗng/null
+    // 3. Account blocked
+    test('Account blocked - should still send reset email (for security)', async () => {
+        const mockUser = {
+            email: 'blocked@gmail.com',
+            status: 'blocked',
+            save: jest.fn().mockResolvedValue(true)
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
 
-//     // 5. Email format sai
+        const req = { body: { email: 'blocked@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
-//     // 6. Generate OTP thành công
+        await forgotPassword(req, res, next);
+
+        expect(User.findOne).toHaveBeenCalledWith({ email: 'blocked@gmail.com' });
+        expect(mockUser.save).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.message).toBe("Your account is blocked.");
+    });
+
+    // 4. Generate reset token thành công
+    test('Generate reset token success', async () => {
+        const mockUser = {
+            email: 'mai@gmail.com',
+            fullName: 'Mai User',
+            status: 'active',
+            save: jest.fn().mockResolvedValue(true)
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+
+        const req = { body: { email: 'mai@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
+
+        await forgotPassword(req, res, next);
+
+        expect(User.findOne).toHaveBeenCalledWith({ email: 'mai@gmail.com' });
+        expect(mockUser.save).toHaveBeenCalled();
+        // Verify reset token was set
+        expect(mockUser.resetPasswordToken).toBeDefined();
+        expect(mockUser.resetPasswordExpire).toBeDefined();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining("password reset instructions")
+        }));
+    });
+
+    // 5. Send reset email thành công (with sendEmail mocking)
+    test('Send reset email success', async () => {
+        const sendResetPasswordEmail = jest.fn().mockResolvedValue(true);
+        const mockUser = {
+            email: 'mai@gmail.com',
+            fullName: 'Mai User',
+            save: jest.fn().mockResolvedValue(true)
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+
+        const req = { body: { email: 'mai@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
+
+        await forgotPassword(req, res, next);
+
+        expect(User.findOne).toHaveBeenCalledWith({ email: 'mai@gmail.com' });
+        expect(mockUser.save).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    // 6. Send email thành công
+    test('Send forgot password request success', async () => {
+        // Giả lập tìm thấy user hợp lệ
+        const mockUser = {
+            email: 'mai@gmail.com',
+            save: jest.fn().mockResolvedValue(true) // Giả lập lưu token/OTP vào DB
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+
+        const req = { body: { email: 'mai@gmail.com' } };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
+
+        await forgotPassword(req, res, next);
+
+        expect(User.findOne).toHaveBeenCalledWith({ email: 'mai@gmail.com' });
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalled(); // Mong đợi thông báo gửi mã/reset link thành công
+    });
 
 
-//     // 7. Hash OTP thành công
 
-//     // 8. Send email thành công
-//     test('Send forgot password request success', async () => {
-//         // Giả lập tìm thấy user hợp lệ
-//         const mockUser = {
-//             email: 'mai@gmail.com',
-//             save: jest.fn().mockResolvedValue(true) // Giả lập lưu token/OTP vào DB
-//         };
-//         User.findOne = jest.fn().mockResolvedValue(mockUser);
+});
 
-//         const req = { body: { email: 'mai@gmail.com' } };
-//         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-//         const next = jest.fn();
+describe('Reset password', () => {
+    beforeEach(() => { jest.clearAllMocks(); });
 
-//         await forgotPassword(req, res, next);
+    // 1. Invalid or expired token
+    test('Invalid or expired token', async () => {
+        User.findOne = jest.fn().mockResolvedValue(null);
 
-//         expect(User.findOne).toHaveBeenCalledWith({ email: 'mai@gmail.com' });
-//         expect(res.status).toHaveBeenCalledWith(200);
-//         expect(res.json).toHaveBeenCalled(); // Mong đợi thông báo gửi mã/reset link thành công
-//     });
+        const req = {
+            params: { token: 'invalid_token_123' },
+            body: { password: 'newPassword123' }
+        };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
+        await resetPassword(req, res, next);
 
-//     // 9. OTP sai
-//     test('Wrong OTP', async () => {
-//         User.findOne.mockResolvedValue({ otpCode: 'hash' });
-//         bcrypt.compare.mockResolvedValue(false);
-//         await verifyOTP(req, res, next);
-//         expect(next).toHaveBeenCalled();
+        expect(User.findOne).toHaveBeenCalled();
+        expect(next).toHaveBeenCalled();
+        const errorPassed = next.mock.calls[0][0];
+        expect(errorPassed.message).toBe("Invalid or expired token.");
+        expect(errorPassed.statusCode).toBe(400);
+    });
 
-//     });
+    // 2. Reset password success
+    test('Reset password success', async () => {
+        const mockUser = {
+            resetPasswordToken: 'hashedToken123',
+            resetPasswordExpire: new Date(Date.now() + 10000),
+            password: 'oldHash',
+            save: jest.fn().mockResolvedValue(true)
+        };
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        bcrypt.genSalt = jest.fn().mockResolvedValue('salt123');
+        bcrypt.hash = jest.fn().mockResolvedValue('newPasswordHash');
 
+        const req = {
+            params: { token: 'validToken123' },
+            body: { password: 'NewPassword123' }
+        };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
-//     // 10. OTP hết hạn
+        await resetPassword(req, res, next);
 
-//     // 11. OTP null
+        expect(User.findOne).toHaveBeenCalled();
+        expect(bcrypt.genSalt).toHaveBeenCalledWith(10);
+        expect(bcrypt.hash).toHaveBeenCalledWith('NewPassword123', 'salt123');
 
-//     // 12. OTP đã dùng rồi
+        // Verify token was cleared
+        expect(mockUser.resetPasswordToken).toBeNull();
+        expect(mockUser.resetPasswordExpire).toBeNull();
 
-//     // 13. Password mới hợp lệ
+        expect(mockUser.save).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: "Password reset successful."
+        });
+        expect(next).not.toHaveBeenCalled();
+    });
 
-//     // 14. Password quá ngắn
+    // 3. Missing password field
+    test('Missing password field', async () => {
+        const req = {
+            params: { token: 'validToken' },
+            body: {} // Missing password
+        };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
+        User.findOne = jest.fn().mockResolvedValue({
+            resetPasswordToken: 'hashedToken',
+            resetPasswordExpire: new Date(Date.now() + 10000),
+            save: jest.fn().mockResolvedValue(true)
+        });
+        bcrypt.genSalt = jest.fn().mockResolvedValue('salt');
+        bcrypt.hash = jest.fn().mockResolvedValue('hash');
 
-//     // 15. Confirm password mismatch
+        await resetPassword(req, res, next);
 
-//     // 16. Reset thành công
-//     test(
-//         'Reset password success', async () => {
-//             User.findOne.mockResolvedValue({
-//                 otpCode: 'hash',
-//                 otpExpires: new Date(Date.now() + 10000)
-//             });
+        // Should still attempt hash with undefined password
+        expect(bcrypt.hash).toHaveBeenCalledWith(undefined, 'salt');
+    });
 
-//             bcrypt.compare.mockResolvedValue(true);
-//             bcrypt.hash.mockResolvedValue('newHash');
+    // 4. Token expired
+    test('Token expired', async () => {
+        User.findOne = jest.fn().mockResolvedValue(null); // No user found (token expired)
 
-//             await resetPassword(req, res, next);
+        const req = {
+            params: { token: 'expiredToken123' },
+            body: { password: 'NewPassword123' }
+        };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
 
-//             expect(User.findByIdAndUpdate).toHaveBeenCalled();
+        await resetPassword(req, res, next);
 
-//         });
-// });
+        expect(User.findOne).toHaveBeenCalled();
+        expect(next).toHaveBeenCalled();
+        const errorPassed = next.mock.calls[0][0];
+        expect(errorPassed.message).toBe("Invalid or expired token.");
+    });
+});
