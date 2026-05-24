@@ -12,7 +12,6 @@ function PrivateRoutes() {
       </div>
     );
   }
-
   if (!token) {
     return <Navigate to={ROUTES.LOGIN} replace />;
   }

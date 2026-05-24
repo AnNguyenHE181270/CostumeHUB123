@@ -5,7 +5,7 @@ const HttpError = require("../models/http-error.model");
 const User = require("../models/user.model");
 const Role = require("../models/role.model");
 const sendEmail = require("../services/email.service");
-const crypto = require("crypto")
+const crypto = require("crypto");
 const OTP_TTL_MS = 1 * 60 * 1000;
 
 const register = async (req, res, next) => {
@@ -20,7 +20,10 @@ const register = async (req, res, next) => {
 
     if (existUser && existUser.status === "active") {
       return next(
-        new HttpError("An account with this email already exists. Please log in instead.", 422),
+        new HttpError(
+          "An account with this email already exists. Please log in instead.",
+          422,
+        ),
       );
     }
 
@@ -75,7 +78,8 @@ const register = async (req, res, next) => {
       await sendEmailVerification(email, otp, fullName);
 
       return res.status(201).json({
-        message: "Registration successful. Please check your email for the OTP.",
+        message:
+          "Registration successful. Please check your email for the OTP.",
         type: "new",
         user: {
           id: updatedUser._id,
@@ -345,7 +349,7 @@ const login = async (req, res, next) => {
       return next(new HttpError("User not found.", 404));
     }
     if (existUser.status == "blocked") {
-      return next(new HttpError("User is blocked", 400))
+      return next(new HttpError("User is blocked", 400));
     }
     const checkPassword = await bcrypt.compare(password, existUser.password);
     if (!checkPassword) {
@@ -356,7 +360,7 @@ const login = async (req, res, next) => {
       {
         id: existUser._id,
         email: existUser.email,
-        role: existUser.roles
+        role: existUser.roles,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
@@ -400,9 +404,6 @@ const getProfile = async (req, res, next) => {
     );
   }
 };
-
-
-
 
 const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   await sendEmail({
@@ -542,40 +543,65 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   });
 };
 
-
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
+      return next(
+        new HttpError(
+          "If an account with this email exists, password reset instructions have been sent.",
+          200,
+        ),
+      );
     }
 
+    if (!user.isEmailVerified) {
+      return next(
+        new HttpError(
+          "Email is not verified. Please verify your email before resetting your password.",
+          403,
+        ),
+      );
+    }
 
+    if (user.status === "blocked") {
+      return next(
+        new HttpError(
+          "Your account has been blocked. Please contact support for assistance.",
+          403,
+        ),
+      );
+    }
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
 
     await user.save();
 
-    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`
+    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
     await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
-    res.status(200).json({ message: "If an account with this email exists, password reset instructions have been sent." });
+    res
+      .status(200)
+      .json({
+        message:
+          "If an account with this email exists, password reset instructions have been sent.",
+      });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Error system.", 500)
-    );
+    return next(new HttpError(err.message || "Error system.", 500));
   }
 };
 
-
 const resetPassword = async (req, res, next) => {
   try {
-    const token = req.params.token
-    const password = req.body.password
+    const token = req.params.token;
+    const password = req.body.password;
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
