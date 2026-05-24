@@ -15,17 +15,13 @@ const registerValidator = [
     .isEmail()
     .withMessage("Invalid email format"),
 
-
   body("password")
     .notEmpty()
     .withMessage("Password is required")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters"),
 
-  body("phone")
-    .optional()
-    .isMobilePhone()
-    .withMessage("Invalid phone number"),
+  body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
 
   body("gender")
     .optional()
@@ -67,7 +63,6 @@ const loginValidator = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
-
 const forgotPasswordValidator = [
   body("email")
     .trim()
@@ -75,12 +70,14 @@ const forgotPasswordValidator = [
     .withMessage("Email is required")
     .isEmail()
     .withMessage("Invalid email"),
-
-  
 ];
 
 const resetPasswordValidator = [
-  body("password").notEmpty().withMessage("Password is required"), 
+  body("password")
+    .notEmpty()
+    .withMessage("Password is required")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters"),
 ];
 
 module.exports = {
@@ -88,5 +85,5 @@ module.exports = {
   verifyOtpValidator,
   loginValidator,
   forgotPasswordValidator,
-  resetPasswordValidator
+  resetPasswordValidator,
 };
