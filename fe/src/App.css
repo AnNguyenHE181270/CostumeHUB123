@@ -1,1 +1,4 @@
 /* Removed default App.css styles to use Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

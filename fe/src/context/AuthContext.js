@@ -5,9 +5,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
     const [token, setToken] = useState(null);
     const [user, setUser] = useState(null);
-    const [isProfileComplete, setIsProfileComplete] = useState(false); // Thêm flag này
-    const [loading, setLoading] = useState(true); // Thêm loading để chống nhấp nháy F5
-
+    const [loading, setLoading] = useState(true);
 
     const getProfile = async (currentToken) => {
         if (!currentToken) return null;
@@ -30,10 +28,7 @@ export function AuthProvider({ children }) {
             const data = await response.json();
             const userData = data.user || data;
             setUser(userData);
-
-            const complete = !!(userData.phone && userData.gender && userData.dateOfBirth);
-            setIsProfileComplete(complete);
-
+            
             return data;
         } catch (error) {
             console.error("Lỗi lấy profile:", error);
@@ -45,35 +40,31 @@ export function AuthProvider({ children }) {
         const savedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
         if (savedToken) {
             setToken(savedToken);
-            getProfile(savedToken).finally(() => setLoading(false)); // Xong thì tắt loading
+            getProfile(savedToken).finally(() => setLoading(false));
         } else {
             setLoading(false);
         }
     }, []);
 
-
     const login = async (newToken, remember) => {
-        if(remember)
-        {
+        if (remember) {
             localStorage.setItem("token", newToken);
-        }
-        else{
-            sessionStorage.setItem("token", newToken)
+        } else {
+            sessionStorage.setItem("token", newToken);
         }
         setToken(newToken);
         await getProfile(newToken);
     };
 
-    // 4. Hàm Logout
     const logout = () => {
         localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
         setToken(null);
         setUser(null);
-        setIsProfileComplete(false);
     };
 
     return (
-        <AuthContext.Provider value={{ token, user, isProfileComplete, setIsProfileComplete, loading, login, logout }}>
+        <AuthContext.Provider value={{ token, user, loading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
