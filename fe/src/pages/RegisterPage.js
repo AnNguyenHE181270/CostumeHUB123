@@ -1,20 +1,13 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEye,
-  faEyeSlash,
-  faArrowRight,
-  faCheck,
-} from "@fortawesome/free-solid-svg-icons";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import Input from "../components/ui/Input";
+import { faEye, faEyeSlash, faArrowRight, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { ROUTES } from "../routes/routePaths";
+import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
-import { useGoogleLogin } from "@react-oauth/google";
-import { useAuth } from "../context/AuthContext"; 
+import { ROUTES } from "../routes/routePaths";
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     fullName: "",
@@ -30,7 +23,6 @@ export default function RegisterPage() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [matchPassword, setMatchPassword] = useState("");
-  const { login, isProfileComplete} = useAuth(); 
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -73,42 +65,24 @@ export default function RegisterPage() {
     }
   };
 
-
-
-  const inputBase =
-    "w-full bg-ghost-fog border border-sterling-gray rounded-cards px-4 py-3 text-[14px] text-midnight-ink outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white placeholder:text-midnight-ink/40";
+  const inputBase = "w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 placeholder:text-text-muted";
 
   return (
     <AuthLayout>
-      <div className="w-full max-w-[420px]">
+      <div className="w-full max-w-[460px]">
         <div className="lg:hidden mb-10">
-          <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            CostumeHUB
+          <span className="text-text-primary text-[11px] font-medium tracking-[0.35em] uppercase">
+            Luxe Rent
           </span>
         </div>
+
         <div className="mb-10">
-          <p className="text-warning-orange text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
+          <p className="text-primary-600 text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Start the Journey
           </p>
-          <h2
-            className="text-abyssal-black font-medium"
-            style={{
-              fontSize: "43px",
-              lineHeight: 1.05,
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
             Create Account
           </h2>
-        </div>
-
-
-        <div className="my-8 flex items-center gap-4">
-          <div className="h-px flex-1 bg-sterling-gray" />
-          <span className="text-[10px] uppercase tracking-[0.2em] text-midnight-ink/50">
-            or
-          </span>
-          <div className="h-px flex-1 bg-sterling-gray" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -213,27 +187,31 @@ export default function RegisterPage() {
                   },
                 })
               }
-              className={`mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-navigation border flex items-center justify-center transition-all duration-200 ${form.acceptTerms ? "bg-abyssal-black border-abyssal-black" : "bg-canvas-white border-sterling-gray hover:border-midnight-ink"}`}
+              className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border flex items-center justify-center transition-all duration-200 ${
+                form.acceptTerms
+                  ? "bg-primary-600 border-primary-600"
+                  : "bg-surface border-border hover:border-primary-500"
+              }`}
             >
               {form.acceptTerms && (
                 <FontAwesomeIcon
                   icon={faCheck}
-                  className="text-canvas-white text-[9px]"
+                  className="text-white text-[10px]"
                 />
               )}
             </button>
-            <span className="text-[13px] text-midnight-ink/60 leading-[1.5]">
+            <span className="text-sm text-text-secondary leading-[1.5]">
               I agree to the{" "}
               <button
                 type="button"
-                className="text-midnight-ink underline underline-offset-2 decoration-sterling-gray hover:decoration-midnight-ink transition-colors"
+                className="text-text-primary font-medium hover:text-primary-600 transition-colors"
               >
                 Terms of Service
               </button>{" "}
               and{" "}
               <button
                 type="button"
-                className="text-midnight-ink underline underline-offset-2 decoration-sterling-gray hover:decoration-midnight-ink transition-colors"
+                className="text-text-primary font-medium hover:text-primary-600 transition-colors"
               >
                 Privacy Policy
               </button>
@@ -241,21 +219,25 @@ export default function RegisterPage() {
           </div>
 
           {error && <ErrorMessage message={error} />}
-          <Button
-            type="submit"
-            icon={faArrowRight}
-            label="Create Account"
-            loading={loading}
-            className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons"
-          />
-          <p className="text-center text-[14px] text-midnight-ink/60">
+
+          <div className="pt-2 mb-6">
+            <Button
+              type="submit"
+              variant="primary"
+              icon={faArrowRight}
+              label="Create Account"
+              loading={loading}
+            />
+          </div>
+
+          <p className="text-center text-sm text-text-secondary">
             Already have an account?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="text-action-blue font-medium hover:underline"
+              className="text-primary-600 font-medium hover:text-primary-700 transition-colors"
             >
-              Login
+              Sign In
             </button>
           </p>
         </form>

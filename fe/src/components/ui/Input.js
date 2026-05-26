@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Input  ({
+export default function Input({
   label,
   name,
   type = "text",
@@ -11,30 +11,28 @@ export default function Input  ({
   rightIcon,
   onRightIconClick,
   className = "",
-  children, // Hỗ trợ truyền component con (dành cho select, date)
+  children,
 }) {
   const baseInputClasses = `
-    w-full bg-ghost-fog border border-sterling-gray rounded-cards 
-    px-4 py-3 text-[14px] text-midnight-ink outline-none 
+    w-full bg-surface border border-border rounded-xl 
+    px-4 py-3 text-sm text-text-primary outline-none 
     transition-all duration-200 
-    focus:border-midnight-ink focus:bg-canvas-white 
-    placeholder:text-midnight-ink/40
+    focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500
+    placeholder:text-text-muted
     ${rightIcon ? "pr-10" : ""} 
     ${className}
   `;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {label && (
-        <label className="block text-[10px] uppercase tracking-[0.2em] font-medium text-midnight-ink/50">
+        <label htmlFor={name} className="block text-sm font-medium text-text-secondary">
           {label}
-          {required && <span className="text-warning-orange ml-0.5">*</span>}
+          {required && <span className="text-warning-500 ml-1">*</span>}
         </label>
       )}
 
       <div className="relative">
-        {/* Nếu có children (ví dụ thẻ select), thì render children. 
-            Nếu không, render thẻ input mặc định */}
         {children || (
           <input
             id={name}
@@ -48,13 +46,11 @@ export default function Input  ({
           />
         )}
 
-        {/* Chỉ hiện icon nếu KHÔNG phải là children (tránh lỗi lồng nhau) 
-            Hoặc bạn có thể để động này, nhưng thường select/date không cần icon mắt */}
         {rightIcon && (
           <button
             type="button"
             onClick={onRightIconClick}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-midnight-ink/40 hover:text-midnight-ink transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary-600 transition-colors"
           >
             {rightIcon}
           </button>
@@ -62,5 +58,4 @@ export default function Input  ({
       </div>
     </div>
   );
-};
-
+}
