@@ -349,7 +349,7 @@ const login = async (req, res, next) => {
       return next(new HttpError("User not found.", 404));
     }
     if (existUser.status == "blocked") {
-      return next(new HttpError("User is blocked", 400));
+      return next(new HttpError("User is blocked.", 403));
     }
     const checkPassword = await bcrypt.compare(password, existUser.password);
     if (!checkPassword) {
@@ -405,10 +405,6 @@ const getProfile = async (req, res, next) => {
   }
 };
 
-<<<<<<< HEAD
-
-=======
->>>>>>> b01fddeff5d7a77046cc9cf9366378f88e5de790
 const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   await sendEmail({
     to: email,
@@ -561,8 +557,7 @@ const forgotPassword = async (req, res, next) => {
       );
     }
 
-<<<<<<< HEAD
-=======
+
     if (!user.isEmailVerified) {
       return next(
         new HttpError(
@@ -580,7 +575,6 @@ const forgotPassword = async (req, res, next) => {
         ),
       );
     }
->>>>>>> b01fddeff5d7a77046cc9cf9366378f88e5de790
     const resetToken = crypto.randomBytes(32).toString("hex");
 
     const hashedToken = crypto
