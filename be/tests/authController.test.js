@@ -5,10 +5,6 @@ const { login, register, forgotPassword, resetPassword } = require('../controlle
 const { sendEmail } = require("../services/email.service")
 const jwt = require('jsonwebtoken');
 
-// jest.mock('../../models/user.model');
-// jest.mock('bcryptjs');
-// jest.mock('jsonwebtoken');
-// Giả lập toàn bộ file email.service trả về một hàm duy nhất (Default Export)
 jest.mock('../services/email.service', () => jest.fn().mockResolvedValue(true));
 
 
@@ -98,10 +94,7 @@ describe('Login customer', () => {
 
         const next = jest.fn();
         await login(req, res, next);
-
         expect(next).toHaveBeenCalled();
-        // Lưu ý: Nếu user.controller của bạn dùng res.status(401).json(...) khi sai email, 
-        // bạn cần đổi expect(next) thành expect(res.status).toHaveBeenCalledWith(401);
     });
 
 
@@ -188,15 +181,11 @@ describe('Register customer', () => {
         };
         const next = jest.fn();
         await register(req, res, next);
-        //  Kiểm tra kết quả (Assertions)
         expect(User.findOne).toHaveBeenCalledWith({ email: 'blocked@gmail.com' });
-        // Kiểm tra hàm next() có được gọi với đúng HttpError 422 không
         expect(next).toHaveBeenCalled();
-        // check erorr 403 and nofitication
         const errorPassed = next.mock.calls[0][0];
         expect(errorPassed.statusCode).toBe(403);
         expect(errorPassed.message).toBe("This account cannot be registered again.");
-        // ĐẢM BẢO: Không tìm kiếm Role hay tạo User mới
         expect(Role.findOne).not.toHaveBeenCalled();
         expect(User.create).not.toHaveBeenCalled();
         expect(res.status).not.toHaveBeenCalled();
@@ -285,7 +274,6 @@ describe('Register customer', () => {
 
         await register(req, res, next);
 
-        // Kiểm tra hàm next() có được gọi với đúng HttpError 422 không
         expect(next).toHaveBeenCalled();
         const errorPassed = next.mock.calls[0][0];
         expect(errorPassed.statusCode).toBe(422); // Hoặc errorPassed.code tùy thuộc vào class HttpError của bạn
@@ -320,16 +308,13 @@ describe('Forgot password', () => {
 
     // 2. Email không tồn tại
     test('Email not found', async () => {
-        // Giả lập không tìm thấy user mang email này
         User.findOne = jest.fn().mockResolvedValue(null);
         const req = { body: { email: 'notfound@gmail.com' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
         await forgotPassword(req, res, next);
-
         expect(User.findOne).toHaveBeenCalledWith({ email: 'notfound@gmail.com' });
-        // Mong đợi hàm next(error) được gọi vì lỗi không tìm thấy người dùng
         expect(next).toHaveBeenCalled();
     });
 

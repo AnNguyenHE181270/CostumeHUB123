@@ -125,11 +125,6 @@ describe("Forgot Password Page", () => {
         expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
 
-
-
-    // 9. Missing password field
-
-    // 10. Password and ConfirmPassword is not match
 });
 
 describe("Reset Password Page", () => {
@@ -257,16 +252,6 @@ describe("Reset Password Page", () => {
 
         expect(passwordInput.type).toBe("password");
         expect(confirmPasswordInput.type).toBe("password");
-
-        // Get the eye icons (parent elements of the icon buttons)
-        // const iconContainers = screen.getAllByRole("button");
-
-        // Find the password visibility toggles (they're before the submit button)
-        // const updateButton = screen.getByRole("button", { name: /update password/i });
-        // const toggleButtons = iconContainers.filter(btn => btn !== updateButton && btn.textContent === "");
-
-        // const passwordInput = screen.getByPlaceholderText("8+ characters");
-        // expect(passwordInput.type).toBe("password");
 
         const iconContainer = passwordInput.parentElement.querySelector('button')
             || passwordInput.parentElement.querySelector('svg');
