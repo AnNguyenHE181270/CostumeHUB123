@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
             type={showPw ? "text" : "password"}
             value={form.password}
             onChange={handleChange}
-            placeholder="8+ characters"
+            placeholder="6+ characters"
             required
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />

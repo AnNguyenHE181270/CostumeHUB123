@@ -30,41 +30,51 @@ describe("Forgot Password Page", () => {
     test("Render forgot password page", () => {
         render(<ForgotPasswordPage />);
         expect(screen.getByText("Forgot Password")).toBeInTheDocument();
-        expect(screen.getByText("Email")).toBeInTheDocument();
+        expect(screen.getByText("Email Address")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("name@example.com")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Send Request/i, })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Send Reset Link/i, })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Back to Login", })).toBeInTheDocument();
     });
 
     // 2. Email chứa ký tự đặc biệt
-    // test("Email contains invalid special characters", async () => {
-    //     global.fetch.mockResolvedValueOnce({
-    //         ok: false,
-    //         json: async () => ({
-    //             errors: [{ msg: "Invalid email format" }]
-    //         })
-    //     });
+    test("Email contains invalid special characters", async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: false,
+            json: async () => ({
+                errors: [{ msg: "Invalid email" }]
+            })
+        });
 
-    //     render(<ForgotPasswordPage />);
-    //     fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abc@@gmail.com" } });
-    //     expect(screen.getByRole("button", { name: /Send Request/i, })).toBeInTheDocument();
-    //     expect(await screen.findByText("Invalid email format")).toBeInTheDocument();
+        render(<ForgotPasswordPage />);
+        fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abc@@gmail.com" } });
+        fireEvent.click(screen.getByRole("button", { name: /Send Reset Link/i }));
 
-    // });
+        expect(await screen.findByText("Invalid email")).toBeInTheDocument();
 
-    // // 3. Email thiếu đuôi @
-    // test("Email missing @ symbol", async () => {
-    //     global.fetch.mockResolvedValueOnce({
-    //         ok: false,
-    //         json: async () => ({
-    //             errors: [{ msg: "Invalid email format" }]
-    //         })
-    //     });
-    //     render(<ForgotPasswordPage />);
-    //     fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abcgmail.com" } });
-    //     expect(screen.getByRole("button", { name: /Send Request/i, })).toBeInTheDocument();
-    //     expect(await screen.findByText("Invalid email format")).toBeInTheDocument();
-    // });
+    });
+
+    // 3. Email thiếu đuôi @
+    test("Email missing @ symbol", async () => {
+        // 1. Mock dữ liệu trả về từ backend khi fetch được gọi
+        global.fetch.mockResolvedValueOnce({
+            ok: false,
+            json: async () => ({
+                errors: [{ msg: "Invalid email format" }]
+            })
+        });
+
+        render(<ForgotPasswordPage />);
+
+        fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abcgmail.com" } });
+
+        const submitButton = screen.getByRole("button", { name: /Send Reset Link/i });
+        expect(submitButton).toBeInTheDocument();
+
+        fireEvent.click(submitButton);
+
+        expect(await screen.findByText("Invalid email format")).toBeInTheDocument();
+    });
+
 
     // 3. Forgot password success
     test("Forgot password success", async () => {
@@ -79,7 +89,7 @@ describe("Forgot Password Page", () => {
         );
         fireEvent.submit(
             screen.getByRole("button", {
-                name: /send request/i
+                name: /Send Reset Link/i
             })
         );
         await waitFor(() => {
@@ -98,7 +108,7 @@ describe("Forgot Password Page", () => {
             screen.getByPlaceholderText("name@example.com"),
             "wrong@gmail.com"
         );
-        fireEvent.submit(screen.getByRole("button", { name: /send request/i }));
+        fireEvent.click(screen.getByRole("button", { name: /Send Reset Link/i }));
         expect(await screen.findByText("Email not found")).toBeInTheDocument();
     });
 
@@ -112,7 +122,7 @@ describe("Forgot Password Page", () => {
         );
         fireEvent.submit(
             screen.getByRole("button", {
-                name: /send request/i
+                name: /Send Reset Link/i
             })
         );
         expect(await screen.findByText("Network error. Please try again.")).toBeInTheDocument();
@@ -143,7 +153,7 @@ describe("Reset Password Page", () => {
         expect(screen.getByText("Account Security")).toBeInTheDocument();
         expect(screen.getByText("New Password")).toBeInTheDocument();
         expect(screen.getByText("Confirm New Password")).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("8+ characters")).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("6+ characters")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("Confirm Password")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /update password/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /back to login/i })).toBeInTheDocument();
@@ -160,7 +170,7 @@ describe("Reset Password Page", () => {
 
         render(<ResetPasswordPage />);
 
-        await userEvent.type(screen.getByPlaceholderText("8+ characters"), "12345");
+        await userEvent.type(screen.getByPlaceholderText("6+ characters"), "12345");
         await userEvent.type(screen.getByPlaceholderText("Confirm Password"), "12345");
         await userEvent.click(screen.getByRole("button", { name: /update password/i }));
         expect(await screen.findByText("Password must be at least 8 characters")).toBeInTheDocument();
@@ -170,7 +180,7 @@ describe("Reset Password Page", () => {
     test("Missing password field", async () => {
         render(<ResetPasswordPage />);
 
-        const passwordInput = screen.getByPlaceholderText("8+ characters");
+        const passwordInput = screen.getByPlaceholderText("6+ characters");
         const confirmPasswordInput = screen.getByPlaceholderText("Confirm Password");
 
         // Both inputs are required
@@ -191,7 +201,7 @@ describe("Reset Password Page", () => {
     // 4. Password and ConfirmPassword mismatch
     test("Password and confirm password do not match", async () => {
         render(<ResetPasswordPage />);
-        await userEvent.type(screen.getByPlaceholderText("8+ characters"), "NewPassword123");
+        await userEvent.type(screen.getByPlaceholderText("6+ characters"), "NewPassword123");
         await userEvent.type(screen.getByPlaceholderText("Confirm Password"), "DifferentPassword123");
         await userEvent.click(screen.getByRole("button", { name: /update password/i }));
         expect(await screen.findByText("Passwords do not match")).toBeInTheDocument();
@@ -206,7 +216,7 @@ describe("Reset Password Page", () => {
 
         render(<ResetPasswordPage />);
         await userEvent.type(
-            screen.getByPlaceholderText("8+ characters"),
+            screen.getByPlaceholderText("6+ characters"),
             "NewPassword123"
         );
         await userEvent.type(
@@ -228,7 +238,7 @@ describe("Reset Password Page", () => {
         });
 
         render(<ResetPasswordPage />);
-        await userEvent.type(screen.getByPlaceholderText("8+ characters"), "NewPassword123");
+        await userEvent.type(screen.getByPlaceholderText("6+ characters"), "NewPassword123");
         await userEvent.type(screen.getByPlaceholderText("Confirm Password"), "NewPassword123");
         await userEvent.click(screen.getByRole("button", { name: /update password/i })); expect(await screen.findByText("Invalid or expired token.")).toBeInTheDocument();
     });
@@ -237,7 +247,7 @@ describe("Reset Password Page", () => {
     test("Network error", async () => {
         fetch.mockRejectedValue(new Error("Network error"));
         render(<ResetPasswordPage />);
-        await userEvent.type(screen.getByPlaceholderText("8+ characters"), "NewPassword123");
+        await userEvent.type(screen.getByPlaceholderText("6+ characters"), "NewPassword123");
         await userEvent.type(screen.getByPlaceholderText("Confirm Password"), "NewPassword123");
         await userEvent.click(screen.getByRole("button", { name: /update password/i }));
         expect(await screen.findByText("Network error. Please try again.")).toBeInTheDocument();
@@ -247,7 +257,7 @@ describe("Reset Password Page", () => {
     test("Toggle password visibility", async () => {
         render(<ResetPasswordPage />);
 
-        const passwordInput = screen.getByPlaceholderText("8+ characters");
+        const passwordInput = screen.getByPlaceholderText("6+ characters");
         const confirmPasswordInput = screen.getByPlaceholderText("Confirm Password");
 
         expect(passwordInput.type).toBe("password");

@@ -30,15 +30,15 @@ describe("Login Page", () => {
     // 1. Render Login UI
     test("Render login form", () => {
         render(<LoginPage />);
-        expect(screen.getByRole('heading', { level: 2, name: /login/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: /sign in/i })).toBeInTheDocument();
+        // expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
         expect(screen.getByPlaceholderText("name@example.com")).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("8+ characters")).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Enter your password")).toBeInTheDocument();
         expect(screen.getByRole("checkbox")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /create an account/i })).toBeInTheDocument();
 
         expect(screen.getByText(/forgot.*password/i)).toBeInTheDocument();
-        expect(screen.getByText(/register/i)).toBeInTheDocument();
+        expect(screen.getByText(/create an account/i)).toBeInTheDocument();
 
     });
 
@@ -53,9 +53,9 @@ describe("Login Page", () => {
 
         render(<LoginPage />);
         fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abc@@gmail.com" } });
-        fireEvent.change(screen.getByPlaceholderText("8+ characters"), { target: { value: "123456" } })
+        fireEvent.change(screen.getByPlaceholderText("Enter your password"), { target: { value: "123456" } })
         fireEvent.click(screen.getByRole("checkbox"))
-        fireEvent.click(screen.getByRole("button", { name: "Login" }));
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(await screen.findByText("Invalid email format")).toBeInTheDocument();
 
     });
@@ -70,9 +70,9 @@ describe("Login Page", () => {
         });
         render(<LoginPage />);
         fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abcgmail.com" } });
-        fireEvent.change(screen.getByPlaceholderText("8+ characters"), { target: { value: "123456" } })
+        fireEvent.change(screen.getByPlaceholderText("Enter your password"), { target: { value: "123456" } })
         fireEvent.click(screen.getByRole("checkbox"))
-        fireEvent.click(screen.getByRole("button", { name: "Login" }));
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(await screen.findByText("Invalid email format")).toBeInTheDocument();
     });
 
@@ -80,7 +80,7 @@ describe("Login Page", () => {
     test("Toggle password", async () => {
         render(<LoginPage />);
 
-        const passwordInput = screen.getByPlaceholderText("8+ characters");
+        const passwordInput = screen.getByPlaceholderText("Enter your password");
         expect(passwordInput.type).toBe("password");
 
         const iconContainer = passwordInput.parentElement.querySelector('button')
@@ -102,8 +102,8 @@ describe("Login Page", () => {
         render(<LoginPage />);
 
         const emailInput = screen.getByPlaceholderText('name@example.com');
-        const passwordInput = screen.getByPlaceholderText('8+ characters');
-        const loginButton = screen.getByRole('button', { name: /^login$/i });
+        const passwordInput = screen.getByPlaceholderText('Enter your password');
+        const loginButton = screen.getByRole('button', { name: /^sign in$/i });
 
         // 2. Kiểm tra xem các ô input này có cấu hình thuộc tính 'required' không
         expect(emailInput).toBeRequired();
@@ -134,13 +134,13 @@ describe("Login Page", () => {
         );
 
         await userEvent.type(
-            screen.getByPlaceholderText("8+ characters"),
+            screen.getByPlaceholderText("Enter your password"),
             "12345678"
         );
 
         fireEvent.submit(
             screen.getByRole("button", {
-                name: /login/i,
+                name: /sign in/i,
             })
         );
 
@@ -168,8 +168,8 @@ describe("Login Page", () => {
         });
         render(<LoginPage />);
         fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abc@gmail.com" } });
-        fireEvent.change(screen.getByPlaceholderText("8+ characters"), { target: { value: "12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "Login" }));
+        fireEvent.change(screen.getByPlaceholderText("Enter your password"), { target: { value: "12345" } });
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(await screen.findByText("Password must be at least 6 characters")).toBeInTheDocument();
     });
 
@@ -182,8 +182,8 @@ describe("Login Page", () => {
         render(<LoginPage />);
 
         fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "abc@gmail.com" } });
-        fireEvent.change(screen.getByPlaceholderText("8+ characters"), { target: { value: "12345" } });
-        fireEvent.submit(screen.getByRole("button", { name: /login/i }));
+        fireEvent.change(screen.getByPlaceholderText("Enter your password"), { target: { value: "12345" } });
+        fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
         expect(await screen.findByText("Invalid password.")).toBeInTheDocument();
     });
 
@@ -194,7 +194,7 @@ describe("Login Page", () => {
         fireEvent.submit(
             screen.getByRole(
                 "button",
-                { name: /login/i }
+                { name: /sign in/i }
             ));
         expect(await screen.findByText("Network error. Please try again.")).toBeInTheDocument();
     });
@@ -202,10 +202,10 @@ describe("Login Page", () => {
     // 10. Navigate register
     test("Navigate register", async () => {
         render(<LoginPage />);
-        const loginButton = screen.getByRole('button', { name: /login/i });
+        const loginButton = screen.getByRole('button', { name: /create an account/i });
         expect(loginButton).toBeInTheDocument();
         await userEvent.click(loginButton);
-        expect(mockNavigate).toHaveBeenCalledWith("/login");
+        expect(mockNavigate).toHaveBeenCalledWith("/register");
     });
 
     // 11. Navigate Forget password
@@ -215,4 +215,8 @@ describe("Login Page", () => {
         expect(forgetPasswordLink).toBeInTheDocument();
         expect(forgetPasswordLink).toHaveAttribute('href', '/forgot-password');
     });
+
+    // 12. Login with account blocked
+
+
 });
