@@ -3,73 +3,82 @@ import { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(null);
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState([]);
+  const getProfile = async (currentToken) => {
+    if (!currentToken) return null;
 
-    const getProfile = async (currentToken) => {
-        if (!currentToken) return null;
+    try {
+      const response = await fetch(
+        "http://localhost:9999/api/users/my-profile",
+        {
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + currentToken,
+          },
+          credentials: "include",
+          cache: "no-store",
+        },
+      );
 
-        try {
-            const response = await fetch("http://localhost:9999/api/users/my-profile", {
-                method: "GET",
-                headers: {
-                    Authorization: "Bearer " + currentToken,
-                },
-                credentials: "include",
-                cache: "no-store",
-            });
+      if (!response.ok) {
+        logout();
+        throw new Error("Failed to fetch profile");
+      }
 
-            if (!response.ok) {
-                logout();
-                throw new Error("Failed to fetch profile");
-            }
+      const data = await response.json();
+      const userData = data.user || data;
+      setRoles(userData.roles);
+      setUser(userData);
+      return data;
+    } catch (error) {
+      console.error("Lỗi lấy profile:", error);
+      return null;
+    }
+  };
 
-            const data = await response.json();
-            const userData = data.user || data;
-            setUser(userData);
-            
-            return data;
-        } catch (error) {
-            console.error("Lỗi lấy profile:", error);
-            return null;
-        }
-    };
+  useEffect(() => {
+    const savedToken =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (savedToken) {
+      setToken(savedToken);
+      getProfile(savedToken).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        const savedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
-        if (savedToken) {
-            setToken(savedToken);
-            getProfile(savedToken).finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
-    }, []);
+  const login = async (newToken, remember) => {
+    if (remember) {
+      localStorage.setItem("token", newToken);
+    } else {
+      sessionStorage.setItem("token", newToken);
+    }
 
-    const login = async (newToken, remember) => {
-        if (remember) {
-            localStorage.setItem("token", newToken);
-        } else {
-            sessionStorage.setItem("token", newToken);
-        }
-        setToken(newToken);
-        await getProfile(newToken);
-    };
+    setToken(newToken);
 
-    const logout = () => {
-        localStorage.removeItem("token");
-        sessionStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
-    };
+    const profile = await getProfile(newToken);
+    return profile;
+  };
 
-    return (
-        <AuthContext.Provider value={{ token, user, loading, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const logout = () => {
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ token, user, loading, login, logout, roles }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-    return useContext(AuthContext);
+  return useContext(AuthContext);
 }

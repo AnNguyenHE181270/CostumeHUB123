@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, roles } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,27 +26,54 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
+
     setLoading(true);
-    
+
     try {
       setError("");
-      const response = await fetch("http://localhost:9999/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      
+
+      const response = await fetch(
+        "http://localhost:9999/api/users/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(form),
+        }
+      );
+
       const data = await response.json();
-      
+
       if (!response.ok) {
-        setError(data.errors?.[0]?.msg || data.message || "Login failed.");
+        setError(
+          data.errors?.[0]?.msg ||
+          data.message ||
+          "Login failed."
+        );
         return;
       }
-      
-      await login(data.token, remember);
-      navigate(`/`);
+
+      const profile = await login(
+        data.token,
+        remember
+      );
+
+      const roles = profile?.user?.roles 
+
+      if (roles.includes("store-owner")) {
+        navigate("/store-owner");
+      } else if (
+        roles.includes("receptionist")
+      ) {
+        navigate("/receptionist");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
-      setError("Network error. Please try again.");
+      setError(
+        "Network error. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -102,18 +129,17 @@ export default function LoginPage() {
                 role="checkbox"
                 aria-checked={remember}
                 onClick={() => setRemember((prev) => !prev)}
-                className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${
-                  remember
+                className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${remember
                     ? "bg-primary-600 border-primary-600"
                     : "bg-surface border-border hover:border-primary-500"
-                }`}
+                  }`}
               >
                 {remember && (
                   <FontAwesomeIcon icon={faCheck} className="text-white text-[10px]" />
                 )}
               </button>
-              <span 
-                className="text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors" 
+              <span
+                className="text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors"
                 onClick={() => setRemember((prev) => !prev)}
               >
                 Remember me

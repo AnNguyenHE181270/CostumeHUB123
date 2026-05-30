@@ -1,34 +1,69 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ROUTES } from "./routePaths";
 
 import PublicRoutes from "./PublicRoutes";
-import PrivateRoutes from "./PrivateRoutes";
+import ProtectedRoutes from "./ProtectedRoutes";
+import StaffRoutes from "./StaffRoutes";
+import OwnerRoutes from "./OwnerRoutes";
 
 import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
-import ResetPasswordPage from "./../pages/ResetPasswordPage";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
+import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
+import AccountsPage from "../pages/store-owner/AccountsPage";
+// Import các page con khác của Owner vào đây (khi bạn đã tạo chúng)
+// import AccountsPage from "../pages/admin/AccountsPage";
+// import CategoriesPage from "../pages/admin/CategoriesPage";
+
+import StaffLayout from "../layouts/DashboardLayout"; 
+import { ROUTES } from "./routePaths"; 
+import DashboardLayout from "../layouts/DashboardLayout";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* 1. Public routes */}
+      {/* Public */}
+      <Route path={ROUTES.HOME} element={<HomePage />} />
+
       <Route element={<PublicRoutes />}>
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.REGISTER} element={<Register />} />
         <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
-        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
         <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
       </Route>
 
-      {/* 2. Private routes */}
-      <Route element={<PrivateRoutes />}>
-        <Route path={ROUTES.HOME} element={<HomePage />} />
+      {/* User thường */}
+      <Route element={<ProtectedRoutes />}>
+        {/* <Route path="/cart" element={<CartPage />} /> */}
       </Route>
 
-      {/* 3. Fallback */}
+      {/* Staff / Lễ tân */}
+      <Route element={<StaffRoutes />}>
+        {/* <Route path={ROUTES.STAFF_DASHBOARD} element={<StaffDashboard />} /> */}
+      </Route>
+
+      {/* Store Owner */}
+      <Route element={<OwnerRoutes />}>
+        {/* Route cha bọc Layout */}
+        <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
+           
+          <Route index element={<StoreOwnerDashboard />} /> 
+          
+          <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
+          {/* <Route path="users-staff" element={<UsersStaffPage />} /> */}
+          {/* <Route path="categories" element={<CategoriesPage />} /> */}
+          {/* <Route path="products" element={<ProductsPage />} /> */}
+          {/* <Route path="rentals" element={<RentalsPage />} /> */}
+          {/* <Route path="revenue" element={<RevenuePage />} /> */}
+          {/* <Route path="export" element={<ExportPage />} /> */}
+
+        </Route>
+      </Route>
+
+      {/* 404 Not Found */}
       <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
     </Routes>
   );

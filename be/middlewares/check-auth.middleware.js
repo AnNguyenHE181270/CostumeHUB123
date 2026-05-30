@@ -1,10 +1,7 @@
-// middleware/check-auth.js
 const jwt = require("jsonwebtoken");
-
 const HttpError = require("../models/http-error.model");
 
 const checkAuth = (req, res, next) => {
-  // Cho phép preflight CORS đi qua
   if (req.method === "OPTIONS") {
     return next();
   }
@@ -16,7 +13,6 @@ const checkAuth = (req, res, next) => {
       return next(new HttpError("Authentication failed!", 401));
     }
 
-    // Format đúng: Authorization: Bearer <token>
     const parts = authHeader.split(" ");
 
     if (parts.length !== 2 || parts[0] !== "Bearer") {
@@ -30,7 +26,7 @@ const checkAuth = (req, res, next) => {
     req.userData = {
       id: decodedToken.id,
       email: decodedToken.email,
-      role: decodedToken.role,
+      roles: decodedToken.roles || [],
     };
 
     next();
@@ -39,4 +35,45 @@ const checkAuth = (req, res, next) => {
   }
 };
 
-module.exports = checkAuth;
+const checkStoreOwner = (req, res, next) => {
+  try {
+    if (!req.userData.roles.includes("store-owner")) {
+      return next(new HttpError("Access denied! Store-owner only.", 403));
+    }
+
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
+
+const checkReceptionist = (req, res, next) => {
+  try {
+    if (!req.userData.roles.includes("receptionist")) {
+      return next(new HttpError("Access denied! Receptionist only.", 403));
+    }
+
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
+
+const checkOnlineCustomer = (req, res, next) => {
+  try {
+    if (!req.userData.roles.includes("online-customer")) {
+      return next(new HttpError("Access denied! Online customer only.", 403));
+    }
+
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
+
+module.exports = {
+  checkAuth,
+  checkStoreOwner,
+  checkReceptionist,
+  checkOnlineCustomer,
+};
