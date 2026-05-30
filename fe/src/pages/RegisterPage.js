@@ -148,7 +148,7 @@ export default function RegisterPage() {
               type={showPw ? "text" : "password"}
               value={form.password}
               onChange={handleChange}
-              placeholder="8+ characters"
+              placeholder="6+ characters"
               required
               rightIcon={
                 <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
@@ -187,11 +187,10 @@ export default function RegisterPage() {
                   },
                 })
               }
-              className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border flex items-center justify-center transition-all duration-200 ${
-                form.acceptTerms
+              className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border flex items-center justify-center transition-all duration-200 ${form.acceptTerms
                   ? "bg-primary-600 border-primary-600"
                   : "bg-surface border-border hover:border-primary-500"
-              }`}
+                }`}
             >
               {form.acceptTerms && (
                 <FontAwesomeIcon
