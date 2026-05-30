@@ -63,7 +63,7 @@ const register = async (req, res, next) => {
           fullName,
           phone,
           password: passwordHash,
-          roles: roleUser._id,
+          roles: [roleUser._id],
           gender: gender || null,
           dateOfBirth: dateOfBirth || null,
 
@@ -77,7 +77,7 @@ const register = async (req, res, next) => {
 
       await sendEmailVerification(email, otp, fullName);
 
-      return res.status(201).json({
+      return res.status(200).json({
         message:
           "Registration successful. Please check your email for the OTP.",
         type: "new",
@@ -98,9 +98,9 @@ const register = async (req, res, next) => {
       email,
       phone,
       password: passwordHash,
-      roles: roleUser._id,
-      gender: gender,
-      dateOfBirth: dateOfBirth,
+      roles: [roleUser._id],
+      gender: gender || null,
+      dateOfBirth: dateOfBirth || null,
 
       otpCode: otpHash,
       otpExpires,
@@ -344,36 +344,48 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const existUser = await User.findOne({ email }).select("+password");
+    const existUser = await User.findOne({
+      email,
+    })
+      .select("+password")
+      .populate("roles");
+
+    // check user trước
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
     }
-    if (existUser.status == "blocked") {
-      return next(new HttpError("User is blocked.", 403));
+
+    if (existUser.status === "blocked") {
+      return next(new HttpError("User is blocked", 400));
     }
+
     const checkPassword = await bcrypt.compare(password, existUser.password);
+
     if (!checkPassword) {
       return next(new HttpError("Incorrect password.", 401));
     }
+    // map role sau khi chắc chắn user tồn tại
+    const roleNames = existUser.roles.map((r) => r.name);
 
     const token = jwt.sign(
       {
         id: existUser._id,
         email: existUser.email,
-        role: existUser.roles,
+        roles: roleNames,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" },
+      {
+        expiresIn: "7d",
+      },
     );
 
     return res.status(200).json({
       message: "Login successful.",
-      token: token,
+      token,
+      roles: roleNames,
     });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Email verification failed.", 500),
-    );
+    return next(new HttpError(err.message || "Login failed.", 500));
   }
 };
 
@@ -381,10 +393,14 @@ const getProfile = async (req, res, next) => {
   try {
     const email = req.userData.email;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate("roles");
     if (!user) {
       return next(new HttpError("User not found.", 404));
     }
+    
+    console.log(user)
+
+    const roleNames = user.roles.map((r) => r.name);
 
     return res.status(200).json({
       user: {
@@ -395,7 +411,7 @@ const getProfile = async (req, res, next) => {
         gender: user.gender,
         dateOfBirth: user.dateOfBirth,
         provider: user.provider,
-        roles: user.roles,
+        roles: roleNames,
       },
     });
   } catch (err) {
@@ -544,7 +560,6 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 };
 
 const forgotPassword = async (req, res, next) => {
-
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
@@ -556,7 +571,6 @@ const forgotPassword = async (req, res, next) => {
         ),
       );
     }
-
 
     if (!user.isEmailVerified) {
       return next(
@@ -589,12 +603,10 @@ const forgotPassword = async (req, res, next) => {
 
     const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
     await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
-    res
-      .status(200)
-      .json({
-        message:
-          "If an account with this email exists, password reset instructions have been sent.",
-      });
+    res.status(200).json({
+      message:
+        "If an account with this email exists, password reset instructions have been sent.",
+    });
   } catch (err) {
     return next(new HttpError(err.message || "Error system.", 500));
   }
@@ -606,7 +618,6 @@ const resetPassword = async (req, res, next) => {
     const password = req.body.password;
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
@@ -630,6 +641,17 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const getAllUser = async (req, res, next) => {
+  try {
+    const users = await User.find()
+    return res.status(200).json(users)
+  } catch (err) {
+    return next(new HttpError(err.message , 500));
+  }
+};
+
+
+
 module.exports = {
   register,
   verifyOtp,
@@ -637,4 +659,5 @@ module.exports = {
   getProfile,
   forgotPassword,
   resetPassword,
+  getAllUser
 };
