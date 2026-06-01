@@ -19,7 +19,7 @@ export default function CategoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [category, setCategory] = useState(null);
-  const [subCategories, setSubCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [costumes, setCostumes] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -30,19 +30,17 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  // Filters from URL search params
-  const [filters, setFilters] = useState({
-    minPrice: searchParams.get("minPrice") || "",
-    maxPrice: searchParams.get("maxPrice") || "",
-    status: searchParams.get("status") || "",
-    subCategoryIds: searchParams.get("subCategoryIds")
-      ? searchParams.get("subCategoryIds").split(",")
-      : [],
-  });
-  const [sort, setSort] = useState(searchParams.get("sort") || "newest");
-  const [page, setPage] = useState(
-    parseInt(searchParams.get("page")) || 1
-  );
+  // Read state entirely from URL
+  const minPrice = searchParams.get("minPrice") || "";
+  const maxPrice = searchParams.get("maxPrice") || "";
+  const status = searchParams.get("status") || "";
+  const search = searchParams.get("search") || "";
+  const subCategoryIdsStr = searchParams.get("subCategoryIds") || "";
+  const subCategoryIds = subCategoryIdsStr ? subCategoryIdsStr.split(",") : [];
+  const sort = searchParams.get("sort") || "newest";
+  const page = parseInt(searchParams.get("page")) || 1;
+
+  const filters = { minPrice, maxPrice, status, search, subCategoryIds };
 
   // Fetch category info and subcategories
   useEffect(() => {
@@ -51,19 +49,12 @@ export default function CategoryPage() {
       try {
         const res = await fetch(`${API_URL}/api/categories`);
         const data = await res.json();
-        const allCategories = data.categories || [];
+        const allCats = data.categories || [];
+        setAllCategories(allCats);
 
         // Find current category
-        const current = allCategories.find((c) => c._id === categoryId);
+        const current = allCats.find((c) => c._id === categoryId);
         setCategory(current || null);
-
-        // Find subcategories
-        const subs = allCategories.filter(
-          (c) =>
-            c.parentId === categoryId ||
-            (typeof c.parentId === "object" && c.parentId?.$oid === categoryId)
-        );
-        setSubCategories(subs);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
       } finally {
@@ -86,9 +77,11 @@ export default function CategoryPage() {
         params.set("categoryId", categoryId);
       }
 
-      if (filters.minPrice) params.set("minPrice", filters.minPrice);
-      if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
-      if (filters.status) params.set("status", filters.status);
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (status) params.set("status", status);
+      if (search) params.set("search", search);
+      if (subCategoryIds.length > 0) params.set("subCategoryIds", subCategoryIds.join(","));
       params.set("sort", sort);
       params.set("page", page.toString());
       params.set("limit", "9");
@@ -97,17 +90,6 @@ export default function CategoryPage() {
       const data = await res.json();
 
       let filteredCostumes = data.costumes || [];
-
-      // Client-side subcategory filtering if specific subcategories selected
-      if (filters.subCategoryIds && filters.subCategoryIds.length > 0) {
-        filteredCostumes = filteredCostumes.filter((cos) => {
-          const cosCategory =
-            typeof cos.categoryId === "object"
-              ? cos.categoryId?._id
-              : cos.categoryId;
-          return filters.subCategoryIds.includes(cosCategory);
-        });
-      }
 
       setCostumes(filteredCostumes);
       setPagination(
@@ -124,39 +106,45 @@ export default function CategoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoryId, filters, sort, page]);
+  }, [categoryId, minPrice, maxPrice, status, search, subCategoryIdsStr, sort, page]);
 
   useEffect(() => {
     fetchCostumes();
   }, [fetchCostumes]);
 
-  // Sync filters to URL
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (filters.minPrice) params.set("minPrice", filters.minPrice);
-    if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
-    if (filters.status) params.set("status", filters.status);
-    if (filters.subCategoryIds && filters.subCategoryIds.length > 0) {
-      params.set("subCategoryIds", filters.subCategoryIds.join(","));
-    }
-    if (sort !== "newest") params.set("sort", sort);
-    if (page > 1) params.set("page", page.toString());
-
-    setSearchParams(params, { replace: true });
-  }, [filters, sort, page, setSearchParams]);
-
   const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-    setPage(1); // Reset to first page on filter change
+    const params = new URLSearchParams(searchParams);
+    
+    if (newFilters.minPrice) params.set("minPrice", newFilters.minPrice);
+    else params.delete("minPrice");
+    
+    if (newFilters.maxPrice) params.set("maxPrice", newFilters.maxPrice);
+    else params.delete("maxPrice");
+    
+    if (newFilters.status) params.set("status", newFilters.status);
+    else params.delete("status");
+    
+    if (newFilters.subCategoryIds && newFilters.subCategoryIds.length > 0) {
+      params.set("subCategoryIds", newFilters.subCategoryIds.join(","));
+    } else {
+      params.delete("subCategoryIds");
+    }
+    
+    params.set("page", "1");
+    setSearchParams(params, { replace: true });
   };
 
   const handleSortChange = (e) => {
-    setSort(e.target.value);
-    setPage(1);
+    const params = new URLSearchParams(searchParams);
+    params.set("sort", e.target.value);
+    params.set("page", "1");
+    setSearchParams(params, { replace: true });
   };
 
   const handlePageChange = (newPage) => {
-    setPage(newPage);
+    const params = new URLSearchParams(searchParams);
+    params.set("page", newPage.toString());
+    setSearchParams(params);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -173,7 +161,10 @@ export default function CategoryPage() {
                 className="text-white text-3xl md:text-4xl font-bold tracking-tight"
                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
               >
-                {categoryId ? (category?.name || "Đang tải...") : "Tất Cả Sản Phẩm"}
+                {filters.search 
+                  ? `Kết quả cho "${filters.search}"` 
+                  : (categoryId ? (category?.name || "Đang tải...") : "Tất Cả Sản Phẩm")
+                }
               </h1>
               {(category?.description && categoryId) && (
                 <p className="mt-3 text-[14px] text-[#999] max-w-[600px] leading-relaxed">
@@ -192,7 +183,7 @@ export default function CategoryPage() {
             {/* Sidebar */}
             <div className="w-full lg:w-[260px] flex-shrink-0">
               <FilterSidebar
-                subCategories={subCategories}
+                allCategories={allCategories}
                 filters={filters}
                 onFilterChange={handleFilterChange}
               />

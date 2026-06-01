@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -9,6 +9,7 @@ import {
   faBars,
   faTimes,
   faChevronDown,
+  faSearch,
 } from "@fortawesome/free-solid-svg-icons";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
@@ -24,8 +25,10 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [parentCategories, setParentCategories] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const drawerRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   /* Fetch parent categories from API */
   useEffect(() => {
@@ -43,11 +46,7 @@ export default function Navbar() {
     fetchCategories();
   }, []);
 
-  /* Build navigation items: categories + static links */
-  const TOP_LINKS = parentCategories.slice(0, 3).map((cat) => ({
-    label: cat.name.toUpperCase(),
-    href: `/category/${cat._id}`,
-  }));
+  /* No more sliced top links, we use a single All Products link instead */
 
   const CATEGORY_NAV = [
     ...parentCategories.map((cat) => ({
@@ -91,6 +90,14 @@ export default function Navbar() {
 
   const isActive = (href) => location.pathname === href;
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchKeyword.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchKeyword.trim())}`);
+      setSearchKeyword("");
+    }
+  };
+
   const wishlistCount = 0;
   const cartCount = 0;
 
@@ -110,21 +117,18 @@ export default function Navbar() {
       {/* ════════ TIER 2 — Main Header ════════ */}
       <div className="bg-white border-b border-[#e8e8e8]">
         <div className="mx-auto max-w-[1200px] flex items-center justify-between h-[72px] px-6">
-          {/* Left: Category quick-links (desktop) */}
+          {/* Left: Quick-links (desktop) */}
           <nav className="hidden lg:flex items-center gap-6">
-            {TOP_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={`text-[12px] tracking-[0.1em] uppercase font-medium transition-colors ${
-                  isActive(link.href)
-                    ? "text-[#1a1a1a]"
-                    : "text-[#474747] hover:text-[#1a1a1a]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            <Link
+              to="/products"
+              className={`text-[12px] tracking-[0.1em] uppercase font-medium transition-colors ${
+                isActive("/products")
+                  ? "text-[#1a1a1a]"
+                  : "text-[#474747] hover:text-[#1a1a1a]"
+              }`}
+            >
+              TẤT CẢ SẢN PHẨM
+            </Link>
           </nav>
 
           {/* Mobile: hamburger */}
@@ -156,8 +160,25 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Right: Icons */}
-          <div className="flex items-center gap-2">
+          {/* Right: Icons & Search */}
+          <div className="flex items-center gap-3">
+            {/* Search Bar (Desktop) */}
+            <form 
+              onSubmit={handleSearch}
+              className="hidden lg:flex items-center bg-[#f5f5f5] rounded-full px-4 py-2 border border-transparent focus-within:border-[#e8e8e8] focus-within:bg-white transition-all duration-300"
+            >
+              <input 
+                type="text"
+                placeholder="Tìm sản phẩm..."
+                className="bg-transparent text-[13px] text-[#1a1a1a] outline-none w-32 focus:w-48 transition-all duration-300 placeholder:text-[#999]"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+              <button type="submit" className="text-[#858585] hover:text-[#1a1a1a] ml-2">
+                <FontAwesomeIcon icon={faSearch} className="text-[13px]" />
+              </button>
+            </form>
+
             {user ? (
               <div className="relative group">
                 <button
@@ -250,7 +271,7 @@ export default function Navbar() {
 
       {/* ════════ TIER 3 — Category Nav ════════ */}
       <nav className="hidden md:block bg-[#f5f5f5] border-b border-[#e8e8e8]">
-        <div className="mx-auto max-w-[1200px] flex items-center justify-center h-[44px] px-6 gap-1 overflow-x-auto">
+        <div className="mx-auto max-w-[1200px] flex items-center justify-center min-h-[44px] py-1 px-6 gap-x-2 gap-y-1 flex-wrap">
           {CATEGORY_NAV.map((cat) => (
             <Link
               key={cat.href}
@@ -304,6 +325,28 @@ export default function Navbar() {
 
             {/* Drawer links */}
             <nav className="flex-1 overflow-y-auto py-4">
+              {/* Mobile Search */}
+              <div className="px-5 mb-5">
+                <form 
+                  onSubmit={(e) => {
+                    handleSearch(e);
+                    setMobileOpen(false);
+                  }}
+                  className="flex items-center bg-[#f5f5f5] rounded-lg px-4 py-2.5"
+                >
+                  <input 
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm..."
+                    className="bg-transparent text-[14px] text-[#1a1a1a] outline-none w-full placeholder:text-[#999]"
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                  />
+                  <button type="submit" className="text-[#858585] ml-2">
+                    <FontAwesomeIcon icon={faSearch} />
+                  </button>
+                </form>
+              </div>
+
               <div className="px-5 mb-3">
                 <p className="text-[10px] uppercase tracking-[0.15em] text-[#858585] font-medium">
                   Danh mục

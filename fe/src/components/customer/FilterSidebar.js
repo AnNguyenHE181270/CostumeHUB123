@@ -16,7 +16,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function FilterSidebar({
-  subCategories = [],
+  allCategories = [],
   filters = {},
   onFilterChange,
 }) {
@@ -106,29 +106,60 @@ export default function FilterSidebar({
         )}
       </div>
 
-      {/* Sub Categories (only show if has subcategories) */}
-      {subCategories.length > 0 && (
+      {/* Category Tree */}
+      {allCategories.length > 0 && (
         <div className="mb-6">
           <h4 className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-3">
-            Danh Mục Con
+            Danh Mục
           </h4>
-          <div className="space-y-2">
-            {subCategories.map((sub) => (
-              <label
-                key={sub._id}
-                className="flex items-center gap-2.5 cursor-pointer group"
-              >
-                <input
-                  type="checkbox"
-                  checked={(subCategoryIds || []).includes(sub._id)}
-                  onChange={() => handleSubCategoryChange(sub._id)}
-                  className="w-4 h-4 rounded border-[#ddd] text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
-                />
-                <span className="text-[13px] text-[#666] group-hover:text-[#1a1a1a] transition-colors">
-                  {sub.name}
-                </span>
-              </label>
-            ))}
+          <div className="space-y-3">
+            {allCategories
+              .filter((c) => !c.parentId)
+              .map((parent) => {
+                const children = allCategories.filter(
+                  (c) =>
+                    c.parentId === parent._id ||
+                    (typeof c.parentId === "object" && c.parentId?.$oid === parent._id)
+                );
+                return (
+                  <div key={parent._id} className="space-y-1.5">
+                    {/* Parent Checkbox */}
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={(subCategoryIds || []).includes(parent._id)}
+                        onChange={() => handleSubCategoryChange(parent._id)}
+                        className="w-4 h-4 rounded border-[#ddd] text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
+                      />
+                      <span className="text-[13px] font-medium text-[#1a1a1a] group-hover:text-[#666] transition-colors">
+                        {parent.name}
+                      </span>
+                    </label>
+
+                    {/* Children Checkboxes */}
+                    {children.length > 0 && (
+                      <div className="pl-6 space-y-1.5 mt-1.5">
+                        {children.map((child) => (
+                          <label
+                            key={child._id}
+                            className="flex items-center gap-2.5 cursor-pointer group"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(subCategoryIds || []).includes(child._id)}
+                              onChange={() => handleSubCategoryChange(child._id)}
+                              className="w-4 h-4 rounded border-[#ddd] text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
+                            />
+                            <span className="text-[13px] text-[#666] group-hover:text-[#1a1a1a] transition-colors">
+                              {child.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}

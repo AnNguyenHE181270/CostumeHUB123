@@ -3,15 +3,48 @@ const HttpError = require("../models/http-error.model");
 
 const getAllCostumes = async (req, res, next) => {
   try {
-    const { categoryId, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = req.query;
+    const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = req.query;
     const filter = { status: { $ne: "hidden" } };
 
-    // Filter by category (including child categories)
+    const Category = require("../models/category.model");
+    let allTargetCategoryIds = [];
+
+    // Filter by single categoryId (from route /category/:categoryId)
     if (categoryId) {
-      const Category = require("../models/category.model");
-      const childCategories = await Category.find({ parentId: categoryId });
-      const categoryIds = [categoryId, ...childCategories.map(c => c._id)];
-      filter.categoryId = { $in: categoryIds };
+      allTargetCategoryIds.push(categoryId);
+    }
+
+    // Filter by multiple subCategoryIds (from checkboxes)
+    if (subCategoryIds) {
+      const ids = subCategoryIds.split(",").filter(Boolean);
+      allTargetCategoryIds.push(...ids);
+    }
+
+    if (allTargetCategoryIds.length > 0) {
+      // Handle dirty raw JSON imports where ObjectId is an object {$oid: "..."}
+      const childCategories = await Category.find({
+        $or: [
+          { parentId: { $in: allTargetCategoryIds } },
+          { "parentId.$oid": { $in: allTargetCategoryIds } },
+          { "parentId": { $in: allTargetCategoryIds.map(id => {
+              try { return new require('mongoose').Types.ObjectId(id); } 
+              catch(e) { return id; }
+          })}}
+        ]
+      });
+      const childIds = childCategories.map(c => c._id.toString());
+      
+      const finalCategoryIds = [...new Set([...allTargetCategoryIds, ...childIds])];
+      
+      // Update filter to support raw $oid format in costumes collection too
+      filter.$or = [
+        { categoryId: { $in: finalCategoryIds } },
+        { "categoryId.$oid": { $in: finalCategoryIds } },
+        { categoryId: { $in: finalCategoryIds.map(id => {
+            try { return new require('mongoose').Types.ObjectId(id); } 
+            catch(e) { return id; }
+        })}}
+      ];
     }
 
     // Filter by price range
