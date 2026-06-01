@@ -10,28 +10,29 @@ import Pagination from "../../components/ui/Pagination";
 
 const getRoleInfo = (roleName) => {
   const name = roleName?.toLowerCase();
-  if (name === "owner")    return { label: "Owner",           color: "bg-purple-100 text-purple-700", icon: faUserShield };
-  if (name === "staff")    return { label: "Staff",           color: "bg-blue-100 text-blue-700",     icon: faUserTie   };
-  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-gray-700",     icon: faUser      };
-  return                          { label: "Unknown",         color: "bg-gray-100 text-gray-700",     icon: faUser      };
+  if (name === "owner") return { label: "Owner", color: "bg-purple-100 text-purple-700", icon: faUserShield };
+  if (name === "staff") return { label: "Staff", color: "bg-primary-100 text-primary-700", icon: faUserTie }; // ← blue → primary
+  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-gray-700", icon: faUser };
+
+  return { label: "Unknown", color: "bg-surface text-gray-700", icon: faUser };
 };
 
 const getStatusInfo = (statusName) => {
   const name = statusName?.toLowerCase();
-  if (name === "active")  return { label: "Active",  color: "bg-green-50 text-green-600",   dot: "bg-green-500"  };
-  if (name === "pending") return { label: "Pending", color: "bg-orange-50 text-orange-600", dot: "bg-orange-500" };
-  if (name === "blocked") return { label: "Blocked", color: "bg-red-50 text-red-600",       dot: "bg-red-500"    };
-  return                         { label: "Unknown", color: "bg-gray-50 text-gray-600",     dot: "bg-gray-500"   };
+  if (name === "active") return { label: "Active", color: "bg-success-50 text-success-600", dot: "bg-success-500" };
+  if (name === "pending") return { label: "Pending", color: "bg-warning-50 text-warning-600", dot: "bg-warning-500" };
+  if (name === "blocked") return { label: "Blocked", color: "bg-red-50 text-red-600", dot: "bg-red-500" };
+  return { label: "Unknown", color: "bg-gray-50 text-gray-600", dot: "bg-gray-500" };
 };
 
 const PAGE_SIZE = 10;
 
 export default function AccountsPage() {
-  const [accounts, setAccounts]       = useState([]);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState("");
-  const [search, setSearch]           = useState("");
-  const [filterRole, setFilterRole]   = useState("all");
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -82,7 +83,7 @@ export default function AccountsPage() {
 
   const totalPages = Math.ceil(filteredAccounts.length / PAGE_SIZE);
 
-  const handleEdit   = (user) => console.log("Editing:", user);
+  const handleEdit = (user) => console.log("Editing:", user);
   const handleDelete = (user) => console.log("Deleting:", user);
 
   return (
@@ -115,14 +116,14 @@ export default function AccountsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
           />
         </div>
 
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700"
+          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white text-gray-700"
         >
           <option value="all">All Roles</option>
           <option value="owner">Owner</option>
@@ -133,7 +134,7 @@ export default function AccountsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700"
+          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white text-gray-700"
         >
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
@@ -163,7 +164,7 @@ export default function AccountsPage() {
         }
       >
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50/50">
+          <tr className="border-border border-gray-100 bg-gray-50/50">
             <th className="w-[35%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
             <th className="w-[20%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -172,14 +173,15 @@ export default function AccountsPage() {
           </tr>
         </thead>
         <tbody>
+
           {paginatedAccounts.map((acc) => {
-            const roleInfo   = getRoleInfo(acc.role);
+            const roleInfo = getRoleInfo(acc.role);
             const statusInfo = getStatusInfo(acc.status);
             return (
-              <tr key={acc._id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+              <tr key={acc._id} className="border-border border-gray-50 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
                       {acc.fullName?.charAt(0).toUpperCase() || "?"}
                     </div>
                     <div className="min-w-0 flex-1">

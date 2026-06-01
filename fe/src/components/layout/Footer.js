@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Footer() {
   return (
-    <footer className="bg-surface border-t border-border pt-16 pb-8 px-6">
+    <footer className="bg-surface border-t border-borderorder pt-16 pb-8 px-6">
       <div className="mx-auto max-w-[1200px]">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-1">
@@ -54,7 +54,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-8 flex items-center justify-center">
+        <div className="border-t border-borderorder pt-8 flex items-center justify-center">
           <p className="text-sm text-text-muted">
             © 2024 Luxe Rent. All rights reserved.
           </p>
