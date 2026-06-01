@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faTrash, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ProductFormModal from "../../components/store-owner/ProductFormModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import Toast from "../../components/ui/Toast";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -17,6 +18,11 @@ export default function ProductsPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete'
   const [pendingData, setPendingData] = useState(null);
+
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const showToast = (message, type = "success") => {
+    setToast({ isVisible: true, message, type });
+  };
 
   const fetchProducts = async () => {
     try {
@@ -35,10 +41,12 @@ export default function ProductsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:9999/api/categories");
-      const data = await response.json();
+      const response = await fetch("http://localhost:9999/api/categories?all=true");
       if (response.ok) {
+        const data = await response.json();
         setCategories(data.categories || []);
+      } else {
+        console.error("Failed to fetch categories");
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -74,9 +82,15 @@ export default function ProductsPage() {
     setIsConfirmOpen(true);
   };
 
+  const handleRestoreClick = (product) => {
+    setPendingData(product);
+    setConfirmAction('restore');
+    setIsConfirmOpen(true);
+  };
+
   const executeAdd = async (data) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch("http://localhost:9999/api/costumes", {
         method: "POST",
         headers: {
@@ -88,19 +102,20 @@ export default function ProductsPage() {
 
       if (response.ok) {
         fetchProducts();
+        showToast("Thêm sản phẩm thành công!");
       } else {
         const err = await response.json();
-        alert(err.message || "Failed to add product");
+        showToast(err.message || "Thêm sản phẩm thất bại", "error");
       }
     } catch (error) {
       console.error(error);
-      alert("System error");
+      showToast("Lỗi hệ thống", "error");
     }
   };
 
   const executeEdit = async (data) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch(`http://localhost:9999/api/costumes/${editingProduct._id}`, {
         method: "PUT",
         headers: {
@@ -112,19 +127,20 @@ export default function ProductsPage() {
 
       if (response.ok) {
         fetchProducts();
+        showToast("Cập nhật sản phẩm thành công!");
       } else {
         const err = await response.json();
-        alert(err.message || "Failed to update product");
+        showToast(err.message || "Cập nhật sản phẩm thất bại", "error");
       }
     } catch (error) {
       console.error(error);
-      alert("System error");
+      showToast("Lỗi hệ thống", "error");
     }
   };
 
   const executeDelete = async (product) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch(`http://localhost:9999/api/costumes/${product._id}`, {
         method: "DELETE",
         headers: {
@@ -134,13 +150,57 @@ export default function ProductsPage() {
 
       if (response.ok) {
         fetchProducts();
+        showToast("Đã ẩn sản phẩm thành công!");
       } else {
         const err = await response.json();
-        alert(err.message || "Failed to delete product");
+        showToast(err.message || "Ẩn sản phẩm thất bại", "error");
       }
     } catch (error) {
       console.error(error);
-      alert("System error");
+      showToast("Lỗi hệ thống", "error");
+    }
+  };
+
+  const executeRestore = async (product) => {
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const restoreData = {
+        name: product.name,
+        slug: product.slug,
+        sku: product.sku,
+        categoryId: product.categoryId?._id || product.categoryId,
+        size: product.size,
+        color: product.color,
+        condition: product.condition,
+        rentalRates: product.rentalRates,
+        deposit: product.deposit,
+        minRentalDays: product.minRentalDays,
+        lateFeePerDay: product.lateFeePerDay,
+        description: product.description,
+        images: product.images,
+        specifications: product.specifications,
+        status: "available"
+      };
+
+      const response = await fetch(`http://localhost:9999/api/costumes/${product._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(restoreData),
+      });
+
+      if (response.ok) {
+        fetchProducts();
+        showToast("Khôi phục sản phẩm thành công!");
+      } else {
+        const err = await response.json();
+        showToast(err.message || "Khôi phục sản phẩm thất bại", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("Lỗi hệ thống", "error");
     }
   };
 
@@ -153,6 +213,8 @@ export default function ProductsPage() {
       await executeEdit(pendingData);
     } else if (confirmAction === 'delete') {
       await executeDelete(pendingData);
+    } else if (confirmAction === 'restore') {
+      await executeRestore(pendingData);
     }
 
     setPendingData(null);
@@ -173,6 +235,7 @@ export default function ProductsPage() {
     if (confirmAction === 'add') return "Bạn có chắc chắn muốn thêm sản phẩm này?";
     if (confirmAction === 'edit') return "Bạn có chắc chắn muốn lưu thay đổi cho sản phẩm này?";
     if (confirmAction === 'delete') return "Bạn có chắc chắn muốn ẩn/xóa mềm sản phẩm này khỏi hệ thống?";
+    if (confirmAction === 'restore') return "Bạn có chắc chắn muốn khôi phục lại sản phẩm này (trạng thái Sẵn sàng)?";
     return "";
   };
 
@@ -230,14 +293,14 @@ export default function ProductsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-700">
-                        {product.category?.name || "N/A"}
+                      <td className="py-4 px-6 text-sm text-gray-500">
+                        {product.categoryId?.name || "N/A"}
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-700">
-                        {product.rentalPricePerDay?.toLocaleString()} đ
+                      <td className="py-4 px-6 text-sm text-gray-500">
+                        {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-700">
-                        {product.depositPrice?.toLocaleString()} đ
+                      <td className="py-4 px-6 text-sm text-gray-500">
+                        {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
                       </td>
                       <td className="py-4 px-6">
                         <span
@@ -253,21 +316,31 @@ export default function ProductsPage() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleOpenEditForm(product)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Sửa"
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </button>
-                          {product.status !== "hidden" && (
+                          {product.status === "hidden" ? (
                             <button
-                              onClick={() => handleDeleteClick(product)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                              title="Ẩn (Xóa mềm)"
+                              onClick={() => handleRestoreClick(product)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                              title="Khôi phục"
                             >
-                              <FontAwesomeIcon icon={faEyeSlash} />
+                              <FontAwesomeIcon icon={faEye} />
                             </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleOpenEditForm(product)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                title="Sửa"
+                              >
+                                <FontAwesomeIcon icon={faEdit} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(product)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Ẩn (Xóa mềm)"
+                              >
+                                <FontAwesomeIcon icon={faEyeSlash} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -294,6 +367,13 @@ export default function ProductsPage() {
         message={getConfirmMessage()}
         onConfirm={handleConfirm}
         onCancel={handleCancelConfirm}
+      />
+
+      <Toast 
+        isVisible={toast.isVisible} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
       />
     </div>
   );

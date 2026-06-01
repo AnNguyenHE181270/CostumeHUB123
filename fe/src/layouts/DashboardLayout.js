@@ -15,10 +15,10 @@ export default function DashboardLayout() {
   const dropdownRef = useRef(null);
 
   let currentMenu
-  if (role == "owner") {
+  if (role === "owner") {
     currentMenu = ownerSidebar
   }
-  if (role == "staff") {
+  if (role === "staff") {
     currentMenu = staffSidebar
   }
 

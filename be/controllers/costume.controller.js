@@ -4,7 +4,7 @@ const HttpError = require("../models/http-error.model");
 const getAllCostumes = async (req, res, next) => {
   try {
     const costumes = await Costume.find()
-      .populate("category", "name")
+      .populate("categoryId", "name")
       .sort({ createdAt: -1 });
     res.status(200).json({ costumes });
   } catch (err) {
@@ -14,7 +14,7 @@ const getAllCostumes = async (req, res, next) => {
 
 const getCostumeById = async (req, res, next) => {
   try {
-    const costume = await Costume.findById(req.params.id).populate("category", "name");
+    const costume = await Costume.findById(req.params.id).populate("categoryId", "name");
     if (!costume) {
       return next(new HttpError("Costume not found.", 404));
     }
@@ -26,16 +26,21 @@ const getCostumeById = async (req, res, next) => {
 
 const createCostume = async (req, res, next) => {
   try {
-    const { name, description, category, images, rentalPricePerDay, depositPrice, status } = req.body;
+    const { 
+      name, slug, sku, categoryId, description, images, size, color, condition,
+      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
+    } = req.body;
 
     const newCostume = new Costume({
-      name,
-      description,
-      category,
-      images: images || [],
-      rentalPricePerDay,
-      depositPrice: depositPrice || 0,
-      status: status || "available",
+      name, slug, sku, categoryId, description, 
+      images: images || [], 
+      size, color, condition,
+      rentalRates: rentalRates || { pricePerDay: 0 }, 
+      deposit: deposit || 0, 
+      minRentalDays: minRentalDays || 1, 
+      lateFeePerDay: lateFeePerDay || 0, 
+      status: status || "available", 
+      specifications: specifications || {},
       createdBy: req.userData.id,
     });
 
@@ -49,20 +54,31 @@ const createCostume = async (req, res, next) => {
 const updateCostume = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, category, images, rentalPricePerDay, depositPrice, status } = req.body;
+    const { 
+      name, slug, sku, categoryId, description, images, size, color, condition,
+      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
+    } = req.body;
 
     const costume = await Costume.findById(id);
     if (!costume) {
       return next(new HttpError("Costume not found.", 404));
     }
 
-    costume.name = name;
-    costume.description = description;
-    costume.category = category;
-    costume.images = images || costume.images;
-    costume.rentalPricePerDay = rentalPricePerDay;
-    costume.depositPrice = depositPrice || costume.depositPrice;
-    costume.status = status || costume.status;
+    if (name !== undefined) costume.name = name;
+    if (slug !== undefined) costume.slug = slug;
+    if (sku !== undefined) costume.sku = sku;
+    if (categoryId !== undefined) costume.categoryId = categoryId;
+    if (description !== undefined) costume.description = description;
+    if (images !== undefined) costume.images = images;
+    if (size !== undefined) costume.size = size;
+    if (color !== undefined) costume.color = color;
+    if (condition !== undefined) costume.condition = condition;
+    if (rentalRates !== undefined) costume.rentalRates = rentalRates;
+    if (deposit !== undefined) costume.deposit = deposit;
+    if (minRentalDays !== undefined) costume.minRentalDays = minRentalDays;
+    if (lateFeePerDay !== undefined) costume.lateFeePerDay = lateFeePerDay;
+    if (status !== undefined) costume.status = status;
+    if (specifications !== undefined) costume.specifications = specifications;
 
     await costume.save();
     res.status(200).json({ costume });

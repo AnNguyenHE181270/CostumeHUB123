@@ -12,6 +12,11 @@ const categorySchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    parentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,
