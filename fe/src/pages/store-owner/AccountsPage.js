@@ -67,7 +67,7 @@ export default function AccountsPage() {
         acc.email?.toLowerCase().includes(search.toLowerCase());
       const matchRole =
         filterRole === "all" ||
-        acc?.role?.name?.toLowerCase() === filterRole.toLowerCase();
+        acc?.role?.toLowerCase() === filterRole.toLowerCase();
       const matchStatus =
         filterStatus === "all" ||
         acc.status?.toLowerCase() === filterStatus.toLowerCase();
