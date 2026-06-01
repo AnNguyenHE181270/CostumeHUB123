@@ -47,17 +47,16 @@ function AppRoutes() {
       <Route element={<OwnerRoutes />}>
         {/* Route cha bọc Layout */}
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
+
           <Route index element={<StoreOwnerDashboard />} />
 
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
-          <Route
-            path={ROUTES.STORE_OWNER_PRODUCTS}
-            element={<ProductsPage />}
-          />
+          <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           {/* <Route path="rentals" element={<RentalsPage />} /> */}
           {/* <Route path="revenue" element={<RevenuePage />} /> */}
           {/* <Route path="export" element={<ExportPage />} /> */}
+
         </Route>
       </Route>
 

@@ -101,7 +101,7 @@ export default function VerifyOtpPage() {
                     <span className="text-text-primary text-[11px] font-medium tracking-[0.35em] uppercase">Luxe Rent</span>
                 </div>
                 
-                <div className="mx-auto w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mb-8">
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-surface border border-borderorder flex items-center justify-center mb-8">
                     <FontAwesomeIcon icon={faShieldHalved} className="text-primary-600 text-xl" />
                 </div>
                 
@@ -126,7 +126,7 @@ export default function VerifyOtpPage() {
                                 onChange={(e) => handleChange(e, index)} 
                                 onKeyDown={(e) => handleKeyDown(e, index)} 
                                 onFocus={handleFocus}
-                                className="w-12 h-14 text-center text-xl font-medium text-text-primary bg-surface border border-border rounded-xl outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 uppercase" 
+                                className="w-12 h-14 text-center text-xl font-medium text-text-primary bg-surface border border-borderorder rounded-xl outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 uppercase" 
                             />
                         ))}
                     </div>

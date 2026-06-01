@@ -16,10 +16,10 @@ export default function FrappeStyleDashboard() {
     <div className="bg-gray-50 min-h-screen flex flex-col">
       
       {/* === 1. GLOBAL TOOLBAR === */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-white border-border border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold text-gray-800">Store Owner Dashboard</h1>
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Public</span>
+          <span className="text-xs bg-surface text-gray-600 px-2 py-1 rounded">Public</span>
         </div>
         
         <div className="flex items-center gap-3">
@@ -31,13 +31,13 @@ export default function FrappeStyleDashboard() {
 
           <div className="h-6 w-px bg-gray-200"></div>
 
-          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-100" title="Edit Dashboard">
+          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-surface" title="Edit Dashboard">
             <FontAwesomeIcon icon={faEdit} className="text-sm" />
           </button>
-          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-100" title="Share">
+          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-surface" title="Share">
             <FontAwesomeIcon icon={faShareAlt} className="text-sm" />
           </button>
-          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-100" title="Export PDF">
+          <button className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-surface" title="Export PDF">
             <FontAwesomeIcon icon={faDownload} className="text-sm" />
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function FrappeStyleDashboard() {
               <h3 className="text-sm font-medium text-gray-600">Rentals by Category</h3>
               <button className="text-gray-400 hover:text-gray-600"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="w-28 h-28 rounded-full border-[20px] border-blue-500 relative mb-4" style={{ borderColor: '#3b82f6 #3b82f6 #f59e0b #f59e0b' }}>
+            <div className="w-28 h-28 rounded-full border-[20px] border-borderlue-500 relative mb-4" style={{ borderColor: '#3b82f6 #3b82f6 #f59e0b #f59e0b' }}>
               <div className="absolute inset-0 bg-white rounded-full w-20 h-20 flex items-center justify-center text-xs font-bold text-gray-700">
                 342
               </div>
@@ -144,7 +144,7 @@ export default function FrappeStyleDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-gray-500 font-normal">
+                  <tr className="border-border border-gray-200 text-gray-500 font-normal">
                     <th className="pb-2 pr-4">Customer</th>
                     <th className="pb-2 pr-4">Item</th>
                     <th className="pb-2 pr-4">Date</th>
@@ -153,14 +153,14 @@ export default function FrappeStyleDashboard() {
                   </tr>
                 </thead>
                 <tbody className="text-gray-700">
-                  <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr className="border-border border-gray-100 hover:bg-gray-50">
                     <td className="py-3 pr-4 font-medium">Alex Smith</td>
                     <td className="py-3 pr-4">Wedding Dress</td>
                     <td className="py-3 pr-4">10/23/2023</td>
                     <td className="py-3 pr-4 text-right">$120</td>
                     <td className="py-3"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Active</span></td>
                   </tr>
-                  <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr className="border-border border-gray-100 hover:bg-gray-50">
                     <td className="py-3 pr-4 font-medium">Emma Johnson</td>
                     <td className="py-3 pr-4">Men's Suit</td>
                     <td className="py-3 pr-4">10/22/2023</td>

@@ -65,7 +65,7 @@ export default function RegisterPage() {
     }
   };
 
-  const inputBase = "w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 placeholder:text-text-muted";
+  const inputBase = "w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 placeholder:text-text-muted";
 
   return (
     <AuthLayout>
@@ -189,7 +189,7 @@ export default function RegisterPage() {
               }
               className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border flex items-center justify-center transition-all duration-200 ${form.acceptTerms
                   ? "bg-primary-600 border-primary-600"
-                  : "bg-surface border-border hover:border-primary-500"
+                  : "bg-surface border-borderorder hover:border-primary-500"
                 }`}
             >
               {form.acceptTerms && (

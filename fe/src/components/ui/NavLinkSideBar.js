@@ -22,7 +22,7 @@ export default function NavLinkSideBar({ item, collapsed }) {
         ${
           isActive
             ? "bg-blue-500 text-white"
-            : "hover:bg-gray-100 text-gray-700"
+            : "hover:bg-surface text-gray-700"
         }
         ${collapsed ? "justify-center px-0" : ""} 
         `
