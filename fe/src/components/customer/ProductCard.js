@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart, faCartPlus } from "@fortawesome/free-solid-svg-icons";
+import { faHeart, faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartOutline } from "@fortawesome/free-regular-svg-icons";
+import { useCart } from "../../context/CartContext";
 
 const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500" },
@@ -42,8 +43,11 @@ function StarRating({ rating = 0, count = 0 }) {
 
 export default function ProductCard({ costume }) {
   const navigate = useNavigate();
+  const { addToCart, removeFromCart, cartItems } = useCart();
   const [imgError, setImgError] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+
+  const isInCart = cartItems.some(item => item.costume._id === costume._id);
 
   const imgSrc =
     !imgError && costume.images && costume.images.length > 0
@@ -144,14 +148,20 @@ export default function ProductCard({ costume }) {
         {/* Action Buttons */}
         <div className="mt-4 flex gap-2">
           <button
-            className="flex-1 flex items-center justify-center gap-2 bg-[#1a1a1a] text-white
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isInCart && costume.status === "available") addToCart(costume);
+              else if (isInCart) removeFromCart(costume._id);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 text-white
                        text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
-                       hover:bg-[#333] active:scale-[0.98] transition-all duration-200
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={costume.status !== "available"}
+                       active:scale-[0.98] transition-all duration-200
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       ${isInCart ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#1a1a1a] hover:bg-[#333]"}`}
+            disabled={costume.status !== "available" && !isInCart}
           >
-            <FontAwesomeIcon icon={faCartPlus} className="text-[12px]" />
-            Thêm
+            <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[12px]" />
+            {isInCart ? "Đã Thêm" : "Thêm"}
           </button>
           <button
             onClick={() => navigate(`/product/${costume._id}`)}

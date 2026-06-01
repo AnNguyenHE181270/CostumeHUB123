@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -22,6 +23,7 @@ const STATIC_LINKS = [
 
 export default function Navbar() {
   const { user, logout, role } = useAuth();
+  const { cartCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [parentCategories, setParentCategories] = useState([]);
@@ -99,7 +101,6 @@ export default function Navbar() {
   };
 
   const wishlistCount = 0;
-  const cartCount = 0;
 
   return (
     <header

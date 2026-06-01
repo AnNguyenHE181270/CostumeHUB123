@@ -11,6 +11,7 @@ import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import CategoryPage from "../pages/CategoryPage";
 import ProductDetailPage from "../pages/ProductDetailPage";
+import CartPage from "../pages/CartPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -43,7 +44,7 @@ function AppRoutes() {
 
       {/* User thường */}
       <Route element={<ProtectedRoutes />}>
-        {/* <Route path="/cart" element={<CartPage />} /> */}
+        <Route path="/cart" element={<CartPage />} />
       </Route>
 
       {/* Staff / Lễ tân */}

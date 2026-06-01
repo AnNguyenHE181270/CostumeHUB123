@@ -9,8 +9,10 @@ import {
   faTruckFast,
   faRotateLeft,
   faStar,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartOutline } from "@fortawesome/free-regular-svg-icons";
+import { useCart } from "../context/CartContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -28,10 +30,13 @@ function formatPrice(price) {
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart, removeFromCart, cartItems } = useCart();
   const [costume, setCostume] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [wishlisted, setWishlisted] = useState(false);
+
+  const isInCart = costume ? cartItems.some(item => item.costume._id === costume._id) : false;
 
   useEffect(() => {
     const fetchCostume = async () => {
@@ -183,21 +188,45 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mb-8">
+              <div className="flex gap-3 mb-8">
                 <button 
-                  className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 ${
+                  onClick={() => {
+                    if (costume.status === "available") {
+                      if (!isInCart) addToCart(costume);
+                      navigate("/cart");
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${
                     costume.status === "available" 
                       ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                       : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
                   }`}
                   disabled={costume.status !== "available"}
                 >
-                  <FontAwesomeIcon icon={faCartPlus} className="text-[16px]" />
-                  {costume.status === "available" ? "Thuê Ngay" : "Tạm Hết Hàng"}
+                  Thuê Ngay
                 </button>
+                
+                <button 
+                  onClick={() => {
+                    if (!isInCart && costume.status === "available") addToCart(costume);
+                    else if (isInCart) removeFromCart(costume._id);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${
+                    isInCart 
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
+                      : costume.status === "available" 
+                        ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
+                        : "border-[#e8e8e8] bg-white text-[#999] cursor-not-allowed"
+                  }`}
+                  disabled={costume.status !== "available" && !isInCart}
+                >
+                  <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[14px]" />
+                  {isInCart ? "Đã Thêm" : "Thêm Vào Giỏ"}
+                </button>
+
                 <button 
                   onClick={() => setWishlisted(!wishlisted)}
-                  className={`w-14 h-[52px] flex items-center justify-center rounded-lg border-2 transition-all duration-300 ${
+                  className={`w-14 flex items-center justify-center rounded-lg border-2 transition-all duration-300 ${
                     wishlisted 
                       ? "border-red-500 bg-red-50 text-red-500" 
                       : "border-[#e8e8e8] bg-white text-[#999] hover:border-[#1a1a1a] hover:text-[#1a1a1a]"
