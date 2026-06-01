@@ -80,13 +80,9 @@ export default function CategoryPage() {
     try {
       const params = new URLSearchParams();
       
-      // If subcategories are selected, filter by those specific ones
-      // Otherwise, use the parent categoryId (API will include children)
-      if (filters.subCategoryIds && filters.subCategoryIds.length > 0) {
-        // We need to fetch for each subcategory — for now use the parent
-        // The backend handles including children automatically
-        params.set("categoryId", categoryId);
-      } else {
+      // Only add categoryId if it exists (for Category route).
+      // If it doesn't exist (for All Products route), we don't filter by category.
+      if (categoryId) {
         params.set("categoryId", categoryId);
       }
 
@@ -177,9 +173,9 @@ export default function CategoryPage() {
                 className="text-white text-3xl md:text-4xl font-bold tracking-tight"
                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
               >
-                {category?.name || "Danh mục"}
+                {categoryId ? (category?.name || "Đang tải...") : "Tất Cả Sản Phẩm"}
               </h1>
-              {category?.description && (
+              {(category?.description && categoryId) && (
                 <p className="mt-3 text-[14px] text-[#999] max-w-[600px] leading-relaxed">
                   {category.description}
                 </p>

@@ -28,6 +28,7 @@ function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
+        <Route path="/products" element={<CategoryPage />} />
       </Route>
 
       <Route element={<PublicRoutes />}>
