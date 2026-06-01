@@ -1,19 +1,6 @@
 const mongoose = require("mongoose");
 
-const sizeSchema = new mongoose.Schema(
-  {
-    size: {
-      type: String,
-      enum: ["XS", "S", "M", "L", "XL", "XXL"],
-    },
 
-    quantity: {
-      type: Number,
-      default: 0,
-    },
-  },
-  { _id: false }
-);
 
 const costumeSchema = new mongoose.Schema(
   {
@@ -28,7 +15,17 @@ const costumeSchema = new mongoose.Schema(
       required: true,
     },
 
-    category: {
+    slug: {
+      type: String,
+      trim: true,
+    },
+
+    sku: {
+      type: String,
+      trim: true,
+    },
+
+    categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
@@ -40,13 +37,23 @@ const costumeSchema = new mongoose.Schema(
       },
     ],
 
-    rentalPricePerDay: {
-      type: Number,
-      required: true,
-      min: 0,
+    rentalRates: {
+      pricePerDay: { type: Number, required: true, min: 0 },
+      pricePer3Days: { type: Number },
+      pricePerWeek: { type: Number },
     },
 
-    depositPrice: {
+    deposit: {
+      type: Number,
+      default: 0,
+    },
+
+    minRentalDays: {
+      type: Number,
+      default: 1,
+    },
+
+    lateFeePerDay: {
       type: Number,
       default: 0,
     },
@@ -60,11 +67,20 @@ const costumeSchema = new mongoose.Schema(
       type: String,
     },
 
-    material: {
+    size: {
       type: String,
     },
 
-    sizes: [sizeSchema],
+    condition: {
+      type: String,
+    },
+
+    specifications: {
+      material: String,
+      includedAccessories: [String],
+      bustSize: String,
+      waistSize: String,
+    },
 
     status: {
       type: String,
