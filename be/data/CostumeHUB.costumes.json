@@ -1,0 +1,126 @@
+[{
+  "_id": {
+    "$oid": "65f2b5e6f7a1b2c3d4e5f7a1"
+  },
+  "name": "Áo Dài Cách Tân Dáng Suông Tơ Tằm Màu Hồng Phấn",
+  "slug": "ao-dai-cach-tan-dang-suong-to-tam-mau-hong-phan",
+  "sku": "COS-ADCT-001-M",
+  "categoryId": {
+    "$oid": "65f2a1b1c2d3e4f5a6b7c8d4"
+  },
+  "description": "Set áo dài cách tân chất liệu tơ tằm mềm mại, phom suông che khuyết điểm tốt, kèm mấn đội đầu tơ đồng điệu.",
+  "images": [
+    "https://matsl-rental.com/images/ao-dai-hong-1.jpg",
+    "https://matsl-rental.com/images/ao-dai-hong-2.jpg"
+  ],
+  "size": "M",
+  "color": "Hồng Phấn",
+  "condition": "98% (Mới thuê 2 lần, vải không xước, cúc bấm chắc chắn)",
+  "rentalRates": {
+    "pricePerDay": 150000,
+    "pricePer3Days": 350000,
+    "pricePerWeek": 700000
+  },
+  "deposit": 800000,
+  "minRentalDays": 1,
+  "lateFeePerDay": 50000,
+  "status": "available",
+  "specifications": {
+    "material": "Tơ tằm cao cấp, lót lụa habutai",
+    "includedAccessories": [
+      "Mấn đội đầu đồng màu",
+      "Quần lụa ống suông trắng"
+    ],
+    "bustSize": "84-88 cm",
+    "waistSize": "66-70 cm"
+  },
+  "createdAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "65f2b5e6f7a1b2c3d4e5f7a2"
+  },
+  "name": "Đầm Dạ Hội Đính Kim Sa Trễ Vai Đuôi Cá Gợi Cảm",
+  "slug": "dam-da-hoi-dinh-kim-sa-tre-vai-duoi-ca",
+  "sku": "COS-DDH-002-S",
+  "categoryId": {
+    "$oid": "65f2a1b1c2d3e4f5a6b7c8d5"
+  },
+  "description": "Đầm dạ hội đuôi cá lộng lẫy, đính kết kim sa thủ công bắt sáng cực tốt dưới ánh đèn sân khấu.",
+  "images": [
+    "https://matsl-rental.com/images/dam-da-hoi-02.jpg"
+  ],
+  "size": "S",
+  "color": "Vàng Gold",
+  "condition": "95% (Đầy đủ cườm đính, có sửa nhẹ độ dài gấu váy)",
+  "rentalRates": {
+    "pricePerDay": 450000,
+    "pricePer3Days": 900000,
+    "pricePerWeek": 1800000
+  },
+  "deposit": 2500000,
+  "minRentalDays": 1,
+  "lateFeePerDay": 150000,
+  "status": "dry_cleaning",
+  "specifications": {
+    "material": "Mesh cao cấp đính kim sa, lót thun co giãn",
+    "includedAccessories": [
+      "Túi bọc váy chống bụi",
+      "Mút ngực may sẵn"
+    ],
+    "bustSize": "80-84 cm",
+    "waistSize": "60-64 cm"
+  },
+  "createdAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "65f2b5e6f7a1b2c3d4e5f7a3"
+  },
+  "name": "Váy Trắng Nàng Thơ Voan Tơ Bồng Bềnh Trễ Vai Vintage",
+  "slug": "vay-trang-nang-tho-voan-to-bong-benh",
+  "sku": "COS-VNT-003-L",
+  "categoryId": {
+    "$oid": "65f2a1b1c2d3e4f5a6b7c8d6"
+  },
+  "description": "Phong cách tiểu thư nhẹ nhàng, hợp chụp ảnh concept ngoại cảnh, đồng cỏ, bãi biển.",
+  "images": [
+    "https://matsl-rental.com/images/vay-nang-tho-03.jpg"
+  ],
+  "size": "L",
+  "color": "Trắng Kem",
+  "condition": "90% (Đầm sạch sẽ, vải voan mượt, có xước nhẹ ở lớp tùng váy lót trong không ảnh hưởng lên hình)",
+  "rentalRates": {
+    "pricePerDay": 120000,
+    "pricePer3Days": 280000,
+    "pricePerWeek": 550000
+  },
+  "deposit": 500000,
+  "minRentalDays": 1,
+  "lateFeePerDay": 40000,
+  "status": "rented",
+  "specifications": {
+    "material": "Voan kính, tơ organza",
+    "includedAccessories": [
+      "Nơ kẹp tóc bản to màu trắng"
+    ],
+    "bustSize": "88-92 cm",
+    "waistSize": "72-76 cm"
+  },
+  "createdAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T13:18:21.436Z"
+  }
+}]

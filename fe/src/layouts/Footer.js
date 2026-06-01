@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -14,14 +14,7 @@ import {
   faTiktok,
 } from "@fortawesome/free-brands-svg-icons";
 
-/* ─── Data ─── */
-const CATEGORIES = [
-  { label: "Áo Dài", href: "/ao-dai" },
-  { label: "Váy Du Lịch", href: "/vay-du-lich" },
-  { label: "Váy Tiệc", href: "/vay-tiec" },
-  { label: "Pháp Phục", href: "/phap-phuc" },
-  { label: "Set Yếm", href: "/set-yem" },
-];
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 const INFO_LINKS = [
   { label: "Về Chúng Tôi", href: "/ve-chung-toi" },
@@ -42,11 +35,25 @@ const SOCIALS = [
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+        const allCats = data.categories || [];
+        setCategories(allCats.filter((c) => !c.parentId).slice(0, 5));
+      } catch (err) {
+        console.error("Footer: Failed to fetch categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleSubscribe = (e) => {
     e.preventDefault();
     if (email.trim()) {
-      // TODO: Integrate with API
       setSubscribed(true);
       setTimeout(() => setSubscribed(false), 3000);
       setEmail("");
@@ -104,13 +111,13 @@ export default function Footer() {
               Danh Mục
             </h3>
             <ul className="space-y-3">
-              {CATEGORIES.map((cat) => (
-                <li key={cat.href}>
+              {categories.map((cat) => (
+                <li key={cat._id}>
                   <Link
-                    to={cat.href}
+                    to={`/category/${cat._id}`}
                     className="text-[14px] text-[#999] hover:text-white transition-colors duration-200"
                   >
-                    {cat.label}
+                    {cat.name}
                   </Link>
                 </li>
               ))}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -10,28 +11,51 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 
-/* ─── Data ─── */
-const TOP_LINKS = [
-  { label: "ÁO DÀI", href: "/ao-dai" },
-  { label: "VÁY DU LỊCH", href: "/vay-du-lich" },
-  { label: "VÁY TIỆC", href: "/vay-tiec" },
-];
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
-const CATEGORIES = [
-  { label: "ÁO DÀI", href: "/ao-dai" },
-  { label: "VÁY DU LỊCH", href: "/vay-du-lich" },
-  { label: "VÁY TIỆC", href: "/vay-tiec" },
-  { label: "PHÁP PHỤC", href: "/phap-phuc" },
-  { label: "SET YẾM", href: "/set-yem" },
+/* Static links that always show */
+const STATIC_LINKS = [
   { label: "BLOG", href: "/blog" },
   { label: "LIÊN HỆ", href: "/lien-he" },
 ];
 
 export default function Navbar() {
+  const { user, logout, role } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [parentCategories, setParentCategories] = useState([]);
   const drawerRef = useRef(null);
   const location = useLocation();
+
+  /* Fetch parent categories from API */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+        const allCategories = data.categories || [];
+        const parents = allCategories.filter((c) => !c.parentId);
+        setParentCategories(parents);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  /* Build navigation items: categories + static links */
+  const TOP_LINKS = parentCategories.slice(0, 3).map((cat) => ({
+    label: cat.name.toUpperCase(),
+    href: `/category/${cat._id}`,
+  }));
+
+  const CATEGORY_NAV = [
+    ...parentCategories.map((cat) => ({
+      label: cat.name.toUpperCase(),
+      href: `/category/${cat._id}`,
+    })),
+    ...STATIC_LINKS,
+  ];
 
   /* scroll shadow */
   useEffect(() => {
@@ -65,8 +89,10 @@ export default function Navbar() {
     };
   }, [mobileOpen]);
 
-  const wishlistCount = 3; // TODO: replace with real wishlist count
-  const cartCount = 2; // TODO: replace with real cart count
+  const isActive = (href) => location.pathname === href;
+
+  const wishlistCount = 0;
+  const cartCount = 0;
 
   return (
     <header
@@ -90,7 +116,11 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="text-[12px] tracking-[0.1em] uppercase text-[#474747] hover:text-[#1a1a1a] transition-colors font-medium"
+                className={`text-[12px] tracking-[0.1em] uppercase font-medium transition-colors ${
+                  isActive(link.href)
+                    ? "text-[#1a1a1a]"
+                    : "text-[#474747] hover:text-[#1a1a1a]"
+                }`}
               >
                 {link.label}
               </Link>
@@ -128,16 +158,60 @@ export default function Navbar() {
 
           {/* Right: Icons */}
           <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f5f5f5] transition-colors"
-              aria-label="Tài khoản"
-            >
-              <FontAwesomeIcon
-                icon={faUser}
-                className="text-[15px] text-[#474747]"
-              />
-            </Link>
+            {user ? (
+              <div className="relative group">
+                <button
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f5f5f5] transition-colors"
+                  aria-label="Tài khoản"
+                >
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-[10px] font-bold">
+                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
+                    </div>
+                  )}
+                </button>
+                {/* Dropdown Menu */}
+                <div className="absolute right-0 top-full pt-2 w-48 hidden group-hover:block z-50">
+                  <div className="bg-white border border-[#e8e8e8] shadow-lg rounded-md overflow-hidden">
+                    <div className="p-3 border-b border-[#e8e8e8]">
+                      <p className="text-sm font-semibold text-[#1a1a1a] truncate">{user.fullName}</p>
+                      <p className="text-xs text-[#858585] truncate">{user.email}</p>
+                    </div>
+                    <div className="py-1">
+                      {role === "owner" && (
+                        <Link to="/owner" className="block px-4 py-2 text-sm text-[#474747] hover:bg-[#f5f5f5]">
+                          Trang Quản Trị
+                        </Link>
+                      )}
+                      {role === "staff" && (
+                        <Link to="/staff" className="block px-4 py-2 text-sm text-[#474747] hover:bg-[#f5f5f5]">
+                          Trang Nhân Viên
+                        </Link>
+                      )}
+                      <button
+                        onClick={logout}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-[#f5f5f5]"
+                      >
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f5f5f5] transition-colors"
+                aria-label="Tài khoản"
+              >
+                <FontAwesomeIcon
+                  icon={faUser}
+                  className="text-[15px] text-[#474747]"
+                />
+              </Link>
+            )}
 
             <Link
               to="/wishlist"
@@ -176,16 +250,16 @@ export default function Navbar() {
 
       {/* ════════ TIER 3 — Category Nav ════════ */}
       <nav className="hidden md:block bg-[#f5f5f5] border-b border-[#e8e8e8]">
-        <div className="mx-auto max-w-[1200px] flex items-center justify-center h-[44px] px-6 gap-1">
-          {CATEGORIES.map((cat) => (
+        <div className="mx-auto max-w-[1200px] flex items-center justify-center h-[44px] px-6 gap-1 overflow-x-auto">
+          {CATEGORY_NAV.map((cat) => (
             <Link
               key={cat.href}
               to={cat.href}
               className={`
-                px-5 py-2 text-[12px] tracking-[0.08em] uppercase font-medium
-                rounded transition-colors
+                px-4 py-2 text-[11px] tracking-[0.08em] uppercase font-medium
+                rounded transition-colors whitespace-nowrap
                 ${
-                  location.pathname === cat.href
+                  isActive(cat.href)
                     ? "text-[#1a1a1a] bg-white"
                     : "text-[#707070] hover:text-[#1a1a1a] hover:bg-white/60"
                 }
@@ -214,7 +288,7 @@ export default function Navbar() {
                 className="text-[20px] font-semibold text-[#1a1a1a] tracking-[0.04em]"
                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
               >
-                ÁO YÊU
+                CostumeHUB
               </span>
               <button
                 onClick={() => setMobileOpen(false)}
@@ -235,7 +309,7 @@ export default function Navbar() {
                   Danh mục
                 </p>
               </div>
-              {CATEGORIES.map((cat, i) => (
+              {CATEGORY_NAV.map((cat, i) => (
                 <Link
                   key={cat.href}
                   to={cat.href}
@@ -243,7 +317,7 @@ export default function Navbar() {
                     flex items-center justify-between px-5 py-3
                     text-[14px] font-medium transition-colors
                     ${
-                      location.pathname === cat.href
+                      isActive(cat.href)
                         ? "text-[#1a1a1a] bg-[#f5f5f5]"
                         : "text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a]"
                     }
@@ -262,13 +336,44 @@ export default function Navbar() {
               <div className="mx-5 my-4 border-t border-[#e8e8e8]" />
 
               {/* Extra links */}
-              <Link
-                to="/login"
-                className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors"
-              >
-                <FontAwesomeIcon icon={faUser} className="text-[13px] w-5" />
-                Đăng nhập
-              </Link>
+              {user ? (
+                <>
+                  <div className="px-5 py-3 flex items-center gap-3 bg-[#f9f9f9]">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-[12px] font-bold">
+                        {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-[#1a1a1a] truncate">{user.fullName}</p>
+                      <p className="text-[11px] text-[#858585] truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  {role === "owner" && (
+                    <Link to="/owner" className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors">
+                      Trang Quản Trị
+                    </Link>
+                  )}
+                  {role === "staff" && (
+                    <Link to="/staff" className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors">
+                      Trang Nhân Viên
+                    </Link>
+                  )}
+                  <button onClick={logout} className="w-full text-left flex items-center gap-3 px-5 py-3 text-[14px] text-red-600 hover:bg-[#f9f9f9] transition-colors">
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faUser} className="text-[13px] w-5" />
+                  Đăng nhập
+                </Link>
+              )}
               <Link
                 to="/wishlist"
                 className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors"
@@ -304,7 +409,7 @@ export default function Navbar() {
                 Hỗ trợ: (+84) 93 453 0145
               </p>
               <p className="text-[11px] text-[#858585] tracking-[0.05em] mt-1">
-                info@aoyeu.com
+                info@costumehub.com
               </p>
             </div>
           </aside>

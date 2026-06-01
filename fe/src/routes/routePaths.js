@@ -1,6 +1,7 @@
 export const ROUTES = {
   // Public Routes
   HOME: "/",
+  CATEGORY: "/category/:categoryId",
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY: "/verify-otp/:email",

@@ -3,10 +3,78 @@ const HttpError = require("../models/http-error.model");
 
 const getAllCostumes = async (req, res, next) => {
   try {
-    const costumes = await Costume.find()
-      .populate("categoryId", "name")
-      .sort({ createdAt: -1 });
-    res.status(200).json({ costumes });
+    const { categoryId, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = req.query;
+    const filter = { status: { $ne: "hidden" } };
+
+    // Filter by category (including child categories)
+    if (categoryId) {
+      const Category = require("../models/category.model");
+      const childCategories = await Category.find({ parentId: categoryId });
+      const categoryIds = [categoryId, ...childCategories.map(c => c._id)];
+      filter.categoryId = { $in: categoryIds };
+    }
+
+    // Filter by price range
+    if (minPrice || maxPrice) {
+      filter["rentalRates.pricePerDay"] = {};
+      if (minPrice) filter["rentalRates.pricePerDay"].$gte = Number(minPrice);
+      if (maxPrice) filter["rentalRates.pricePerDay"].$lte = Number(maxPrice);
+    }
+
+    // Filter by status (comma-separated)
+    if (status) {
+      const statuses = status.split(",").filter(Boolean);
+      if (statuses.length > 0) {
+        filter.status = { $in: statuses };
+      }
+    }
+
+    // Search by name
+    if (search) {
+      filter.name = { $regex: search, $options: "i" };
+    }
+
+    // Sorting
+    let sortOption = { createdAt: -1 };
+    switch (sort) {
+      case "price_asc":
+        sortOption = { "rentalRates.pricePerDay": 1 };
+        break;
+      case "price_desc":
+        sortOption = { "rentalRates.pricePerDay": -1 };
+        break;
+      case "popular":
+        sortOption = { totalRentals: -1 };
+        break;
+      case "newest":
+      default:
+        sortOption = { createdAt: -1 };
+        break;
+    }
+
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, Math.min(50, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [costumes, totalItems] = await Promise.all([
+      Costume.find(filter)
+        .populate("categoryId", "name")
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNum),
+      Costume.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      costumes,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalItems / limitNum),
+        totalItems,
+        limit: limitNum,
+      },
+    });
   } catch (err) {
     return next(new HttpError(err.message || "Fetching costumes failed.", 500));
   }

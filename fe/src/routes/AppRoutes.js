@@ -9,6 +9,7 @@ import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
+import CategoryPage from "../pages/CategoryPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -18,12 +19,16 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
+import MainLayout from "../layouts/MainLayout";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path={ROUTES.HOME} element={<HomePage />} />
+      {/* Public — Customer pages with Navbar + Footer */}
+      <Route element={<MainLayout />}>
+        <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
+      </Route>
 
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
