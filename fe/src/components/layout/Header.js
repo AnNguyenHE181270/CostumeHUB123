@@ -1,3 +1,4 @@
+import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faShoppingBag, faUser } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -6,8 +7,26 @@ import { useAuth } from "../../context/AuthContext";
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   // Lấy đường dẫn hiện tại để active menu
   const activePath = location.pathname;
@@ -58,9 +77,25 @@ export default function Header() {
             </button>
             
             {token ? (
-              <p className="ml-2 text-[15px] leading-[1.4] font-[450] text-text-primary truncate max-w-[120px]">
-                {user?.fullName}
-              </p>
+              <div className="relative ml-2" ref={dropdownRef}>
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-1 text-[15px] leading-[1.4] font-[450] text-text-primary hover:opacity-80 transition-opacity focus:outline-none"
+                >
+                  <span className="truncate max-w-[120px]">{user?.fullName}</span>
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-border">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-surface text-left transition-colors"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <button 
                 className="ml-2 hidden md:flex items-center gap-2 bg-text-primary text-white px-4 py-2 rounded-[6px] text-[15px] font-[450] hover:bg-gray-800 transition-colors" 
