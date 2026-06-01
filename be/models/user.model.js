@@ -15,7 +15,6 @@ const addressSchema = new mongoose.Schema(
   { _id: true },
 );
 
-// ===== 2. MAIN SCHEMA: USER =====
 const userSchema = new mongoose.Schema(
   {
     fullName: {
@@ -61,23 +60,13 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
     },
 
-    roles: {
-      type: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Role",
-        },
-      ],
-      default: [],
-      validate: {
-        validator: function (arr) {
-          return arr.length > 0;
-        },
-        message: "User phải có ít nhất 1 role",
-      },
+    // User schema
+    role: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
+      required: true,
     },
-
-    // ===== TRẠNG THÁI TÀI KHOẢN =====
+  
     status: {
       type: String,
       enum: ["active", "blocked", "pending"],

@@ -1,192 +1,235 @@
-import { useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPlus,
-  faSearch,
-  faEdit,
-  faTrash,
-  faEllipsisV,
-  faUserShield,
-  faUserTie,
-  faUser,
+  faPlus, faSearch, faEdit, faTrash,
+  faUserShield, faUserTie, faUser,
 } from "@fortawesome/free-solid-svg-icons";
+import { useMemo, useState, useEffect } from "react";
+import Button from "../../components/ui/Button";
+import DataTable from "../../components/ui/DataTable";
+import Pagination from "../../components/ui/Pagination";
 
-// --- MOCK DATA ---
-const mockAccounts = [
-  { id: 1, name: "Nguyễn Văn Owner", email: "owner@luxerent.com", role: "owner", status: "active", joinDate: "12/01/2023" },
-  { id: 2, name: "Trần Thị Lễ Tân", email: "letan@luxerent.com", role: "receptionist", status: "active", joinDate: "05/03/2023" },
-  { id: 3, name: "Lê Văn Khách", email: "khach@gmail.com", role: "customer", status: "active", joinDate: "20/06/2023" },
-  { id: 4, name: "Phạm Thị Nghỉ", email: "nghiphep@luxerent.com", role: "receptionist", status: "inactive", joinDate: "15/08/2023" },
-  { id: 5, name: "Hoàng Văn Khách 2", email: "hoangkhach@yahoo.com", role: "customer", status: "banned", joinDate: "01/10/2023" },
-];
-
-// --- HELPER FUNCTIONS ---
-const getRoleInfo = (role) => {
-  switch (role) {
-    case "owner": return { label: "Chủ cửa hàng", color: "bg-purple-100 text-purple-700", icon: faUserShield };
-    case "receptionist": return { label: "Lễ tân", color: "bg-blue-100 text-blue-700", icon: faUserTie };
-    case "customer": return { label: "Khách hàng", color: "bg-gray-100 text-gray-700", icon: faUser };
-    default: return { label: "Unknown", color: "bg-gray-100 text-gray-700", icon: faUser };
-  }
+const getRoleInfo = (roleName) => {
+  const name = roleName?.toLowerCase();
+  if (name === "owner")    return { label: "Owner",           color: "bg-purple-100 text-purple-700", icon: faUserShield };
+  if (name === "staff")    return { label: "Staff",           color: "bg-blue-100 text-blue-700",     icon: faUserTie   };
+  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-gray-700",     icon: faUser      };
+  return                          { label: "Unknown",         color: "bg-gray-100 text-gray-700",     icon: faUser      };
 };
 
-const getStatusInfo = (status) => {
-  switch (status) {
-    case "active": return { label: "Hoạt động", color: "bg-green-50 text-green-600" };
-    case "inactive": return { label: "Nghỉ phép", color: "bg-yellow-50 text-yellow-600" };
-    case "banned": return { label: "Bị khóa", color: "bg-red-50 text-red-600" };
-    default: return { label: "Unknown", color: "bg-gray-50 text-gray-600" };
-  }
+const getStatusInfo = (statusName) => {
+  const name = statusName?.toLowerCase();
+  if (name === "active")  return { label: "Active",  color: "bg-green-50 text-green-600",   dot: "bg-green-500"  };
+  if (name === "pending") return { label: "Pending", color: "bg-orange-50 text-orange-600", dot: "bg-orange-500" };
+  if (name === "blocked") return { label: "Blocked", color: "bg-red-50 text-red-600",       dot: "bg-red-500"    };
+  return                         { label: "Unknown", color: "bg-gray-50 text-gray-600",     dot: "bg-gray-500"   };
 };
+
+const PAGE_SIZE = 10;
 
 export default function AccountsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("all");
+  const [accounts, setAccounts]       = useState([]);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState("");
+  const [search, setSearch]           = useState("");
+  const [filterRole, setFilterRole]   = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Logic lọc dữ liệu
+  const getAccounts = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const response = await fetch("http://localhost:9999/api/users/get-users", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) { setError(data.message); return; }
+      setAccounts(data.users);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { getAccounts(); }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [search, filterRole, filterStatus]);
+
   const filteredAccounts = useMemo(() => {
-    return mockAccounts.filter((acc) => {
-      const matchSearch = acc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          acc.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchRole = filterRole === "all" || acc.role === filterRole;
-      const matchStatus = filterStatus === "all" || acc.status === filterStatus;
+    return accounts.filter((acc) => {
+      const matchSearch =
+        acc.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+        acc.email?.toLowerCase().includes(search.toLowerCase());
+      const matchRole =
+        filterRole === "all" ||
+        acc?.role?.name?.toLowerCase() === filterRole.toLowerCase();
+      const matchStatus =
+        filterStatus === "all" ||
+        acc.status?.toLowerCase() === filterStatus.toLowerCase();
       return matchSearch && matchRole && matchStatus;
     });
-  }, [searchTerm, filterRole, filterStatus]);
+  }, [accounts, search, filterRole, filterStatus]);
+
+  const paginatedAccounts = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredAccounts.slice(start, start + PAGE_SIZE);
+  }, [filteredAccounts, currentPage]);
+
+  const totalPages = Math.ceil(filteredAccounts.length / PAGE_SIZE);
+
+  const handleEdit   = (user) => console.log("Editing:", user);
+  const handleDelete = (user) => console.log("Deleting:", user);
 
   return (
     <div className="space-y-6">
-      
-      {/* === 1. HEADER === */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">Quản lý Tài khoản</h2>
-          <p className="text-gray-500 text-sm mt-1">Quản lý thông tin và quyền hạn của người dùng hệ thống</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Account Management
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">
+            Manage user information and system permissions
+          </p>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 px-5 font-medium flex items-center justify-center gap-2 transition-colors shadow-sm shrink-0">
-          <FontAwesomeIcon icon={faPlus} className="text-sm" />
-          <span>Thêm tài khoản</span>
-        </button>
+        <Button
+          icon={faPlus}
+          label="Add Account"
+          variant="primary"
+          onClick={() => console.log("Open Add Modal")}
+        />
       </div>
 
-      {/* === 2. FILTER BAR (Bento Card Style) === */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
-          <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+          <FontAwesomeIcon
+            icon={faSearch}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+          />
           <input
             type="text"
-            placeholder="Tìm theo tên hoặc email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or email..."
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
           />
         </div>
-        
-        <select 
-          value={filterRole} 
+
+        <select
+          value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
           className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700"
         >
-          <option value="all">Tất cả vai trò</option>
-          <option value="owner">Chủ cửa hàng</option>
-          <option value="receptionist">Lễ tân</option>
-          <option value="customer">Khách hàng</option>
+          <option value="all">All Roles</option>
+          <option value="owner">Owner</option>
+          <option value="staff">Staff</option>
+          <option value="customer">Online Customer</option>
         </select>
 
-        <select 
-          value={filterStatus} 
+        <select
+          value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700"
         >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="active">Hoạt động</option>
-          <option value="inactive">Nghỉ phép</option>
-          <option value="banned">Bị khóa</option>
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="blocked">Blocked</option>
         </select>
       </div>
 
-      {/* === 3. TABLE (Bento Card Style) === */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Người dùng</th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vai trò</th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày tham gia</th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Hành động</th>
+      {error && (
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
+          {error}
+        </div>
+      )}
+
+      <DataTable
+        isLoading={loading}
+        isEmpty={!loading && filteredAccounts.length === 0}
+        emptyMessage="No matching accounts found."
+        footer={
+          <Pagination
+            displayCount={paginatedAccounts.length}
+            totalCount={filteredAccounts.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        }
+      >
+        <thead>
+          <tr className="border-b border-gray-100 bg-gray-50/50">
+            <th className="w-[35%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
+            <th className="w-[20%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Join Date</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedAccounts.map((acc) => {
+            const roleInfo   = getRoleInfo(acc.role);
+            const statusInfo = getStatusInfo(acc.status);
+            return (
+              <tr key={acc._id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+                      {acc.fullName?.charAt(0).toUpperCase() || "?"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{acc.fullName}</p>
+                      <p className="text-xs text-gray-500 truncate">{acc.email}</p>
+                    </div>
+                  </div>
+                </td>
+
+                <td className="py-4 px-6">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${roleInfo.color}`}>
+                    <FontAwesomeIcon icon={roleInfo.icon} className="text-[10px]" />
+                    {roleInfo.label}
+                  </span>
+                </td>
+
+                <td className="py-4 px-6">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+                    {statusInfo.label}
+                  </span>
+                </td>
+
+                <td className="py-4 px-6 text-sm text-gray-600 whitespace-nowrap">
+                  {acc.createdAt ? new Date(acc.createdAt).toLocaleDateString("en-GB") : "N/A"}
+                </td>
+
+                <td className="py-4 px-6 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(acc)}
+                      className="w-8 h-8 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 flex items-center justify-center transition-colors"
+                      title="Edit"
+                    >
+                      <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(acc)}
+                      className="w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center transition-colors"
+                      title="Delete"
+                    >
+                      <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                    </button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredAccounts.length > 0 ? (
-                filteredAccounts.map((acc) => {
-                  const roleInfo = getRoleInfo(acc.role);
-                  const statusInfo = getStatusInfo(acc.status);
-                  
-                  return (
-                    <tr key={acc.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          {/* Avatar Placeholder */}
-                          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                            {acc.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">{acc.name}</p>
-                            <p className="text-xs text-gray-500">{acc.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${roleInfo.color}`}>
-                          <FontAwesomeIcon icon={roleInfo.icon} className="text-[10px]" />
-                          {roleInfo.label}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'active' ? 'bg-green-500' : acc.status === 'inactive' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-600">{acc.joinDate}</td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="w-8 h-8 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 flex items-center justify-center transition-colors" title="Chỉnh sửa">
-                            <FontAwesomeIcon icon={faEdit} className="text-sm" />
-                          </button>
-                          <button className="w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Xóa">
-                            <FontAwesomeIcon icon={faTrash} className="text-sm" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="5" className="text-center py-12 text-gray-400 text-sm">
-                    Không tìm thấy tài khoản nào phù hợp.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination Placeholder */}
-        <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-sm text-gray-500">Hiển thị <span className="font-medium">{filteredAccounts.length}</span> trong <span className="font-medium">{mockAccounts.length}</span> kết quả</p>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">Trước</button>
-            <button className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white shadow-sm">1</button>
-            <button className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">Sau</button>
-          </div>
-        </div>
-      </div>
-      
+            );
+          })}
+        </tbody>
+      </DataTable>
     </div>
   );
 }

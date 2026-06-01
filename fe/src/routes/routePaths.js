@@ -8,8 +8,8 @@ export const ROUTES = {
   RESETPASSWORD: "/reset-password/:token",
 
   // Store Owner Routes
-  STORE_OWNER_BASE: "/store-owner", // Dùng cho Layout Route bọc bên ngoài
-  STOR_OWNER_ACCOUNT: "accounts"
+  STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài
+  STOR_OWNER_ACCOUNT: "accounts/:page?"
   
   // Sau này bạn có thể thêm các path khác của Owner ở đây
   // STORE_OWNER_PRODUCTS: "/store-owner/products",

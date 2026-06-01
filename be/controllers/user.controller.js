@@ -63,7 +63,7 @@ const register = async (req, res, next) => {
           fullName,
           phone,
           password: passwordHash,
-          roles: [roleUser._id],
+          role: roleUser._id,
           gender: gender || null,
           dateOfBirth: dateOfBirth || null,
 
@@ -98,7 +98,7 @@ const register = async (req, res, next) => {
       email,
       phone,
       password: passwordHash,
-      roles: [roleUser._id],
+      role: roleUser._id,
       gender: gender || null,
       dateOfBirth: dateOfBirth || null,
 
@@ -348,7 +348,7 @@ const login = async (req, res, next) => {
       email,
     })
       .select("+password")
-      .populate("roles");
+      .populate("role");
 
     // check user trước
     if (!existUser) {
@@ -364,14 +364,15 @@ const login = async (req, res, next) => {
     if (!checkPassword) {
       return next(new HttpError("Incorrect password.", 401));
     }
-    // map role sau khi chắc chắn user tồn tại
-    const roleNames = existUser.roles.map((r) => r.name);
+
+    console.log(existUser.role.name);
 
     const token = jwt.sign(
       {
         id: existUser._id,
         email: existUser.email,
-        roles: roleNames,
+        role: existUser.role.name,
+        permissions: existUser.role.permissions,
       },
       process.env.JWT_SECRET,
       {
@@ -382,7 +383,6 @@ const login = async (req, res, next) => {
     return res.status(200).json({
       message: "Login successful.",
       token,
-      roles: roleNames,
     });
   } catch (err) {
     return next(new HttpError(err.message || "Login failed.", 500));
@@ -393,14 +393,12 @@ const getProfile = async (req, res, next) => {
   try {
     const email = req.userData.email;
 
-    const user = await User.findOne({ email }).populate("roles");
+    const user = await User.findOne({ email }).populate("role");
     if (!user) {
       return next(new HttpError("User not found.", 404));
     }
-    
-    console.log(user)
 
-    const roleNames = user.roles.map((r) => r.name);
+    console.log(user);
 
     return res.status(200).json({
       user: {
@@ -411,7 +409,7 @@ const getProfile = async (req, res, next) => {
         gender: user.gender,
         dateOfBirth: user.dateOfBirth,
         provider: user.provider,
-        roles: roleNames,
+        role: user.role.name,
       },
     });
   } catch (err) {
@@ -644,13 +642,25 @@ const resetPassword = async (req, res, next) => {
 const getAllUser = async (req, res, next) => {
   try {
     const users = await User.find()
-    return res.status(200).json(users)
+      .populate("role")
+    return res.status(200).json({
+      users: users.map((u) => ({
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        avatar: u.avatar,
+        dateOfBirth: u.dateOfBirth,
+        gender: u.gender,
+        role: u.role.name,
+        status: u.status,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      })),
+    });
   } catch (err) {
-    return next(new HttpError(err.message , 500));
+    return next(new HttpError(err.message, 500));
   }
 };
-
-
 
 module.exports = {
   register,
@@ -659,5 +669,5 @@ module.exports = {
   getProfile,
   forgotPassword,
   resetPassword,
-  getAllUser
+  getAllUser,
 };

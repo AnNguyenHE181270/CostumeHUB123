@@ -6,7 +6,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState([]);
+  const [role, setRole] = useState();
   const getProfile = async (currentToken) => {
     if (!currentToken) return null;
 
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
 
       const data = await response.json();
       const userData = data.user || data;
-      setRoles(userData.roles);
+      setRole(userData.role);
       setUser(userData);
       return data;
     } catch (error) {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, loading, login, logout, roles }}
+      value={{ token, user, loading, login, logout, role }}
     >
       {children}
     </AuthContext.Provider>

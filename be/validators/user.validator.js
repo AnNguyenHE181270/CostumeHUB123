@@ -18,7 +18,7 @@ const registerValidator = [
   body("password")
     .notEmpty()
     .withMessage("Password is required")
-    .isLength({ min: 8 })
+    .isLength({ min: 6 })
     .withMessage("Password must be at least 8 characters"),
 
   body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
@@ -76,7 +76,7 @@ const resetPasswordValidator = [
   body("password")
     .notEmpty()
     .withMessage("Password is required")
-    .isLength({ min: 8 })
+    .isLength({ min: 6 })
     .withMessage("Password must be at least 8 characters"),
 ];
 

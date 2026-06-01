@@ -3,9 +3,8 @@ import { ROUTES } from "./routePaths";
 import { useAuth } from "../context/AuthContext";
 
 function OwnerRoutes() {
-  const { token, roles, loading } = useAuth();
+  const { token, role, loading } = useAuth();
 
-  // Chưa đăng nhập -> văng ra login
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -13,9 +12,8 @@ function OwnerRoutes() {
     return <Navigate to="/login" replace />;
   }
 
-  const isOwner = roles?.includes("store-owner"); 
+  const isOwner = role == "owner"; 
 
-  // Đã đăng nhập nhưng không phải owner -> văng về trang chủ
   if (!isOwner) {
     return <Navigate to="/" replace />; 
   }
