@@ -13,7 +13,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-border-2 border-primary-600"></div>
       </div>
     );
   }
@@ -51,7 +51,7 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="mt-20 border border-border rounded-[2rem] overflow-hidden bg-surface h-[400px] lg:h-[500px] flex flex-col items-center justify-center transition-all">
+            <div className="mt-20 border border-borderorder rounded-[2rem] overflow-hidden bg-surface h-[400px] lg:h-[500px] flex flex-col items-center justify-center transition-all">
               <FontAwesomeIcon icon={faShirt} className="text-text-muted text-5xl mb-4" />
               <p className="text-text-muted text-sm tracking-wide">Hero Image / Video Placeholder</p>
             </div>
@@ -59,7 +59,7 @@ export default function HomePage() {
         </section>
 
         {/* ================= LATEST COLLECTIONS ================= */}
-        <section className="bg-surface py-24 px-6 border-t border-border">
+        <section className="bg-surface py-24 px-6 border-t border-borderorder">
           <div className="mx-auto max-w-[1200px]">
             <div className="flex items-end justify-between mb-12">
               <div>
@@ -116,8 +116,8 @@ export default function HomePage() {
                 { icon: faTruckFast, title: "Express Delivery", desc: "Outfits are carefully packaged and delivered fast within 48 hours." },
                 { icon: faShieldHalved, title: "Easy Return", desc: "Just pack it up after wearing and schedule a pickup. Dry cleaning is included." },
               ].map((step, i) => (
-                <div key={i} className="bg-surface border border-border rounded-[2rem] pt-16 pb-12 px-10 hover:shadow-sm transition-shadow">
-                  <div className="w-14 h-14 bg-background border border-border rounded-full flex items-center justify-center mb-8 shadow-sm">
+                <div key={i} className="bg-surface border border-borderorder rounded-[2rem] pt-16 pb-12 px-10 hover:shadow-sm transition-shadow">
+                  <div className="w-14 h-14 bg-background border border-borderorder rounded-full flex items-center justify-center mb-8 shadow-sm">
                     <FontAwesomeIcon icon={step.icon} className="text-primary-600 text-lg" />
                   </div>
                   <h3 className="text-text-primary text-2xl font-semibold mb-3 tracking-tight">
@@ -133,7 +133,7 @@ export default function HomePage() {
         </section>
 
         {/* ================= CTA SECTION ================= */}
-        <section className="bg-surface py-24 px-6 border-t border-border">
+        <section className="bg-surface py-24 px-6 border-t border-borderorder">
           <div className="mx-auto max-w-[900px] text-center">
             <h2 className="text-text-primary text-4xl md:text-5xl font-semibold tracking-tight">
               Ready to elevate your style?

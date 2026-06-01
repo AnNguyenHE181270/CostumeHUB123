@@ -32,7 +32,7 @@ export default function Header() {
   const activePath = location.pathname;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-background border-b border-border z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-background border-border border-borderorder z-50">
       <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
         
         {/* Logo */}
@@ -66,7 +66,7 @@ export default function Header() {
           </div>
 
           {/* Icon Actions (Search, Cart, User) */}
-          <div className="flex items-center gap-2 border-l border-border pl-6">
+          <div className="flex items-center gap-2 border-l border-borderorder pl-6">
             <button className="w-9 h-9 flex items-center justify-center text-text-primary hover:bg-surface rounded-[6px] transition-colors">
               <FontAwesomeIcon icon={faSearch} className="text-[15px]" />
             </button>

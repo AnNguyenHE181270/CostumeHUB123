@@ -38,11 +38,11 @@ export default function DashboardLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-surface">
       <Sidebar menuItems={currentMenu} />
 
       <main className="flex-1 overflow-x-hidden">
-        <header className="h-16 bg-white shadow-sm px-6 flex items-center justify-between border-b relative z-10">
+        <header className="h-16 bg-white shadow-sm px-6 flex items-center justify-between border-border">
           <h1 className="text-xl font-semibold">Luxe Rent Admin</h1>
 
           {user && (

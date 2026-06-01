@@ -14,7 +14,7 @@ export default function Input({
   children,
 }) {
   const baseInputClasses = `
-    w-full bg-surface border border-border rounded-xl 
+    w-full bg-surface border border-borderorder rounded-xl 
     px-4 py-3 text-sm text-text-primary outline-none 
     transition-all duration-200 
     focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500
