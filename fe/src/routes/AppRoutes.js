@@ -13,12 +13,12 @@ import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
 import AccountsPage from "../pages/store-owner/AccountsPage";
+import ProductsPage from "../pages/store-owner/ProductsPage";
 // Import các page con khác của Owner vào đây (khi bạn đã tạo chúng)
 // import AccountsPage from "../pages/admin/AccountsPage";
 // import CategoriesPage from "../pages/admin/CategoriesPage";
 
-import StaffLayout from "../layouts/DashboardLayout"; 
-import { ROUTES } from "./routePaths"; 
+import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
 
 function AppRoutes() {
@@ -49,13 +49,13 @@ function AppRoutes() {
       <Route element={<OwnerRoutes />}>
         {/* Route cha bọc Layout */}
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
-           
-          <Route index element={<StoreOwnerDashboard />} /> 
-          
+
+          <Route index element={<StoreOwnerDashboard />} />
+
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
           {/* <Route path="users-staff" element={<UsersStaffPage />} /> */}
           {/* <Route path="categories" element={<CategoriesPage />} /> */}
-          {/* <Route path="products" element={<ProductsPage />} /> */}
+          <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           {/* <Route path="rentals" element={<RentalsPage />} /> */}
           {/* <Route path="revenue" element={<RevenuePage />} /> */}
           {/* <Route path="export" element={<ExportPage />} /> */}
