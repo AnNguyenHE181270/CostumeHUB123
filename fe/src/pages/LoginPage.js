@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
-  const { login, roles } = useAuth();
+  const { login, role } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,15 +58,14 @@ export default function LoginPage() {
         data.token,
         remember
       );
+      const role = profile?.user?.role 
 
-      const roles = profile?.user?.roles 
-
-      if (roles.includes("store-owner")) {
-        navigate("/store-owner");
+      if (role == "owner") {
+        navigate("/owner");
       } else if (
-        roles.includes("receptionist")
+        role=="staff"
       ) {
-        navigate("/receptionist");
+        navigate("/staff");
       } else {
         navigate("/");
       }

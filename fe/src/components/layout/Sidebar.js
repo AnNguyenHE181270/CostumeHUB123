@@ -34,7 +34,7 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
 
   return (
     <aside
-      className={`h-screen bg-white border-r shadow-sm transition-all duration-300 flex flex-col ${
+      className={`sticky top-0 h-screen bg-white border-r shadow-sm transition-all duration-300 flex flex-col ${
         collapsed ? "w-20" : "w-64"
       }`}
     >

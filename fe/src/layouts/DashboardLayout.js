@@ -3,19 +3,18 @@ import Sidebar from "../components/layout/Sidebar";
 import { useAuth } from "../context/AuthContext"; // Cập nhật đường dẫn
 
 import ownerSidebar from "../constants/ownerSidebar";
-import receptionistSidebar from "../constants/receptionistSidebar";
+import staffSidebar from "../constants/staffSidebar";
 
 export default function DashboardLayout() {
-  const { roles } = useAuth();
+  const { role } = useAuth();
 
-  // const currentMenu = user?.role === "owner" ? ownerSidebar : receptionistSidebar;
 
   let currentMenu
-  if(roles.includes("store-owner")){
+  if(role=="owner"){
     currentMenu = ownerSidebar
   }
-  if(roles.includes("receptionist")){
-    currentMenu = receptionistSidebar
+  if(role=="staff"){
+    currentMenu = staffSidebar
   }
 
   return (

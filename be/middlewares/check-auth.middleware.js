@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const HttpError = require("../models/http-error.model");
+const userModel = require("../models/user.model");
 
 const checkAuth = (req, res, next) => {
   if (req.method === "OPTIONS") {
@@ -26,7 +27,8 @@ const checkAuth = (req, res, next) => {
     req.userData = {
       id: decodedToken.id,
       email: decodedToken.email,
-      roles: decodedToken.roles || [],
+      role: decodedToken.role ,
+      permissions: decodedToken.permissions
     };
 
     next();
@@ -35,45 +37,21 @@ const checkAuth = (req, res, next) => {
   }
 };
 
-const checkStoreOwner = (req, res, next) => {
+const requirePermission = (permission) => (req, res, next) => {
   try {
-    if (!req.userData.roles.includes("store-owner")) {
-      return next(new HttpError("Access denied! Store-owner only.", 403));
+    const permissions = req.userData.permissions 
+
+    if (!permissions.includes(permission)) {
+      return next(new HttpError("Access denied!", 403))
     }
 
-    next();
+    next()
   } catch (err) {
-    return next(new HttpError("Authorization failed!", 403));
+    return next(new HttpError("Authorization failed!", 403))
   }
-};
-
-const checkReceptionist = (req, res, next) => {
-  try {
-    if (!req.userData.roles.includes("receptionist")) {
-      return next(new HttpError("Access denied! Receptionist only.", 403));
-    }
-
-    next();
-  } catch (err) {
-    return next(new HttpError("Authorization failed!", 403));
-  }
-};
-
-const checkOnlineCustomer = (req, res, next) => {
-  try {
-    if (!req.userData.roles.includes("online-customer")) {
-      return next(new HttpError("Access denied! Online customer only.", 403));
-    }
-
-    next();
-  } catch (err) {
-    return next(new HttpError("Authorization failed!", 403));
-  }
-};
+}
 
 module.exports = {
   checkAuth,
-  checkStoreOwner,
-  checkReceptionist,
-  checkOnlineCustomer,
+  requirePermission
 };
