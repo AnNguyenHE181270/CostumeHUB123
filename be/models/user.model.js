@@ -12,10 +12,9 @@ const addressSchema = new mongoose.Schema(
     note: { type: String, default: "" },
     isDefault: { type: Boolean, default: false },
   },
-  { _id: true }
+  { _id: true },
 );
 
-// ===== 2. MAIN SCHEMA: USER =====
 const userSchema = new mongoose.Schema(
   {
     fullName: {
@@ -45,7 +44,7 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       unique: true,
-      sparse: true, 
+      sparse: true,
       trim: true,
     },
 
@@ -61,14 +60,13 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
     },
 
-    // ===== PHÂN QUYỀN =====
+    // User schema
     role: {
-      type: String,
-      enum: ["store-owner", "receptionist", "online-customer"],
-      default: "online-customer",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
+      required: true,
     },
-
-    // ===== TRẠNG THÁI TÀI KHOẢN =====
+  
     status: {
       type: String,
       enum: ["active", "blocked", "pending"],
@@ -88,23 +86,21 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpire: { type: Date, select: false },
 
-  
     addresses: {
       type: [addressSchema],
       default: [],
     },
 
-
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Costume", 
+        ref: "Costume",
       },
     ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("User", userSchema);

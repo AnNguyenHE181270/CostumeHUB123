@@ -97,26 +97,60 @@ export default function VerifyOtpPage() {
     return (
         <AuthLayout>
             <div className="w-full max-w-[420px] text-center">
-                <div className="lg:hidden mb-10"><span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">CostumeHUB</span></div>
-                <div className="mx-auto w-14 h-14 rounded-largeFeatures bg-ghost-fog flex items-center justify-center mb-8">
-                    <FontAwesomeIcon icon={faShieldHalved} className="text-action-blue text-xl" />
+                <div className="lg:hidden mb-10">
+                    <span className="text-text-primary text-[11px] font-medium tracking-[0.35em] uppercase">Luxe Rent</span>
                 </div>
+                
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mb-8">
+                    <FontAwesomeIcon icon={faShieldHalved} className="text-primary-600 text-xl" />
+                </div>
+                
                 <div className="mb-10">
-                    <h2 className="text-abyssal-black font-medium mb-3" style={{ fontSize: "43px", lineHeight: 1.05, letterSpacing: "-0.02em" }}>Verify OTP</h2>
-                    <p className="text-midnight-ink/60 text-[14px] leading-[1.5]">A verification code has been sent to<br /><span className="text-abyssal-black font-medium">{decodedEmail}</span></p>
+                    <h2 className="text-text-primary text-4xl font-semibold tracking-tight mb-3">Verify OTP</h2>
+                    <p className="text-text-secondary text-sm leading-relaxed">
+                        A verification code has been sent to<br />
+                        <span className="text-text-primary font-medium">{decodedEmail}</span>
+                    </p>
                 </div>
+                
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="flex justify-center gap-3" onPaste={handlePaste}>
                         {otp.map((data, index) => (
-                            <input key={index} type="text" inputMode="text" maxLength={1} value={data} ref={(el) => (inputRefs.current[index] = el)} onChange={(e) => handleChange(e, index)} onKeyDown={(e) => handleKeyDown(e, index)} onFocus={handleFocus}
-                                className="w-12 h-14 text-center text-[20px] font-medium text-abyssal-black bg-ghost-fog border border-sterling-gray rounded-cards outline-none transition-all duration-200 focus:border-midnight-ink focus:bg-canvas-white uppercase" />
+                            <input 
+                                key={index} 
+                                type="text" 
+                                inputMode="text" 
+                                maxLength={1} 
+                                value={data} 
+                                ref={(el) => (inputRefs.current[index] = el)} 
+                                onChange={(e) => handleChange(e, index)} 
+                                onKeyDown={(e) => handleKeyDown(e, index)} 
+                                onFocus={handleFocus}
+                                className="w-12 h-14 text-center text-xl font-medium text-text-primary bg-surface border border-border rounded-xl outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 uppercase" 
+                            />
                         ))}
                     </div>
+                    
                     {error && <ErrorMessage message={error} />}
-                    <Button type="submit" icon={faArrowRight} label="Confirm" loading={loading} className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons w-full" />
-                    <div className="text-[14px] text-midnight-ink/60 pt-2">
-                        {timeLeft > 0 ? (<>Resend code in <span className="text-warning-orange font-medium tabular-nums">{formatTime(timeLeft)}</span></>) : (
-                            <button type="button" onClick={handleResendOtp} disabled={isResending} className="text-action-blue font-medium hover:text-blue-700 transition-colors disabled:opacity-50">
+                    
+                    <Button 
+                        type="submit" 
+                        variant="primary"
+                        icon={faArrowRight} 
+                        label="Confirm" 
+                        loading={loading} 
+                    />
+                    
+                    <div className="text-sm text-text-secondary pt-2">
+                        {timeLeft > 0 ? (
+                            <>Resend code in <span className="text-primary-600 font-medium tabular-nums">{formatTime(timeLeft)}</span></>
+                        ) : (
+                            <button 
+                                type="button" 
+                                onClick={handleResendOtp} 
+                                disabled={isResending} 
+                                className="text-primary-600 font-medium hover:text-primary-700 transition-colors disabled:opacity-50"
+                            >
                                 {isResending ? "Sending..." : "Resend OTP"}
                             </button>
                         )}

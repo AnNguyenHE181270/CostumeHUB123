@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEye,
-  faEyeSlash,
-  faArrowRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import Input from "../components/ui/Input";
 import { useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "../routes/routePaths";
@@ -41,7 +37,7 @@ export default function ResetPasswordPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
-        },
+        }
       );
       const data = await response.json();
       if (!response.ok) {
@@ -59,44 +55,33 @@ export default function ResetPasswordPage() {
   return (
     <AuthLayout>
       <div className="w-full max-w-[420px]">
-        {/* Mobile logo */}
         <div className="lg:hidden mb-10">
-          <span className="text-midnight-ink text-[11px] font-medium tracking-[0.35em] uppercase">
-            CostumeHUB
+          <span className="text-text-primary text-[11px] font-medium tracking-[0.35em] uppercase">
+            Luxe Rent
           </span>
         </div>
 
-        {/* Header */}
         <div className="mb-10">
-          <p className="text-warning-orange text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
+          <p className="text-primary-600 text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Account Security
           </p>
-          <h2
-            className="text-abyssal-black font-medium"
-            style={{
-              fontSize: "43px",
-              lineHeight: 1.05,
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
             Reset Password
           </h2>
-          <p className="mt-4 text-midnight-ink/60 text-[14px] leading-[1.6]">
+          <p className="mt-4 text-text-secondary text-sm leading-relaxed">
             Please enter a new password for your account. This link is only
             valid for 15 minutes.
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* New Password */}
           <Input
             label="New Password"
             name="password"
             type={showPw ? "text" : "password"}
             value={form.password}
             onChange={handleChange}
-            placeholder="8+ characters"
+            placeholder="6+ characters"
             required
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
@@ -104,7 +89,6 @@ export default function ResetPasswordPage() {
             onRightIconClick={() => setShowPw(!showPw)}
           />
 
-          {/* Confirm New Password */}
           <Input
             label="Confirm New Password"
             name="confirmPassword"
@@ -122,25 +106,24 @@ export default function ResetPasswordPage() {
             onRightIconClick={() => setShowConfirmPw(!showConfirmPw)}
           />
 
-          {/* Error Message */}
           {error && <ErrorMessage message={error} />}
 
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            icon={faArrowRight}
-            label="Update Password"
-            loading={loading}
-            className="bg-action-blue text-canvas-white hover:bg-blue-700 rounded-buttons"
-          />
+          <div className="pt-2 mb-6">
+            <Button
+              type="submit"
+              variant="primary"
+              icon={faArrowRight}
+              label="Update Password"
+              loading={loading}
+            />
+          </div>
 
-          {/* Link back to Login */}
-          <p className="text-center text-[14px] text-midnight-ink/60">
+          <p className="text-center text-sm text-text-secondary">
             Remembered your password?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="text-action-blue font-medium hover:underline"
+              className="text-primary-600 font-medium hover:text-primary-700 transition-colors"
             >
               Back to Login
             </button>

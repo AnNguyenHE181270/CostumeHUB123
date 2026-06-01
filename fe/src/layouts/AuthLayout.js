@@ -3,13 +3,10 @@ import React from "react";
 export default function AuthLayout({ children }) {
   return (
     <div className="min-h-screen flex">
-      {/* ==================== LEFT HERO ==================== */}
-      <div className="hidden lg:flex w-[45%] bg-midnight-coal relative overflow-hidden flex-col">
-        {/* Gradient orbs */}
-        <div className="absolute -top-[15%] -right-[5%] w-[480px] h-[480px] rounded-full bg-sunset-orange/15 blur-[120px]" />
-        <div className="absolute -bottom-[5%] -left-[8%] w-[350px] h-[350px] rounded-full bg-rich-amethyst/10 blur-[100px]" />
+      <div className="hidden lg:flex w-[45%] bg-text-primary relative overflow-hidden flex-col">
+        <div className="absolute -top-[15%] -right-[5%] w-[480px] h-[480px] rounded-full bg-primary-600/20 blur-[120px]" />
+        <div className="absolute -bottom-[5%] -left-[8%] w-[350px] h-[350px] rounded-full bg-primary-400/10 blur-[100px]" />
 
-        {/* Dot grid texture */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -19,23 +16,21 @@ export default function AuthLayout({ children }) {
           }}
         />
 
-        <div className="relative z-10 flex flex-col justify-between p-f-100 h-full">
-          {/* Logo */}
-          <span className="text-cloud-white/60 text-[11px] font-medium tracking-[0.35em] uppercase">
-            CostumeHUB
+        <div className="relative z-10 flex flex-col justify-between p-12 lg:p-16 h-full">
+          <span className="text-white/60 text-[11px] font-medium tracking-[0.35em] uppercase">
+            Luxe Rent
           </span>
 
-          {/* Hero content */}
           <div className="space-y-10">
             <div>
               <div className="flex items-center gap-3 mb-8">
-                <div className="w-8 h-px bg-desert-gold/50" />
-                <span className="text-desert-gold text-[10px] uppercase tracking-[0.3em] font-medium">
+                <div className="w-8 h-px bg-warning-500/50" />
+                <span className="text-warning-500 text-[10px] uppercase tracking-[0.3em] font-medium">
                   Fashion Rental
                 </span>
               </div>
               <h1
-                className="text-cloud-white font-medium"
+                className="text-white font-medium"
                 style={{
                   fontSize: "73px",
                   lineHeight: 0.92,
@@ -44,19 +39,18 @@ export default function AuthLayout({ children }) {
               >
                 Phong cách
                 <br />
-                <span className="bg-clip-text text-transparent bg-sunset-orange">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600">
                   không giới hạn
                 </span>
               </h1>
             </div>
 
-            <p className="text-muted-slate text-[14px] leading-[1.6] max-w-[340px]">
+            <p className="text-text-muted text-[14px] leading-[1.6] max-w-[340px]">
               Hàng nghìn thiết kế cao cấp từ Valentino, Acne Studios,
               Zimmermann, The Row — sẵn sàng cho những khoảnh khắc đáng nhớ nhất
               của bạn.
             </p>
 
-            {/* Stats */}
             <div className="flex gap-14 pt-2">
               {[
                 { num: "2,400+", label: "Outfit" },
@@ -65,7 +59,7 @@ export default function AuthLayout({ children }) {
               ].map((s) => (
                 <div key={s.label}>
                   <div
-                    className="text-cloud-white font-medium"
+                    className="text-white font-medium"
                     style={{
                       fontSize: "27px",
                       lineHeight: 1.15,
@@ -74,7 +68,7 @@ export default function AuthLayout({ children }) {
                   >
                     {s.num}
                   </div>
-                  <div className="text-muted-slate/50 text-[10px] uppercase tracking-[0.2em] mt-1.5">
+                  <div className="text-text-muted text-[10px] uppercase tracking-[0.2em] mt-1.5">
                     {s.label}
                   </div>
                 </div>
@@ -82,15 +76,16 @@ export default function AuthLayout({ children }) {
             </div>
           </div>
 
-          <span className="text-muted-slate/25 text-[10px] tracking-[0.2em] uppercase">
-            © 2026 CostumeHUB • Hà Nội
+          <span className="text-text-muted/50 text-[10px] tracking-[0.2em] uppercase">
+            © 2026 Luxe Rent • Hà Nội
           </span>
         </div>
       </div>
 
-      {/* ==================== RIGHT CONTENT ==================== */}
-      <div className="flex-1 flex items-center justify-center bg-cloud-white px-6 py-16">
-        {children}
+      <div className="flex-1 flex items-center justify-center bg-background px-6 py-16">
+        <div className="w-full max-w-md">
+          {children}
+        </div>
       </div>
     </div>
   );

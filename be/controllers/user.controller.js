@@ -5,7 +5,7 @@ const HttpError = require("../models/http-error.model");
 const User = require("../models/user.model");
 const Role = require("../models/role.model");
 const sendEmail = require("../services/email.service");
-const crypto = require("crypto")
+const crypto = require("crypto");
 const OTP_TTL_MS = 1 * 60 * 1000;
 
 const register = async (req, res, next) => {
@@ -20,7 +20,10 @@ const register = async (req, res, next) => {
 
     if (existUser && existUser.status === "active") {
       return next(
-        new HttpError("An account with this email already exists. Please log in instead.", 422),
+        new HttpError(
+          "An account with this email already exists. Please log in instead.",
+          422,
+        ),
       );
     }
 
@@ -60,7 +63,7 @@ const register = async (req, res, next) => {
           fullName,
           phone,
           password: passwordHash,
-          roles: roleUser._id,
+          role: roleUser._id,
           gender: gender || null,
           dateOfBirth: dateOfBirth || null,
 
@@ -74,8 +77,9 @@ const register = async (req, res, next) => {
 
       await sendEmailVerification(email, otp, fullName);
 
-      return res.status(201).json({
-        message: "Registration successful. Please check your email for the OTP.",
+      return res.status(200).json({
+        message:
+          "Registration successful. Please check your email for the OTP.",
         type: "new",
         user: {
           id: updatedUser._id,
@@ -94,9 +98,9 @@ const register = async (req, res, next) => {
       email,
       phone,
       password: passwordHash,
-      roles: roleUser._id,
-      gender: gender,
-      dateOfBirth: dateOfBirth,
+      role: roleUser._id,
+      gender: gender || null,
+      dateOfBirth: dateOfBirth || null,
 
       otpCode: otpHash,
       otpExpires,
@@ -340,36 +344,48 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const existUser = await User.findOne({ email }).select("+password");
+    const existUser = await User.findOne({
+      email,
+    })
+      .select("+password")
+      .populate("role");
+
+    // check user trước
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
     }
-    if (existUser.status == "blocked") {
-      return next(new HttpError("User is blocked", 400))
+
+    if (existUser.status === "blocked") {
+      return next(new HttpError("User is blocked", 400));
     }
+
     const checkPassword = await bcrypt.compare(password, existUser.password);
+
     if (!checkPassword) {
       return next(new HttpError("Incorrect password.", 401));
     }
+
+    console.log(existUser.role.name);
 
     const token = jwt.sign(
       {
         id: existUser._id,
         email: existUser.email,
-        role: existUser.roles
+        role: existUser.role.name,
+        permissions: existUser.role.permissions,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" },
+      {
+        expiresIn: "7d",
+      },
     );
 
     return res.status(200).json({
       message: "Login successful.",
-      token: token,
+      token,
     });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Email verification failed.", 500),
-    );
+    return next(new HttpError(err.message || "Login failed.", 500));
   }
 };
 
@@ -377,10 +393,12 @@ const getProfile = async (req, res, next) => {
   try {
     const email = req.userData.email;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate("role");
     if (!user) {
       return next(new HttpError("User not found.", 404));
     }
+
+    console.log(user);
 
     return res.status(200).json({
       user: {
@@ -391,7 +409,7 @@ const getProfile = async (req, res, next) => {
         gender: user.gender,
         dateOfBirth: user.dateOfBirth,
         provider: user.provider,
-        roles: user.roles,
+        role: user.role.name,
       },
     });
   } catch (err) {
@@ -400,9 +418,6 @@ const getProfile = async (req, res, next) => {
     );
   }
 };
-
-
-
 
 const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   await sendEmail({
@@ -542,40 +557,63 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   });
 };
 
-
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
+      return next(
+        new HttpError(
+          "If an account with this email exists, password reset instructions have been sent.",
+          200,
+        ),
+      );
     }
 
+    if (!user.isEmailVerified) {
+      return next(
+        new HttpError(
+          "Email is not verified. Please verify your email before resetting your password.",
+          403,
+        ),
+      );
+    }
 
+    if (user.status === "blocked") {
+      return next(
+        new HttpError(
+          "Your account has been blocked. Please contact support for assistance.",
+          403,
+        ),
+      );
+    }
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
 
     await user.save();
 
-    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`
+    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
     await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
-    res.status(200).json({ message: "If an account with this email exists, password reset instructions have been sent." });
+    res.status(200).json({
+      message:
+        "If an account with this email exists, password reset instructions have been sent.",
+    });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Error system.", 500)
-    );
+    return next(new HttpError(err.message || "Error system.", 500));
   }
 };
 
-
 const resetPassword = async (req, res, next) => {
   try {
-    const token = req.params.token
-    const password = req.body.password
+    const token = req.params.token;
+    const password = req.body.password;
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -601,6 +639,29 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const getAllUser = async (req, res, next) => {
+  try {
+    const users = await User.find()
+      .populate("role")
+    return res.status(200).json({
+      users: users.map((u) => ({
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        avatar: u.avatar,
+        dateOfBirth: u.dateOfBirth,
+        gender: u.gender,
+        role: u.role.name,
+        status: u.status,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      })),
+    });
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
 module.exports = {
   register,
   verifyOtp,
@@ -608,4 +669,5 @@ module.exports = {
   getProfile,
   forgotPassword,
   resetPassword,
+  getAllUser,
 };

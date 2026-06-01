@@ -1,10 +1,8 @@
-// middleware/check-auth.js
 const jwt = require("jsonwebtoken");
-
 const HttpError = require("../models/http-error.model");
+const userModel = require("../models/user.model");
 
 const checkAuth = (req, res, next) => {
-  // Cho phép preflight CORS đi qua
   if (req.method === "OPTIONS") {
     return next();
   }
@@ -16,7 +14,6 @@ const checkAuth = (req, res, next) => {
       return next(new HttpError("Authentication failed!", 401));
     }
 
-    // Format đúng: Authorization: Bearer <token>
     const parts = authHeader.split(" ");
 
     if (parts.length !== 2 || parts[0] !== "Bearer") {
@@ -30,7 +27,8 @@ const checkAuth = (req, res, next) => {
     req.userData = {
       id: decodedToken.id,
       email: decodedToken.email,
-      role: decodedToken.role,
+      role: decodedToken.role ,
+      permissions: decodedToken.permissions
     };
 
     next();
@@ -39,4 +37,21 @@ const checkAuth = (req, res, next) => {
   }
 };
 
-module.exports = checkAuth;
+const requirePermission = (permission) => (req, res, next) => {
+  try {
+    const permissions = req.userData.permissions 
+
+    if (!permissions.includes(permission)) {
+      return next(new HttpError("Access denied!", 403))
+    }
+
+    next()
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403))
+  }
+}
+
+module.exports = {
+  checkAuth,
+  requirePermission
+};
