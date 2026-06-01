@@ -10,6 +10,7 @@ import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import CategoryPage from "../pages/CategoryPage";
+import ProductDetailPage from "../pages/ProductDetailPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -29,6 +30,7 @@ function AppRoutes() {
         <Route path={ROUTES.HOME} element={<HomePage />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
         <Route path="/products" element={<CategoryPage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
       </Route>
 
       <Route element={<PublicRoutes />}>
