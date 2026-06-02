@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Input from "../../components/ui/Input";
@@ -10,11 +10,12 @@ import Toast from "../../components/ui/Toast";
 const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [tree, setTree] = useState([]);
-  
+  const [expandedNodes, setExpandedNodes] = useState({});
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "", parentId: "" });
-  
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
   const [pendingData, setPendingData] = useState(null);
@@ -58,7 +59,19 @@ const CategoriesPage = () => {
       }
     });
 
+    // Mặc định mở rộng tất cả danh mục gốc (tuỳ chọn)
+    const initialExpanded = {};
+    roots.forEach(r => initialExpanded[r._id] = true);
+    setExpandedNodes(initialExpanded);
+
     setTree(roots);
+  };
+
+  const toggleNode = (nodeId) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeId]: !prev[nodeId]
+    }));
   };
 
   // ---- Form Handlers ----
@@ -69,6 +82,8 @@ const CategoriesPage = () => {
   };
 
   const handleOpenAddChild = (parentCat) => {
+    // Tự động mở rộng cha khi thêm con
+    setExpandedNodes(prev => ({ ...prev, [parentCat._id]: true }));
     setEditingCategory(null);
     setFormData({ name: "", description: "", parentId: parentCat._id });
     setIsFormOpen(true);
@@ -88,7 +103,7 @@ const CategoriesPage = () => {
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formData.name) return alert("Vui lòng nhập tên danh mục!");
-    
+
     setPendingData(formData);
     setConfirmAction(editingCategory ? 'edit' : 'add');
     setIsFormOpen(false);
@@ -188,7 +203,7 @@ const CategoriesPage = () => {
     if (confirmAction === 'add') await executeAdd(pendingData);
     else if (confirmAction === 'edit') await executeEdit(pendingData);
     else if (confirmAction === 'toggleStatus') await executeToggleStatus(pendingData);
-    
+
     setPendingData(null);
     setEditingCategory(null);
   };
@@ -201,33 +216,81 @@ const CategoriesPage = () => {
 
   // ---- Render Tree ----
   const renderTree = (nodes, level = 0) => {
-    return nodes.map(node => (
-      <React.Fragment key={node._id}>
-        <div className={`flex items-center justify-between p-3 border-b hover:bg-gray-50 transition-colors ${!node.isActive ? 'bg-gray-100 opacity-60' : ''}`} style={{ paddingLeft: `${level * 2 + 1}rem` }}>
-          <div className="flex items-center gap-3">
-            <FontAwesomeIcon icon={node.children.length > 0 ? faFolderOpen : faFolder} className="text-[#f94a00]" />
-            <span className={`font-medium ${!node.isActive ? 'line-through text-gray-500' : 'text-gray-800'}`}>{node.name}</span>
-            {node.description && <span className="text-sm text-gray-500">- {node.description}</span>}
+    return nodes.map(node => {
+      const isExpanded = !!expandedNodes[node._id];
+      const hasChildren = node.children && node.children.length > 0;
+
+      return (
+        <React.Fragment key={node._id}>
+          <div
+            className={`group flex items-center justify-between p-3 border-b hover:bg-orange-50 transition-colors ${!node.isActive ? 'bg-gray-50 opacity-60' : 'bg-white'}`}
+            style={{ paddingLeft: `${level * 2 + 1}rem` }}
+          >
+            <div
+              className={`flex items-center gap-3 ${hasChildren ? 'cursor-pointer' : ''}`}
+              onClick={() => hasChildren && toggleNode(node._id)}
+            >
+              <div className="w-5 flex justify-center">
+                {hasChildren && (
+                  <FontAwesomeIcon
+                    icon={isExpanded ? faChevronDown : faChevronRight}
+                    className="text-gray-400 hover:text-[#f94a00] transition-colors"
+                  />
+                )}
+              </div>
+
+              <FontAwesomeIcon
+                icon={isExpanded || !hasChildren ? faFolderOpen : faFolder}
+                className={node.isActive ? "text-[#f94a00]" : "text-gray-400"}
+              />
+
+              <span className={`font-medium ${!node.isActive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                {node.name}
+              </span>
+
+              {node.description && (
+                <span className="text-sm text-gray-500 hidden md:inline-block ml-2 italic">
+                  - {node.description}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              {node.isActive && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
+                    className="p-2 text-[#f94a00] hover:bg-orange-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    title="Thêm danh mục con"
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
+                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    title="Sửa danh mục"
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleToggleStatusClick(node); }}
+                className={`p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${node.isActive ? 'text-red-600 hover:bg-red-100' : 'text-green-600 hover:bg-green-100'}`}
+                title={node.isActive ? 'Ẩn danh mục' : 'Khôi phục'}
+              >
+                <FontAwesomeIcon icon={node.isActive ? faEyeSlash : faEye} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {node.isActive && (
-              <>
-                <button onClick={() => handleOpenAddChild(node)} className="p-1.5 text-xs text-[#f94a00] hover:bg-orange-50 rounded" title="Thêm danh mục con">
-                  <FontAwesomeIcon icon={faPlus} className="mr-1" /> Con
-                </button>
-                <button onClick={() => handleOpenEdit(node)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Sửa">
-                  <FontAwesomeIcon icon={faEdit} />
-                </button>
-              </>
-            )}
-            <button onClick={() => handleToggleStatusClick(node)} className={`p-1.5 rounded ${node.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`} title={node.isActive ? 'Ẩn danh mục' : 'Khôi phục'}>
-              <FontAwesomeIcon icon={node.isActive ? faEyeSlash : faEye} />
-            </button>
-          </div>
-        </div>
-        {node.children.length > 0 && renderTree(node.children, level + 1)}
-      </React.Fragment>
-    ));
+          {hasChildren && isExpanded && (
+            <div className="animate-fade-in">
+              {renderTree(node.children, level + 1)}
+            </div>
+          )}
+        </React.Fragment>
+      );
+    });
   };
 
   return (
@@ -259,7 +322,7 @@ const CategoriesPage = () => {
             </h2>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
-              
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
                 <select
@@ -295,16 +358,16 @@ const CategoriesPage = () => {
         title="Xác nhận"
         message={
           confirmAction === 'add' ? "Bạn có chắc chắn muốn thêm danh mục này?" :
-          confirmAction === 'edit' ? "Bạn có chắc chắn muốn lưu thay đổi?" :
-          confirmAction === 'toggleStatus' ? (pendingData?.isActive ? "Ẩn danh mục này sẽ ẩn luôn các danh mục con và sản phẩm bên trong. Bạn có chắc không?" : "Bạn có muốn khôi phục danh mục này?") : ""
+            confirmAction === 'edit' ? "Bạn có chắc chắn muốn lưu thay đổi?" :
+              confirmAction === 'toggleStatus' ? (pendingData?.isActive ? "Ẩn danh mục này sẽ ẩn luôn các danh mục con và sản phẩm bên trong. Bạn có chắc không?" : "Bạn có muốn khôi phục danh mục này?") : ""
         }
       />
 
-      <Toast 
-        isVisible={toast.isVisible} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
