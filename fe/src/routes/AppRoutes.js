@@ -22,6 +22,7 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
+import { Checkout } from "../pages/customer/CheckoutPage";
 
 function AppRoutes() {
   return (
@@ -45,6 +46,7 @@ function AppRoutes() {
       {/* User thường */}
       <Route element={<ProtectedRoutes />}>
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<Checkout />} />
       </Route>
 
       {/* Staff / Lễ tân */}
