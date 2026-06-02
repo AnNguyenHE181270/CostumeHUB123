@@ -1,6 +1,7 @@
 export const ROUTES = {
   // Public Routes
   HOME: "/",
+  CATEGORY: "/category/:categoryId",
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY: "/verify-otp/:email",
@@ -9,10 +10,10 @@ export const ROUTES = {
 
   // Store Owner Routes
   STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài
-  STOR_OWNER_ACCOUNT: "accounts/:page?"
-  
+  STOR_OWNER_ACCOUNT: "accounts/:page?",
+
   // Sau này bạn có thể thêm các path khác của Owner ở đây
-  // STORE_OWNER_PRODUCTS: "/store-owner/products",
+  STORE_OWNER_PRODUCTS: "products",
   // STORE_OWNER_ORDERS: "/store-owner/orders",
 
   // Staff Routes
