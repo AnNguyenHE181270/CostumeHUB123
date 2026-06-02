@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 
-
-
 const costumeSchema = new mongoose.Schema(
   {
     name: {
@@ -43,28 +41,13 @@ const costumeSchema = new mongoose.Schema(
       },
     ],
 
-    rentalRates: {
-      pricePerDay: { type: Number, required: true, min: 0 },
-      pricePer3Days: { type: Number },
-      pricePerWeek: { type: Number },
-    },
-
-    deposit: {
+    rentalPricePerDay: {
       type: Number,
-      default: 0,
+      required: true,
+      min: 0,
     },
 
-    minRentalDays: {
-      type: Number,
-      default: 1,
-    },
-
-    lateFeePerDay: {
-      type: Number,
-      default: 0,
-    },
-
-    overdueFee: {
+    depositPrice: {
       type: Number,
       default: 0,
     },
@@ -82,7 +65,7 @@ const costumeSchema = new mongoose.Schema(
       type: String,
     },
 
-    condition: {
+    material: {
       type: String,
     },
 
@@ -99,6 +82,7 @@ const costumeSchema = new mongoose.Schema(
         "available",
         "rented",
         "maintenance",
+        "dry_cleaning",
         "hidden",
         "discontinued"
       ],
