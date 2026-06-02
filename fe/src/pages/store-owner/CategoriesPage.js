@@ -11,11 +11,11 @@ const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [tree, setTree] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState({});
-  
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "", parentId: "" });
-  
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
   const [pendingData, setPendingData] = useState(null);
@@ -103,7 +103,7 @@ const CategoriesPage = () => {
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formData.name) return alert("Vui lòng nhập tên danh mục!");
-    
+
     setPendingData(formData);
     setConfirmAction(editingCategory ? 'edit' : 'add');
     setIsFormOpen(false);
@@ -203,7 +203,7 @@ const CategoriesPage = () => {
     if (confirmAction === 'add') await executeAdd(pendingData);
     else if (confirmAction === 'edit') await executeEdit(pendingData);
     else if (confirmAction === 'toggleStatus') await executeToggleStatus(pendingData);
-    
+
     setPendingData(null);
     setEditingCategory(null);
   };
@@ -219,64 +219,64 @@ const CategoriesPage = () => {
     return nodes.map(node => {
       const isExpanded = !!expandedNodes[node._id];
       const hasChildren = node.children && node.children.length > 0;
-      
+
       return (
         <React.Fragment key={node._id}>
-          <div 
-            className={`group flex items-center justify-between p-3 border-b hover:bg-orange-50 transition-colors ${!node.isActive ? 'bg-gray-50 opacity-60' : 'bg-white'}`} 
+          <div
+            className={`group flex items-center justify-between p-3 border-b hover:bg-orange-50 transition-colors ${!node.isActive ? 'bg-gray-50 opacity-60' : 'bg-white'}`}
             style={{ paddingLeft: `${level * 2 + 1}rem` }}
           >
-            <div 
+            <div
               className={`flex items-center gap-3 ${hasChildren ? 'cursor-pointer' : ''}`}
               onClick={() => hasChildren && toggleNode(node._id)}
             >
               <div className="w-5 flex justify-center">
                 {hasChildren && (
-                  <FontAwesomeIcon 
-                    icon={isExpanded ? faChevronDown : faChevronRight} 
-                    className="text-gray-400 hover:text-[#f94a00] transition-colors" 
+                  <FontAwesomeIcon
+                    icon={isExpanded ? faChevronDown : faChevronRight}
+                    className="text-gray-400 hover:text-[#f94a00] transition-colors"
                   />
                 )}
               </div>
-              
-              <FontAwesomeIcon 
-                icon={isExpanded || !hasChildren ? faFolderOpen : faFolder} 
-                className={node.isActive ? "text-[#f94a00]" : "text-gray-400"} 
+
+              <FontAwesomeIcon
+                icon={isExpanded || !hasChildren ? faFolderOpen : faFolder}
+                className={node.isActive ? "text-[#f94a00]" : "text-gray-400"}
               />
-              
+
               <span className={`font-medium ${!node.isActive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                 {node.name}
               </span>
-              
+
               {node.description && (
                 <span className="text-sm text-gray-500 hidden md:inline-block ml-2 italic">
                   - {node.description}
                 </span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               {node.isActive && (
                 <>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }} 
-                    className="p-2 text-[#f94a00] hover:bg-orange-100 rounded-full transition-colors flex items-center justify-center w-8 h-8" 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
+                    className="p-2 text-[#f94a00] hover:bg-orange-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Thêm danh mục con"
                   >
                     <FontAwesomeIcon icon={faPlus} />
                   </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }} 
-                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors flex items-center justify-center w-8 h-8" 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
+                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Sửa danh mục"
                   >
                     <FontAwesomeIcon icon={faEdit} />
                   </button>
                 </>
               )}
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleToggleStatusClick(node); }} 
-                className={`p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${node.isActive ? 'text-red-600 hover:bg-red-100' : 'text-green-600 hover:bg-green-100'}`} 
+              <button
+                onClick={(e) => { e.stopPropagation(); handleToggleStatusClick(node); }}
+                className={`p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${node.isActive ? 'text-red-600 hover:bg-red-100' : 'text-green-600 hover:bg-green-100'}`}
                 title={node.isActive ? 'Ẩn danh mục' : 'Khôi phục'}
               >
                 <FontAwesomeIcon icon={node.isActive ? faEyeSlash : faEye} />
@@ -322,7 +322,7 @@ const CategoriesPage = () => {
             </h2>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
-              
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
                 <select
@@ -358,16 +358,16 @@ const CategoriesPage = () => {
         title="Xác nhận"
         message={
           confirmAction === 'add' ? "Bạn có chắc chắn muốn thêm danh mục này?" :
-          confirmAction === 'edit' ? "Bạn có chắc chắn muốn lưu thay đổi?" :
-          confirmAction === 'toggleStatus' ? (pendingData?.isActive ? "Ẩn danh mục này sẽ ẩn luôn các danh mục con và sản phẩm bên trong. Bạn có chắc không?" : "Bạn có muốn khôi phục danh mục này?") : ""
+            confirmAction === 'edit' ? "Bạn có chắc chắn muốn lưu thay đổi?" :
+              confirmAction === 'toggleStatus' ? (pendingData?.isActive ? "Ẩn danh mục này sẽ ẩn luôn các danh mục con và sản phẩm bên trong. Bạn có chắc không?" : "Bạn có muốn khôi phục danh mục này?") : ""
         }
       />
 
-      <Toast 
-        isVisible={toast.isVisible} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );

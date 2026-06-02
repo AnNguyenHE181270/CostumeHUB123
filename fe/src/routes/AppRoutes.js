@@ -18,7 +18,9 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
-import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
+
+import MainLayout from "../layouts/MainLayout";
+import { Checkout } from "../pages/customer/CheckoutPage";
 
 function AppRoutes() {
   return (
@@ -36,7 +38,9 @@ function AppRoutes() {
 
       {/* User thường */}
       <Route element={<ProtectedRoutes />}>
-        {/* <Route path="/cart" element={<CartPage />} /> */}
+
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<Checkout />} />
       </Route>
 
       {/* Staff / Lễ tân */}
@@ -52,7 +56,7 @@ function AppRoutes() {
           <Route index element={<StoreOwnerDashboard />} />
 
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
-          <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage/>} />
+          <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           {/* <Route path="rentals" element={<RentalsPage />} /> */}
