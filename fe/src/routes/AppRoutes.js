@@ -10,57 +10,59 @@ import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
-import CartPage from "../pages/CartPage"; // Bổ sung import bị thiếu
+import CartPage from "../pages/CartPage";
 
 // Trang của Owner
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
 import AccountsPage from "../pages/store-owner/AccountsPage";
-import AccountDetailPage from "../pages/store-owner/AccountDetailPage"; // Import từ code của team
+import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
-
-// === CÁC TRANG BẠN CẦN TẠO THÊM ===
-import RentCostumePage from "../pages/customer/RentCostumePage";
 import OrdersPage from "../pages/store-owner/OrdersPage"; 
+
+// Trang Customer
+import RentCostumePage from "../pages/customer/RentCostumePage";
+import { Checkout } from "../pages/customer/CheckoutPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
-
-import MainLayout from "../layouts/MainLayout";
-import { Checkout } from "../pages/customer/CheckoutPage";
+import MainLayout from "../layouts/MainLayout"; 
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path={ROUTES.HOME} element={<HomePage />} />
+      {/* ======================================================== */}
+      {/* LUỒNG KHÁCH HÀNG: ĐƯỢC BỌC TRONG MAINLAYOUT ĐỂ HIỆN HEADER */}
+      {/* ======================================================== */}
+      <Route element={<MainLayout />}>
+        <Route path={ROUTES.HOME} element={<HomePage />} />
 
-      <Route element={<PublicRoutes />}>
-        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-        <Route path={ROUTES.REGISTER} element={<Register />} />
-        <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
-        <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
-        <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
+        <Route element={<PublicRoutes />}>
+          <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+          <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
+          <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
+          <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoutes />}>
+          <Route path="/cart" element={<CartPage />} />
+          {/* Nơi khách hàng thực hiện Đặt thuê (MATSL-05-07) */}
+          <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
+          {/* Trang Checkout của team */}
+          <Route path="/checkout" element={<Checkout />} />
+        </Route>
       </Route>
 
-      {/* User thường (Khách hàng) */}
-      <Route element={<ProtectedRoutes />}>
-        <Route path="/cart" element={<CartPage />} />
-        {/* Nơi khách hàng thực hiện Đặt thuê (MATSL-05-07) */}
-        <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
-        {/* Trang Checkout của team */}
-        <Route path="/checkout" element={<Checkout />} />
-      </Route>
-
-      {/* Staff / Lễ tân */}
+      {/* ======================================================== */}
+      {/* LUỒNG NHÂN VIÊN & QUẢN LÝ: ĐƯỢC BỌC BỞI DASHBOARDLAYOUT    */}
+      {/* ======================================================== */}
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
-           {/* Nhân viên cũng cần vào xem và đổi trạng thái đơn */}
            <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
 
-      {/* Store Owner */}
       <Route element={<OwnerRoutes />}>
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
