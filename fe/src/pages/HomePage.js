@@ -1,159 +1,226 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faTruckFast, faShieldHalved, faSearch, faShirt } from "@fortawesome/free-solid-svg-icons";
-import { useAuth } from "../context/AuthContext";
+import React, { useState, useEffect, useRef } from "react";
+import HeroSection from "../components/customer/HeroSection";
+import FeatureBar from "../components/customer/FeatureBar";
+import ProductCard from "../components/customer/ProductCard";
+import Toast from "../components/ui/Toast";
 
-// Import Components
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
-import Button from "../components/ui/Button";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function HomePage() {
-  const { loading } = useAuth();
+  const [recentProducts, setRecentProducts] = useState([]);
+  const [newArrivals, setNewArrivals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const sliderRef = useRef(null);
+  const [isDown, setIsDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-border-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const showToast = (message, type = "success") => {
+    setToast({ isVisible: true, message, type });
+  };
+  
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch popular costumes
+        const cosRes = await fetch(`${API_URL}/api/costumes?sort=popular&limit=15`);
+        const cosData = await cosRes.json();
+        setRecentProducts(cosData.costumes || []);
+
+        // Fetch newest costumes for New Arrivals (limit 5)
+        const newRes = await fetch(`${API_URL}/api/costumes?sort=newest&limit=5`);
+        const newData = await newRes.json();
+        setNewArrivals(newData.costumes || []);
+
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleMouseDown = (e) => {
+    setIsDown(true);
+    if (sliderRef.current) {
+      setStartX(e.pageX - sliderRef.current.offsetLeft);
+      setScrollLeft(sliderRef.current.scrollLeft);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDown(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDown(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    if (sliderRef.current) {
+      const x = e.pageX - sliderRef.current.offsetLeft;
+      const walk = (x - startX) * 2; // Scroll-fast multiplier
+      sliderRef.current.scrollLeft = scrollLeft - walk;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text-primary flex flex-col">
-      <Header />
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <HeroSection products={recentProducts.slice(0, 5)} />
 
-      <main className="flex-1">
-        {/* ================= HERO SECTION ================= */}
-        <section className="bg-background pt-20 pb-32 px-6">
-          <div className="mx-auto max-w-[1200px] text-center">
-            <h1 className="text-text-primary font-semibold mx-auto tracking-tight text-5xl md:text-7xl max-w-4xl leading-[1.05]">
-              Rent Your Style,
-              <br />
-              Without Limits
-            </h1>
-            <p className="mt-6 text-text-secondary text-lg max-w-xl mx-auto leading-relaxed">
-              Discover thousands of premium designs from Valentino, Acne Studios,
-              Zimmermann. Confidently shine in every moment without owning.
-            </p>
-            
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              {/* Sử dụng Button component mới */}
-              <Button 
-                variant="primary" 
-                label="Explore Collections" 
-                icon={faArrowRight}
-                className="w-full sm:w-auto px-8"
-              />
-              <Button 
-                variant="outline" 
-                label="How It Works" 
-                className="w-full sm:w-auto px-8"
-              />
-            </div>
+      {/* Feature Highlights */}
+      <FeatureBar />
 
-            <div className="mt-20 border border-borderorder rounded-[2rem] overflow-hidden bg-surface h-[400px] lg:h-[500px] flex flex-col items-center justify-center transition-all">
-              <FontAwesomeIcon icon={faShirt} className="text-text-muted text-5xl mb-4" />
-              <p className="text-text-muted text-sm tracking-wide">Hero Image / Video Placeholder</p>
+      {/* Featured Products Marquee Section */}
+      <section className="bg-white py-16 md:py-20 overflow-hidden">
+        <div className="mx-auto max-w-[1200px] px-6 mb-12 text-center">
+          <h2
+            className="text-[#1a1a1a] text-3xl md:text-4xl font-bold tracking-tight"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          >
+            Sản Phẩm Hot
+          </h2>
+          <p className="mt-3 text-[14px] text-[#999] max-w-[500px] mx-auto leading-relaxed">
+            Các mẫu trang phục được yêu thích và thuê nhiều nhất của chúng tôi.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="mx-auto max-w-[1200px] px-6">
+            <div className="flex gap-6 overflow-hidden">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="min-w-[280px] h-[380px] bg-gray-100 rounded-xl animate-pulse" />
+              ))}
             </div>
           </div>
-        </section>
-
-        {/* ================= LATEST COLLECTIONS ================= */}
-        <section className="bg-surface py-24 px-6 border-t border-borderorder">
-          <div className="mx-auto max-w-[1200px]">
-            <div className="flex items-end justify-between mb-12">
-              <div>
-                <p className="text-warning-500 text-sm font-semibold tracking-wide uppercase mb-2">
-                  Featured
-                </p>
-                <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-                  Latest Collections
-                </h2>
-              </div>
-              <a href="#" className="hidden md:flex items-center gap-2 text-sm font-medium hover:text-primary-600 transition-colors">
-                View All <FontAwesomeIcon icon={faArrowRight} className="text-[12px]" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { title: "Elegant Evening Wear", desc: "Valentino, The Row", color: "bg-[#e8e4df]" },
-                { title: "Resort Wear", desc: "Zimmermann, Acne Studios", color: "bg-[#dfe8e4]" },
-                { title: "Bold Streetwear", desc: "Balenciaga, Off-White", color: "bg-[#e0dfe8]" },
-              ].map((col, i) => (
-                <div key={i} className="group cursor-pointer">
-                  <div className={`${col.color} rounded-[2rem] h-[420px] flex items-end p-8 transition-transform duration-300 group-hover:scale-[1.02] shadow-sm hover:shadow-md`}>
-                    <div>
-                      <h3 className="text-text-primary text-3xl font-semibold tracking-tight leading-tight">
-                        {col.title}
-                      </h3>
-                      <p className="text-text-primary/70 mt-2 text-base">
-                        {col.desc}
-                      </p>
-                    </div>
+        ) : (
+          <div 
+            className="w-full overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing px-6 select-none"
+            ref={sliderRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
+          >
+            <div className="flex gap-6 w-max pb-4 pointer-events-auto">
+              {recentProducts.map((product, i) => (
+                <div key={`${product._id}-${i}`} className="w-[280px] flex-shrink-0 pointer-events-none">
+                  {/* Make cards pointer-events-none so drag doesn't conflict with link clicks during dragging, 
+                      though we might want them clickable if not dragging. For a simple drag-to-scroll, 
+                      we just prevent drag of the image. */}
+                  <div className="pointer-events-auto">
+                    <ProductCard costume={product} showToast={showToast} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </section>
+        )}
+      </section>
 
-        {/* ================= HOW IT WORKS ================= */}
-        <section className="bg-background py-24 px-6">
-          <div className="mx-auto max-w-[1200px]">
-            <div className="text-center mb-16">
-              <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-                Simple & Elegant
+      {/* New Arrivals Asymmetric Grid Section */}
+      <section className="bg-[#faf9f7] py-20 px-6">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+            <div>
+              <h2
+                className="text-[#1a1a1a] text-3xl md:text-4xl font-bold tracking-tight"
+                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+              >
+                Bộ Sưu Tập Mới
               </h2>
-              <p className="mt-4 text-text-secondary text-base max-w-lg mx-auto leading-relaxed">
-                In just 3 steps, you can step out in a completely new style.
+              <p className="mt-3 text-[14px] text-[#999] max-w-[500px] leading-relaxed">
+                Khám phá những thiết kế mới nhất vừa được cập nhật tại hệ thống.
               </p>
             </div>
+            <a
+              href="/products"
+              className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] hover:text-[#555] transition-colors"
+            >
+              Xem tất cả <span className="text-[16px]">→</span>
+            </a>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { icon: faSearch, title: "Choose Design", desc: "Browse through thousands of premium outfits from the world's leading fashion houses." },
-                { icon: faTruckFast, title: "Express Delivery", desc: "Outfits are carefully packaged and delivered fast within 48 hours." },
-                { icon: faShieldHalved, title: "Easy Return", desc: "Just pack it up after wearing and schedule a pickup. Dry cleaning is included." },
-              ].map((step, i) => (
-                <div key={i} className="bg-surface border border-borderorder rounded-[2rem] pt-16 pb-12 px-10 hover:shadow-sm transition-shadow">
-                  <div className="w-14 h-14 bg-background border border-borderorder rounded-full flex items-center justify-center mb-8 shadow-sm">
-                    <FontAwesomeIcon icon={step.icon} className="text-primary-600 text-lg" />
-                  </div>
-                  <h3 className="text-text-primary text-2xl font-semibold mb-3 tracking-tight">
-                    {step.title}
-                  </h3>
-                  <p className="text-text-secondary text-base leading-relaxed">
-                    {step.desc}
-                  </p>
+          {loading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 h-[600px] bg-white/60 rounded-xl animate-pulse" />
+              <div className="lg:col-span-2 grid grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-[285px] bg-white/60 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ) : newArrivals.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Hero Card (1st item) */}
+              <div className="lg:col-span-1 h-full">
+                <div className="h-full [&>div]:h-full [&_img]:h-[500px] lg:[&_img]:h-[calc(100%-80px)]">
+                  <ProductCard costume={newArrivals[0]} showToast={showToast} />
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              </div>
 
-        {/* ================= CTA SECTION ================= */}
-        <section className="bg-surface py-24 px-6 border-t border-borderorder">
-          <div className="mx-auto max-w-[900px] text-center">
-            <h2 className="text-text-primary text-4xl md:text-5xl font-semibold tracking-tight">
-              Ready to elevate your style?
+              {/* Right Grid (2nd to 5th items) */}
+              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {newArrivals.slice(1, 5).map((product) => (
+                  <ProductCard key={product._id} costume={product} showToast={showToast} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10 text-[#999]">Chưa có sản phẩm mới.</div>
+          )}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      {!token && (
+        <section className="bg-[#1a1a1a] py-16 md:py-20 px-6">
+          <div className="mx-auto max-w-[700px] text-center">
+            <h2
+              className="text-white text-3xl md:text-4xl font-bold tracking-tight"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              Sẵn sàng tỏa sáng?
             </h2>
-            <p className="mt-6 text-text-secondary text-lg max-w-md mx-auto leading-relaxed">
-              Sign up now and get 20% off your first rental.
+            <p className="mt-4 text-[14px] text-[#999] leading-relaxed">
+              Đăng ký ngay để nhận ưu đãi độc quyền và trải nghiệm dịch vụ cho
+              thuê trang phục cao cấp hàng đầu.
             </p>
-            <div className="mt-10 flex items-center justify-center">
-              <Button 
-                variant="primary" 
-                label="Get Started Now" 
-                icon={faArrowRight}
-                className="w-full sm:w-auto px-10 py-4 text-base"
-              />
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <a
+                href="/register"
+                className="bg-white text-[#1a1a1a] text-[12px] uppercase tracking-[0.1em] font-semibold
+                           px-8 py-3.5 rounded hover:bg-[#f0f0f0] active:scale-[0.98] transition-all duration-200"
+              >
+                Đăng Ký Ngay
+              </a>
+              <a
+                href="/login"
+                className="border border-[#555] text-white text-[12px] uppercase tracking-[0.1em] font-semibold
+                           px-8 py-3.5 rounded hover:border-white active:scale-[0.98] transition-all duration-200"
+              >
+                Đăng Nhập
+              </a>
             </div>
           </div>
         </section>
-      </main>
+      )}
 
-      <Footer />
+      <Toast 
+        isVisible={toast.isVisible} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
     </div>
   );
 }

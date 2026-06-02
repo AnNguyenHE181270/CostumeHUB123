@@ -3,10 +3,111 @@ const HttpError = require("../models/http-error.model");
 
 const getAllCostumes = async (req, res, next) => {
   try {
-    const costumes = await Costume.find()
-      .populate("categoryId", "name")
-      .sort({ createdAt: -1 });
-    res.status(200).json({ costumes });
+    const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = req.query;
+    const filter = { status: { $ne: "hidden" } };
+
+    const Category = require("../models/category.model");
+    let allTargetCategoryIds = [];
+
+    // Filter by single categoryId (from route /category/:categoryId)
+    if (categoryId) {
+      allTargetCategoryIds.push(categoryId);
+    }
+
+    // Filter by multiple subCategoryIds (from checkboxes)
+    if (subCategoryIds) {
+      const ids = subCategoryIds.split(",").filter(Boolean);
+      allTargetCategoryIds.push(...ids);
+    }
+
+    if (allTargetCategoryIds.length > 0) {
+      // Handle dirty raw JSON imports where ObjectId is an object {$oid: "..."}
+      const childCategories = await Category.find({
+        $or: [
+          { parentId: { $in: allTargetCategoryIds } },
+          { "parentId.$oid": { $in: allTargetCategoryIds } },
+          { "parentId": { $in: allTargetCategoryIds.map(id => {
+              try { return new require('mongoose').Types.ObjectId(id); } 
+              catch(e) { return id; }
+          })}}
+        ]
+      });
+      const childIds = childCategories.map(c => c._id.toString());
+      
+      const finalCategoryIds = [...new Set([...allTargetCategoryIds, ...childIds])];
+      
+      // Update filter to support raw $oid format in costumes collection too
+      filter.$or = [
+        { categoryId: { $in: finalCategoryIds } },
+        { "categoryId.$oid": { $in: finalCategoryIds } },
+        { categoryId: { $in: finalCategoryIds.map(id => {
+            try { return new require('mongoose').Types.ObjectId(id); } 
+            catch(e) { return id; }
+        })}}
+      ];
+    }
+
+    // Filter by price range
+    if (minPrice || maxPrice) {
+      filter["rentalRates.pricePerDay"] = {};
+      if (minPrice) filter["rentalRates.pricePerDay"].$gte = Number(minPrice);
+      if (maxPrice) filter["rentalRates.pricePerDay"].$lte = Number(maxPrice);
+    }
+
+    // Filter by status (comma-separated)
+    if (status) {
+      const statuses = status.split(",").filter(Boolean);
+      if (statuses.length > 0) {
+        filter.status = { $in: statuses };
+      }
+    }
+
+    // Search by name
+    if (search) {
+      filter.name = { $regex: search, $options: "i" };
+    }
+
+    // Sorting
+    let sortOption = { createdAt: -1 };
+    switch (sort) {
+      case "price_asc":
+        sortOption = { "rentalRates.pricePerDay": 1 };
+        break;
+      case "price_desc":
+        sortOption = { "rentalRates.pricePerDay": -1 };
+        break;
+      case "popular":
+        sortOption = { totalRentals: -1 };
+        break;
+      case "newest":
+      default:
+        sortOption = { createdAt: -1 };
+        break;
+    }
+
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, Math.min(50, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [costumes, totalItems] = await Promise.all([
+      Costume.find(filter)
+        .populate("categoryId", "name")
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNum),
+      Costume.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      costumes,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalItems / limitNum),
+        totalItems,
+        limit: limitNum,
+      },
+    });
   } catch (err) {
     return next(new HttpError(err.message || "Fetching costumes failed.", 500));
   }

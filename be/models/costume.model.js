@@ -88,6 +88,7 @@ const costumeSchema = new mongoose.Schema(
         "available",
         "rented",
         "maintenance",
+        "dry_cleaning",
         "hidden",
       ],
       default: "available",
