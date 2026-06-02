@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronLeft,
-  faHeart,
   faCartPlus,
   faShieldHalved,
   faTruckFast,
@@ -11,8 +10,8 @@ import {
   faStar,
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
-import { faHeart as faHeartOutline } from "@fortawesome/free-regular-svg-icons";
 import { useCart } from "../context/CartContext";
+import Toast from "../components/ui/Toast";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -34,7 +33,11 @@ export default function ProductDetailPage() {
   const [costume, setCostume] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
-  const [wishlisted, setWishlisted] = useState(false);
+
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const showToast = (message, type = "success") => {
+    setToast({ isVisible: true, message, type });
+  };
 
   const isInCart = costume ? cartItems.some(item => item.costume._id === costume._id) : false;
 
@@ -173,8 +176,23 @@ export default function ProductDetailPage() {
                   <h4 className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-3">
                     Kích Thước
                   </h4>
-                  <div className="inline-flex items-center justify-center px-4 py-2 bg-white border border-[#1a1a1a] text-[#1a1a1a] text-[13px] font-medium rounded">
-                    {costume.size || "Free Size"}
+                  <div className="flex flex-wrap gap-2">
+                    {['S', 'M', 'L', 'XL', 'Free Size'].map((size) => {
+                      const isAvailable = costume.size ? (costume.size.toUpperCase() === size.toUpperCase() || (costume.size === "" && size === "Free Size")) : size === "Free Size";
+                      return (
+                        <button
+                          key={size}
+                          disabled={!isAvailable}
+                          className={`min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border transition-all ${
+                            isAvailable
+                              ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
+                              : "border-[#e8e8e8] bg-[#f9f9f9] text-[#ccc] cursor-not-allowed"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="flex-1">
@@ -196,7 +214,7 @@ export default function ProductDetailPage() {
                       navigate("/cart");
                     }
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${
                     costume.status === "available" 
                       ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                       : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
@@ -208,10 +226,16 @@ export default function ProductDetailPage() {
                 
                 <button 
                   onClick={() => {
-                    if (!isInCart && costume.status === "available") addToCart(costume);
-                    else if (isInCart) removeFromCart(costume._id);
+                    if (!isInCart && costume.status === "available") {
+                      addToCart(costume);
+                      showToast("Đã thêm vào giỏ hàng");
+                    }
+                    else if (isInCart) {
+                      removeFromCart(costume._id);
+                      showToast("Đã bỏ khỏi giỏ hàng");
+                    }
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${
                     isInCart 
                       ? "border-emerald-500 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
                       : costume.status === "available" 
@@ -222,17 +246,6 @@ export default function ProductDetailPage() {
                 >
                   <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[14px]" />
                   {isInCart ? "Đã Thêm" : "Thêm Vào Giỏ"}
-                </button>
-
-                <button 
-                  onClick={() => setWishlisted(!wishlisted)}
-                  className={`w-14 flex items-center justify-center rounded-lg border-2 transition-all duration-300 ${
-                    wishlisted 
-                      ? "border-red-500 bg-red-50 text-red-500" 
-                      : "border-[#e8e8e8] bg-white text-[#999] hover:border-[#1a1a1a] hover:text-[#1a1a1a]"
-                  }`}
-                >
-                  <FontAwesomeIcon icon={wishlisted ? faHeart : faHeartOutline} className="text-[20px]" />
                 </button>
               </div>
 
@@ -263,6 +276,13 @@ export default function ProductDetailPage() {
 
         </div>
       </div>
+
+      <Toast 
+        isVisible={toast.isVisible} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
     </div>
   );
 }

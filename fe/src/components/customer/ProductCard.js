@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart, faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { faHeart as faHeartOutline } from "@fortawesome/free-regular-svg-icons";
+import { faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../../context/CartContext";
 
 const STATUS_MAP = {
@@ -41,11 +40,10 @@ function StarRating({ rating = 0, count = 0 }) {
   );
 }
 
-export default function ProductCard({ costume }) {
+export default function ProductCard({ costume, showToast }) {
   const navigate = useNavigate();
   const { addToCart, removeFromCart, cartItems } = useCart();
   const [imgError, setImgError] = useState(false);
-  const [wishlisted, setWishlisted] = useState(false);
 
   const isInCart = cartItems.some(item => item.costume._id === costume._id);
 
@@ -70,24 +68,6 @@ export default function ProductCard({ costume }) {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={() => setImgError(true)}
         />
-
-        {/* Wishlist button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setWishlisted(!wishlisted);
-          }}
-          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm
-                     flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-200
-                     hover:scale-110 active:scale-95"
-        >
-          <FontAwesomeIcon
-            icon={wishlisted ? faHeart : faHeartOutline}
-            className={`text-[14px] ${
-              wishlisted ? "text-red-500" : "text-[#999]"
-            }`}
-          />
-        </button>
 
         {/* Status badge */}
         <div className="absolute top-3 left-3">
@@ -150,8 +130,14 @@ export default function ProductCard({ costume }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (!isInCart && costume.status === "available") addToCart(costume);
-              else if (isInCart) removeFromCart(costume._id);
+              if (!isInCart && costume.status === "available") {
+                addToCart(costume);
+                if (showToast) showToast("Đã thêm vào giỏ hàng");
+              }
+              else if (isInCart) {
+                removeFromCart(costume._id);
+                if (showToast) showToast("Đã bỏ khỏi giỏ hàng");
+              }
             }}
             className={`flex-1 flex items-center justify-center gap-2 text-white
                        text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
