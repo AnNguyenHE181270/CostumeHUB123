@@ -1,15 +1,21 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 
-export default function HeroSection() {
+export default function HeroSection({ products = [] }) {
   const navigate = useNavigate();
+  const [currentIdx, setCurrentIdx] = useState(0);
 
-  const scrollToCategories = () => {
-    const el = document.getElementById("category-section");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  };
+  useEffect(() => {
+    if (products.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % products.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [products.length]);
+
+  const currentProduct = products[currentIdx];
 
   return (
     <section className="bg-[#faf9f7] relative overflow-hidden">
@@ -36,14 +42,14 @@ export default function HeroSection() {
             {/* CTA Buttons */}
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 lg:justify-start justify-center">
               <button
-                onClick={scrollToCategories}
+                onClick={() => navigate("/category")}
                 className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold
                            px-8 py-3.5 rounded hover:bg-[#333] active:scale-[0.98] transition-all duration-200"
               >
                 Khám Phá Ngay
               </button>
               <button
-                onClick={scrollToCategories}
+                onClick={() => navigate("/category")}
                 className="border border-[#1a1a1a] text-[#1a1a1a] text-[12px] uppercase tracking-[0.1em] font-semibold
                            px-8 py-3.5 rounded hover:bg-[#1a1a1a] hover:text-white active:scale-[0.98] transition-all duration-200"
               >
@@ -72,27 +78,38 @@ export default function HeroSection() {
 
           {/* Right — Illustration */}
           <div className="flex-1 flex items-center justify-center">
-            <div className="relative w-full max-w-[420px] aspect-[3/4] bg-gradient-to-br from-[#e8e4df] to-[#d4cfc9] rounded-[2rem] overflow-hidden flex items-center justify-center shadow-lg">
-              <div className="text-center p-8">
-                <svg
-                  className="w-24 h-24 mx-auto text-[#b0a99e] mb-4"
-                  viewBox="0 0 64 64"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <path d="M32 8 L24 28 L16 28 L12 56 L52 56 L48 28 L40 28 Z" />
-                  <path d="M26 28 L26 20 Q26 12 32 12 Q38 12 38 20 L38 28" />
-                  <circle cx="32" cy="16" r="2" fill="currentColor" />
-                </svg>
-                <p className="text-[#9a9390] text-sm font-medium tracking-wide">
-                  Hình Ảnh Sản Phẩm
-                </p>
+            {currentProduct && currentProduct.images && currentProduct.images.length > 0 ? (
+              <div className="relative w-full max-w-[420px] aspect-[3/4] rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 bg-[#f5f5f5]">
+                <img 
+                  key={currentProduct._id}
+                  src={currentProduct.images[0]} 
+                  alt={currentProduct.name}
+                  className="w-full h-full object-cover animate-fade-in"
+                />
               </div>
-              {/* Decorative elements */}
-              <div className="absolute top-6 right-6 w-16 h-16 border border-[#c4bdb5] rounded-full opacity-40" />
-              <div className="absolute bottom-8 left-8 w-10 h-10 border border-[#c4bdb5] rounded-full opacity-30" />
-            </div>
+            ) : (
+              <div className="relative w-full max-w-[420px] aspect-[3/4] bg-gradient-to-br from-[#e8e4df] to-[#d4cfc9] rounded-[2rem] overflow-hidden flex items-center justify-center shadow-lg">
+                <div className="text-center p-8">
+                  <svg
+                    className="w-24 h-24 mx-auto text-[#b0a99e] mb-4"
+                    viewBox="0 0 64 64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M32 8 L24 28 L16 28 L12 56 L52 56 L48 28 L40 28 Z" />
+                    <path d="M26 28 L26 20 Q26 12 32 12 Q38 12 38 20 L38 28" />
+                    <circle cx="32" cy="16" r="2" fill="currentColor" />
+                  </svg>
+                  <p className="text-[#9a9390] text-sm font-medium tracking-wide">
+                    Hình Ảnh Sản Phẩm
+                  </p>
+                </div>
+                {/* Decorative elements */}
+                <div className="absolute top-6 right-6 w-16 h-16 border border-[#c4bdb5] rounded-full opacity-40" />
+                <div className="absolute bottom-8 left-8 w-10 h-10 border border-[#c4bdb5] rounded-full opacity-30" />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -8,15 +8,14 @@ import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
-import CategoryPage from "../pages/CategoryPage";
-import ProductDetailPage from "../pages/ProductDetailPage";
-import CartPage from "../pages/CartPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+import CartPage from "../pages/CartPage"; // Bổ sung import bị thiếu
 
 // Trang của Owner
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
 import AccountsPage from "../pages/store-owner/AccountsPage";
+import AccountDetailPage from "../pages/store-owner/AccountDetailPage"; // Import từ code của team
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
@@ -26,18 +25,15 @@ import OrdersPage from "../pages/store-owner/OrdersPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
+
 import MainLayout from "../layouts/MainLayout";
+import { Checkout } from "../pages/customer/CheckoutPage";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public — Customer pages with Navbar + Footer */}
-      <Route element={<MainLayout />}>
-        <Route path={ROUTES.HOME} element={<HomePage />} />
-        <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
-        <Route path="/products" element={<CategoryPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-      </Route>
+      {/* Public */}
+      <Route path={ROUTES.HOME} element={<HomePage />} />
 
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -52,6 +48,8 @@ function AppRoutes() {
         <Route path="/cart" element={<CartPage />} />
         {/* Nơi khách hàng thực hiện Đặt thuê (MATSL-05-07) */}
         <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
+        {/* Trang Checkout của team */}
+        <Route path="/checkout" element={<Checkout />} />
       </Route>
 
       {/* Staff / Lễ tân */}
@@ -67,6 +65,7 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
+          <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           

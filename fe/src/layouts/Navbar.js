@@ -26,8 +26,10 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [allCategories, setAllCategories] = useState([]);
   const [parentCategories, setParentCategories] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [debugErr, setDebugErr] = useState("");
   const drawerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,26 +39,21 @@ export default function Navbar() {
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${API_URL}/api/categories`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
-        const allCategories = data.categories || [];
-        const parents = allCategories.filter((c) => !c.parentId);
+        const allCats = data.categories || [];
+        setAllCategories(allCats);
+        const parents = allCats.filter((c) => !c.parentId);
         setParentCategories(parents);
       } catch (err) {
+        setDebugErr(err.message);
         console.error("Failed to fetch categories:", err);
       }
     };
     fetchCategories();
   }, []);
 
-  /* No more sliced top links, we use a single All Products link instead */
-
-  const CATEGORY_NAV = [
-    ...parentCategories.map((cat) => ({
-      label: cat.name.toUpperCase(),
-      href: `/category/${cat._id}`,
-    })),
-    ...STATIC_LINKS,
-  ];
+  // Removed CATEGORY_NAV constant
 
   /* scroll shadow */
   useEffect(() => {
@@ -119,17 +116,16 @@ export default function Navbar() {
       <div className="bg-white border-b border-[#e8e8e8]">
         <div className="mx-auto max-w-[1200px] flex items-center justify-between h-[72px] px-6">
           {/* Left: Quick-links (desktop) */}
-          <nav className="hidden lg:flex items-center gap-6">
-            <Link
-              to="/products"
-              className={`text-[12px] tracking-[0.1em] uppercase font-medium transition-colors ${
-                isActive("/products")
-                  ? "text-[#1a1a1a]"
-                  : "text-[#474747] hover:text-[#1a1a1a]"
-              }`}
-            >
-              TẤT CẢ SẢN PHẨM
-            </Link>
+          <nav className="hidden lg:flex items-center gap-6 z-50">
+            {STATIC_LINKS.map(link => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="text-[12px] tracking-[0.1em] uppercase font-medium text-[#474747] hover:text-[#1a1a1a] transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
 
           {/* Mobile: hamburger */}
@@ -270,28 +266,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ════════ TIER 3 — Category Nav ════════ */}
-      <nav className="hidden md:block bg-[#f5f5f5] border-b border-[#e8e8e8]">
-        <div className="mx-auto max-w-[1200px] flex items-center justify-center min-h-[44px] py-1 px-6 gap-x-2 gap-y-1 flex-wrap">
-          {CATEGORY_NAV.map((cat) => (
-            <Link
-              key={cat.href}
-              to={cat.href}
-              className={`
-                px-4 py-2 text-[11px] tracking-[0.08em] uppercase font-medium
-                rounded transition-colors whitespace-nowrap
-                ${
-                  isActive(cat.href)
-                    ? "text-[#1a1a1a] bg-white"
-                    : "text-[#707070] hover:text-[#1a1a1a] hover:bg-white/60"
-                }
-              `}
-            >
-              {cat.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      {/* ════════ TIER 3 — REMOVED ════════ */}
 
       {/* ════════ MOBILE DRAWER ════════ */}
       {mobileOpen && (
@@ -353,26 +328,31 @@ export default function Navbar() {
                   Danh mục
                 </p>
               </div>
-              {CATEGORY_NAV.map((cat, i) => (
+              {parentCategories.map((parent, i) => (
+                <div key={parent._id} style={{ animationDelay: `${i * 30}ms` }}>
+                  <Link
+                    to={`/category/${parent._id}`}
+                    className={`
+                      flex items-center justify-between px-5 py-3
+                      text-[14px] font-medium transition-colors
+                      ${
+                        location.pathname.includes(parent._id)
+                          ? "text-[#1a1a1a] bg-[#f5f5f5]"
+                          : "text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a]"
+                      }
+                    `}
+                  >
+                    {parent.name}
+                  </Link>
+                </div>
+              ))}
+              {STATIC_LINKS.map((link) => (
                 <Link
-                  key={cat.href}
-                  to={cat.href}
-                  className={`
-                    flex items-center justify-between px-5 py-3
-                    text-[14px] font-medium transition-colors
-                    ${
-                      isActive(cat.href)
-                        ? "text-[#1a1a1a] bg-[#f5f5f5]"
-                        : "text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a]"
-                    }
-                  `}
-                  style={{ animationDelay: `${i * 30}ms` }}
+                  key={link.href}
+                  to={link.href}
+                  className="flex items-center justify-between px-5 py-3 text-[14px] font-medium text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a] transition-colors"
                 >
-                  {cat.label}
-                  <FontAwesomeIcon
-                    icon={faChevronDown}
-                    className="text-[10px] text-[#c7c7c7] -rotate-90"
-                  />
+                  {link.label}
                 </Link>
               ))}
 
