@@ -29,25 +29,29 @@ const costumeSchema = new mongoose.Schema(
       required: true,
     },
 
-    gender: {
-      type: String,
-      enum: ["male", "female", "unisex", "kids"],
-      default: "unisex",
-    },
-
     images: [
       {
         type: String,
       },
     ],
 
-    rentalPricePerDay: {
-      type: Number,
-      required: true,
-      min: 0,
+    rentalRates: {
+      pricePerDay: { type: Number, required: true, min: 0 },
+      pricePer3Days: { type: Number },
+      pricePerWeek: { type: Number },
     },
 
-    depositPrice: {
+    deposit: {
+      type: Number,
+      default: 0,
+    },
+
+    minRentalDays: {
+      type: Number,
+      default: 1,
+    },
+
+    lateFeePerDay: {
       type: Number,
       default: 0,
     },
@@ -57,15 +61,15 @@ const costumeSchema = new mongoose.Schema(
       default: "",
     },
 
-    color: [{
+    color: {
       type: String,
-    }],
+    },
 
     size: {
       type: String,
     },
 
-    material: {
+    condition: {
       type: String,
     },
 
@@ -84,9 +88,8 @@ const costumeSchema = new mongoose.Schema(
         "maintenance",
         "dry_cleaning",
         "hidden",
-        "discontinued"
       ],
-      default: "active",
+      default: "available",
     },
 
     ratingAverage: {
