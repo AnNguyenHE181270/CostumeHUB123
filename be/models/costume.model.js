@@ -34,6 +34,12 @@ const costumeSchema = new mongoose.Schema(
       required: true,
     },
 
+    gender: {
+      type: String,
+      enum: ["male", "female", "unisex", "kids"],
+      default: "unisex",
+    },
+
     images: [
       {
         type: String,
@@ -51,14 +57,19 @@ const costumeSchema = new mongoose.Schema(
       default: 0,
     },
 
+    overdueFee: {
+      type: Number,
+      default: 0,
+    },
+
     brand: {
       type: String,
       default: "",
     },
 
-    color: {
+    color: [{
       type: String,
-    },
+    }],
 
     material: {
       type: String,
@@ -69,12 +80,11 @@ const costumeSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "available",
-        "rented",
-        "maintenance",
+        "active",
         "hidden",
+        "discontinued"
       ],
-      default: "available",
+      default: "active",
     },
 
     ratingAverage: {
