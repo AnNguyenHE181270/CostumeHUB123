@@ -18,6 +18,7 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
+import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 
 function AppRoutes() {
   return (
@@ -51,6 +52,7 @@ function AppRoutes() {
           <Route index element={<StoreOwnerDashboard />} />
 
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
+          <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage/>} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           {/* <Route path="rentals" element={<RentalsPage />} /> */}

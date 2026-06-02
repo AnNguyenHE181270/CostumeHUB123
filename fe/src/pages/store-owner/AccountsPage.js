@@ -7,6 +7,7 @@ import { useMemo, useState, useEffect } from "react";
 import Button from "../../components/ui/Button";
 import DataTable from "../../components/ui/DataTable";
 import Pagination from "../../components/ui/Pagination";
+import { useNavigate } from "react-router-dom";
 
 const getRoleInfo = (roleName) => {
   const name = roleName?.toLowerCase();
@@ -35,7 +36,7 @@ export default function AccountsPage() {
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-
+  const navigate = useNavigate();
   const getAccounts = async () => {
     try {
       setLoading(true);
@@ -83,7 +84,8 @@ export default function AccountsPage() {
 
   const totalPages = Math.ceil(filteredAccounts.length / PAGE_SIZE);
 
-  const handleEdit = (user) => console.log("Editing:", user);
+  const handleEdit = (user) => {
+    navigate(`/owner/accounts/detail-account/${user.id}`)}
   const handleDelete = (user) => console.log("Deleting:", user);
 
   return (
@@ -97,12 +99,13 @@ export default function AccountsPage() {
             Manage user information and system permissions
           </p>
         </div>
-        <Button
+        <div><Button
           icon={faPlus}
           label="Add Account"
           variant="primary"
           onClick={() => console.log("Open Add Modal")}
-        />
+        /></div>
+
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4">
@@ -178,7 +181,7 @@ export default function AccountsPage() {
             const roleInfo = getRoleInfo(acc.role);
             const statusInfo = getStatusInfo(acc.status);
             return (
-              <tr key={acc._id} className="border-border border-gray-50 hover:bg-gray-50 transition-colors">
+              <tr key={acc.id} className="border-border border-gray-50 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
