@@ -9,9 +9,6 @@ import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
-import CategoryPage from "../pages/CategoryPage";
-import ProductDetailPage from "../pages/ProductDetailPage";
-import CartPage from "../pages/CartPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -21,18 +18,13 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout";
+import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public — Customer pages with Navbar + Footer */}
-      <Route element={<MainLayout />}>
-        <Route path={ROUTES.HOME} element={<HomePage />} />
-        <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
-        <Route path="/products" element={<CategoryPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-      </Route>
+      {/* Public */}
+      <Route path={ROUTES.HOME} element={<HomePage />} />
 
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -44,7 +36,7 @@ function AppRoutes() {
 
       {/* User thường */}
       <Route element={<ProtectedRoutes />}>
-        <Route path="/cart" element={<CartPage />} />
+        {/* <Route path="/cart" element={<CartPage />} /> */}
       </Route>
 
       {/* Staff / Lễ tân */}
@@ -60,6 +52,7 @@ function AppRoutes() {
           <Route index element={<StoreOwnerDashboard />} />
 
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
+          <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage/>} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           {/* <Route path="rentals" element={<RentalsPage />} /> */}

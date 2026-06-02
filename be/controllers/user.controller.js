@@ -7,6 +7,7 @@ const Role = require("../models/role.model");
 const sendEmail = require("../services/email.service");
 const crypto = require("crypto");
 const OTP_TTL_MS = 1 * 60 * 1000;
+const { ObjectId } = require('mongodb');
 
 const register = async (req, res, next) => {
   let newUser = null;
@@ -359,13 +360,17 @@ const login = async (req, res, next) => {
       return next(new HttpError("User is blocked", 400));
     }
 
+    if(existUser.status == "pending"){
+      return next( new HttpError("User is not verify, please register again",400))
+    }
+
     const checkPassword = await bcrypt.compare(password, existUser.password);
 
     if (!checkPassword) {
       return next(new HttpError("Incorrect password.", 401));
     }
 
-    console.log(existUser.role.name);
+
 
     const token = jwt.sign(
       {
@@ -398,7 +403,6 @@ const getProfile = async (req, res, next) => {
       return next(new HttpError("User not found.", 404));
     }
 
-    console.log(user);
 
     return res.status(200).json({
       user: {
@@ -655,8 +659,67 @@ const getAllUser = async (req, res, next) => {
         status: u.status,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
+        id: u._id
       })),
     });
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
+const findUserById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return next(new HttpError("Invalid id", 400));
+    }
+
+    const user = await User.findById(id).populate("role");
+
+    if (!user) {
+      return next(new HttpError("Not found user", 404));
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
+const updateUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {phone, fullName, gender, age, avatar, role, status} = req.body;
+    const findRole = await Role.findOne({"name": role});
+
+    if(!findRole){
+      return next (new HttpError("Not found role", 404))
+    }
+    if (!ObjectId.isValid(id)) {
+      return next (new HttpError("Invalid id", 400))
+    }
+    
+    let user = await User.findByIdAndUpdate(id,{
+      phone,
+      fullName,
+      gender,
+      age, 
+      status,
+      avatar,
+      role: findRole._id
+    }, { new: true });
+    if(!user){
+      return next(new HttpError("User not found", 404))
+    }
+    
+    return res.status(201).json({
+      "user": user
+    })
   } catch (err) {
     return next(new HttpError(err.message, 500));
   }
@@ -670,4 +733,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getAllUser,
+  updateUser,
+  findUserById
 };
