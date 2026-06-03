@@ -18,7 +18,8 @@ import AccountsPage from "../pages/store-owner/AccountsPage";
 import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
-import OrdersPage from "../pages/store-owner/OrdersPage"; 
+import OrdersPage from "../pages/store-owner/OrdersPage";
+import RentalHistory from "../pages/customer/RentalHistoryPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
@@ -26,7 +27,7 @@ import { Checkout } from "../pages/customer/CheckoutPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout"; 
+import MainLayout from "../layouts/MainLayout";
 
 function AppRoutes() {
   return (
@@ -49,8 +50,11 @@ function AppRoutes() {
           <Route path="/cart" element={<CartPage />} />
           {/* Nơi khách hàng thực hiện Đặt thuê (MATSL-05-07) */}
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
+
           {/* Trang Checkout của team */}
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/rental-history" element={<RentalHistory />} />
+
         </Route>
       </Route>
 
@@ -59,7 +63,7 @@ function AppRoutes() {
       {/* ======================================================== */}
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
-           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
+          <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
 
@@ -70,7 +74,7 @@ function AppRoutes() {
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
-          
+
           {/* Nơi Owner quản lý và duyệt đơn hàng (MATSL-04-08) */}
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
         </Route>

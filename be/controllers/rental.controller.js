@@ -1,6 +1,41 @@
 const RentalOrder = require('../models/rental-order.model');
+const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
+const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
+
+//==========================================================
+// danh sách đơn thuê (customer)
+const getRentalHistory = async (req, res, next) => {
+    try {
+        const userId = req.userData.id;
+
+        const orders = await Rental.find({ customerId: userId })
+            .populate("items.costume", "name images")
+            .sort({ createdAt: -1 });
+
+        const result = orders.map(order => ({
+            id: order._id,
+            productName: order.items[0]?.costume?.name || "Đơn hàng thuê",
+            productImage: order.items[0]?.costume?.images?.[0] || "",
+            rentalPeriod: `${order.rentalDays} ngày`,
+            startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
+            endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
+            status: order.status,
+            totalPrice: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalAmount),
+            address: `${order.shippingAddress.addressDetail}, ${order.shippingAddress.ward}, ${order.shippingAddress.district}, ${order.shippingAddress.province}`
+        }));
+
+        res.status(200).json(result);
+    } catch (error) {
+        next(new HttpError(error.message || 'Fetching orders failed', 500));
+    }
+}
+
+
+//==========================================================================
+
+
 
 // MATSL-05-06: Hàm kiểm tra lịch trống (có tính thời gian đệm giặt ủi)
 const checkAvailability = async (req, res, next) => {
@@ -25,9 +60,9 @@ const checkAvailability = async (req, res, next) => {
         const rentedQty = overlaps.reduce((sum, order) => sum + order.quantity, 0);
         const availableQty = costume.stock - rentedQty; // Giả sử model Costume dùng trường 'stock'
 
-        res.status(200).json({ 
-            isAvailable: availableQty >= quantity, 
-            availableQty 
+        res.status(200).json({
+            isAvailable: availableQty >= quantity,
+            availableQty
         });
     } catch (error) {
         next(new HttpError('Checking availability failed', 500));
@@ -39,9 +74,9 @@ const createOrder = async (req, res, next) => {
     try {
         const { costumeId, startDate, endDate, quantity } = req.body;
         const userId = req.userData.userId; // Lấy từ check-auth.middleware.js
-        
+
         const costume = await Costume.findById(costumeId);
-        
+
         // Tính tiền: Giá thuê * Số lượng * Số ngày (Giả sử 1 ngày tối thiểu)
         const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) || 1;
         const rentalFee = costume.price * quantity * days;
@@ -80,4 +115,5 @@ const updateOrderStatus = async (req, res, next) => {
     }
 };
 
-module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus };
+
+module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory };
