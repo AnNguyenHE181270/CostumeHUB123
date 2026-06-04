@@ -6,6 +6,8 @@ import ProductFormModal from "../../components/store-owner/ProductFormModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Toast from "../../components/ui/Toast";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -16,7 +18,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete'
+  const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete', 'restore', 'change_status'
   const [pendingData, setPendingData] = useState(null);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
@@ -27,7 +29,7 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:9999/api/costumes");
+      const response = await fetch(`${API_URL}/api/costumes`);
       const data = await response.json();
       if (response.ok) {
         setProducts(data.costumes || []);
@@ -41,7 +43,7 @@ export default function ProductsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:9999/api/categories?all=true");
+      const response = await fetch(`${API_URL}/api/categories?all=true`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
@@ -69,10 +71,9 @@ export default function ProductsPage() {
   };
 
   const handleFormSubmit = (data) => {
-    // Tạm thời lưu data lại và mở confirm modal
     setPendingData(data);
     setConfirmAction(editingProduct ? 'edit' : 'add');
-    setIsFormOpen(false); // Ẩn form chính đi để hiện popup xác nhận
+    setIsFormOpen(false); 
     setIsConfirmOpen(true);
   };
 
@@ -88,10 +89,16 @@ export default function ProductsPage() {
     setIsConfirmOpen(true);
   };
 
+  const handleStatusChangeClick = (product, newStatus) => {
+    setPendingData({ product, newStatus });
+    setConfirmAction('change_status');
+    setIsConfirmOpen(true);
+  };
+
   const executeAdd = async (data) => {
     try {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch("http://localhost:9999/api/costumes", {
+      const response = await fetch(`${API_URL}/api/costumes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -116,7 +123,7 @@ export default function ProductsPage() {
   const executeEdit = async (data) => {
     try {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`http://localhost:9999/api/costumes/${editingProduct._id}`, {
+      const response = await fetch(`${API_URL}/api/costumes/${editingProduct._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +148,7 @@ export default function ProductsPage() {
   const executeDelete = async (product) => {
     try {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`http://localhost:9999/api/costumes/${product._id}`, {
+      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -165,24 +172,12 @@ export default function ProductsPage() {
     try {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const restoreData = {
-        name: product.name,
-        slug: product.slug,
-        sku: product.sku,
+        ...product,
         categoryId: product.categoryId?._id || product.categoryId,
-        size: product.size,
-        color: product.color,
-        condition: product.condition,
-        rentalRates: product.rentalRates,
-        deposit: product.deposit,
-        minRentalDays: product.minRentalDays,
-        lateFeePerDay: product.lateFeePerDay,
-        description: product.description,
-        images: product.images,
-        specifications: product.specifications,
         status: "available"
       };
 
-      const response = await fetch(`http://localhost:9999/api/costumes/${product._id}`, {
+      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -204,6 +199,37 @@ export default function ProductsPage() {
     }
   };
 
+  const executeChangeStatus = async ({ product, newStatus }) => {
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const updateData = {
+        ...product,
+        categoryId: product.categoryId?._id || product.categoryId,
+        status: newStatus
+      };
+
+      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        fetchProducts();
+        showToast("Cập nhật trạng thái thành công!");
+      } else {
+        const err = await response.json();
+        showToast(err.message || "Cập nhật thất bại", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("Lỗi hệ thống", "error");
+    }
+  };
+
   const handleConfirm = async () => {
     setIsConfirmOpen(false);
 
@@ -215,6 +241,8 @@ export default function ProductsPage() {
       await executeDelete(pendingData);
     } else if (confirmAction === 'restore') {
       await executeRestore(pendingData);
+    } else if (confirmAction === 'change_status') {
+      await executeChangeStatus(pendingData);
     }
 
     setPendingData(null);
@@ -223,7 +251,6 @@ export default function ProductsPage() {
 
   const handleCancelConfirm = () => {
     setIsConfirmOpen(false);
-    // Nếu huỷ lưu/sửa, có thể cho mở lại form
     if (confirmAction === 'add' || confirmAction === 'edit') {
       setIsFormOpen(true);
     } else {
@@ -236,116 +263,138 @@ export default function ProductsPage() {
     if (confirmAction === 'edit') return "Bạn có chắc chắn muốn lưu thay đổi cho sản phẩm này?";
     if (confirmAction === 'delete') return "Bạn có chắc chắn muốn ẩn/xóa mềm sản phẩm này khỏi hệ thống?";
     if (confirmAction === 'restore') return "Bạn có chắc chắn muốn khôi phục lại sản phẩm này (trạng thái Sẵn sàng)?";
+    if (confirmAction === 'change_status') return "Bạn có chắc chắn muốn cập nhật trạng thái hoạt động của sản phẩm này?";
     return "";
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'available': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'maintenance': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'dry_cleaning': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'rented': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'hidden': return 'bg-red-50 text-red-700 border-red-200';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý Sản phẩm</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Xem, thêm, sửa, hoặc ẩn sản phẩm
+          <h1 className="text-2xl font-bold text-[#1a1a1a]">Quản lý Sản phẩm</h1>
+          <p className="text-sm text-[#858585] mt-1">
+            Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn sản phẩm
           </p>
         </div>
-        <Button variant="primary" onClick={handleOpenAddForm}>
+        <Button variant="primary" onClick={handleOpenAddForm} className="bg-[#1a1a1a] hover:bg-[#333]">
           <FontAwesomeIcon icon={faPlus} className="mr-2" />
           Thêm sản phẩm
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e8e8e8] overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>
+          <div className="p-8 text-center text-[#858585]">Đang tải dữ liệu...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-gray-600 text-sm border-b">
-                  <th className="py-4 px-6 font-medium">Sản phẩm</th>
-                  <th className="py-4 px-6 font-medium">Danh mục</th>
-                  <th className="py-4 px-6 font-medium">Giá thuê</th>
-                  <th className="py-4 px-6 font-medium">Giá cọc</th>
-                  <th className="py-4 px-6 font-medium">Trạng thái</th>
-                  <th className="py-4 px-6 font-medium text-right">Thao tác</th>
+                <tr className="bg-[#f9f9f9] text-[#474747] text-[13px] uppercase tracking-wider border-b border-[#e8e8e8]">
+                  <th className="py-4 px-6 font-semibold">Sản phẩm</th>
+                  <th className="py-4 px-6 font-semibold">Danh mục</th>
+                  <th className="py-4 px-6 font-semibold">Giá thuê</th>
+                  <th className="py-4 px-6 font-semibold">Giá cọc</th>
+                  <th className="py-4 px-6 font-semibold">Trạng thái</th>
+                  <th className="py-4 px-6 font-semibold text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[#e8e8e8]">
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                    <td colSpan="6" className="py-8 text-center text-[#858585]">
                       Chưa có sản phẩm nào
                     </td>
                   </tr>
                 ) : (
-                  products.map((product) => (
-                    <tr key={product._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={product.images && product.images.length > 0 ? product.images[0] : "https://via.placeholder.com/40"}
-                            alt={product.name}
-                            className="w-10 h-10 rounded object-cover bg-gray-100 border"
-                          />
-                          <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500 w-48 truncate">{product.description}</p>
+                  products.map((product) => {
+                    const isLocked = product.status === "hidden" || product.status === "rented";
+                    return (
+                      <tr key={product._id} className="hover:bg-[#fcfcfc] transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/40x40"}
+                              alt={product.name}
+                              className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#e8e8e8]"
+                            />
+                            <div>
+                              <p className="font-semibold text-[14px] text-[#1a1a1a]">{product.name}</p>
+                              <p className="text-[12px] text-[#858585] w-48 truncate">{product.description}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
-                        {product.categoryId?.name || "N/A"}
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
-                        {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
-                        {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
-                      </td>
-                      <td className="py-4 px-6">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${product.status === "available"
-                              ? "bg-green-100 text-green-700"
-                              : product.status === "hidden"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
-                        >
-                          {product.status === "available" ? "Sẵn sàng" : product.status === "hidden" ? "Đã ẩn" : product.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex justify-end gap-2">
+                        </td>
+                        <td className="py-4 px-6 text-[13px] text-[#474747]">
+                          {product.categoryId?.name || "N/A"}
+                        </td>
+                        <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
+                          {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
+                        </td>
+                        <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
+                          {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
+                        </td>
+                        <td className="py-4 px-6">
                           {product.status === "hidden" ? (
-                            <button
-                              onClick={() => handleRestoreClick(product)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                              title="Khôi phục"
-                            >
-                              <FontAwesomeIcon icon={faEye} />
-                            </button>
+                            <span className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-red-50 text-red-700 border border-red-200">
+                              Đã ẩn
+                            </span>
                           ) : (
-                            <>
-                              <button
-                                onClick={() => handleOpenEditForm(product)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                title="Sửa"
-                              >
-                                <FontAwesomeIcon icon={faEdit} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(product)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Ẩn (Xóa mềm)"
-                              >
-                                <FontAwesomeIcon icon={faEyeSlash} />
-                              </button>
-                            </>
+                            <select
+                              value={product.status}
+                              onChange={(e) => handleStatusChangeClick(product, e.target.value)}
+                              disabled={isLocked}
+                              className={`border px-2 py-1.5 rounded-md text-[12px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-80 ${getStatusColor(product.status)}`}
+                            >
+                              <option value="available">Sẵn sàng</option>
+                              <option value="maintenance">Bảo trì</option>
+                              <option value="dry_cleaning">Đang giặt</option>
+                              <option value="rented" disabled>Đang thuê</option>
+                            </select>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex justify-end gap-2">
+                            {product.status === "hidden" ? (
+                              <button
+                                onClick={() => handleRestoreClick(product)}
+                                className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                title="Khôi phục"
+                              >
+                                <FontAwesomeIcon icon={faEye} />
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditForm(product)}
+                                  className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="Sửa thông tin"
+                                >
+                                  <FontAwesomeIcon icon={faEdit} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteClick(product)}
+                                  className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Ẩn khỏi cửa hàng"
+                                >
+                                  <FontAwesomeIcon icon={faEyeSlash} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
