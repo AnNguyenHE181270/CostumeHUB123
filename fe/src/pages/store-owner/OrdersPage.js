@@ -59,15 +59,15 @@ export default function OrdersPage() {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'picked_up': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'returned': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'returned': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
       case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'cancelled': return 'bg-gray-50 text-gray-500 border-gray-200';
-      default: return 'bg-white text-gray-700 border-gray-200';
+      case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
+      default: return 'bg-white text-[#555] border-[#eaeaea]';
     }
   };
 
   const columns = [
-    { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-gray-600">{row._id.slice(-6).toUpperCase()}</span> },
+    { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id.slice(-6).toUpperCase()}</span> },
     { header: "Khách hàng", accessor: (row) => row.user?.fullName || "N/A" },
     { header: "Trang phục", accessor: (row) => row.costume?.name || "N/A" },
     { header: "Ngày lấy", accessor: (row) => new Date(row.startDate).toLocaleDateString('vi-VN') },
@@ -97,12 +97,12 @@ export default function OrdersPage() {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#e8e8e8] p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-[#1a1a1a]">Quản lý Đơn Thuê</h1>
+        <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
       
-      <div className="overflow-hidden rounded-lg border border-[#e8e8e8]">
+      <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
         <DataTable columns={columns} data={orders} />
       </div>
 

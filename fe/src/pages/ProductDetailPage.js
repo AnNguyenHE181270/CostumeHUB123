@@ -86,7 +86,7 @@ export default function ProductDetailPage() {
   return (
     <div className="bg-[#fafafa] min-h-screen pb-20">
       {/* Breadcrumb / Back Navigation */}
-      <div className="bg-white border-b border-[#e8e8e8]">
+      <div className="bg-white border-b border-[#eaeaea]">
         <div className="mx-auto max-w-[1200px] px-6 py-4 flex items-center gap-4 text-[12px] font-medium text-[#666]">
           <button onClick={() => navigate(-1)} className="hover:text-[#1a1a1a] transition-colors flex items-center gap-2">
             <FontAwesomeIcon icon={faChevronLeft} className="text-[10px]" />
@@ -102,7 +102,7 @@ export default function ProductDetailPage() {
           
           {/* Left: Image Gallery */}
           <div className="w-full lg:w-1/2 flex flex-col gap-4">
-            <div className="relative aspect-[3/4] bg-white rounded-xl border border-[#e8e8e8] overflow-hidden group">
+            <div className="relative aspect-[3/4] bg-white rounded-xl border border-[#eaeaea] overflow-hidden group">
               <img 
                 src={images[activeImage]} 
                 alt={costume.name}
@@ -136,7 +136,7 @@ export default function ProductDetailPage() {
           {/* Right: Product Info */}
           <div className="w-full lg:w-1/2 flex flex-col">
             <div className="mb-6">
-              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold text-[#858585] mb-2">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold text-[#999] mb-2">
                 {categoryName}
               </p>
               <h1 className="text-[28px] lg:text-[34px] font-bold text-[#1a1a1a] leading-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -157,21 +157,21 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Pricing Box */}
-              <div className="bg-white rounded-xl border border-[#e8e8e8] p-5 mb-8 shadow-sm">
+              <div className="bg-white rounded-xl border border-[#eaeaea] p-5 mb-8 shadow-sm">
                 <div className="flex items-end gap-3 mb-2">
                   <span className="text-[32px] font-bold text-[#1a1a1a] leading-none tracking-tight">
                     {formatPrice(costume.rentalRates?.pricePerDay || 0)}
                   </span>
                   <span className="text-[14px] text-[#666] font-medium pb-1">/ ngày thuê</span>
                 </div>
-                <div className="flex items-center gap-2 text-[13px] text-[#858585] bg-[#f9f9f9] px-3 py-2 rounded mt-4">
+                <div className="flex items-center gap-2 text-[13px] text-[#999] bg-[#faf9f7] px-3 py-2 rounded mt-4">
                   <FontAwesomeIcon icon={faShieldHalved} className="text-emerald-500" />
                   Tiền cọc bắt buộc: <strong className="text-[#1a1a1a]">{formatPrice(costume.deposit || 0)}</strong>
                 </div>
               </div>
 
               {/* Attributes (Size & Color) */}
-              <div className="flex gap-6 mb-8 border-b border-[#e8e8e8] pb-8">
+              <div className="flex gap-6 mb-8 border-b border-[#eaeaea] pb-8">
                 <div className="flex-1">
                   <h4 className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-3">
                     Kích Thước
@@ -186,7 +186,7 @@ export default function ProductDetailPage() {
                           className={`min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border transition-all ${
                             isAvailable
                               ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
-                              : "border-[#e8e8e8] bg-[#f9f9f9] text-[#ccc] cursor-not-allowed"
+                              : "border-[#eaeaea] bg-[#faf9f7] text-[#ccc] cursor-not-allowed"
                           }`}
                         >
                           {size}
@@ -237,10 +237,10 @@ export default function ProductDetailPage() {
                   }}
                   className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${
                     isInCart 
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
+                      ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
                       : costume.status === "available" 
                         ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
-                        : "border-[#e8e8e8] bg-white text-[#999] cursor-not-allowed"
+                        : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
                   }`}
                   disabled={costume.status !== "available" && !isInCart}
                 >

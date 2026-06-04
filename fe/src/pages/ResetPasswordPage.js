@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="mb-10">
-          <p className="text-primary-600 text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
+          <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Account Security
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="text-primary-600 font-medium hover:text-primary-700 transition-colors"
+              className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
               Back to Login
             </button>

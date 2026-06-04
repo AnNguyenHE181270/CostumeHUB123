@@ -15,6 +15,7 @@ export const ROUTES = {
   STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài
   STOR_OWNER_ACCOUNT: "accounts",
   STOR_OWNER_DETAIL_ACCOUNT: "accounts/detail-account/:id",
+  STOR_OWNER_CREATE_ACCOUNT: "accounts/create",
   // Sau này bạn có thể thêm các path khác của Owner ở đây
   STORE_OWNER_PRODUCTS: "products",
   STORE_OWNER_CATEGORIES: "categories",

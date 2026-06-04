@@ -720,6 +720,10 @@ const updateUsers = async (req, res, next) => {
     if (!findRole) {
       return next(new HttpError("Not found role", 404));
     }
+    
+    if (findRole.name === "owner") {
+      return next(new HttpError("You cannot assign the owner role to a user.", 403));
+    }
 
     if (email) {
       const emailExists = await User.findOne({ email, _id: { $ne: id } });
@@ -765,15 +769,78 @@ const updateUsers = async (req, res, next) => {
   }
 };
 
-const getAllRoles = async (req, res, next) => {
+const createUser = async (req, res, next) => {
   try {
-    const roles = await Role.find({});
-    return res.status(200).json({
+    const {
+      email,
+      phone,
+      fullName,
+      password,
+      gender,
+      dateOfBirth,
+      avatar,
+      role,
+    } = req.body;
+
+    const findRole = await Role.findOne({ name: role });
+
+    if (!findRole) {
+      return next(new HttpError("Role not found", 404));
+    }
+
+    if (findRole.name === "owner") {
+      return next(new HttpError("You cannot create a user with the owner role.", 403));
+    }
+
+    const emailExists = await User.findOne({ email });
+
+    if (emailExists) {
+      return next(new HttpError("Email already in use", 400));
+    }
+
+    if (phone) {
+      const phoneExists = await User.findOne({ phone });
+
+      if (phoneExists) {
+        return next(
+          new HttpError("Phone number already in use", 400)
+        );
+      }
+    }
+
+
+    let newAvatar = avatar || null;
+
+    if (req.file) {
+      newAvatar = await uploadImage(req.file.path);
+      fs.unlinkSync(req.file.path);
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const newUser = await User.create({
+      email,
+      phone,
+      fullName,
+      password: passwordHash,
+      gender: gender ,
+      dateOfBirth: dateOfBirth ,
+      avatar: newAvatar,
+      role: findRole._id,
+      status: "active" ,
+      isEmailVerified: true,
+    });
+
+    return res.status(201).json({
       success: true,
-      roles,
+      message: "User created successfully",
+      user: newUser,
     });
   } catch (err) {
-    return next(new HttpError(err.message, 500));
+    return next(
+      new HttpError(err.message || "Create user failed", 500)
+    );
   }
 };
 
@@ -787,5 +854,5 @@ module.exports = {
   getAllUsers,
   updateUsers,
   findUserById,
-  getAllRoles,
+  createUser
 };

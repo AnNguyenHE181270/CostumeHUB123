@@ -12,10 +12,10 @@ import { useNavigate } from "react-router-dom";
 const getRoleInfo = (roleName) => {
   const name = roleName?.toLowerCase();
   if (name === "owner") return { label: "Owner", color: "bg-purple-100 text-purple-700", icon: faUserShield };
-  if (name === "staff") return { label: "Staff", color: "bg-primary-100 text-primary-700", icon: faUserTie }; // ← blue → primary
-  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-gray-700", icon: faUser };
+  if (name === "staff") return { label: "Staff", color: "bg-[#eaeaea] text-[#1a1a1a]", icon: faUserTie }; // ← blue → primary
+  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-[#555]", icon: faUser };
 
-  return { label: "Unknown", color: "bg-surface text-gray-700", icon: faUser };
+  return { label: "Unknown", color: "bg-surface text-[#555]", icon: faUser };
 };
 
 const getStatusInfo = (statusName) => {
@@ -23,7 +23,7 @@ const getStatusInfo = (statusName) => {
   if (name === "active") return { label: "Active", color: "bg-success-50 text-success-600", dot: "bg-success-500" };
   if (name === "pending") return { label: "Pending", color: "bg-warning-50 text-warning-600", dot: "bg-warning-500" };
   if (name === "blocked") return { label: "Blocked", color: "bg-red-50 text-red-600", dot: "bg-red-500" };
-  return { label: "Unknown", color: "bg-gray-50 text-gray-600", dot: "bg-gray-500" };
+  return { label: "Unknown", color: "bg-[#faf9f7] text-[#555]", dot: "bg-gray-500" };
 };
 
 const PAGE_SIZE = 10;
@@ -92,10 +92,10 @@ export default function AccountsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Account Management
           </h2>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-[#999] text-sm mt-1">
             Manage user information and system permissions
           </p>
         </div>
@@ -103,30 +103,30 @@ export default function AccountsPage() {
           icon={faPlus}
           label="Add Account"
           variant="primary"
-          onClick={() => console.log("Open Add Modal")}
+          onClick={() => navigate("/owner/accounts/create")}
         /></div>
 
       </div>
 
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4">
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
           <FontAwesomeIcon
             icon={faSearch}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
           />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent text-sm"
           />
         </div>
 
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white text-gray-700"
+          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
         >
           <option value="all">All Roles</option>
           <option value="owner">Owner</option>
@@ -137,7 +137,7 @@ export default function AccountsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-full md:w-48 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white text-gray-700"
+          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
         >
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
@@ -167,12 +167,12 @@ export default function AccountsPage() {
         }
       >
         <thead>
-          <tr className="border-border border-gray-100 bg-gray-50/50">
-            <th className="w-[35%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-            <th className="w-[20%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Join Date</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+          <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+            <th className="w-[35%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">User</th>
+            <th className="w-[20%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Role</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Status</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Join Date</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -181,10 +181,10 @@ export default function AccountsPage() {
             const roleInfo = getRoleInfo(acc.role);
             const statusInfo = getStatusInfo(acc.status);
             return (
-              <tr key={acc.id} className="border-border border-gray-50 hover:bg-gray-50 transition-colors">
+              <tr key={acc.id} className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors">
                 <td className="py-4 px-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border border-gray-200">
+                    <div className="w-10 h-10 rounded-full bg-[#eaeaea] text-[#1a1a1a] flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border border-[#eaeaea]">
                       {acc.avatar ? (
                         <img src={acc.avatar} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
@@ -192,8 +192,8 @@ export default function AccountsPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{acc.fullName || "N/A"}</p>
-                      <p className="text-xs text-gray-500 truncate">{acc.email}</p>
+                      <p className="text-sm font-semibold text-[#1a1a1a] truncate">{acc.fullName || "N/A"}</p>
+                      <p className="text-xs text-[#999] truncate">{acc.email}</p>
                     </div>
                   </div>
                 </td>
@@ -212,7 +212,7 @@ export default function AccountsPage() {
                   </span>
                 </td>
 
-                <td className="py-4 px-6 text-sm text-gray-600 whitespace-nowrap">
+                <td className="py-4 px-6 text-sm text-[#555] whitespace-nowrap">
                   {acc.createdAt ? new Date(acc.createdAt).toLocaleDateString("en-GB") : "N/A"}
                 </td>
 
@@ -220,7 +220,7 @@ export default function AccountsPage() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => handleEdit(acc)}
-                      className="w-8 h-8 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-lg hover:bg-[#eaeaea] text-[#999] hover:text-[#1a1a1a] flex items-center justify-center transition-colors"
                       title="Edit"
                     >
                       <FontAwesomeIcon icon={faEdit} className="text-sm" />

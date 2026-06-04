@@ -4,8 +4,6 @@ const Costume = require('../models/costume.model');
 const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
 
-//==========================================================
-// danh sách đơn thuê (customer)
 const getRentalHistory = async (req, res, next) => {
     try {
         const userId = req.userData.id;

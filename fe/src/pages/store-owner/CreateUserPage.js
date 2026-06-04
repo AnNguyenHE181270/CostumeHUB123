@@ -1,28 +1,45 @@
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faSave, faUpload, faLink } from "@fortawesome/free-solid-svg-icons";
-import Button from "../../components/ui/Button";
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-export default function AccountDetailPage() {
+import { useNavigate } from "react-router-dom";
+
+export default function CreateUserPage() {
   const navigate = useNavigate();
-const [loadingPage, setLoadingPage] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [availableRoles, setAvailableRoles] = useState([]);
   const [avatarFile, setAvatarFile] = useState(null);
+  
   const [form, setForm] = useState({
       phone: "",
       email: "",
+      password: "",
       fullName: "",
       gender: "male",
       dateOfBirth: "",
       avatar: "",
-      status: "active",
-      role: "owner",
+      role: "",
   });
-  const { id } = useParams();
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        const roleRes = await fetch("http://localhost:9999/api/roles/get-roles", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const roleData = await roleRes.json();
+        if (roleData.success && roleData.roles) {
+          setAvailableRoles(roleData.roles.filter(r => r.name !== 'owner'));
+        }
+      } catch (err) {
+        console.error("Failed to load roles", err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,12 +58,15 @@ const [loadingPage, setLoadingPage] = useState(true);
     }
   };
 
-  const { token } = useAuth();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
   
     if (submitting) return;
+    
+    if (!form.role) {
+      setError("Vui lòng chọn vai trò (Role).");
+      return;
+    }
   
     try {
       setSubmitting(true);
@@ -57,7 +77,7 @@ const [loadingPage, setLoadingPage] = useState(true);
       
       const formData = new FormData();
       Object.keys(form).forEach(key => {
-        if (key !== 'avatar' && form[key] !== null && form[key] !== undefined) {
+        if (key !== 'avatar' && form[key] !== null && form[key] !== undefined && form[key] !== "") {
           formData.append(key, form[key]);
         }
       });
@@ -68,10 +88,12 @@ const [loadingPage, setLoadingPage] = useState(true);
         formData.append("avatar", form.avatar);
       }
 
+      formData.append("status", "active");
+
       const response = await fetch(
-        `http://localhost:9999/api/users/update-user/${id}`,
+        `http://localhost:9999/api/users/user/create`,
         {
-          method: "PUT",
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -85,12 +107,12 @@ const [loadingPage, setLoadingPage] = useState(true);
         setError(
           data.errors?.[0]?.msg ||
           data.message ||
-          "Update failed."
+          "Creation failed."
         );
         return;
       }
 
-      setSuccess("Account updated successfully!");
+      setSuccess("Account created successfully!");
       setTimeout(() => {
         setSuccess("");
         navigate(-1);
@@ -101,71 +123,6 @@ const [loadingPage, setLoadingPage] = useState(true);
       setSubmitting(false);
     }
   };
-
-  const getDetailAccount = async () => {
-    try {
-      setLoadingPage(true);
-      setError("");
-  
-      const currentToken = token || localStorage.getItem("token") || sessionStorage.getItem("token");
-  
-      const response = await fetch(
-        `http://localhost:9999/api/users/user/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setError(data.message || "Failed to load user data.");
-        return;
-      }
-      
-      setForm({
-        phone: data.user.phone ,
-        email: data.user.email ,
-        fullName: data.user.fullName ,
-        gender: data.user.gender ,
-        dateOfBirth: data.user.dateOfBirth ? new Date(data.user.dateOfBirth).toISOString().split('T')[0] : "",
-        status: data.user.status ,
-        avatar: data.user.avatar ,
-        role: data.user.role.name ,
-      });
-
-      try {
-        const roleRes = await fetch("http://localhost:9999/api/roles/get-roles", {
-          headers: { Authorization: `Bearer ${currentToken}` }
-        });
-        const roleData = await roleRes.json();
-        if (roleData.success && roleData.roles) {
-          setAvailableRoles(roleData.roles.filter(r => r.name !== 'owner'));
-        }
-      } catch (err) {
-        console.error("Failed to load roles", err);
-      }
-    } catch {
-      setError("Network error while loading data.");
-    } finally {
-      setLoadingPage(false);
-    }
-  };
-
-  useEffect(() => {getDetailAccount()},[])
-  
-
-  
-  if (loadingPage) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#eaeaea] border-t-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
@@ -183,7 +140,6 @@ const [loadingPage, setLoadingPage] = useState(true);
         </div>
       )}
 
-      {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
         <div>
           <button
@@ -194,28 +150,25 @@ const [loadingPage, setLoadingPage] = useState(true);
             <FontAwesomeIcon icon={faArrowLeft} /> Quay lại
           </button>
           <h2 className="text-3xl font-bold text-[#1a1a1a] tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Hồ Sơ Tài Khoản
+            Tạo Người Dùng Mới
           </h2>
           <p className="text-[#999] text-[14px] mt-2">
-            Quản lý thông tin cá nhân và quyền truy cập hệ thống.
+            Thêm tài khoản mới và thiết lập quyền truy cập hệ thống.
           </p>
         </div>
         <div className="shrink-0">
           <button
             type="submit"
-            className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-8 py-3.5 hover:bg-[#333] transition-colors flex items-center gap-2"
+            disabled={submitting}
+            className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-8 py-3.5 hover:bg-[#333] transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            <FontAwesomeIcon icon={faSave} /> Lưu Thay Đổi
+            <FontAwesomeIcon icon={faSave} /> {submitting ? "Đang tạo..." : "Tạo Tài Khoản"}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
-        {/* Left Column: Avatar & System Access (4 cols) */}
         <div className="lg:col-span-4 space-y-10">
-          
-          {/* Avatar Block */}
           <div className="bg-white border border-[#eaeaea] p-8 text-center flex flex-col items-center">
             <div className="relative group mb-6">
               <div className="w-32 h-32 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative">
@@ -226,7 +179,6 @@ const [loadingPage, setLoadingPage] = useState(true);
                     {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
                   </span>
                 )}
-                {/* Upload Overlay */}
                 <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
                   <FontAwesomeIcon icon={faUpload} className="text-[#1a1a1a] text-xl mb-1" />
                   <span className="text-[#1a1a1a] text-[10px] font-semibold uppercase tracking-wider">Tải lên</span>
@@ -235,8 +187,8 @@ const [loadingPage, setLoadingPage] = useState(true);
               </div>
             </div>
             
-            <h3 className="text-xl font-bold text-[#1a1a1a] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{form.fullName || "Người Dùng"}</h3>
-            <p className="text-[12px] text-[#999] tracking-[0.1em] uppercase">{form.role}</p>
+            <h3 className="text-xl font-bold text-[#1a1a1a] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{form.fullName || "Người Dùng Mới"}</h3>
+            <p className="text-[12px] text-[#999] tracking-[0.1em] uppercase">{form.role || "Chưa phân quyền"}</p>
 
             <div className="w-full mt-6 text-left">
               <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Hoặc dán liên kết ảnh</label>
@@ -256,20 +208,20 @@ const [loadingPage, setLoadingPage] = useState(true);
             </div>
           </div>
 
-          {/* System Access Block */}
           <div className="bg-white border border-[#eaeaea] p-8">
             <h3 className="text-lg font-bold text-[#1a1a1a] mb-6 border-b border-[#eaeaea] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Phân Quyền Hệ Thống</h3>
             
             <div className="space-y-6">
               <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Vai trò</label>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Vai trò <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <select
                     name="role"
-                    value={form.role || "owner"}
+                    value={form.role}
                     onChange={handleChange}
                     className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:border-[#1a1a1a] outline-none transition-all appearance-none text-[13px] font-medium"
                   >
+                    <option value="">-- Chọn vai trò --</option>
                     {availableRoles.length > 0 ? (
                       availableRoles.map((r) => (
                         <option key={r._id} value={r.name}>
@@ -288,42 +240,10 @@ const [loadingPage, setLoadingPage] = useState(true);
                   </div>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Trạng thái tài khoản</label>
-                <div className="relative">
-                  <select
-                    name="status"
-                    value={form.status || "active"}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border outline-none transition-all appearance-none text-[13px] font-medium ${
-                      form.status === "blocked" 
-                        ? "border-red-200 bg-red-50 text-red-900" 
-                        : "border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:border-[#1a1a1a]"
-                    }`}
-                  >
-                    <option value="active">Hoạt động (Active)</option>
-                    <option value="pending">Chờ xử lý (Pending)</option>
-                    <option value="blocked">Đã khóa (Blocked)</option>
-                  </select>
-                  <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 ${form.status === "blocked" ? "text-red-500" : "text-[#999]"}`}>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
-                
-                {form.status === "blocked" && (
-                  <p className="mt-3 text-sm text-red-500 flex items-center gap-1.5 font-medium">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    Người dùng đã bị khóa khỏi hệ thống.
-                  </p>
-                )}
-              </div>
             </div>
           </div>
-          
         </div>
 
-        {/* Right Column: Personal Info (8 cols) */}
         <div className="lg:col-span-8">
           <div className="bg-white border border-[#eaeaea] p-8 md:p-12 h-full">
             <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Thông Tin Cá Nhân</h3>
@@ -331,46 +251,53 @@ const [loadingPage, setLoadingPage] = useState(true);
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Họ và Tên</label>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Họ và Tên <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="fullName"
                   value={form.fullName}
                   onChange={handleChange}
+                  placeholder="Nhập họ và tên đầy đủ"
                   className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Địa chỉ Email <span className="text-[#999] ml-1 normal-case tracking-normal">(Chỉ đọc)</span></label>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Địa chỉ Email <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   name="email"
-                  value={form.email || ""}
-                  readOnly
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#f5f5f5] text-[#999] cursor-not-allowed outline-none text-[14px]"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="name@example.com"
+                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Số Điện Thoại <span className="text-[#999] ml-1 normal-case tracking-normal">(Chỉ đọc)</span></label>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Mật khẩu (Khởi tạo) <span className="text-red-500">*</span></label>
+                <input
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Tối thiểu 6 ký tự"
+                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Số Điện Thoại</label>
                 <input
                   type="tel"
                   name="phone"
-                  value={form.phone || ""}
-                  readOnly
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#f5f5f5] text-[#999] cursor-not-allowed outline-none text-[14px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Ngày Sinh</label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={form.dateOfBirth || ""}
+                  value={form.phone}
                   onChange={handleChange}
-                  max={new Date().toISOString().split("T")[0]}
+                  placeholder="Nhập số điện thoại"
                   className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
                 />
               </div>
@@ -380,7 +307,7 @@ const [loadingPage, setLoadingPage] = useState(true);
                 <div className="relative">
                   <select
                     name="gender"
-                    value={form.gender || "male"}
+                    value={form.gender}
                     onChange={handleChange}
                     className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all appearance-none text-[14px]"
                   >
@@ -392,6 +319,18 @@ const [loadingPage, setLoadingPage] = useState(true);
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Ngày Sinh</label>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  value={form.dateOfBirth}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split("T")[0]}
+                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                />
               </div>
             </div>
           </div>

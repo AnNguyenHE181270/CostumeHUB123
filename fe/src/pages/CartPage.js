@@ -64,12 +64,12 @@ export default function CartPage() {
 
   return (
     <div className="bg-[#fafafa] min-h-screen pb-20">
-      <div className="bg-white border-b border-[#e8e8e8]">
+      <div className="bg-white border-b border-[#eaeaea]">
         <div className="mx-auto max-w-[1200px] px-6 py-8">
           <h1 className="text-[32px] font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Giỏ Thuê Của Bạn
           </h1>
-          <p className="text-[#858585] text-[13px] mt-1 uppercase tracking-[0.1em]">
+          <p className="text-[#999] text-[13px] mt-1 uppercase tracking-[0.1em]">
             {cartItems.length} sản phẩm trong giỏ
           </p>
         </div>
@@ -85,7 +85,7 @@ export default function CartPage() {
                 {/* Delete Btn */}
                 <button
                   onClick={() => removeFromCart(item.costume._id)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#f9f9f9] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"
                   title="Xóa khỏi giỏ"
                 >
                   <FontAwesomeIcon icon={faTrash} className="text-[13px]" />
@@ -103,7 +103,7 @@ export default function CartPage() {
                 {/* Details */}
                 <div className="flex-1 flex flex-col justify-center">
                   <div className="pr-10">
-                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#858585] font-semibold mb-1">
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-semibold mb-1">
                       {typeof item.costume.categoryId === 'object' ? item.costume.categoryId?.name : "Chưa phân loại"}
                     </p>
                     <Link to={`/product/${item.costume._id}`} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2">
@@ -120,32 +120,32 @@ export default function CartPage() {
                       onClick={() => toggleExpand(item.costume._id)}
                       className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1.5"
                     >
-                      <FontAwesomeIcon icon={faCalendarDays} className="text-[#858585]" />
+                      <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
                       {expandedItem === item.costume._id ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
                     </button>
                   </div>
 
                   {/* Dates Selection (Collapsible) */}
                   {expandedItem === item.costume._id && (
-                    <div className="bg-[#f9f9f9] rounded-lg p-3 grid grid-cols-2 gap-4 mt-4 animate-fade-in">
+                    <div className="bg-[#faf9f7] rounded-lg p-3 grid grid-cols-2 gap-4 mt-4 animate-fade-in">
                       <div>
-                        <label className="block text-[11px] uppercase tracking-[0.05em] text-[#858585] font-medium mb-1">Ngày nhận</label>
+                        <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày nhận</label>
                         <input
                           type="date"
                           value={item.startDate}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => updateDates(item.costume._id, e.target.value, item.endDate)}
-                          className="w-full bg-white border border-[#e8e8e8] text-[13px] text-[#1a1a1a] rounded px-2.5 py-1.5 focus:border-[#1a1a1a] outline-none transition-colors"
+                          className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-2.5 py-1.5 focus:border-[#1a1a1a] outline-none transition-colors"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] uppercase tracking-[0.05em] text-[#858585] font-medium mb-1">Ngày trả</label>
+                        <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày trả</label>
                         <input
                           type="date"
                           value={item.endDate}
                           min={item.startDate}
                           onChange={(e) => updateDates(item.costume._id, item.startDate, e.target.value)}
-                          className="w-full bg-white border border-[#e8e8e8] text-[13px] text-[#1a1a1a] rounded px-2.5 py-1.5 focus:border-[#1a1a1a] outline-none transition-colors"
+                          className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-2.5 py-1.5 focus:border-[#1a1a1a] outline-none transition-colors"
                         />
                       </div>
                     </div>
@@ -154,7 +154,7 @@ export default function CartPage() {
 
                 {/* Pricing summary for this item */}
                 <div className="w-full sm:w-[140px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                  <p className="text-[11px] text-[#858585] mb-1">
+                  <p className="text-[11px] text-[#999] mb-1">
                     {formatPrice(item.costume.rentalRates?.pricePerDay || 0)} / ngày
                   </p>
                   <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
@@ -179,7 +179,7 @@ export default function CartPage() {
           {/* Order Summary Sidebar */}
           <div className="w-full lg:w-1/3 bg-white rounded-xl border border-[#f0ece8] shadow-sm sticky top-[100px]">
             <div className="p-6">
-              <h3 className="text-[18px] font-bold text-[#1a1a1a] mb-6 border-b border-[#e8e8e8] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              <h3 className="text-[18px] font-bold text-[#1a1a1a] mb-6 border-b border-[#eaeaea] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 Tóm Tắt Đơn Hàng
               </h3>
 

@@ -213,7 +213,7 @@ export default function CategoryPage() {
                 <select
                   value={sort}
                   onChange={handleSortChange}
-                  className="bg-white border border-[#e8e8e8] rounded-lg px-4 py-2.5
+                  className="bg-white border border-[#eaeaea] rounded-lg px-4 py-2.5
                              text-[13px] text-[#1a1a1a] font-medium outline-none
                              focus:border-[#999] transition-colors cursor-pointer"
                 >
@@ -277,7 +277,7 @@ export default function CategoryPage() {
                   <button
                     onClick={() => handlePageChange(page - 1)}
                     disabled={page <= 1}
-                    className="px-4 py-2 text-[12px] font-medium rounded border border-[#e8e8e8] bg-white
+                    className="px-4 py-2 text-[12px] font-medium rounded border border-[#eaeaea] bg-white
                                hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     ← Trước
@@ -292,7 +292,7 @@ export default function CategoryPage() {
                         className={`w-10 h-10 text-[12px] font-semibold rounded transition-colors ${
                           pageNum === page
                             ? "bg-[#1a1a1a] text-white"
-                            : "bg-white border border-[#e8e8e8] hover:bg-[#f5f5f5] text-[#1a1a1a]"
+                            : "bg-white border border-[#eaeaea] hover:bg-[#f5f5f5] text-[#1a1a1a]"
                         }`}
                       >
                         {pageNum}
@@ -303,7 +303,7 @@ export default function CategoryPage() {
                   <button
                     onClick={() => handlePageChange(page + 1)}
                     disabled={page >= pagination.totalPages}
-                    className="px-4 py-2 text-[12px] font-medium rounded border border-[#e8e8e8] bg-white
+                    className="px-4 py-2 text-[12px] font-medium rounded border border-[#eaeaea] bg-white
                                hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Sau →
