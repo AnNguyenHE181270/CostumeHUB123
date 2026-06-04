@@ -1,44 +1,25 @@
 const mongoose = require("mongoose");
 
-// Sub-schema lưu thông tin sản phẩm trong đơn thuê (Snapshot)
-const rentalItemSchema = new mongoose.Schema(
-    {
-        costume: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Costume",
-            required: true,
-        },
-        size: { type: String, required: true },
-        quantity: { type: Number, required: true, min: 1 },
-        rentalPricePerDay: { type: Number, required: true }, // Giá thuê 1 ngày tại thời điểm đặt
-        depositPrice: { type: Number, required: true }, // Giá cọc 1 bộ tại thời điểm đặt
-    },
-    { _id: false }
-);
-
-// Sub-schema lưu địa chỉ giao hàng (Tránh bị đổi khi user cập nhật profile)
-const shippingAddressSchema = new mongoose.Schema(
-    {
-        receiverName: { type: String, required: true },
-        receiverPhone: { type: String, required: true },
-        province: { type: String, required: true },
-        district: { type: String, required: true },
-        ward: { type: String, required: true },
-        addressDetail: { type: String, required: true },
-        note: { type: String, default: "" },
-    },
-    { _id: false }
-);
-
 const rentalSchema = new mongoose.Schema(
     {
-        user: {
+        customerId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Users",
             required: true,
         },
 
-        items: [rentalItemSchema],
+        items: [{
+            costume: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Costume",
+                required: true,
+            },
+            size: { type: String, required: true },
+            quantity: { type: Number, required: true, min: 1 },
+            rentalPricePerDay: { type: Number, required: true }, // Giá thuê 1 ngày tại thời điểm đặt
+            depositPrice: { type: Number, required: true }, // Giá cọc 1 bộ tại thời điểm đặt
+        },
+        { _id: false }],
 
         // ===== THỜI GIAN THUÊ =====
         rentalDays: { type: Number, required: true, min: 1 }, // Số ngày thuê
@@ -86,8 +67,13 @@ const rentalSchema = new mongoose.Schema(
         },
 
         shippingAddress: {
-            type: shippingAddressSchema,
-            required: true,
+            receiverName: { type: String, required: true },
+            receiverPhone: { type: String, required: true },
+            province: { type: String, required: true },
+            district: { type: String, required: true },
+            ward: { type: String, required: true },
+            addressDetail: { type: String, required: true },
+            note: { type: String, default: "" },
         },
 
         // Mã theo dõi đơn hàng giao vận (GHTK, GHN...)

@@ -18,6 +18,8 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 /* Static links that always show */
 const STATIC_LINKS = [
   { label: "BLOG", href: "/blog" },
+  { label: "RENTAL-HISTORY", href: "/rental-history" },
+
   { label: "LIÊN HỆ", href: "/lien-he" },
 ];
 
@@ -101,9 +103,8 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-shadow duration-300 ${
-        scrolled ? "shadow-md" : ""
-      }`}
+      className={`sticky top-0 z-50 transition-shadow duration-300 ${scrolled ? "shadow-md" : ""
+        }`}
     >
       {/* ════════ TIER 1 — Top Banner ════════ */}
       <div className="bg-[#1a1a1a] text-white text-center py-2 px-4">
@@ -160,11 +161,11 @@ export default function Navbar() {
           {/* Right: Icons & Search */}
           <div className="flex items-center gap-3">
             {/* Search Bar (Desktop) */}
-            <form 
+            <form
               onSubmit={handleSearch}
               className="hidden lg:flex items-center bg-[#f5f5f5] rounded-full px-4 py-2 border border-transparent focus-within:border-[#e8e8e8] focus-within:bg-white transition-all duration-300"
             >
-              <input 
+              <input
                 type="text"
                 placeholder="Tìm sản phẩm..."
                 className="bg-transparent text-[13px] text-[#1a1a1a] outline-none w-32 focus:w-48 transition-all duration-300 placeholder:text-[#999]"
@@ -303,14 +304,14 @@ export default function Navbar() {
             <nav className="flex-1 overflow-y-auto py-4">
               {/* Mobile Search */}
               <div className="px-5 mb-5">
-                <form 
+                <form
                   onSubmit={(e) => {
                     handleSearch(e);
                     setMobileOpen(false);
                   }}
                   className="flex items-center bg-[#f5f5f5] rounded-lg px-4 py-2.5"
                 >
-                  <input 
+                  <input
                     type="text"
                     placeholder="Tìm kiếm sản phẩm..."
                     className="bg-transparent text-[14px] text-[#1a1a1a] outline-none w-full placeholder:text-[#999]"
@@ -335,10 +336,9 @@ export default function Navbar() {
                     className={`
                       flex items-center justify-between px-5 py-3
                       text-[14px] font-medium transition-colors
-                      ${
-                        location.pathname.includes(parent._id)
-                          ? "text-[#1a1a1a] bg-[#f5f5f5]"
-                          : "text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a]"
+                      ${location.pathname.includes(parent._id)
+                        ? "text-[#1a1a1a] bg-[#f5f5f5]"
+                        : "text-[#474747] hover:bg-[#f9f9f9] hover:text-[#1a1a1a]"
                       }
                     `}
                   >

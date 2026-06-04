@@ -14,9 +14,6 @@ import {
     faTruck,
     faTimes,
 } from '@fortawesome/free-solid-svg-icons'
-import Header from '../../components/layout/Header'
-import Footer from '../../components/layout/Footer'
-
 import Button from "../../components/Button"
 import { Card, CardContent } from "../../components/customer/CheckoutCard"
 import { RadioGroup, RadioGroupItem } from "../../components/ui/Radio"
@@ -98,7 +95,6 @@ export function Checkout() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-white via-[#fbf9f6] to-[#faf9f7] pt-20 transition-colors duration-300">
-            <Header />
             <main className="container mx-auto px-4 py-6 max-w-6xl">
                 <div className="grid lg:grid-cols-[1fr_320px] gap-8">
                     {/* Left Column - Product Details */}
@@ -500,7 +496,6 @@ export function Checkout() {
                     </div>
                 </div>
             </main>
-            <Footer />
         </div>
     )
 }

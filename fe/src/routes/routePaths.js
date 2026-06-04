@@ -8,15 +8,20 @@ export const ROUTES = {
   FORGOTPASSWORD: "/forgot-password",
   RESETPASSWORD: "/reset-password/:token",
 
+  // Customer / Protected Routes (Cần đăng nhập để thuê)
+  RENT_COSTUME: "/rent/:costumeId",
+
   // Store Owner Routes
   STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài
   STOR_OWNER_ACCOUNT: "accounts",
   STOR_OWNER_DETAIL_ACCOUNT: "accounts/detail-account/:id",
   // Sau này bạn có thể thêm các path khác của Owner ở đây
   STORE_OWNER_PRODUCTS: "products",
-  // STORE_OWNER_ORDERS: "/store-owner/orders",
+  STORE_OWNER_CATEGORIES: "categories",
+  STORE_OWNER_ORDERS: "orders",
 
   // Staff Routes
-  // STAFF_BASE: "/staff",
+  STAFF_BASE: "/staff",
+  STAFF_ORDERS: "orders",
   // STAFF_DASHBOARD: "/staff/dashboard",
 };
