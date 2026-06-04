@@ -11,8 +11,11 @@ import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+import CartPage from "../pages/CartPage";
+
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
 import AccountsPage from "../pages/store-owner/AccountsPage";
+import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 

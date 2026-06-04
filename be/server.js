@@ -9,8 +9,7 @@ require("dotenv").config();
 const HttpError = require("./models/http-error.model"); // chỉnh path nếu khác
 
 const app = express();
-
-// ================= Middleware =================
+app.disable("etag");
 app.use(
   cors({
     origin: "http://localhost:3000",
