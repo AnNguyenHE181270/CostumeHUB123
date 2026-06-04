@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPlus, faSearch, faEdit, faTrash,
+  faPlus, faSearch, faEdit,
   faUserShield, faUserTie, faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { useMemo, useState, useEffect } from "react";
@@ -85,8 +85,8 @@ export default function AccountsPage() {
   const totalPages = Math.ceil(filteredAccounts.length / PAGE_SIZE);
 
   const handleEdit = (user) => {
-    navigate(`/owner/accounts/detail-account/${user.id}`)}
-  const handleDelete = (user) => console.log("Deleting:", user);
+    navigate(`/owner/accounts/detail-account/${user.id}`)
+  };
 
   return (
     <div className="space-y-6">
@@ -184,11 +184,15 @@ export default function AccountsPage() {
               <tr key={acc.id} className="border-border border-gray-50 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
-                      {acc.fullName?.charAt(0).toUpperCase() || "?"}
+                    <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border border-gray-200">
+                      {acc.avatar ? (
+                        <img src={acc.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        acc.fullName ? acc.fullName.charAt(0).toUpperCase() : "U"
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{acc.fullName}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{acc.fullName || "N/A"}</p>
                       <p className="text-xs text-gray-500 truncate">{acc.email}</p>
                     </div>
                   </div>
@@ -220,13 +224,6 @@ export default function AccountsPage() {
                       title="Edit"
                     >
                       <FontAwesomeIcon icon={faEdit} className="text-sm" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(acc)}
-                      className="w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center transition-colors"
-                      title="Delete"
-                    >
-                      <FontAwesomeIcon icon={faTrash} className="text-sm" />
                     </button>
                   </div>
                 </td>

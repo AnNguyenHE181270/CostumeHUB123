@@ -6,6 +6,8 @@ const User = require("../models/user.model");
 const Role = require("../models/role.model");
 const sendEmail = require("../services/email.service");
 const crypto = require("crypto");
+const { uploadImage } = require("../services/cloudinary.service");
+const fs = require("fs");
 const OTP_TTL_MS = 1 * 60 * 1000;
 const { ObjectId } = require('mongodb');
 
@@ -26,6 +28,18 @@ const register = async (req, res, next) => {
           422,
         ),
       );
+    }
+
+    if (phone) {
+      const existPhone = await User.findOne({ phone });
+      if (existPhone && existPhone.status === "active" && (!existUser || existPhone._id.toString() !== existUser._id.toString())) {
+        return next(
+          new HttpError(
+            "An account with this phone number already exists.",
+            422,
+          ),
+        );
+      }
     }
 
     if (
@@ -643,20 +657,18 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-const getAllUser = async (req, res, next) => {
+const getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find()
-      .populate("role")
+      .populate("role");
     return res.status(200).json({
       users: users.map((u) => ({
         fullName: u.fullName,
         email: u.email,
         phone: u.phone,
         avatar: u.avatar,
-        dateOfBirth: u.dateOfBirth,
-        gender: u.gender,
-        role: u.role.name,
         status: u.status,
+        role: u.role.name,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
         id: u._id
@@ -691,35 +703,75 @@ const findUserById = async (req, res, next) => {
   }
 };
 
-const updateUser = async (req, res, next) => {
+const updateUsers = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {phone, fullName, gender, age, avatar, role, status} = req.body;
-    const findRole = await Role.findOne({"name": role});
+    const { email, phone, fullName, gender, dateOfBirth, age, avatar, role, status } = req.body;
 
-    if(!findRole){
-      return next (new HttpError("Not found role", 404))
-    }
     if (!ObjectId.isValid(id)) {
-      return next (new HttpError("Invalid id", 400))
+      return next(new HttpError("Invalid id", 400));
     }
-    
-    let user = await User.findByIdAndUpdate(id,{
+
+    if (req.userData && id === req.userData.id) {
+       return next(new HttpError("You cannot change your own role or status", 403));
+    }
+
+    const findRole = await Role.findOne({ "name": role });
+    if (!findRole) {
+      return next(new HttpError("Not found role", 404));
+    }
+
+    if (email) {
+      const emailExists = await User.findOne({ email, _id: { $ne: id } });
+      if (emailExists) {
+        return next(new HttpError("Email already in use", 400));
+      }
+    }
+
+    if (phone) {
+      const phoneExists = await User.findOne({ phone, _id: { $ne: id } });
+      if (phoneExists) {
+        return next(new HttpError("Phone number already in use", 400));
+      }
+    }
+
+    let newAvatar = avatar;
+    if (req.file) {
+      newAvatar = await uploadImage(req.file.path);
+      fs.unlinkSync(req.file.path);
+    }
+
+    let user = await User.findByIdAndUpdate(id, {
+      email,
       phone,
       fullName,
       gender,
-      age, 
+      dateOfBirth: dateOfBirth,
       status,
-      avatar,
+      avatar: newAvatar,
       role: findRole._id
     }, { new: true });
-    if(!user){
-      return next(new HttpError("User not found", 404))
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
     }
-    
-    return res.status(201).json({
-      "user": user
-    })
+
+    return res.status(200).json({
+      success: true,
+      user
+    });
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
+const getAllRoles = async (req, res, next) => {
+  try {
+    const roles = await Role.find({});
+    return res.status(200).json({
+      success: true,
+      roles,
+    });
   } catch (err) {
     return next(new HttpError(err.message, 500));
   }
@@ -732,7 +784,8 @@ module.exports = {
   getProfile,
   forgotPassword,
   resetPassword,
-  getAllUser,
-  updateUser,
-  findUserById
+  getAllUsers,
+  updateUsers,
+  findUserById,
+  getAllRoles,
 };

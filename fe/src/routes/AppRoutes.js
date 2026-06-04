@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+
 import PublicRoutes from "./PublicRoutes";
 import ProtectedRoutes from "./ProtectedRoutes";
 import StaffRoutes from "./StaffRoutes";
@@ -12,71 +13,59 @@ import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import CartPage from "../pages/CartPage";
 
-// Trang của Owner
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
 import AccountsPage from "../pages/store-owner/AccountsPage";
 import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
-import OrdersPage from "../pages/store-owner/OrdersPage";
-import RentalHistory from "../pages/customer/RentalHistoryPage";
-
-// Trang Customer
-import RentCostumePage from "../pages/customer/RentCostumePage";
-import { Checkout } from "../pages/customer/CheckoutPage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
+
 import MainLayout from "../layouts/MainLayout";
+import { Checkout } from "../pages/customer/CheckoutPage";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* ======================================================== */}
-      {/* LUỒNG KHÁCH HÀNG: ĐƯỢC BỌC TRONG MAINLAYOUT ĐỂ HIỆN HEADER */}
-      {/* ======================================================== */}
-      <Route element={<MainLayout />}>
-        <Route path={ROUTES.HOME} element={<HomePage />} />
+      {/* Public */}
+      <Route path={ROUTES.HOME} element={<HomePage />} />
 
-        <Route element={<PublicRoutes />}>
-          <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-          <Route path={ROUTES.REGISTER} element={<Register />} />
-          <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
-          <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
-          <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
-        </Route>
-
-        <Route element={<ProtectedRoutes />}>
-          <Route path="/cart" element={<CartPage />} />
-          {/* Nơi khách hàng thực hiện Đặt thuê (MATSL-05-07) */}
-          <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
-
-          {/* Trang Checkout của team */}
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/rental-history" element={<RentalHistory />} />
-
-        </Route>
+      <Route element={<PublicRoutes />}>
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
+        <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
       </Route>
 
-      {/* ======================================================== */}
-      {/* LUỒNG NHÂN VIÊN & QUẢN LÝ: ĐƯỢC BỌC BỞI DASHBOARDLAYOUT    */}
-      {/* ======================================================== */}
+      {/* User thường */}
+      <Route element={<ProtectedRoutes />}>
+
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<Checkout />} />
+      </Route>
+
+      {/* Staff / Lễ tân */}
       <Route element={<StaffRoutes />}>
-        <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
-          <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
-        </Route>
+        {/* <Route path={ROUTES.STAFF_DASHBOARD} element={<StaffDashboard />} /> */}
       </Route>
 
+      {/* Store Owner */}
       <Route element={<OwnerRoutes />}>
+        {/* Route cha bọc Layout */}
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
+
           <Route index element={<StoreOwnerDashboard />} />
+
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
-          <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
+          {/* <Route path="rentals" element={<RentalsPage />} /> */}
+          {/* <Route path="revenue" element={<RevenuePage />} /> */}
+          {/* <Route path="export" element={<ExportPage />} /> */}
 
-          {/* Nơi Owner quản lý và duyệt đơn hàng (MATSL-04-08) */}
-          <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
 
