@@ -1,9 +1,9 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import { useAuth } from "../context/AuthContext"; // Cập nhật đường dẫn
 import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faUser } from "@fortawesome/free-solid-svg-icons";
 
 import ownerSidebar from "../constants/ownerSidebar";
 import staffSidebar from "../constants/staffSidebar";
@@ -42,8 +42,8 @@ export default function DashboardLayout() {
       <Sidebar menuItems={currentMenu} />
 
       <main className="flex-1 overflow-x-hidden">
-        <header className="h-16 bg-white shadow-sm px-6 flex items-center justify-between border-border">
-          <h1 className="text-xl font-semibold">Luxe Rent Admin</h1>
+        <header className="h-[72px] bg-white border-b border-[#eaeaea] shadow-[0_2px_4px_rgba(0,0,0,0.02)] px-6 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Admin Portal</h1>
 
           {user && (
             <div className="relative" ref={dropdownRef}>
@@ -62,13 +62,13 @@ export default function DashboardLayout() {
 
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-100">
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50 text-left"
+                  <Link
+                    to="/profile"
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                   >
-                    <FontAwesomeIcon icon={faSignOutAlt} className="mr-2" />
-                    Đăng xuất
-                  </button>
+                    <FontAwesomeIcon icon={faUser} className="mr-2" />
+                    Hồ Sơ Của Tôi
+                  </Link>
                 </div>
               )}
             </div>

@@ -270,11 +270,11 @@ export default function ProductsPage() {
   const getStatusColor = (status) => {
     switch(status) {
       case 'available': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'maintenance': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'maintenance': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
       case 'dry_cleaning': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'rented': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'hidden': return 'bg-red-50 text-red-700 border-red-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-[#faf9f7] text-[#555] border-[#eaeaea]';
     }
   };
 
@@ -282,8 +282,8 @@ export default function ProductsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a]">Quản lý Sản phẩm</h1>
-          <p className="text-sm text-[#858585] mt-1">
+          <h1 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Sản phẩm</h1>
+          <p className="text-sm text-[#999] mt-1">
             Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn sản phẩm
           </p>
         </div>
@@ -293,14 +293,14 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#e8e8e8] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-[#858585]">Đang tải dữ liệu...</div>
+          <div className="p-8 text-center text-[#999]">Đang tải dữ liệu...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#f9f9f9] text-[#474747] text-[13px] uppercase tracking-wider border-b border-[#e8e8e8]">
+                <tr className="bg-[#faf9f7] text-[#555] text-[13px] uppercase tracking-wider border-b border-[#eaeaea]">
                   <th className="py-4 px-6 font-semibold">Sản phẩm</th>
                   <th className="py-4 px-6 font-semibold">Danh mục</th>
                   <th className="py-4 px-6 font-semibold">Giá thuê</th>
@@ -312,7 +312,7 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-[#e8e8e8]">
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-8 text-center text-[#858585]">
+                    <td colSpan="6" className="py-8 text-center text-[#999]">
                       Chưa có sản phẩm nào
                     </td>
                   </tr>
@@ -320,21 +320,21 @@ export default function ProductsPage() {
                   products.map((product) => {
                     const isLocked = product.status === "hidden" || product.status === "rented";
                     return (
-                      <tr key={product._id} className="hover:bg-[#fcfcfc] transition-colors">
+                      <tr key={product._id} className="hover:bg-[#faf9f7] transition-colors">
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
                             <img
                               src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/40x40"}
                               alt={product.name}
-                              className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#e8e8e8]"
+                              className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#eaeaea]"
                             />
                             <div>
                               <p className="font-semibold text-[14px] text-[#1a1a1a]">{product.name}</p>
-                              <p className="text-[12px] text-[#858585] w-48 truncate">{product.description}</p>
+                              <p className="text-[12px] text-[#999] w-48 truncate">{product.description}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-[13px] text-[#474747]">
+                        <td className="py-4 px-6 text-[13px] text-[#555]">
                           {product.categoryId?.name || "N/A"}
                         </td>
                         <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
@@ -367,7 +367,7 @@ export default function ProductsPage() {
                             {product.status === "hidden" ? (
                               <button
                                 onClick={() => handleRestoreClick(product)}
-                                className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
                                 title="Khôi phục"
                               >
                                 <FontAwesomeIcon icon={faEye} />
@@ -376,7 +376,7 @@ export default function ProductsPage() {
                               <>
                                 <button
                                   onClick={() => handleOpenEditForm(product)}
-                                  className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
                                   title="Sửa thông tin"
                                 >
                                   <FontAwesomeIcon icon={faEdit} />

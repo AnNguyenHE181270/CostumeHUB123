@@ -223,7 +223,7 @@ const CategoriesPage = () => {
       return (
         <React.Fragment key={node._id}>
           <div
-            className={`group flex items-center justify-between p-3 border-b hover:bg-orange-50 transition-colors ${!node.isActive ? 'bg-gray-50 opacity-60' : 'bg-white'}`}
+            className={`group flex items-center justify-between p-3 border-b hover:bg-[#faf9f7] transition-colors ${!node.isActive ? 'bg-[#faf9f7] opacity-60' : 'bg-white'}`}
             style={{ paddingLeft: `${level * 2 + 1}rem` }}
           >
             <div
@@ -234,22 +234,22 @@ const CategoriesPage = () => {
                 {hasChildren && (
                   <FontAwesomeIcon
                     icon={isExpanded ? faChevronDown : faChevronRight}
-                    className="text-gray-400 hover:text-[#f94a00] transition-colors"
+                    className="text-[#999] hover:text-[#1a1a1a] transition-colors"
                   />
                 )}
               </div>
 
               <FontAwesomeIcon
                 icon={isExpanded || !hasChildren ? faFolderOpen : faFolder}
-                className={node.isActive ? "text-[#f94a00]" : "text-gray-400"}
+                className={node.isActive ? "text-[#1a1a1a]" : "text-[#999]"}
               />
 
-              <span className={`font-medium ${!node.isActive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+              <span className={`font-medium ${!node.isActive ? 'line-through text-[#999]' : 'text-[#1a1a1a]'}`}>
                 {node.name}
               </span>
 
               {node.description && (
-                <span className="text-sm text-gray-500 hidden md:inline-block ml-2 italic">
+                <span className="text-sm text-[#999] hidden md:inline-block ml-2 italic">
                   - {node.description}
                 </span>
               )}
@@ -260,14 +260,14 @@ const CategoriesPage = () => {
                 <>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
-                    className="p-2 text-[#f94a00] hover:bg-orange-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Thêm danh mục con"
                   >
                     <FontAwesomeIcon icon={faPlus} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
-                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Sửa danh mục"
                   >
                     <FontAwesomeIcon icon={faEdit} />
@@ -296,7 +296,7 @@ const CategoriesPage = () => {
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="flex justify-between items-center p-6 border-b">
-        <h2 className="text-xl font-bold text-gray-800">Quản lý Danh mục</h2>
+        <h2 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Danh mục</h2>
         <Button onClick={handleOpenAddRoot} className="flex items-center gap-2">
           <FontAwesomeIcon icon={faPlus} />
           <span>Thêm danh mục gốc</span>
@@ -309,7 +309,7 @@ const CategoriesPage = () => {
             {renderTree(tree)}
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-10">Chưa có danh mục nào.</p>
+          <p className="text-center text-[#999] py-10">Chưa có danh mục nào.</p>
         )}
       </div>
 
@@ -317,19 +317,19 @@ const CategoriesPage = () => {
       {isFormOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 m-4">
-            <h2 className="text-xl font-bold mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold mb-4 border-b pb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               {editingCategory ? "Sửa danh mục" : (formData.parentId ? "Thêm danh mục con" : "Thêm danh mục gốc")}
             </h2>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
+                <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
                 <select
                   name="parentId"
                   value={formData.parentId}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f94a00] outline-none"
+                  className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none"
                   disabled={editingCategory} // Tạm khóa đổi cha để tránh vòng lặp đệ quy lỗi
                 >
                   <option value="">-- Không có (Danh mục gốc) --</option>

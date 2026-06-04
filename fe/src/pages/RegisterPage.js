@@ -65,7 +65,7 @@ export default function RegisterPage() {
     }
   };
 
-  const inputBase = "w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 placeholder:text-text-muted";
+  const inputBase = "w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-text-muted";
 
   return (
     <AuthLayout>
@@ -77,7 +77,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="mb-10">
-          <p className="text-primary-600 text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
+          <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Start the Journey
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
@@ -203,14 +203,14 @@ export default function RegisterPage() {
               I agree to the{" "}
               <button
                 type="button"
-                className="text-text-primary font-medium hover:text-primary-600 transition-colors"
+                className="text-text-primary font-medium hover:text-[#1a1a1a] transition-colors"
               >
                 Terms of Service
               </button>{" "}
               and{" "}
               <button
                 type="button"
-                className="text-text-primary font-medium hover:text-primary-600 transition-colors"
+                className="text-text-primary font-medium hover:text-[#1a1a1a] transition-colors"
               >
                 Privacy Policy
               </button>
@@ -234,7 +234,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="text-primary-600 font-medium hover:text-primary-700 transition-colors"
+              className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
               Sign In
             </button>

@@ -11,13 +11,13 @@ export default function Button({
   onClick,
   children
 }) {
-  const baseClasses = "w-full group py-3.5 px-6 rounded-full text-sm font-medium flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed";
+  const baseClasses = "w-full group py-3.5 px-6 rounded-none text-[12px] tracking-[0.1em] uppercase font-semibold flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed";
   
   const variants = {
-    primary: "bg-primary-600 text-white hover:bg-primary-700 shadow-sm",
-    secondary: "bg-surface text-text-primary border border-borderorder hover:bg-surface",
-    outline: "bg-transparent border border-text-primary text-text-primary hover:bg-surface",
-    ghost: "bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface"
+    primary: "bg-[#1a1a1a] text-white hover:bg-[#333] shadow-sm",
+    secondary: "bg-[#faf9f7] text-[#1a1a1a] border border-[#eaeaea] hover:bg-[#eaeaea]",
+    outline: "bg-transparent border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#faf9f7]",
+    ghost: "bg-transparent text-[#555] hover:text-[#1a1a1a] hover:bg-[#faf9f7]"
   };
 
   return (

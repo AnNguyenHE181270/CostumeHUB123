@@ -21,8 +21,8 @@ export default function NavLinkSideBar({ item, collapsed }) {
         gap-3
         ${
           isActive
-            ? "bg-blue-500 text-white"
-            : "hover:bg-surface text-gray-700"
+            ? "bg-[#1a1a1a] text-white shadow-md"
+            : "hover:bg-[#f0f0f0] text-[#474747]"
         }
         ${collapsed ? "justify-center px-0" : ""} 
         `

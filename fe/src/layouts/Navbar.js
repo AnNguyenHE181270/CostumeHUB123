@@ -209,12 +209,12 @@ export default function Navbar() {
                           Trang Nhân Viên
                         </Link>
                       )}
-                      <button
-                        onClick={logout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-[#f5f5f5]"
+                      <Link
+                        to="/profile"
+                        className="block px-4 py-2 text-sm text-[#474747] hover:bg-[#f5f5f5]"
                       >
-                        Đăng xuất
-                      </button>
+                        Hồ Sơ Của Tôi
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -385,9 +385,9 @@ export default function Navbar() {
                       Trang Nhân Viên
                     </Link>
                   )}
-                  <button onClick={logout} className="w-full text-left flex items-center gap-3 px-5 py-3 text-[14px] text-red-600 hover:bg-[#f9f9f9] transition-colors">
-                    Đăng xuất
-                  </button>
+                  <Link to="/profile" className="flex items-center gap-3 px-5 py-3 text-[14px] text-[#474747] hover:text-[#1a1a1a] hover:bg-[#f9f9f9] transition-colors">
+                    Hồ Sơ Của Tôi
+                  </Link>
                 </>
               ) : (
                 <Link

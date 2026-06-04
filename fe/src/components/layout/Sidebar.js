@@ -34,16 +34,16 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
 
   return (
     <aside
-      className={`sticky top-0 h-screen bg-white border-r shadow-sm transition-all duration-300 flex flex-col ${
+      className={`sticky top-0 h-screen bg-white border-r border-[#eaeaea] shadow-sm transition-all duration-300 flex flex-col ${
         collapsed ? "w-20" : "w-64"
       }`}
     >
-      <div className="p-4 border-border">
+      <div className="p-4 border-b border-[#eaeaea]">
         <div className="flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1 className="font-bold text-lg">Luxe Rent</h1>
-              <p className="text-sm text-gray-500">{user?.name}</p>
+              <h1 className="font-semibold text-[24px] text-[#1a1a1a] tracking-[0.06em]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>CostumeHUB</h1>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-[#858585] mt-0.5 font-medium">{user?.fullName || "Admin"}</p>
             </div>
           )}
 

@@ -19,11 +19,13 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import OrdersPage from "../pages/store-owner/OrdersPage"; 
+import CreateUserPage from "../pages/store-owner/CreateUserPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
+import ProfilePage from "../pages/customer/ProfilePage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -38,20 +40,24 @@ function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
 
-        <Route element={<PublicRoutes />}>
-          <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-          <Route path={ROUTES.REGISTER} element={<Register />} />
-          <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
-          <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
-          <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
-        </Route>
-
         <Route element={<ProtectedRoutes />}>
           <Route path="/cart" element={<CartPage />} />
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
+      </Route>
+
+      {/* ======================================================== */}
+      {/* LUỒNG XÁC THỰC (AUTH): KHÔNG CÓ NAVBAR / FOOTER          */}
+      {/* ======================================================== */}
+      <Route element={<PublicRoutes />}>
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.VERIFY} element={<VerifyPage />} />
+        <Route path={ROUTES.FORGOTPASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
       </Route>
 
       {/* ======================================================== */}
@@ -67,6 +73,7 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
+          <Route path={ROUTES.STOR_OWNER_CREATE_ACCOUNT} element={<CreateUserPage />} />
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
