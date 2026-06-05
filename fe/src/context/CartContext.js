@@ -19,31 +19,49 @@ export function CartProvider({ children }) {
     localStorage.setItem("costume_cart", JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (costume) => {
+  const addToCart = (costume, variant, quantity, startDateStr, endDateStr, rentalDays) => {
     setCartItems((prev) => {
-      // Avoid duplicate single items (rental items are unique)
-      const existing = prev.find((item) => item.costume._id === costume._id);
-      if (existing) return prev;
+      // Find exact same item (same costume, same variant, same dates)
+      const existingIndex = prev.findIndex(
+        (item) => item.costume._id === costume._id 
+               && item.variant?._id === variant?._id
+               && item.startDate === startDateStr
+               && item.endDate === endDateStr
+      );
 
-      // Default dates (today -> tomorrow)
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(startDate.getDate() + Math.max(1, costume.minRentalDays || 1));
+      if (existingIndex >= 0) {
+        // If exact same item exists, increment its quantity
+        const newCart = [...prev];
+        const newQty = newCart[existingIndex].quantity + quantity;
+        // Don't exceed variant's availableStock
+        newCart[existingIndex].quantity = Math.min(newQty, variant?.availableStock || newQty);
+        return newCart;
+      }
 
       return [
         ...prev,
         {
           costume,
-          startDate: startDate.toISOString().split("T")[0],
-          endDate: endDate.toISOString().split("T")[0],
-          rentalDays: Math.max(1, costume.minRentalDays || 1),
+          variant,
+          quantity,
+          startDate: startDateStr,
+          endDate: endDateStr,
+          rentalDays,
         },
       ];
     });
   };
 
-  const removeFromCart = (costumeId) => {
-    setCartItems((prev) => prev.filter((item) => item.costume._id !== costumeId));
+  const removeFromCart = (costumeId, variantId, startDateStr, endDateStr) => {
+    setCartItems((prev) => prev.filter((item) => {
+      if (variantId || startDateStr) {
+        return !(item.costume._id === costumeId 
+              && item.variant?._id === variantId 
+              && item.startDate === startDateStr 
+              && item.endDate === endDateStr);
+      }
+      return item.costume._id !== costumeId;
+    }));
   };
 
   const updateDates = (costumeId, startDateStr, endDateStr) => {

@@ -11,12 +11,14 @@ function formatPrice(price) {
 export default function CartPage() {
   const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
   const navigate = useNavigate();
+  const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
+
   const [expandedItem, setExpandedItem] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(item => item.costume._id));
+  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
 
   // Đồng bộ selectedIds nếu cartItems thay đổi (vd: bị xóa đi)
   useEffect(() => {
-    setSelectedIds(prev => prev.filter(id => cartItems.some(item => item.costume._id === id)));
+    setSelectedIds(prev => prev.filter(id => cartItems.some(item => getItemId(item) === id)));
   }, [cartItems]);
 
   const toggleExpand = (id) => {
@@ -25,7 +27,7 @@ export default function CartPage() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(cartItems.map(item => item.costume._id));
+      setSelectedIds(cartItems.map(getItemId));
     } else {
       setSelectedIds([]);
     }
@@ -39,15 +41,15 @@ export default function CartPage() {
     }
   };
 
-  const selectedCartItems = cartItems.filter(item => selectedIds.includes(item.costume._id));
+  const selectedCartItems = cartItems.filter(item => selectedIds.includes(getItemId(item)));
 
   const totalRental = selectedCartItems.reduce(
     (acc, item) =>
-      acc + (item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays,
+      acc + (item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
   const totalDeposit = selectedCartItems.reduce(
-    (acc, item) => acc + (item.costume.deposit || 0),
+    (acc, item) => acc + (item.costume.deposit || 0) * (item.quantity || 1),
     0
   );
   const grandTotal = totalRental + totalDeposit;
@@ -114,20 +116,20 @@ export default function CartPage() {
           {/* Cart Items List */}
           <div className="w-full lg:w-2/3 flex flex-col gap-5">
             {cartItems.map((item) => (
-              <div key={item.costume._id} className="bg-white rounded-xl border border-[#f0ece8] p-5 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-shadow">
+              <div key={getItemId(item)} className="bg-white rounded-xl border border-[#f0ece8] p-5 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-shadow">
                 {/* Checkbox */}
                 <div className="flex items-center sm:items-start pt-1">
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(item.costume._id)}
-                    onChange={(e) => handleSelectItem(item.costume._id, e.target.checked)}
+                    checked={selectedIds.includes(getItemId(item))}
+                    onChange={(e) => handleSelectItem(getItemId(item), e.target.checked)}
                     className="w-4 h-4 cursor-pointer accent-[#1a1a1a]"
                   />
                 </div>
 
                 {/* Delete Btn */}
                 <button
-                  onClick={() => removeFromCart(item.costume._id)}
+                  onClick={() => removeFromCart(item.costume._id, item.variant?._id, item.startDate, item.endDate)}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"
                   title="Xóa khỏi giỏ"
                 >
@@ -154,22 +156,23 @@ export default function CartPage() {
                     </Link>
 
                     <div className="flex items-center gap-6 text-[13px] text-[#666] mb-3">
-                      <span>Size: <strong className="text-[#1a1a1a]">{item.costume.size || "Free"}</strong></span>
+                      <span>Size: <strong className="text-[#1a1a1a]">{item.variant?.size || item.costume.size || "Free"}</strong></span>
                       <span>Màu: <strong className="text-[#1a1a1a]">{item.costume.color || "N/A"}</strong></span>
+                      {item.quantity && <span>Số lượng: <strong className="text-[#1a1a1a]">{item.quantity}</strong></span>}
                     </div>
 
                     {/* Toggle button to expand dates */}
                     <button
-                      onClick={() => toggleExpand(item.costume._id)}
+                      onClick={() => toggleExpand(getItemId(item))}
                       className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1.5"
                     >
                       <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
-                      {expandedItem === item.costume._id ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
+                      {expandedItem === getItemId(item) ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
                     </button>
                   </div>
 
                   {/* Dates Selection (Collapsible) */}
-                  {expandedItem === item.costume._id && (
+                  {expandedItem === getItemId(item) && (
                     <div className="bg-[#faf9f7] rounded-lg p-3 grid grid-cols-2 gap-4 mt-4 animate-fade-in">
                       <div>
                         <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày nhận</label>
@@ -201,7 +204,7 @@ export default function CartPage() {
                     {formatPrice(item.costume.rentalRates?.pricePerDay || 0)} / ngày
                   </p>
                   <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                    {formatPrice((item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays)}
+                    {formatPrice((item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1))}
                   </p>
                   <div className="flex items-center gap-1.5 text-[11px] text-[#666] bg-amber-50 text-amber-700 px-2 py-1 rounded w-max">
                     <FontAwesomeIcon icon={faCalendarDays} className="text-[10px]" />
