@@ -64,6 +64,9 @@ const getAllCostumes = async (req, res, next) => {
           filter.status = { $in: statuses };
         }
       }
+    } else {
+      // Customer view: only show costumes with stock > 0
+      filter["variants.stock"] = { $gt: 0 };
     }
 
     // Search by name
