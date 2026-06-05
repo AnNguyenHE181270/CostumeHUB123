@@ -39,6 +39,12 @@ const costumeSchema = new mongoose.Schema(
       default: "",
     },
 
+    status: {
+      type: String,
+      enum: ["available", "out_of_stock", "maintenance", "dry_cleaning", "hidden"],
+      default: "available",
+    },
+
     variants: [{
       size: String,
 
