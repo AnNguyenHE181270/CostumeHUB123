@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faSearch } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
+import DataTable from "../../components/ui/DataTable";
+import Pagination from "../../components/ui/Pagination";
 import ProductFormModal from "../../components/store-owner/ProductFormModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Toast from "../../components/ui/Toast";
@@ -12,6 +14,13 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0, limit: 10 });
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -29,10 +38,25 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/costumes`);
+      const params = new URLSearchParams();
+      if (filterCategory) params.set("categoryId", filterCategory);
+      if (filterStatus) {
+        params.set("status", filterStatus);
+      } else {
+        // Fetch all including hidden
+        params.set("status", "all");
+      }
+      if (searchQuery) params.set("search", searchQuery);
+      params.set("page", page.toString());
+      params.set("limit", "10");
+
+      const response = await fetch(`${API_URL}/api/costumes?${params}`);
       const data = await response.json();
       if (response.ok) {
         setProducts(data.costumes || []);
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -57,8 +81,20 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
+  }, [filterCategory, filterStatus, searchQuery, page]);
+
+  useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPage(1); // Reset to first page on search
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   const handleOpenAddForm = () => {
     setEditingProduct(null);
@@ -279,128 +315,169 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Sản phẩm</h1>
+          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Quản lý Sản phẩm
+          </h2>
           <p className="text-sm text-[#999] mt-1">
             Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn sản phẩm
           </p>
         </div>
-        <Button variant="primary" onClick={handleOpenAddForm} className="bg-[#1a1a1a] hover:bg-[#333]">
-          <FontAwesomeIcon icon={faPlus} className="mr-2" />
-          Thêm sản phẩm
-        </Button>
+        <div>
+          <Button variant="primary" onClick={handleOpenAddForm} className="bg-[#1a1a1a] hover:bg-[#333]">
+            <FontAwesomeIcon icon={faPlus} className="mr-2" />
+            Thêm sản phẩm
+          </Button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-[#999]">Đang tải dữ liệu...</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#faf9f7] text-[#555] text-[13px] uppercase tracking-wider border-b border-[#eaeaea]">
-                  <th className="py-4 px-6 font-semibold">Sản phẩm</th>
-                  <th className="py-4 px-6 font-semibold">Danh mục</th>
-                  <th className="py-4 px-6 font-semibold">Giá thuê</th>
-                  <th className="py-4 px-6 font-semibold">Giá cọc</th>
-                  <th className="py-4 px-6 font-semibold">Trạng thái</th>
-                  <th className="py-4 px-6 font-semibold text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8]">
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="py-8 text-center text-[#999]">
-                      Chưa có sản phẩm nào
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((product) => {
-                    const isLocked = product.status === "hidden" || product.status === "rented";
-                    return (
-                      <tr key={product._id} className="hover:bg-[#faf9f7] transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/40x40"}
-                              alt={product.name}
-                              className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#eaeaea]"
-                            />
-                            <div>
-                              <p className="font-semibold text-[14px] text-[#1a1a1a]">{product.name}</p>
-                              <p className="text-[12px] text-[#999] w-48 truncate">{product.description}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-[13px] text-[#555]">
-                          {product.categoryId?.name || "N/A"}
-                        </td>
-                        <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
-                          {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
-                        </td>
-                        <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
-                          {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
-                        </td>
-                        <td className="py-4 px-6">
-                          {product.status === "hidden" ? (
-                            <span className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-red-50 text-red-700 border border-red-200">
-                              Đã ẩn
-                            </span>
-                          ) : (
-                            <select
-                              value={product.status}
-                              onChange={(e) => handleStatusChangeClick(product, e.target.value)}
-                              disabled={isLocked}
-                              className={`border px-2 py-1.5 rounded-md text-[12px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-80 ${getStatusColor(product.status)}`}
-                            >
-                              <option value="available">Sẵn sàng</option>
-                              <option value="maintenance">Bảo trì</option>
-                              <option value="dry_cleaning">Đang giặt</option>
-                              <option value="rented" disabled>Đang thuê</option>
-                            </select>
-                          )}
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            {product.status === "hidden" ? (
-                              <button
-                                onClick={() => handleRestoreClick(product)}
-                                className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
-                                title="Khôi phục"
-                              >
-                                <FontAwesomeIcon icon={faEye} />
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleOpenEditForm(product)}
-                                  className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
-                                  title="Sửa thông tin"
-                                >
-                                  <FontAwesomeIcon icon={faEdit} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClick(product)}
-                                  className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Ẩn khỏi cửa hàng"
-                                >
-                                  <FontAwesomeIcon icon={faEyeSlash} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
+        <div className="relative flex-1 w-full">
+          <FontAwesomeIcon
+            icon={faSearch}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
+          />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Tìm kiếm sản phẩm..."
+            className="w-full pl-10 pr-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent text-sm"
+          />
+        </div>
+
+        <select
+          value={filterCategory}
+          onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}
+          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+        >
+          <option value="">Tất cả danh mục</option>
+          {categories.map((cat) => (
+            <option key={cat._id} value={cat._id}>{cat.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+        >
+          <option value="">Tất cả trạng thái</option>
+          <option value="available">Sẵn sàng</option>
+          <option value="rented">Đang thuê</option>
+          <option value="maintenance">Bảo trì</option>
+          <option value="dry_cleaning">Đang giặt</option>
+          <option value="hidden">Đã ẩn</option>
+        </select>
       </div>
+
+      <DataTable
+        isLoading={loading}
+        isEmpty={!loading && products.length === 0}
+        emptyMessage="Chưa có sản phẩm nào"
+        footer={
+          <Pagination
+            displayCount={products.length}
+            totalCount={pagination.totalItems}
+            currentPage={page}
+            totalPages={pagination.totalPages}
+            onPageChange={setPage}
+          />
+        }
+      >
+        <thead>
+          <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+            <th className="w-[30%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Sản phẩm</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Danh mục</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá thuê</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá cọc</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Trạng thái</th>
+            <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((product) => {
+            const isLocked = product.status === "hidden" || product.status === "rented";
+            return (
+              <tr key={product._id} className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors">
+                <td className="py-4 px-6">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/40x40"}
+                      alt={product.name}
+                      className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#eaeaea]"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[#1a1a1a] truncate">{product.name}</p>
+                      <p className="text-xs text-[#999] w-48 truncate">{product.description}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-6 text-sm text-[#555]">
+                  {product.categoryId?.name || "N/A"}
+                </td>
+                <td className="py-4 px-6 text-sm font-medium text-[#1a1a1a]">
+                  {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
+                </td>
+                <td className="py-4 px-6 text-sm font-medium text-[#1a1a1a]">
+                  {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
+                </td>
+                <td className="py-4 px-6">
+                  {product.status === "hidden" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                      Đã ẩn
+                    </span>
+                  ) : (
+                    <select
+                      value={product.status}
+                      onChange={(e) => handleStatusChangeClick(product, e.target.value)}
+                      disabled={isLocked}
+                      className={`border px-2.5 py-1 rounded-full text-xs font-medium outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-80 ${getStatusColor(product.status)}`}
+                    >
+                      <option value="available">Sẵn sàng</option>
+                      <option value="maintenance">Bảo trì</option>
+                      <option value="dry_cleaning">Đang giặt</option>
+                      <option value="rented" disabled>Đang thuê</option>
+                    </select>
+                  )}
+                </td>
+                <td className="py-4 px-6 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {product.status === "hidden" ? (
+                      <button
+                        onClick={() => handleRestoreClick(product)}
+                        className="w-8 h-8 rounded-lg hover:bg-[#eaeaea] text-[#999] hover:text-[#1a1a1a] flex items-center justify-center transition-colors"
+                        title="Khôi phục"
+                      >
+                        <FontAwesomeIcon icon={faEye} className="text-sm" />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleOpenEditForm(product)}
+                          className="w-8 h-8 rounded-lg hover:bg-[#eaeaea] text-[#999] hover:text-[#1a1a1a] flex items-center justify-center transition-colors"
+                          title="Sửa thông tin"
+                        >
+                          <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(product)}
+                          className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-500 hover:text-red-600 flex items-center justify-center transition-colors"
+                          title="Ẩn khỏi cửa hàng"
+                        >
+                          <FontAwesomeIcon icon={faEyeSlash} className="text-sm" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </DataTable>
 
       <ProductFormModal
         isOpen={isFormOpen}
