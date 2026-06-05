@@ -4,7 +4,7 @@ const rentalSchema = new mongoose.Schema(
     {
         customerId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Users",
+            ref: "User",
             required: true,
         },
 
@@ -22,7 +22,6 @@ const rentalSchema = new mongoose.Schema(
         { _id: false }],
 
         // ===== THỜI GIAN THUÊ =====
-        rentalDays: { type: Number, required: true, min: 1 }, // Số ngày thuê
         startDate: { type: Date, required: true }, // Ngày bắt đầu tính giờ thuê
         endDate: { type: Date, required: true }, // Ngày dự kiến phải trả đồ
         actualReturnDate: { type: Date }, // Ngày thực tế khách trả (dùng để tính phí trễ)
@@ -57,23 +56,17 @@ const rentalSchema = new mongoose.Schema(
         // ===== TRẠNG THÁI THANH TOÁN =====
         paymentMethod: {
             type: String,
-            enum: ["cod", "bank_transfer", "vnpay", "momo"],
-            default: "cod",
+            enum: ["VNPAY", "VietQR"],
+            default: "VietQR",
         },
-        paymentStatus: {
-            type: String,
-            enum: ["unpaid", "deposit_paid", "paid", "refunded"],
-            default: "unpaid",
-        },
-
         shippingAddress: {
             receiverName: { type: String, required: true },
             receiverPhone: { type: String, required: true },
-            province: { type: String, required: true },
-            district: { type: String, required: true },
-            ward: { type: String, required: true },
-            addressDetail: { type: String, required: true },
-            note: { type: String, default: "" },
+            province: { type: String },
+            district: { type: String },
+            ward: { type: String },
+            addressDetail: { type: String },
+            note: { type: String },
         },
 
         // Mã theo dõi đơn hàng giao vận (GHTK, GHN...)
