@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,19 +11,45 @@ function formatPrice(price) {
 export default function CartPage() {
   const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
   const navigate = useNavigate();
+  const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
+
   const [expandedItem, setExpandedItem] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
+
+  // Đồng bộ selectedIds nếu cartItems thay đổi (vd: bị xóa đi)
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => cartItems.some(item => getItemId(item) === id)));
+  }, [cartItems]);
 
   const toggleExpand = (id) => {
     setExpandedItem(prev => prev === id ? null : id);
   };
 
-  const totalRental = cartItems.reduce(
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(cartItems.map(getItemId));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id, checked) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
+    }
+  };
+
+  const selectedCartItems = cartItems.filter(item => selectedIds.includes(getItemId(item)));
+
+  const totalRental = selectedCartItems.reduce(
     (acc, item) =>
-      acc + (item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays,
+      acc + (item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
-  const totalDeposit = cartItems.reduce(
-    (acc, item) => acc + (item.costume.deposit || 0),
+  const totalDeposit = selectedCartItems.reduce(
+    (acc, item) => acc + (item.costume.deposit || 0) * (item.quantity || 1),
     0
   );
   const grandTotal = totalRental + totalDeposit;
@@ -64,27 +90,46 @@ export default function CartPage() {
 
   return (
     <div className="bg-[#fafafa] min-h-screen pb-20">
-      <div className="bg-white border-b border-[#eaeaea]">
-        <div className="mx-auto max-w-[1200px] px-6 py-8">
+      <div className="bg-white border-b border-[#e8e8e8]">
+        <div className="mx-auto max-w-[1200px] px-6 py-4">
           <h1 className="text-[32px] font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Giỏ Thuê Của Bạn
           </h1>
           <p className="text-[#999] text-[13px] mt-1 uppercase tracking-[0.1em]">
             {cartItems.length} sản phẩm trong giỏ
           </p>
+          <div className="flex items-center gap-2 mt-4">
+            <input
+              type="checkbox"
+              checked={selectedIds.length === cartItems.length && cartItems.length > 0}
+              onChange={handleSelectAll}
+              className="w-4 h-4 cursor-pointer accent-[#1a1a1a]"
+            />
+            <span className="text-[14px] text-[#1a1a1a] font-medium">Chọn tất cả</span>
+          </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-[1200px] px-6 py-8">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
+
           {/* Cart Items List */}
           <div className="w-full lg:w-2/3 flex flex-col gap-5">
             {cartItems.map((item) => (
-              <div key={item.costume._id} className="bg-white rounded-xl border border-[#f0ece8] p-5 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-shadow">
+              <div key={getItemId(item)} className="bg-white rounded-xl border border-[#f0ece8] p-5 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-shadow">
+                {/* Checkbox */}
+                <div className="flex items-center sm:items-start pt-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(getItemId(item))}
+                    onChange={(e) => handleSelectItem(getItemId(item), e.target.checked)}
+                    className="w-4 h-4 cursor-pointer accent-[#1a1a1a]"
+                  />
+                </div>
+
                 {/* Delete Btn */}
                 <button
-                  onClick={() => removeFromCart(item.costume._id)}
+                  onClick={() => removeFromCart(item.costume._id, item.variant?._id, item.startDate, item.endDate)}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"
                   title="Xóa khỏi giỏ"
                 >
@@ -109,24 +154,25 @@ export default function CartPage() {
                     <Link to={`/product/${item.costume._id}`} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2">
                       {item.costume.name}
                     </Link>
-                    
+
                     <div className="flex items-center gap-6 text-[13px] text-[#666] mb-3">
-                      <span>Size: <strong className="text-[#1a1a1a]">{item.costume.size || "Free"}</strong></span>
+                      <span>Size: <strong className="text-[#1a1a1a]">{item.variant?.size || item.costume.size || "Free"}</strong></span>
                       <span>Màu: <strong className="text-[#1a1a1a]">{item.costume.color || "N/A"}</strong></span>
+                      {item.quantity && <span>Số lượng: <strong className="text-[#1a1a1a]">{item.quantity}</strong></span>}
                     </div>
 
                     {/* Toggle button to expand dates */}
-                    <button 
-                      onClick={() => toggleExpand(item.costume._id)}
+                    <button
+                      onClick={() => toggleExpand(getItemId(item))}
                       className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1.5"
                     >
                       <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
-                      {expandedItem === item.costume._id ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
+                      {expandedItem === getItemId(item) ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
                     </button>
                   </div>
 
                   {/* Dates Selection (Collapsible) */}
-                  {expandedItem === item.costume._id && (
+                  {expandedItem === getItemId(item) && (
                     <div className="bg-[#faf9f7] rounded-lg p-3 grid grid-cols-2 gap-4 mt-4 animate-fade-in">
                       <div>
                         <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày nhận</label>
@@ -158,7 +204,7 @@ export default function CartPage() {
                     {formatPrice(item.costume.rentalRates?.pricePerDay || 0)} / ngày
                   </p>
                   <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                    {formatPrice((item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays)}
+                    {formatPrice((item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1))}
                   </p>
                   <div className="flex items-center gap-1.5 text-[11px] text-[#666] bg-amber-50 text-amber-700 px-2 py-1 rounded w-max">
                     <FontAwesomeIcon icon={faCalendarDays} className="text-[10px]" />
@@ -168,7 +214,7 @@ export default function CartPage() {
 
               </div>
             ))}
-            
+
             <div className="flex justify-between items-center mt-2">
               <button onClick={clearCart} className="text-[13px] text-red-500 hover:text-red-600 font-medium underline transition-colors">
                 Xóa toàn bộ giỏ
@@ -206,13 +252,14 @@ export default function CartPage() {
               </div>
 
               <button
-                onClick={() => navigate("/checkout")}
-                className="w-full bg-[#1a1a1a] text-white py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold hover:bg-[#333] hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-3"
+                onClick={() => navigate("/checkout", { state: { selectedIds } })}
+                disabled={selectedIds.length === 0}
+                className={`w-full py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 flex items-center justify-center gap-3 ${selectedIds.length === 0 ? "bg-[#e8e8e8] text-[#999] cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg"}`}
               >
-                Tiến Hành Đặt Thuê
+                Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
                 <FontAwesomeIcon icon={faArrowRight} />
               </button>
-              
+
               <p className="text-[11px] text-[#999] text-center mt-4">
                 Bạn có thể xem lại đơn hàng ở bước tiếp theo trước khi chốt.
               </p>

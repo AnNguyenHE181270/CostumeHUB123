@@ -1,34 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import { useCart } from "../../context/CartContext"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-    faCalendarDays,
-    faChevronLeft,
-    faChevronRight,
     faClock,
     faMapMarkerAlt,
-    faMinus,
-    faPlus,
     faShieldAlt,
     faTruck,
-    faTimes,
+    faCheck,
+    faCreditCard,
 } from '@fortawesome/free-solid-svg-icons'
 import Button from "../../components/Button"
-import { Card, CardContent } from "../../components/customer/CheckoutCard"
-import { RadioGroup, RadioGroupItem } from "../../components/ui/Radio"
+import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
-
-const sampleItem = {
-    id: "1",
-    name: "Váy Dạ Hội Sequin Sang Trọng",
-    image: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop",
-    pricePerDay: 450000,
-    originalPrice: 2500000,
-    size: "M",
-    color: "Đỏ",
-    quantity: 1,
-}
+import QuantitySelector from "../../components/ui/QuantitySelector"
+import SizeSelector from "../../components/ui/SizeSelector"
 
 const additionalItems = [
     {
@@ -46,17 +34,30 @@ const additionalItems = [
 ]
 
 export function Checkout() {
-    const [item, setItem] = useState(sampleItem)
-    const [rentalDays, setRentalDays] = useState(3)
-    const [startDate, setStartDate] = useState(new Date())
-    const [deliveryOption, setDeliveryOption] = useState("delivery")
-    const [currentImageIndex, setCurrentImageIndex] = useState(0)
+    const navigate = useNavigate()
+    const location = useLocation()
+    const { cartItems, clearCart, removeFromCart } = useCart()
 
-    const images = [
-        "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&h=800&fit=crop",
-        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&h=800&fit=crop",
-        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=800&fit=crop",
-    ]
+    // Lấy ID các sản phẩm đã được chọn từ Giỏ hàng
+    const selectedIds = location.state?.selectedIds || [];
+    const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
+    
+    const checkoutItems = selectedIds.length > 0
+        ? cartItems.filter(item => selectedIds.includes(getItemId(item)))
+        : cartItems; // Nếu vào thẳng link không qua giỏ, fallback lấy hết
+
+    const [startDate, setStartDate] = useState(() => checkoutItems[0]?.startDate || new Date().toISOString().split('T')[0])
+    const [endDate, setEndDate] = useState(() => {
+        if (checkoutItems[0]?.endDate) return checkoutItems[0].endDate;
+        const d = new Date()
+        d.setDate(d.getDate() + 2)
+        return d.toISOString().split('T')[0]
+    })
+    const [deliveryOption, setDeliveryOption] = useState("delivery")
+    const [paymentMethod, setPaymentMethod] = useState("Tiền mặt")
+
+    const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
+    const [isLoading, setIsLoading] = useState(false)
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat("vi-VN", {
@@ -65,244 +66,259 @@ export function Checkout() {
         }).format(amount)
     }
 
-    const formatDate = (date) => {
-        return new Intl.DateTimeFormat("vi-VN", {
-            weekday: "short",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        }).format(date)
-    }
+    const startObj = new Date(startDate)
+    const endObj = new Date(endDate)
+    let rentalDays = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24))
+    if (rentalDays < 1) rentalDays = 1 // Safe fallback
 
-    const endDate = new Date(startDate)
-    endDate.setDate(endDate.getDate() + rentalDays - 1)
+    const subtotal = checkoutItems.reduce((sum, item) => {
+        const qty = item.quantity || 1
+        const price = item.costume.rentalRates?.pricePerDay || 0
+        return sum + (price * qty * rentalDays)
+    }, 0)
 
-    const subtotal = item.pricePerDay * rentalDays * item.quantity
+    const originalTotal = checkoutItems.reduce((sum, item) => {
+        const qty = item.quantity || 1
+        // Giả lập giá gốc gấp đôi nếu không có price
+        const originalPrice = item.costume.price || ((item.costume.rentalRates?.pricePerDay || 0) * 2)
+        return sum + (originalPrice * qty * rentalDays)
+    }, 0)
+
     const deliveryFee = deliveryOption === "delivery" ? 50000 : 0
-    const insuranceFee = 100000
+    const insuranceFee = checkoutItems.length > 0 ? 100000 : 0
     const total = subtotal + deliveryFee + insuranceFee
 
-    const handleQuantityChange = (delta) => {
-        setItem((prev) => ({
-            ...prev,
-            quantity: Math.max(1, prev.quantity + delta),
-        }))
-    }
+    const handleCheckout = async () => {
+        if (checkoutItems.length === 0) return;
 
-    const handleRentalDaysChange = (delta) => {
-        setRentalDays((prev) => Math.max(1, Math.min(30, prev + delta)))
+        if (deliveryOption === "delivery" && (!address.name || !address.phone || !address.detail)) {
+            alert("Vui lòng nhập đầy đủ thông tin giao hàng!");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const payload = {
+                startDate: new Date(startDate).toISOString(),
+                endDate: new Date(endDate).toISOString(),
+                items: checkoutItems.map(item => ({
+                    costume: item.costume._id,
+                    size: item.variant?.size || item.costume.variants?.[0]?.size || "M",
+                    color: item.costume.color || "Mặc định",
+                    quantity: item.quantity || 1
+                })),
+                shippingFee: deliveryFee,
+                paymentMethod: paymentMethod,
+                shippingAddress: {
+                    receiverName: deliveryOption === "delivery" ? address.name : "Khách nhận tại cửa hàng",
+                    receiverPhone: deliveryOption === "delivery" ? address.phone : "Tại cửa hàng",
+                    province: "",
+                    district: "",
+                    ward: "",
+                    addressDetail: deliveryOption === "delivery" ? address.detail : "Nhận tại cửa hàng"
+                }
+            };
+
+            const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+            const res = await fetch(`${API_URL}/api/rentals/create`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                // Nếu đặt toàn bộ giỏ thì clearCart, nếu chỉ đặt 1 vài món thì remove thủ công
+                if (checkoutItems.length === cartItems.length) {
+                    clearCart();
+                } else {
+                    checkoutItems.forEach(item => removeFromCart(item.costume._id, item.variant?._id, item.startDate, item.endDate));
+                }
+                navigate("/rental-history");
+            } else {
+                const data = await res.json();
+                alert(data.message || "Lỗi khi đặt hàng");
+            }
+        } catch (err) {
+            console.error("Lỗi đặt hàng:", err);
+            alert("Lỗi kết nối đến máy chủ");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (checkoutItems.length === 0) {
+        return (
+            <div className="min-h-screen bg-[#faf9f7] pt-32 text-center">
+                <h2 className="text-2xl font-bold mb-4">Giỏ hàng của bạn đang trống</h2>
+                <Button onClick={() => navigate("/category")} className="bg-black text-white hover:bg-black/90">
+                    Khám phá sản phẩm
+                </Button>
+            </div>
+        )
     }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-white via-[#fbf9f6] to-[#faf9f7] pt-20 transition-colors duration-300">
-            <main className="container mx-auto px-4 py-6 max-w-6xl">
+            <div className="center mx-auto px-4 max-w-6xl">
+                {/* Page Header & Stepper */}
+                <div className="mb-12 pb-4">
+                    <h1
+                        className="text-3xl font-bold text-[#1a1a1a] tracking-tight mb-8 text-center"
+                        style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                    >
+                        Thanh Toán Đơn Thuê
+                    </h1>
+
+                    {/* Horizontal Stepper */}
+                    <div className="flex items-center w-full max-w-2xl mx-auto px-4 sm:px-0">
+                        {/* Step 1 */}
+                        <div className="relative flex flex-col items-center z-10 shrink-0">
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a] text-white">
+                                <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                            </div>
+                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-medium text-[#1a1a1a]">
+                                Thông tin thuê
+                            </p>
+                        </div>
+
+                        {/* Line 1 */}
+                        <div className="flex-1 h-[2px] bg-border mx-2 sm:mx-4"></div>
+
+                        {/* Step 2 */}
+                        <div className="relative flex flex-col items-center z-10 shrink-0">
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-border text-muted-foreground">
+                                <span className="text-sm font-semibold">2</span>
+                            </div>
+                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-bold text-[#1a1a1a]">
+                                Thanh toán
+                            </p>
+                        </div>
+
+                        {/* Line 2 */}
+                        <div className="flex-1 h-[2px] bg-border mx-2 sm:mx-4"></div>
+
+                        {/* Step 3 */}
+                        <div className="relative flex flex-col items-center z-10 shrink-0">
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-border text-muted-foreground">
+                                <span className="text-sm font-semibold">3</span>
+                            </div>
+                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-medium text-muted-foreground">
+                                Tạo đơn thành công
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid lg:grid-cols-[1fr_320px] gap-8">
                     {/* Left Column - Product Details */}
-                    <div className="lg:col-span-1 space-y-6">
-                        {/* Product Card */}
-                        <Card className="overflow-hidden border-border transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
-                            <CardContent className="p-0">
-                                <div className="flex flex-col md:flex-row gap-6 p-6">
-                                    {/* Image Gallery */}
-                                    <div className="relative w-full md:w-64 shrink-0">
-                                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface">
-                                            <img
-                                                src={images[currentImageIndex]}
-                                                alt={item.name}
-                                                className="w-full h-full object-cover"
-                                                crossOrigin="anonymous"
-                                            />
-                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                                {images.map((_, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => setCurrentImageIndex(idx)}
-                                                        className={[
-                                                            "w-2 h-2 rounded-full transition-all",
-                                                            idx === currentImageIndex ? "bg-primary w-4" : "bg-card/80",
-                                                        ]
-                                                            .filter(Boolean)
-                                                            .join(' ')}
+                    <div className="lg:col-span-1 space-y-4 mb-6">
+                        {/* Mapped Product Cards from Checkout */}
+                        {checkoutItems.map((cartItem, idx) => {
+                            const costume = cartItem.costume;
+                            const qty = cartItem.quantity || 1;
+                            const price = costume.rentalRates?.pricePerDay || 0;
+                            const image = costume.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop";
+                            const selectedSize = cartItem.variant?.size || costume.variants?.[0]?.size || "M";
+
+                            return (
+                                <div key={`${costume._id}-${idx}`} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
+                                    <div className="px-4">
+                                        <div className="flex flex-row gap-4 md:gap-6">
+                                            {/* Image Gallery */}
+                                            <div className="relative w-24 md:w-32 shrink-0">
+                                                <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface">
+                                                    <img
+                                                        src={image}
+                                                        alt={costume.name}
+                                                        className="w-full h-full object-cover"
+                                                        crossOrigin="anonymous"
                                                     />
-                                                ))}
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={() =>
-                                                    setCurrentImageIndex((prev) =>
-                                                        prev === 0 ? images.length - 1 : prev - 1
-                                                    )
-                                                }
-                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-card/90 flex items-center justify-center hover:bg-card transition-colors"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4 text-foreground" />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    setCurrentImageIndex((prev) =>
-                                                        prev === images.length - 1 ? 0 : prev + 1
-                                                    )
-                                                }
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-card/90 flex items-center justify-center hover:bg-card transition-colors"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronRight} className="h-4 w-4 text-foreground" />
-                                            </button>
-                                        </div>
-                                    </div>
 
-                                    {/* Product Info */}
-                                    <div className="flex-1 space-y-4">
-                                        <div>
-                                            <div className="mb-2  text-primary border-0 hover:bg-primary/20">
-                                                Giảm 82%
-                                            </div>
-                                            <h2 className="text-xl font-semibold text-foreground mb-1 text-pretty">
-                                                {item.name}
-                                            </h2>
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-2xl font-bold text-primary">
-                                                    {formatCurrency(item.pricePerDay)}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">/ngày</span>
-                                                <span className="text-sm text-muted-foreground line-through ml-2">
-                                                    {formatCurrency(item.originalPrice)}
-                                                </span>
-                                            </div>
-                                        </div>
+                                            {/* Product Info */}
+                                            <div className="flex-1 space-y-4">
+                                                <div className="my-4">
+                                                    <h2 className="text-xl font-semibold text-foreground mb-1 text-pretty">
+                                                        {costume.name}
+                                                    </h2>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-2xl font-bold text-primary">
+                                                            {formatCurrency(price)}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">/ngày</span>
+                                                    </div>
+                                                </div>
 
-                                        <div className="flex flex-wrap gap-3">
-                                            <div className="px-3 py-1.5 rounded-md bg-surface">
-                                                <span className="text-xs text-muted-foreground">Kích cỡ</span>
-                                                <p className="text-sm font-medium text-foreground">{item.size}</p>
-                                            </div>
-                                            <div className="px-3 py-1.5 rounded-md bg-surface">
-                                                <span className="text-xs text-muted-foreground">Màu sắc</span>
-                                                <p className="text-sm font-medium text-foreground">{item.color}</p>
-                                            </div>
-                                        </div>
+                                                <div className="flex flex-wrap gap-3 items-center">
+                                                    <span className="text-xs text-muted-foreground">Kích cỡ:</span>
+                                                    <span className="font-semibold">{selectedSize}</span>
+                                                </div>
 
-                                        {/* Quantity */}
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-sm font-medium text-foreground">Số lượng:</span>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => handleQuantityChange(-1)}
-                                                >
-                                                    <FontAwesomeIcon icon={faMinus} className="h-3 w-3" />
-                                                </Button>
-                                                <span className="w-8 text-center font-medium text-foreground">
-                                                    {item.quantity}
-                                                </span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => handleQuantityChange(1)}
-                                                >
-                                                    <FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
-                                                </Button>
+                                                <div className="flex flex-wrap gap-3 items-center">
+                                                    <span className="text-xs text-muted-foreground">Số lượng:</span>
+                                                    <span className="font-semibold">{qty}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            )
+                        })}
 
                         {/* Rental Duration */}
-                        <Card className="border-border transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
-                            <CardContent className="p-6">
+                        <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+                            <div className="px-6">
                                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                                     <FontAwesomeIcon icon={faClock} className="h-5 w-5 text-primary" />
-                                    Thời gian thuê
+                                    Thời gian thuê ({rentalDays} ngày)
                                 </h3>
 
                                 <div className="space-y-4">
-                                    {/* Duration Selector */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-muted-foreground">Số ngày thuê</span>
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-9 w-9"
-                                                onClick={() => handleRentalDaysChange(-1)}
-                                            >
-                                                <FontAwesomeIcon icon={faMinus} className="h-4 w-4" />
-                                            </Button>
-                                            <span className="w-12 text-center text-lg font-semibold text-foreground">
-                                                {rentalDays}
-                                            </span>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-9 w-9"
-                                                onClick={() => handleRentalDaysChange(1)}
-                                            >
-                                                <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-border shrink-0 h-px w-full" />
-
-                                    {/* Date Display */}
                                     <div className="grid sm:grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-lg bg-surface/50 border border-border">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <FontAwesomeIcon icon={faCalendarDays} className="h-4 w-4 text-primary" />
-                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                    Ngày nhận
-                                                </span>
-                                            </div>
-                                            <p className="text-sm font-semibold text-foreground">{formatDate(startDate)}</p>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-700">Ngày nhận</label>
+                                            <Input
+                                                type="date"
+                                                value={startDate}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                onChange={(e) => {
+                                                    setStartDate(e.target.value)
+                                                    if (new Date(e.target.value) > new Date(endDate)) {
+                                                        setEndDate(e.target.value)
+                                                    }
+                                                }}
+                                                className="bg-background"
+                                            />
                                         </div>
-                                        <div className="p-4 rounded-lg bg-surface/50 border border-border">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <FontAwesomeIcon icon={faCalendarDays} className="h-4 w-4 text-primary" />
-                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                    Ngày trả
-                                                </span>
-                                            </div>
-                                            <p className="text-sm font-semibold text-foreground">{formatDate(endDate)}</p>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-700">Ngày trả</label>
+                                            <Input
+                                                type="date"
+                                                value={endDate}
+                                                min={startDate}
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                                className="bg-background"
+                                            />
                                         </div>
-                                    </div>
-
-                                    {/* Quick Duration Options */}
-                                    <div className="flex flex-wrap gap-2">
-                                        {[1, 3, 5, 7, 14].map((days) => (
-                                            <Button
-                                                key={days}
-                                                variant={rentalDays === days ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setRentalDays(days)}
-                                                className={[
-                                                    "text-xs",
-                                                    rentalDays === days && "bg-primary text-primary-foreground",
-                                                ].filter(Boolean).join(' ')}
-                                            >
-                                                {days} ngày
-                                            </Button>
-                                        ))}
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
 
                         {/* Delivery Options */}
-                        <Card className="border-border transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
-                            <CardContent className="p-6">
+                        <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+                            <div className="px-6">
                                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                                     <FontAwesomeIcon icon={faTruck} className="h-5 w-5 text-primary" />
                                     Phương thức nhận hàng
                                 </h3>
 
-                                <RadioGroup
-                                    value={deliveryOption}
-                                    onValueChange={setDeliveryOption}
-                                    className="space-y-3"
-                                >
+                                <div className="space-y-3">
                                     <label
                                         htmlFor="delivery"
                                         className={[
@@ -310,7 +326,14 @@ export function Checkout() {
                                             deliveryOption === "delivery" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
                                         ].filter(Boolean).join(' ')}
                                     >
-                                        <RadioGroupItem value="delivery" id="delivery" className="mt-0.5" />
+                                        <Radio
+                                            value="delivery"
+                                            id="delivery"
+                                            name="deliveryOption"
+                                            checked={deliveryOption === "delivery"}
+                                            onChange={(e) => setDeliveryOption(e.target.value)}
+                                            className="mt-0.5"
+                                        />
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">Giao hàng tận nơi</span>
@@ -331,7 +354,14 @@ export function Checkout() {
                                             deliveryOption === "pickup" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
                                         ].filter(Boolean).join(' ')}
                                     >
-                                        <RadioGroupItem value="pickup" id="pickup" className="mt-0.5" />
+                                        <Radio
+                                            value="pickup"
+                                            id="pickup"
+                                            name="deliveryOption"
+                                            checked={deliveryOption === "pickup"}
+                                            onChange={(e) => setDeliveryOption(e.target.value)}
+                                            className="mt-0.5"
+                                        />
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">Nhận tại cửa hàng</span>
@@ -342,7 +372,7 @@ export function Checkout() {
                                             </p>
                                         </div>
                                     </label>
-                                </RadioGroup>
+                                </div>
 
                                 {deliveryOption === "delivery" && (
                                     <div className="mt-4 space-y-3">
@@ -351,17 +381,83 @@ export function Checkout() {
                                             <span>Địa chỉ giao hàng</span>
                                         </div>
                                         <Input
-                                            placeholder="Nhập địa chỉ giao hàng của bạn"
+                                            placeholder="Tên người nhận"
+                                            value={address.name}
+                                            onChange={(e) => setAddress({ ...address, name: e.target.value })}
+                                            className="bg-background"
+                                        />
+                                        <Input
+                                            placeholder="Số điện thoại"
+                                            value={address.phone}
+                                            onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                                            className="bg-background"
+                                        />
+                                        <Input
+                                            placeholder="Địa chỉ giao hàng chi tiết"
+                                            value={address.detail}
+                                            onChange={(e) => setAddress({ ...address, detail: e.target.value })}
                                             className="bg-background"
                                         />
                                     </div>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
+
+                        {/* Payment Options */}
+                        <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+                            <div className="px-6">
+                                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                                    <FontAwesomeIcon icon={faCreditCard} className="h-5 w-5 text-primary" />
+                                    Phương thức thanh toán
+                                </h3>
+
+                                <div className="space-y-3">
+                                    <label
+                                        htmlFor="vietqr"
+                                        className={[
+                                            "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
+                                            paymentMethod === "VietQR" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
+                                        ].filter(Boolean).join(' ')}
+                                    >
+                                        <Radio
+                                            value="VietQR"
+                                            id="vietqr"
+                                            name="paymentMethod"
+                                            checked={paymentMethod === "VietQR"}
+                                            onChange={(e) => setPaymentMethod(e.target.value)}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="flex-1">
+                                            <span className="font-medium text-foreground">Chuyển khoản ngân hàng (VietQR)</span>
+                                        </div>
+                                    </label>
+
+                                    <label
+                                        htmlFor="vnpay"
+                                        className={[
+                                            "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
+                                            paymentMethod === "VNPAY" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
+                                        ].filter(Boolean).join(' ')}
+                                    >
+                                        <Radio
+                                            value="VNPAY"
+                                            id="vnpay"
+                                            name="paymentMethod"
+                                            checked={paymentMethod === "VNPAY"}
+                                            onChange={(e) => setPaymentMethod(e.target.value)}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="flex-1">
+                                            <span className="font-medium text-foreground">Thanh toán qua VNPAY</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Additional Items */}
-                        <Card className="border-border transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
-                            <CardContent className="p-6">
+                        <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+                            <div className="px-6">
                                 <h3 className="text-lg font-semibold text-foreground mb-4">
                                     Có thể bạn cũng thích
                                 </h3>
@@ -369,7 +465,7 @@ export function Checkout() {
                                     {additionalItems.map((addItem) => (
                                         <div
                                             key={addItem.id}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-border bg-white transition-colors duration-200 hover:bg-primary/10 cursor-pointer"
+                                            className="flex items-center gap-3 p-3 rounded-lg border bg-white transition-colors duration-200 hover:bg-primary/10 cursor-pointer"
                                         >
                                             <img
                                                 src={addItem.image}
@@ -389,15 +485,15 @@ export function Checkout() {
                                         </div>
                                     ))}
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Right Column - Order Summary */}
                     <div>
                         <div className="sticky top-24">
-                            <Card className="border-border shadow-lg transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl">
-                                <CardContent className="p-6">
+                            <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm border-border shadow-lg transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl">
+                                <div className="px-6 p-6">
                                     <div className="flex items-center gap-2 mb-4">
                                         <div variant="secondary" className="bg-primary/10 text-sm border-0">
                                             Giá đã bao gồm tất cả phí
@@ -409,16 +505,21 @@ export function Checkout() {
                                     </h3>
 
                                     <div className="space-y-3 text-sm">
+                                        {checkoutItems.map((item, idx) => {
+                                            const qty = item.quantity || 1;
+                                            const price = item.costume.rentalRates?.pricePerDay || 0;
+                                            return (
+                                                <div key={`${item.costume._id}-${idx}`} className="flex justify-between">
+                                                    <span className="text-muted-foreground line-clamp-1 mr-4">
+                                                        {item.costume.name} × {qty}
+                                                    </span>
+                                                    <span className="font-medium text-foreground shrink-0">{formatCurrency(price * qty * rentalDays)}</span>
+                                                </div>
+                                            )
+                                        })}
+
                                         <div className="flex justify-between">
-                                            <span className="text-muted-foreground">
-                                                {item.name} × {item.quantity}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">
-                                                {formatCurrency(item.pricePerDay)} × {rentalDays} ngày
-                                            </span>
-                                            <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+                                            <span className="text-muted-foreground font-semibold border-t border-border pt-2 w-full flex justify-between">Tạm tính: <span>{formatCurrency(subtotal)}</span></span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Phí giao hàng</span>
@@ -443,14 +544,18 @@ export function Checkout() {
                                         <span className="text-foreground font-medium">Tổng cộng</span>
                                         <div className="text-right">
                                             <span className="text-sm text-muted-foreground line-through mr-2">
-                                                {formatCurrency(item.originalPrice * item.quantity)}
+                                                {formatCurrency(originalTotal)}
                                             </span>
                                             <span className="text-2xl font-bold text-primary">{formatCurrency(total)}</span>
                                         </div>
                                     </div>
 
-                                    <Button className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground">
-                                        Đặt thuê ngay
+                                    <Button
+                                        onClick={handleCheckout}
+                                        disabled={isLoading}
+                                        className="w-full h-12 text-base font-semibold bg-black hover:bg-black/90 text-white"
+                                    >
+                                        {isLoading ? "Đang xử lý..." : "Đặt thuê ngay"}
                                     </Button>
 
                                     <p className="text-xs text-center text-muted-foreground mt-3">
@@ -467,8 +572,8 @@ export function Checkout() {
                                             <span>Giao hàng nhanh 2-3 ngày</span>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </div>
 
                             {/* Help */}
                             <div className="mt-4 text-center">
@@ -495,7 +600,7 @@ export function Checkout() {
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     )
 }
