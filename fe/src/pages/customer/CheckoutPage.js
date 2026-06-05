@@ -40,12 +40,15 @@ export function Checkout() {
 
     // Lấy ID các sản phẩm đã được chọn từ Giỏ hàng
     const selectedIds = location.state?.selectedIds || [];
+    const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
+    
     const checkoutItems = selectedIds.length > 0
-        ? cartItems.filter(item => selectedIds.includes(item.costume._id))
+        ? cartItems.filter(item => selectedIds.includes(getItemId(item)))
         : cartItems; // Nếu vào thẳng link không qua giỏ, fallback lấy hết
 
-    const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
+    const [startDate, setStartDate] = useState(() => checkoutItems[0]?.startDate || new Date().toISOString().split('T')[0])
     const [endDate, setEndDate] = useState(() => {
+        if (checkoutItems[0]?.endDate) return checkoutItems[0].endDate;
         const d = new Date()
         d.setDate(d.getDate() + 2)
         return d.toISOString().split('T')[0]
@@ -53,8 +56,6 @@ export function Checkout() {
     const [deliveryOption, setDeliveryOption] = useState("delivery")
     const [paymentMethod, setPaymentMethod] = useState("Tiền mặt")
 
-    const [quantities, setQuantities] = useState({})
-    const [sizes, setSizes] = useState({})
     const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
     const [isLoading, setIsLoading] = useState(false)
 
@@ -67,17 +68,17 @@ export function Checkout() {
 
     const startObj = new Date(startDate)
     const endObj = new Date(endDate)
-    let rentalDays = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1
+    let rentalDays = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24))
     if (rentalDays < 1) rentalDays = 1 // Safe fallback
 
     const subtotal = checkoutItems.reduce((sum, item) => {
-        const qty = quantities[item.costume._id] || 1
+        const qty = item.quantity || 1
         const price = item.costume.rentalRates?.pricePerDay || 0
         return sum + (price * qty * rentalDays)
     }, 0)
 
     const originalTotal = checkoutItems.reduce((sum, item) => {
-        const qty = quantities[item.costume._id] || 1
+        const qty = item.quantity || 1
         // Giả lập giá gốc gấp đôi nếu không có price
         const originalPrice = item.costume.price || ((item.costume.rentalRates?.pricePerDay || 0) * 2)
         return sum + (originalPrice * qty * rentalDays)
@@ -86,20 +87,6 @@ export function Checkout() {
     const deliveryFee = deliveryOption === "delivery" ? 50000 : 0
     const insuranceFee = checkoutItems.length > 0 ? 100000 : 0
     const total = subtotal + deliveryFee + insuranceFee
-
-    const handleQuantityChange = (id, delta) => {
-        setQuantities((prev) => ({
-            ...prev,
-            [id]: Math.max(1, (prev[id] || 1) + delta),
-        }))
-    }
-
-    const handleSizeChange = (id, newSize) => {
-        setSizes((prev) => ({
-            ...prev,
-            [id]: newSize,
-        }))
-    }
 
     const handleCheckout = async () => {
         if (checkoutItems.length === 0) return;
@@ -117,9 +104,9 @@ export function Checkout() {
                 endDate: new Date(endDate).toISOString(),
                 items: checkoutItems.map(item => ({
                     costume: item.costume._id,
-                    size: sizes[item.costume._id] || item.costume.variants?.[0]?.size || "M",
+                    size: item.variant?.size || item.costume.variants?.[0]?.size || "M",
                     color: item.costume.color || "Mặc định",
-                    quantity: quantities[item.costume._id] || 1
+                    quantity: item.quantity || 1
                 })),
                 shippingFee: deliveryFee,
                 paymentMethod: paymentMethod,
@@ -148,7 +135,7 @@ export function Checkout() {
                 if (checkoutItems.length === cartItems.length) {
                     clearCart();
                 } else {
-                    checkoutItems.forEach(item => removeFromCart(item.costume._id));
+                    checkoutItems.forEach(item => removeFromCart(item.costume._id, item.variant?._id, item.startDate, item.endDate));
                 }
                 navigate("/rental-history");
             } else {
@@ -230,15 +217,15 @@ export function Checkout() {
                     {/* Left Column - Product Details */}
                     <div className="lg:col-span-1 space-y-4 mb-6">
                         {/* Mapped Product Cards from Checkout */}
-                        {checkoutItems.map((cartItem) => {
+                        {checkoutItems.map((cartItem, idx) => {
                             const costume = cartItem.costume;
-                            const qty = quantities[costume._id] || 1;
+                            const qty = cartItem.quantity || 1;
                             const price = costume.rentalRates?.pricePerDay || 0;
                             const image = costume.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop";
-                            const selectedSize = sizes[costume._id] || costume.variants?.[0]?.size || "M";
+                            const selectedSize = cartItem.variant?.size || costume.variants?.[0]?.size || "M";
 
                             return (
-                                <div key={costume._id} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
+                                <div key={`${costume._id}-${idx}`} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
                                     <div className="px-4">
                                         <div className="flex flex-row gap-4 md:gap-6">
                                             {/* Image Gallery */}
@@ -268,20 +255,14 @@ export function Checkout() {
                                                 </div>
 
                                                 <div className="flex flex-wrap gap-3 items-center">
-                                                    <span className="text-xs text-muted-foreground">Kích cỡ</span>
-                                                    <SizeSelector
-                                                        variants={costume.variants}
-                                                        selectedSize={selectedSize}
-                                                        onSizeChange={(newSize) => handleSizeChange(costume._id, newSize)}
-                                                    />
+                                                    <span className="text-xs text-muted-foreground">Kích cỡ:</span>
+                                                    <span className="font-semibold">{selectedSize}</span>
                                                 </div>
 
-                                                {/* Quantity */}
-                                                <QuantitySelector
-                                                    quantity={qty}
-                                                    onDecrease={() => handleQuantityChange(costume._id, -1)}
-                                                    onIncrease={() => handleQuantityChange(costume._id, 1)}
-                                                />
+                                                <div className="flex flex-wrap gap-3 items-center">
+                                                    <span className="text-xs text-muted-foreground">Số lượng:</span>
+                                                    <span className="font-semibold">{qty}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -524,11 +505,11 @@ export function Checkout() {
                                     </h3>
 
                                     <div className="space-y-3 text-sm">
-                                        {checkoutItems.map(item => {
-                                            const qty = quantities[item.costume._id] || 1;
+                                        {checkoutItems.map((item, idx) => {
+                                            const qty = item.quantity || 1;
                                             const price = item.costume.rentalRates?.pricePerDay || 0;
                                             return (
-                                                <div key={item.costume._id} className="flex justify-between">
+                                                <div key={`${item.costume._id}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">
                                                         {item.costume.name} × {qty}
                                                     </span>
