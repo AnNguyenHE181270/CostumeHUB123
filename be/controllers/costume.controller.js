@@ -56,9 +56,13 @@ const getAllCostumes = async (req, res, next) => {
 
     // Filter by status (comma-separated)
     if (status) {
-      const statuses = status.split(",").filter(Boolean);
-      if (statuses.length > 0) {
-        filter.status = { $in: statuses };
+      if (status === "all") {
+        delete filter.status;
+      } else {
+        const statuses = status.split(",").filter(Boolean);
+        if (statuses.length > 0) {
+          filter.status = { $in: statuses };
+        }
       }
     }
 
