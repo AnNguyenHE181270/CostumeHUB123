@@ -65,8 +65,8 @@ const getAllCostumes = async (req, res, next) => {
         }
       }
     } else {
-      // Customer view: only show costumes with stock > 0
-      filter["variants.stock"] = { $gt: 0 };
+      // Customer view: only show costumes with availableStock > 0
+      filter["variants.availableStock"] = { $gt: 0 };
     }
 
     // Search by name
