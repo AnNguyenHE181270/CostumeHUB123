@@ -1,12 +1,12 @@
 import { Outlet, useNavigate, Link } from "react-router-dom";
-import Sidebar from "../components/layout/Sidebar";
-import { useAuth } from "../context/AuthContext"; // Cập nhật đường dẫn
+import Sidebar from "./Sidebar";
+import { useAuth } from "../../context/AuthContext"; // Cập nhật đường dẫn
 import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faUser } from "@fortawesome/free-solid-svg-icons";
 
-import ownerSidebar from "../constants/ownerSidebar";
-import staffSidebar from "../constants/staffSidebar";
+import ownerSidebar from "../../constants/ownerSidebar";
+import staffSidebar from "../../constants/staffSidebar";
 
 export default function DashboardLayout() {
   const { role, user, logout } = useAuth();

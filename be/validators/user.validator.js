@@ -132,34 +132,20 @@ const updateUserValidator = [
     .withMessage("Role must be a string"),
 ];
 
-const createUserValidator = [
+
+const updateMyProfileValidator = [
   body("fullName")
+    .optional()
     .trim()
     .notEmpty()
-    .withMessage("Full name is required")
+    .withMessage("Full name cannot be empty")
     .isLength({ min: 2, max: 50 })
     .withMessage("Full name must be between 2 and 50 characters"),
 
-  body("email")
-    .trim()
-    .notEmpty()
-    .withMessage("Email is required")
-    .isEmail()
-    .withMessage("Invalid email format"),
-
-  body("password")
-    .notEmpty()
-    .withMessage("Password is required")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
-
-  body("role")
-    .notEmpty()
-    .withMessage("Role is required")
-    .isString()
-    .withMessage("Role must be a string"),
-
-  body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
+  body("phone")
+    .optional()
+    .isMobilePhone()
+    .withMessage("Invalid phone number"),
 
   body("gender")
     .optional()
@@ -170,14 +156,19 @@ const createUserValidator = [
     .optional()
     .isISO8601()
     .toDate()
-    .withMessage("Invalid date of birth"),
-    
-  body("status")
-    .optional()
-    .isIn(["active", "pending", "blocked"])
-    .withMessage("Status must be active, pending, or blocked"),
-];
+    .withMessage("Invalid date of birth")
+    .custom((value) => {
+      if (value > new Date()) {
+        throw new Error("Date of birth cannot be in the future");
+      }
+      return true;
+    }),
 
+  body("avatar")
+    .optional()
+    .isURL()
+    .withMessage("Avatar must be a valid URL"),
+];
 module.exports = {
   registerValidator,
   verifyOtpValidator,
@@ -186,5 +177,5 @@ module.exports = {
   resetPasswordValidator,
   findUserByIdValidator,
   updateUserValidator,
-  createUserValidator,
+  updateMyProfileValidator,
 };

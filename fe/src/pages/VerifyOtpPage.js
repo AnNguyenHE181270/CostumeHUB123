@@ -4,7 +4,7 @@ import { faArrowRight, faShieldHalved } from "@fortawesome/free-solid-svg-icons"
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
-import AuthLayout from "../layouts/AuthLayout";
+import AuthLayout from "../components/layout/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
 
 const OTP_LENGTH = 6;

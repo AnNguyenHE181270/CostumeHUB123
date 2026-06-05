@@ -1,7 +1,10 @@
-const express = require('express')
+const express = require("express");
 const router = express.Router();
-const {checkAuth, requirePermission} = require("../middlewares/check-auth.middleware")
-const {getAllRoles} = require("../controllers/role.controller")
-router.get("/get-roles", requirePermission("view_all_roles"), getAllRoles)
+const { checkAuth, isOwner } = require("../middlewares/check-auth.middleware");
+const { getAllRoles } = require("../controllers/role.controller");
 
-module.exports = router
+router.use(checkAuth);
+
+router.get("/get-roles", isOwner, getAllRoles);
+
+module.exports = router;

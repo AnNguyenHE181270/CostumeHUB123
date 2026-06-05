@@ -99,12 +99,6 @@ export default function AccountsPage() {
             Manage user information and system permissions
           </p>
         </div>
-        <div><Button
-          icon={faPlus}
-          label="Add Account"
-          variant="primary"
-          onClick={() => navigate("/owner/accounts/create")}
-        /></div>
 
       </div>
 

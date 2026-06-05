@@ -12,7 +12,7 @@ jest.mock("react-router-dom", () => ({
     useParams: jest.fn(),
 }));
 
-jest.mock("../layouts/AuthLayout", () => ({
+jest.mock("../components/layout/AuthLayout", () => ({
     __esModule: true,
     default: ({ children }) => <div>{children}</div>,
 }));
