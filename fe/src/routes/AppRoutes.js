@@ -11,6 +11,7 @@ import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import CartPage from "../pages/CartPage";
+import ProfilePage from "../pages/ProfilePage";
 
 // Trang của Owner
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -19,24 +20,20 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import OrdersPage from "../pages/store-owner/OrdersPage"; 
-import CreateUserPage from "../pages/store-owner/CreateUserPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
-import ProfilePage from "../pages/customer/ProfilePage";
 
 import { ROUTES } from "./routePaths";
-import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout"; 
+import DashboardLayout from "../components/layout/DashboardLayout";
+import MainLayout from "../components/layout/MainLayout"; 
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* ======================================================== */}
-      {/* LUỒNG KHÁCH HÀNG: ĐƯỢC BỌC TRONG MAINLAYOUT CÓ NAVBAR    */}
-      {/* ======================================================== */}
+
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
 
@@ -45,13 +42,11 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
         </Route>
       </Route>
 
-      {/* ======================================================== */}
-      {/* LUỒNG XÁC THỰC (AUTH): KHÔNG CÓ NAVBAR / FOOTER          */}
-      {/* ======================================================== */}
+
       <Route element={<PublicRoutes />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.REGISTER} element={<Register />} />
@@ -60,9 +55,7 @@ function AppRoutes() {
         <Route path={ROUTES.RESETPASSWORD} element={<ResetPasswordPage />} />
       </Route>
 
-      {/* ======================================================== */}
-      {/* LUỒNG NHÂN VIÊN & QUẢN LÝ: ĐƯỢC BỌC TRONG DASHBOARDLAYOUT  */}
-      {/* ======================================================== */}
+
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
            <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
@@ -73,7 +66,7 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
-          <Route path={ROUTES.STOR_OWNER_CREATE_ACCOUNT} element={<CreateUserPage />} />
+
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />

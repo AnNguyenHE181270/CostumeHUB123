@@ -16,40 +16,23 @@ const register = async (req, res, next) => {
 
   try {
     const { fullName, email, phone, password, gender, dateOfBirth } = req.body;
-
     const now = new Date();
 
     const existUser = await User.findOne({ email });
 
     if (existUser && existUser.status === "active") {
-      return next(
-        new HttpError(
-          "An account with this email already exists. Please log in instead.",
-          422,
-        ),
-      );
+      return next(new HttpError("An account with this email already exists. Please log in instead.", 422));
     }
 
     if (phone) {
       const existPhone = await User.findOne({ phone });
       if (existPhone && existPhone.status === "active" && (!existUser || existPhone._id.toString() !== existUser._id.toString())) {
-        return next(
-          new HttpError(
-            "An account with this phone number already exists.",
-            422,
-          ),
-        );
+        return next(new HttpError("An account with this phone number already exists.", 422));
       }
     }
 
-    if (
-      existUser &&
-      existUser.status == "blocked" &&
-      existUser.isEmailVerified == true
-    ) {
-      return next(
-        new HttpError("This account cannot be registered again.", 403),
-      );
+    if (existUser && existUser.status == "blocked" && existUser.isEmailVerified == true) {
+      return next(new HttpError("This account cannot be registered again.", 403));
     }
 
     const roleUser = await Role.findOne({ name: "online-customer" });
@@ -60,18 +43,13 @@ const register = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
-
     const otp = generateOTP();
     const otpHash = await bcrypt.hash(otp, salt);
 
     const otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
     const otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
 
-    if (
-      existUser &&
-      existUser.status === "pending" &&
-      existUser.isEmailVerified == false
-    ) {
+    if (existUser && existUser.status === "pending" && existUser.isEmailVerified == false) {
       const updatedUser = await User.findByIdAndUpdate(
         existUser._id,
         {
@@ -81,7 +59,6 @@ const register = async (req, res, next) => {
           role: roleUser._id,
           gender: gender || null,
           dateOfBirth: dateOfBirth || null,
-
           otpCode: otpHash,
           otpExpires,
           otpCooldownUntil,
@@ -93,8 +70,7 @@ const register = async (req, res, next) => {
       await sendEmailVerification(email, otp, fullName);
 
       return res.status(200).json({
-        message:
-          "Registration successful. Please check your email for the OTP.",
+        message: "Registration successful. Please check your email for the OTP.",
         type: "new",
         user: {
           id: updatedUser._id,
@@ -107,7 +83,6 @@ const register = async (req, res, next) => {
       });
     }
 
-    // CASE 2: EMAIL CHƯA TỒN TẠI
     newUser = await User.create({
       fullName,
       email,
@@ -116,7 +91,6 @@ const register = async (req, res, next) => {
       role: roleUser._id,
       gender: gender || null,
       dateOfBirth: dateOfBirth || null,
-
       otpCode: otpHash,
       otpExpires,
       otpCooldownUntil,
@@ -155,140 +129,8 @@ const sendEmailVerification = async (email, otp, fullName) => {
   await sendEmail({
     to: email,
     subject: "Vogue Rental — Xác thực tài khoản của bạn",
-
     text: `Mã xác thực của bạn là: ${otp}`,
-
-    html: `
-      <div style="
-        margin:0;
-        padding:0;
-        background:#f7f7f7;
-        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-      ">
-
-        <div style="
-          max-width:580px;
-          margin:0 auto;
-          padding:50px 20px;
-        ">
-
-          <!-- MAIN CARD -->
-          <div style="
-            background:#ffffff;
-            border-radius:16px;
-            border:1px solid #d7d7d6;
-            overflow:hidden;
-          ">
-
-            <!-- SUNSET ORANGE TOP BAR -->
-            <div style="height:4px; background:linear-gradient(to right, #f94a00, #fd7b03);"></div>
-
-            <div style="padding:48px 40px;">
-
-              <!-- BRAND HEADER -->
-              <div style="
-                font-size:13px;
-                letter-spacing:5px;
-                color:#020108;
-                text-transform:uppercase;
-                font-weight:600;
-                margin-bottom:32px;
-              ">
-                Vogue Rental
-              </div>
-
-              <div style="height:1px; width:40px; background:#d7d7d6; margin-bottom:32px;"></div>
-
-              <!-- GREETING -->
-              <h1 style="
-                margin:0;
-                font-family:Georgia,'Times New Roman',serif;
-                font-size:28px;
-                font-weight:400;
-                color:#020108;
-                line-height:1.2;
-                letter-spacing:-0.5px;
-              ">
-                Xác thực tài khoản
-              </h1>
-
-              <p style="
-                margin:16px 0 0;
-                font-size:15px;
-                color:#333333;
-                line-height:1.6;
-              ">
-                Chào ${fullName},<br/>
-                Vui lòng sử dụng mã bên dưới để hoàn tất việc tạo tài khoản của bạn.
-              </p>
-
-              <!-- DARK PREMIUM OTP BOX -->
-              <div style="
-                margin:36px 0;
-                background:#020108;
-                border-radius:12px;
-                padding:32px;
-                text-align:center;
-              ">
-
-                <div style="
-                  font-size:11px;
-                  color:#818084;
-                  letter-spacing:3px;
-                  margin-bottom:14px;
-                  text-transform:uppercase;
-                ">
-                  Mã xác thực
-                </div>
-
-                <div style="
-                  font-family:'Courier New',Courier,monospace;
-                  font-size:38px;
-                  font-weight:700;
-                  letter-spacing:8px;
-                  color:#f94a00;
-                ">
-                  ${otp}
-                </div>
-              </div>
-
-              <!-- INFO -->
-              <p style="
-                margin-top:24px;
-                font-size:13px;
-                color:#707070;
-                line-height:1.5;
-              ">
-                Mã này sẽ hết hạn sau <b style="color:#020108;">10 phút</b>.
-              </p>
-
-              <p style="
-                margin-top:8px;
-                font-size:12px;
-                color:#858585;
-                line-height:1.5;
-              ">
-                Nếu bạn không yêu cầu mã này, bạn có thể bỏ qua email một cách an toàn.
-              </p>
-
-            </div>
-
-          </div>
-
-          <!-- FOOTER -->
-          <div style="
-            text-align:center;
-            margin-top:28px;
-            font-size:11px;
-            color:#818084;
-            letter-spacing:1.5px;
-          ">
-            © ${new Date().getFullYear()} VOGUE RENTAL • HÀ NỘI
-          </div>
-
-        </div>
-      </div>
-    `,
+    html: `...`,
   });
 };
 
@@ -297,9 +139,7 @@ const verifyOtp = async (req, res, next) => {
     const { email } = req.params;
     const { otp } = req.body;
 
-    const existUser = await User.findOne({ email }).select(
-      "+otpCode +otpExpires +otpCooldownUntil",
-    );
+    const existUser = await User.findOne({ email }).select("+otpCode +otpExpires +otpCooldownUntil");
 
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
@@ -320,9 +160,7 @@ const verifyOtp = async (req, res, next) => {
     const nowDate = new Date();
 
     if (existUser.otpExpires < nowDate) {
-      return next(
-        new HttpError("OTP has expired. Please register again.", 400),
-      );
+      return next(new HttpError("OTP has expired. Please register again.", 400));
     }
 
     const isValidOtp = await bcrypt.compare(otp, existUser.otpCode);
@@ -349,9 +187,7 @@ const verifyOtp = async (req, res, next) => {
       },
     });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Email verification failed.", 500),
-    );
+    return next(new HttpError(err.message || "Email verification failed.", 500));
   }
 };
 
@@ -359,13 +195,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const existUser = await User.findOne({
-      email,
-    })
-      .select("+password")
-      .populate("role");
+    const existUser = await User.findOne({ email }).select("+password").populate("role");
 
-    // check user trước
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
     }
@@ -375,7 +206,7 @@ const login = async (req, res, next) => {
     }
 
     if(existUser.status == "pending"){
-      return next( new HttpError("User is not verify, please register again",400))
+      return next(new HttpError("User is not verify, please register again",400))
     }
 
     const checkPassword = await bcrypt.compare(password, existUser.password);
@@ -384,19 +215,14 @@ const login = async (req, res, next) => {
       return next(new HttpError("Incorrect password.", 401));
     }
 
-
-
     const token = jwt.sign(
       {
         id: existUser._id,
         email: existUser.email,
         role: existUser.role.name,
-        permissions: existUser.role.permissions,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      },
+      { expiresIn: "7d" }
     );
 
     return res.status(200).json({
@@ -417,7 +243,6 @@ const getProfile = async (req, res, next) => {
       return next(new HttpError("User not found.", 404));
     }
 
-
     return res.status(200).json({
       user: {
         id: user._id,
@@ -431,9 +256,7 @@ const getProfile = async (req, res, next) => {
       },
     });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Email verification failed.", 500),
-    );
+    return next(new HttpError(err.message || "Fetch profile failed.", 500));
   }
 };
 
@@ -441,137 +264,8 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
   await sendEmail({
     to: email,
     subject: "Vogue Rental — Đặt lại mật khẩu",
-
     text: `Bạn yêu cầu đặt lại mật khẩu. Nhấn vào link sau (hiệu lực 15 phút): ${resetUrl}`,
-
-    html: `
-      <div style="
-        margin:0;
-        padding:0;
-        background:#f7f7f7;
-        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-      ">
-
-        <div style="
-          max-width:580px;
-          margin:0 auto;
-          padding:50px 20px;
-        ">
-
-          <!-- MAIN CARD -->
-          <div style="
-            background:#ffffff;
-            border-radius:16px;
-            border:1px solid #d7d7d6;
-            overflow:hidden;
-          ">
-
-            <!-- SUNSET ORANGE TOP BAR -->
-            <div style="height:4px; background:linear-gradient(to right, #f94a00, #fd7b03);"></div>
-
-            <div style="padding:48px 40px;">
-
-              <!-- BRAND HEADER -->
-              <div style="
-                font-size:13px;
-                letter-spacing:5px;
-                color:#020108;
-                text-transform:uppercase;
-                font-weight:600;
-                margin-bottom:32px;
-              ">
-                Vogue Rental
-              </div>
-
-              <div style="height:1px; width:40px; background:#d7d7d6; margin-bottom:32px;"></div>
-
-              <!-- GREETING -->
-              <h1 style="
-                margin:0;
-                font-family:Georgia,'Times New Roman',serif;
-                font-size:28px;
-                font-weight:400;
-                color:#020108;
-                line-height:1.2;
-                letter-spacing:-0.5px;
-              ">
-                Đặt lại mật khẩu
-              </h1>
-
-              <p style="
-                margin:16px 0 0;
-                font-size:15px;
-                color:#333333;
-                line-height:1.6;
-              ">
-                Chào ${fullName},<br/>
-                Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Nhấn vào nút bên dưới để chọn mật khẩu mới.
-              </p>
-
-              <!-- CTA BUTTON -->
-              <div style="margin:36px 0; text-align:center;">
-                <a href="${resetUrl}" target="_blank" style="
-                  display:inline-block;
-                  background:linear-gradient(to right, #f94a00, #fd7b03);
-                  color:#ffffff;
-                  text-decoration:none;
-                  font-size:16px;
-                  font-weight:600;
-                  letter-spacing:0.5px;
-                  padding:16px 40px;
-                  border-radius:12px;
-                ">
-                  Đặt lại mật khẩu
-                </a>
-              </div>
-
-              <!-- INFO -->
-              <p style="
-                margin-top:24px;
-                font-size:13px;
-                color:#707070;
-                line-height:1.5;
-              ">
-                Liên kết này sẽ hết hạn sau <b style="color:#020108;">15 phút</b>.
-              </p>
-
-              <p style="
-                margin-top:8px;
-                font-size:12px;
-                color:#858585;
-                line-height:1.5;
-              ">
-                Nếu nút không hoạt động, bạn có thể copy và dán đường link sau vào trình duyệt: <br/>
-                <a href="${resetUrl}" style="color:#0057f3; word-break:break-all;">${resetUrl}</a>
-              </p>
-
-              <p style="
-                margin-top:16px;
-                font-size:12px;
-                color:#858585;
-                line-height:1.5;
-              ">
-                Nếu bạn không yêu cầu đặt lại mật khẩu, bạn có thể bỏ qua email này một cách an toàn.
-              </p>
-
-            </div>
-
-          </div>
-
-          <!-- FOOTER -->
-          <div style="
-            text-align:center;
-            margin-top:28px;
-            font-size:11px;
-            color:#818084;
-            letter-spacing:1.5px;
-          ">
-            © ${new Date().getFullYear()} VOGUE RENTAL • HÀ NỘI
-          </div>
-
-        </div>
-      </div>
-    `,
+    html: `...`,
   });
 };
 
@@ -580,37 +274,19 @@ const forgotPassword = async (req, res, next) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return next(
-        new HttpError(
-          "If an account with this email exists, password reset instructions have been sent.",
-          200,
-        ),
-      );
+      return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
     }
 
     if (!user.isEmailVerified) {
-      return next(
-        new HttpError(
-          "Email is not verified. Please verify your email before resetting your password.",
-          403,
-        ),
-      );
+      return next(new HttpError("Email is not verified. Please verify your email before resetting your password.", 403));
     }
 
     if (user.status === "blocked") {
-      return next(
-        new HttpError(
-          "Your account has been blocked. Please contact support for assistance.",
-          403,
-        ),
-      );
+      return next(new HttpError("Your account has been blocked. Please contact support for assistance.", 403));
     }
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
@@ -620,8 +296,7 @@ const forgotPassword = async (req, res, next) => {
     const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
     await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
     res.status(200).json({
-      message:
-        "If an account with this email exists, password reset instructions have been sent.",
+      message: "If an account with this email exists, password reset instructions have been sent.",
     });
   } catch (err) {
     return next(new HttpError(err.message || "Error system.", 500));
@@ -659,8 +334,7 @@ const resetPassword = async (req, res, next) => {
 
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find()
-      .populate("role");
+    const users = await User.find().populate("role");
     return res.status(200).json({
       users: users.map((u) => ({
         fullName: u.fullName,
@@ -716,7 +390,7 @@ const updateUsers = async (req, res, next) => {
        return next(new HttpError("You cannot change your own role or status", 403));
     }
 
-    const findRole = await Role.findOne({ "name": role });
+    const findRole = await Role.findOne({ name: role });
     if (!findRole) {
       return next(new HttpError("Not found role", 404));
     }
@@ -769,78 +443,41 @@ const updateUsers = async (req, res, next) => {
   }
 };
 
-const createUser = async (req, res, next) => {
+
+const updateMyProfile = async (req, res, next) => {
   try {
-    const {
-      email,
-      phone,
-      fullName,
-      password,
-      gender,
-      dateOfBirth,
-      avatar,
-      role,
-    } = req.body;
+    const { fullName, gender, dateOfBirth, avatar } = req.body;
+    const myEmail = req.userData.email;
 
-    const findRole = await Role.findOne({ name: role });
+    const user = await User.findOne({ email: myEmail });
 
-    if (!findRole) {
-      return next(new HttpError("Role not found", 404));
+    if (!user) {
+      return next(new HttpError("User not found", 404));
     }
 
-    if (findRole.name === "owner") {
-      return next(new HttpError("You cannot create a user with the owner role.", 403));
-    }
-
-    const emailExists = await User.findOne({ email });
-
-    if (emailExists) {
-      return next(new HttpError("Email already in use", 400));
-    }
-
-    if (phone) {
-      const phoneExists = await User.findOne({ phone });
-
-      if (phoneExists) {
-        return next(
-          new HttpError("Phone number already in use", 400)
-        );
-      }
-    }
-
-
-    let newAvatar = avatar || null;
+    let newAvatar = avatar;
 
     if (req.file) {
       newAvatar = await uploadImage(req.file.path);
       fs.unlinkSync(req.file.path);
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        fullName,
+        gender,
+        dateOfBirth,
+        avatar: newAvatar,
+      },
+      { new: true }
+    );
 
-    const newUser = await User.create({
-      email,
-      phone,
-      fullName,
-      password: passwordHash,
-      gender: gender ,
-      dateOfBirth: dateOfBirth ,
-      avatar: newAvatar,
-      role: findRole._id,
-      status: "active" ,
-      isEmailVerified: true,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "User created successfully",
-      user: newUser,
+    return res.status(200).json({
+      user: updatedUser,
     });
   } catch (err) {
-    return next(
-      new HttpError(err.message || "Create user failed", 500)
-    );
+    return next(new HttpError(err.message || "Update profile failed", 500));
   }
 };
 
@@ -854,5 +491,5 @@ module.exports = {
   getAllUsers,
   updateUsers,
   findUserById,
-  createUser
+  updateMyProfile
 };

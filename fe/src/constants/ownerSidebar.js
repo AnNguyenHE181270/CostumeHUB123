@@ -1,7 +1,6 @@
 import {
   faChartPie,
   faUsers,
-  faUserCheck,
   faFolder,
   faBox,
   faShirt,
@@ -12,7 +11,6 @@ import {
 const ownerSidebar = [
   { path: "/owner", label: "Dashboard", icon: faChartPie, end: true },
   { path: "/owner/accounts/", label: "Quản lý Tài khoản", icon: faUsers },
-  { path: "/owner/users-staff", label: "Người dùng & Lễ tân", icon: faUserCheck },
   { path: "/owner/categories", label: "Danh mục", icon: faFolder },
   { path: "/owner/products", label: "Sản phẩm", icon: faBox },
   { path: "/owner/rentals", label: "Quần áo cho thuê", icon: faShirt },

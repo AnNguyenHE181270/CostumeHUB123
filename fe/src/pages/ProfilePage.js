@@ -1,11 +1,21 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRightFromBracket, faCamera, faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProfilePage() {
+  const { user, role, logout } = useAuth();
+  const navigate = useNavigate();
+
+  
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 md:py-20 font-body">
-      {/* Header Section */}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1a1a1a] tracking-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -15,9 +25,20 @@ export default function ProfilePage() {
             Quản lý thông tin cá nhân và tài khoản của bạn.
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
+          {(role === "owner" || role === "staff") && (
+            <Link 
+              to={role === "owner" ? "/owner" : "/staff"} 
+              className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-[#333] transition-colors flex items-center justify-center border border-[#1a1a1a] w-full sm:w-auto"
+            >
+              Trang Quản Trị
+            </Link>
+          )}
           {/* Nút Đăng xuất ở ngay đây để user dễ thấy */}
-          <button className="bg-red-50 text-red-600 text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200">
+          <button 
+            onClick={handleLogout}
+            className="bg-red-50 text-red-600 text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-200 w-full sm:w-auto"
+          >
             <FontAwesomeIcon icon={faArrowRightFromBracket} /> Đăng xuất
           </button>
         </div>
@@ -64,7 +85,10 @@ export default function ProfilePage() {
                 </Link>
               </li>
               <li className="border-t border-[#eaeaea]">
-                <button className="w-full text-left px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-red-600 hover:bg-red-50 transition-colors border-l-4 border-transparent">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-red-600 hover:bg-red-50 transition-colors border-l-4 border-transparent"
+                >
                   Đăng xuất
                 </button>
               </li>

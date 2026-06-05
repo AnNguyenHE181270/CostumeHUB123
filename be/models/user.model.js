@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// ===== 1. SUB-SCHEMA: Địa chỉ =====
+
 const addressSchema = new mongoose.Schema(
   {
     receiverName: { type: String, required: true, trim: true },
@@ -60,7 +60,6 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
     },
 
-    // User schema
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Role",
@@ -78,7 +77,6 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ===== BẢO MẬT =====
     otpCode: { type: String, select: false },
     otpExpires: { type: Date, select: false },
     otpCooldownUntil: { type: Date, select: false },
@@ -102,5 +100,7 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+
 
 module.exports = mongoose.model("User", userSchema);

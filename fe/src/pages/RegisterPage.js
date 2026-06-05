@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
-import AuthLayout from "../layouts/AuthLayout";
+import AuthLayout from "../components/layout/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
 
 export default function RegisterPage() {

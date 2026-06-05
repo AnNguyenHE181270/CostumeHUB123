@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faSearch } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ProductFormModal from "../../components/store-owner/ProductFormModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Toast from "../../components/ui/Toast";
+import Pagination from "../../components/ui/Pagination";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
+const PAGE_SIZE = 10;
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -16,10 +18,13 @@ export default function ProductsPage() {
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-
+   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCatagory, setFilterCatagory] = useState("all");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete', 'restore', 'change_status'
   const [pendingData, setPendingData] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -47,6 +52,7 @@ export default function ProductsPage() {
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
+        console.log(data.categories)
       } else {
         console.error("Failed to fetch categories");
       }
@@ -59,6 +65,31 @@ export default function ProductsPage() {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  const filteredProducts = useMemo(() => {
+      return products.filter((pro) => {
+        const matchSearch =
+          pro.name?.toLowerCase().includes(search.toLowerCase());
+        const matchRole =
+          filterCatagory === "all" ||
+          pro.categoryId?.name?.toLowerCase() === filterCatagory.toLowerCase();
+        const matchStatus =
+          filterStatus === "all" ||
+          pro.status?.toLowerCase() === filterStatus.toLowerCase();
+        return matchSearch && matchRole && matchStatus;
+      });
+  }, [products, search, filterCatagory, filterStatus]);
+
+  useEffect(() => { setCurrentPage(1); }, [search, filterCatagory, filterStatus]);
+
+    const paginatedProduct = useMemo(() => {
+      const start = (currentPage - 1) * PAGE_SIZE;
+      return filteredProducts.slice(start, start + PAGE_SIZE);
+    }, [filteredProducts, currentPage]);
+  
+    const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+  
+
 
   const handleOpenAddForm = () => {
     setEditingProduct(null);
@@ -279,37 +310,79 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Sản phẩm</h1>
-          <p className="text-sm text-[#999] mt-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Quản lý Sản phẩm
+          </h2>
+          <p className="text-[#999] text-sm mt-1">
             Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn sản phẩm
           </p>
         </div>
-        <Button variant="primary" onClick={handleOpenAddForm} className="bg-[#1a1a1a] hover:bg-[#333]">
-          <FontAwesomeIcon icon={faPlus} className="mr-2" />
-          Thêm sản phẩm
-        </Button>
+        <div>
+          <Button icon={faPlus} label="Thêm sản phẩm" variant="primary" onClick={handleOpenAddForm} />
+        </div>
       </div>
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
+              <div className="relative flex-1 w-full">
+                <FontAwesomeIcon
+                  icon={faSearch}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name or email..."
+                  className="w-full pl-10 pr-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent text-sm"
+                />
+              </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] overflow-hidden">
+              <select
+                value={filterCatagory}
+                onChange={(e) => setFilterCatagory(e.target.value)}
+                className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+              >
+                <option value="all">All</option>
+                {categories.map(cat =>(
+                  <option key={cat._id} value={cat.name}>{cat.name}</option>
+                ))}
+                
+              </select>
+      
+      
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+              >
+                <option value="all">All Statuses</option>
+                <option value="available">Available</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="Dry_cleaning">Dry cleaning</option>
+                <option value="rented">Rented</option>
+                
+              </select>
+            </div>
+
+      <div className="bg-white rounded-2xl border border-[#f0f0f0] shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-[#999]">Đang tải dữ liệu...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#faf9f7] text-[#555] text-[13px] uppercase tracking-wider border-b border-[#eaeaea]">
-                  <th className="py-4 px-6 font-semibold">Sản phẩm</th>
-                  <th className="py-4 px-6 font-semibold">Danh mục</th>
-                  <th className="py-4 px-6 font-semibold">Giá thuê</th>
-                  <th className="py-4 px-6 font-semibold">Giá cọc</th>
-                  <th className="py-4 px-6 font-semibold">Trạng thái</th>
-                  <th className="py-4 px-6 font-semibold text-right">Thao tác</th>
+                <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+                  <th className="w-[30%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Sản phẩm</th>
+                  <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Danh mục</th>
+                  <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá thuê</th>
+                  <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá cọc</th>
+                  <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Trạng thái</th>
+                  <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e8e8e8]">
+              <tbody className="divide-y divide-[#f0f0f0]">
                 {products.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="py-8 text-center text-[#999]">
@@ -317,10 +390,10 @@ export default function ProductsPage() {
                     </td>
                   </tr>
                 ) : (
-                  products.map((product) => {
+                  filteredProducts.map((product) => {
                     const isLocked = product.status === "hidden" || product.status === "rented";
                     return (
-                      <tr key={product._id} className="hover:bg-[#faf9f7] transition-colors">
+                      <tr key={product._id} className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors">
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
                             <img
@@ -396,6 +469,13 @@ export default function ProductsPage() {
                     );
                   })
                 )}
+                 <Pagination 
+                            displayCount={paginatedProduct.length}
+                            totalCount={filteredProducts.length}
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                          />
               </tbody>
             </table>
           </div>
