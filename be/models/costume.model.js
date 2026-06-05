@@ -10,15 +10,9 @@ const costumeSchema = new mongoose.Schema(
 
     description: {
       type: String,
-      required: true,
     },
 
     slug: {
-      type: String,
-      trim: true,
-    },
-
-    sku: {
       type: String,
       trim: true,
     },
@@ -35,22 +29,6 @@ const costumeSchema = new mongoose.Schema(
       },
     ],
 
-    rentalRates: {
-      pricePerDay: { type: Number, required: true, min: 0 },
-      pricePer3Days: { type: Number },
-      pricePerWeek: { type: Number },
-    },
-
-    deposit: {
-      type: Number,
-      default: 0,
-    },
-
-    minRentalDays: {
-      type: Number,
-      default: 1,
-    },
-
     lateFeePerDay: {
       type: Number,
       default: 0,
@@ -61,17 +39,35 @@ const costumeSchema = new mongoose.Schema(
       default: "",
     },
 
-    color: {
-      type: String,
-    },
+    variants: [{
+      size: String,
 
-    size: {
-      type: String,
-    },
+      stock: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      price: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      items: [{
+        status: {
+          type: String,
+          enum: [
+            "available",
+            "rented",
+            "maintenance",
+            "dry_cleaning",
+            "hidden",
+          ],
+          default: "available",
+        },
+        condition: String
+      }]
+    }],
 
-    condition: {
-      type: String,
-    },
 
     specifications: {
       material: String,
@@ -80,29 +76,7 @@ const costumeSchema = new mongoose.Schema(
       waistSize: String,
     },
 
-    status: {
-      type: String,
-      enum: [
-        "available",
-        "rented",
-        "maintenance",
-        "dry_cleaning",
-        "hidden",
-      ],
-      default: "available",
-    },
-
-    ratingAverage: {
-      type: Number,
-      default: 0,
-    },
-
     reviewCount: {
-      type: Number,
-      default: 0,
-    },
-
-    totalRentals: {
       type: Number,
       default: 0,
     },

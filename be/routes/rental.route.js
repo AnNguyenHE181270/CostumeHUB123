@@ -1,5 +1,5 @@
 const express = require('express');
-const { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory } = require('../controllers/rental.controller');
+const { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail } = require('../controllers/rental.controller');
 const { checkAuth } = require('../middlewares/check-auth.middleware');
 
 const router = express.Router();
@@ -9,4 +9,5 @@ router.post('/create', checkAuth, createOrder); // Khách phải login mới đ�
 router.get('/', checkAuth, getAllOrders); // Staff/Owner lấy danh sách
 router.patch('/:id/status', checkAuth, updateOrderStatus); // Đổi trạng thái
 router.get('/rental-history', checkAuth, getRentalHistory); // Đã thêm checkAuth
+router.get('/order-detail/:orderId', checkAuth, orderDetail)
 module.exports = router;

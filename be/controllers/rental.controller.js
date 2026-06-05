@@ -4,6 +4,9 @@ const Costume = require('../models/costume.model');
 const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
 
+
+//==========================================================================
+// danh sách đơn thuê (customer)
 const getRentalHistory = async (req, res, next) => {
     try {
         const userId = req.userData.id;
@@ -16,7 +19,7 @@ const getRentalHistory = async (req, res, next) => {
             id: order._id,
             productName: order.items[0]?.costume?.name || "Đơn hàng thuê",
             productImage: order.items[0]?.costume?.images?.[0] || "",
-            rentalPeriod: `${order.rentalDays} ngày`,
+            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) || 1} ngày`,
             startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
             endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
             status: order.status,
@@ -30,6 +33,150 @@ const getRentalHistory = async (req, res, next) => {
     }
 }
 
+const orderDetail = async (req, res, next) => {
+    try {
+        const orderId = req.params.orderId;
+        const customerId = req.userData.id;
+        const order = await Rental.findOne({ _id: orderId, customerId: customerId })
+            .populate("customerId", "fullName phone email")
+            .populate("items.costume", "name images")
+        if (!order) {
+            return res.status(404).json({ message: "Orders not found." })
+        }
+        res.status(200).json({
+            orderId,
+            customer: {
+                name: order.customerId.fullName,
+                phone: order.customerId.phone,
+                email: order.customerId.email
+            },
+            payment: {
+                paymentMethod: order.paymentMethod,
+                paymentStatus: order.paymentStatus,
+                rental: order.totalRentalPrice,
+                deposit: order.totalDeposit,
+                shipping: order.shippingFee,
+                total: order.totalAmount
+            },
+            notes: order.shippingAddress.note,
+            orderDate: order.createdAt,
+            rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) || 1,
+            items: order.items.map(item => ({
+                costumeName: item.costume.name,
+                image: item.costume.images[0],
+                size: item.size,
+                quantity: item.quantity,
+            })),
+        })
+    } catch (error) {
+        next(new HttpError(error.message || 'Fetching order detail failed', 500));
+    }
+}
+
+// Khách hàng tạo đơn thuê
+const createOrder = async (req, res, next) => {
+    try {
+        const customerId = req.userData.id;
+        const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod } = req.body;
+
+        // Tính số ngày thuê
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
+
+        let totalRentalPrice = 0;
+        let totalDeposit = 0;
+        const formattedItems = [];
+        const costumesToUpdate = [];
+
+        // BƯỚC 1: Kiểm tra tồn kho của TẤT CẢ sản phẩm trước khi trừ
+        for (const item of items) {
+            const costume = await Costume.findById(item.costume);
+            // check costume exist
+            if (!costume) {
+                return res.status(404).json({ message: "Costume not found." });
+            }
+
+            // Tìm đúng variant có size khách hàng đang đặt
+            const variant = costume.variants.find(v => v.size === item.size);
+
+            if (!variant) {
+                return res.status(404).json({ message: `Sản phẩm ${costume.name} không có size ${item.size}.` });
+            }
+
+            // Lấy số lượng tồn kho
+            let availableStock = 0;
+
+            if (variant.stock != null) {
+                // Ưu tiên lấy số lượng từ trường stock (nếu có tồn tại, kể cả bằng 0)
+                availableStock = variant.stock;
+            } else if (variant.items) {
+                // Nếu không có trường stock, đếm số lượng item có trạng thái 'available'
+                availableStock = variant.items.filter(i => i.status === 'available').length;
+            }
+
+            // check so luong costume con (=size)
+            if (item.quantity > availableStock) {
+                return res.status(400).json({ message: `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng. Kho chỉ còn ${availableStock}.` });
+            }
+
+            // ===== TÍNH GIÁ TIỀN =====
+
+            // totalDeposit = priceCostume * quantity 
+
+            const depositPrice = variant.price || 0;
+
+            // Cộng dồn vào tổng đơn
+            totalRentalPrice += depositPrice * item.quantity;
+            totalDeposit += totalRentalPrice * rentalDays;
+
+            formattedItems.push({
+                costume: costume._id,
+                size: item.size,
+                quantity: item.quantity,
+                rentalPricePerDay: variant.price,
+                depositPrice: depositPrice
+            });
+
+            // Lưu tạm các thay đổi sẽ thực hiện
+            costumesToUpdate.push({
+                costume,
+                variant,
+                quantityToDeduct: item.quantity
+            });
+        }
+
+        // BƯỚC 2: Nếu tất cả sản phẩm đều hợp lệ, tiến hành trừ kho
+        for (const update of costumesToUpdate) {
+            update.variant.stock -= update.quantityToDeduct;
+            await update.costume.save();
+        }
+
+        const totalAmount = totalRentalPrice + totalDeposit + (shippingFee || 0);
+
+        const newOrder = new Rental({
+            customerId,
+            items: formattedItems,
+            startDate,
+            endDate,
+            shippingFee,
+            paymentMethod: paymentMethod || "VietQR",
+            shippingAddress,
+            totalRentalPrice,
+            totalDeposit,
+            totalAmount,
+            status: "pending"
+        });
+
+        await newOrder.save();
+
+        res.status(201).json({ message: "Đặt hàng thành công", order: newOrder });
+
+        // sau 15p, chưa payment -> status Cancelled
+    } catch (error) {
+        next(new HttpError(error.message || 'Creating order failed', 500));
+    }
+};
 
 //==========================================================================
 
@@ -67,29 +214,6 @@ const checkAvailability = async (req, res, next) => {
     }
 };
 
-// MATSL-05-07: Khách hàng tạo đơn thuê
-const createOrder = async (req, res, next) => {
-    try {
-        const { costumeId, startDate, endDate, quantity } = req.body;
-        const userId = req.userData.userId; // Lấy từ check-auth.middleware.js
-
-        const costume = await Costume.findById(costumeId);
-
-        // Tính tiền: Giá thuê * Số lượng * Số ngày (Giả sử 1 ngày tối thiểu)
-        const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) || 1;
-        const rentalFee = costume.price * quantity * days;
-        const depositFee = 500000 * quantity; // Mặc định cọc 500k/bộ
-
-        const newOrder = new RentalOrder({
-            user: userId, costume: costumeId, startDate, endDate, quantity, rentalFee, depositFee
-        });
-
-        await newOrder.save();
-        res.status(201).json({ message: 'Order created successfully', order: newOrder });
-    } catch (error) {
-        next(new HttpError('Creating order failed', 500));
-    }
-};
 
 // MATSL-04-08: Lấy danh sách đơn (Cho Staff/Owner)
 const getAllOrders = async (req, res, next) => {
@@ -114,4 +238,4 @@ const updateOrderStatus = async (req, res, next) => {
 };
 
 
-module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory };
+module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail };

@@ -4,37 +4,16 @@ import * as React from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircle } from '@fortawesome/free-solid-svg-icons'
 
-const RadioGroupContext = React.createContext({})
-
-function RadioGroup({ className, value, onValueChange, name, children, ...props }) {
-    const groupName = React.useMemo(() => name || `radio-group-${Math.random().toString(36).slice(2)}`, [name])
-    const contextValue = React.useMemo(
-        () => ({ name: groupName, value, onValueChange }),
-        [groupName, value, onValueChange]
-    )
-
-    return (
-        <RadioGroupContext.Provider value={contextValue}>
-            <div role="radiogroup" className={['grid gap-3', className].filter(Boolean).join(' ')} {...props}>
-                {children}
-            </div>
-        </RadioGroupContext.Provider>
-    )
-}
-
-function RadioGroupItem({ className, value, id, disabled, ...props }) {
-    const context = React.useContext(RadioGroupContext)
-    const checked = context.value === value
-
+export default function Radio({ className, value, id, checked, onChange, name, disabled, ...props }) {
     return (
         <div className={['relative flex items-center justify-center', className].filter(Boolean).join(' ')}>
             <input
                 id={id}
                 type="radio"
-                name={context.name}
+                name={name}
                 value={value}
                 checked={checked}
-                onChange={() => context.onValueChange?.(value)}
+                onChange={onChange}
                 disabled={disabled}
                 className="sr-only"
                 {...props}
@@ -52,5 +31,3 @@ function RadioGroupItem({ className, value, id, disabled, ...props }) {
         </div>
     )
 }
-
-export { RadioGroup, RadioGroupItem }
