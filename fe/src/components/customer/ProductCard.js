@@ -61,7 +61,10 @@ export default function ProductCard({ costume, showToast }) {
   return (
     <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       {/* Image */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0]">
+      <div 
+        className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
+        onClick={() => navigate(`/product/${costume._id}`)}
+      >
         <img
           src={imgSrc}
           alt={costume.name}
@@ -91,8 +94,9 @@ export default function ProductCard({ costume, showToast }) {
 
         {/* Name */}
         <h3
+          onClick={() => navigate(`/product/${costume._id}`)}
           className="text-[14px] font-semibold text-[#1a1a1a] leading-snug mb-2 line-clamp-2
-                     group-hover:text-[#444] transition-colors"
+                     group-hover:text-[#444] transition-colors cursor-pointer"
         >
           {costume.name}
         </h3>
@@ -139,7 +143,7 @@ export default function ProductCard({ costume, showToast }) {
                 if (showToast) showToast("Đã bỏ khỏi giỏ hàng");
               }
             }}
-            className={`flex-1 flex items-center justify-center gap-2 text-white
+            className={`w-full flex items-center justify-center gap-2 text-white
                        text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
                        active:scale-[0.98] transition-all duration-200
                        disabled:opacity-50 disabled:cursor-not-allowed
@@ -147,15 +151,7 @@ export default function ProductCard({ costume, showToast }) {
             disabled={costume.status !== "available" && !isInCart}
           >
             <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[12px]" />
-            {isInCart ? "Đã Thêm" : "Thêm"}
-          </button>
-          <button
-            onClick={() => navigate(`/product/${costume._id}`)}
-            className="flex-1 border border-[#ddd] text-[#1a1a1a]
-                       text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
-                       hover:bg-[#f5f5f5] active:scale-[0.98] transition-all duration-200"
-          >
-            Chi Tiết
+            {isInCart ? "Đã Thêm" : "Thêm Giỏ Hàng"}
           </button>
         </div>
       </div>
