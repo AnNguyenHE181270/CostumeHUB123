@@ -10,6 +10,7 @@ export const ROUTES = {
 
   // Customer / Protected Routes (Cần đăng nhập để thuê)
   RENT_COSTUME: "/rent/:costumeId",
+  PRODUCT_DETAIL: "/product/:id",
 
   // Store Owner Routes
   STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài

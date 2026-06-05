@@ -11,6 +11,7 @@ import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import CartPage from "../pages/CartPage";
+import ProductDetailPage from "../pages/ProductDetailPage";
 
 // Trang của Owner
 import StoreOwnerDashboard from "../pages/store-owner/StoreOwnerDashboard";
@@ -39,6 +40,7 @@ function AppRoutes() {
       {/* ======================================================== */}
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
 
         <Route element={<ProtectedRoutes />}>
           <Route path="/cart" element={<CartPage />} />
