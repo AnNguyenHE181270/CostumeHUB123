@@ -33,6 +33,7 @@ export default function ProductDetailPage() {
   const [costume, setCostume] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -48,6 +49,11 @@ export default function ProductDetailPage() {
         const res = await fetch(`${API_URL}/api/costumes/${id}`);
         const data = await res.json();
         setCostume(data.costume);
+
+        if (data.costume && data.costume.variants && data.costume.variants.length > 0) {
+          const firstAvailable = data.costume.variants.find(v => (v.availableStock || 0) > 0);
+          setSelectedVariant(firstAvailable || data.costume.variants[0]);
+        }
       } catch (err) {
         console.error("Failed to fetch costume:", err);
       } finally {
@@ -99,12 +105,12 @@ export default function ProductDetailPage() {
 
       <div className="mx-auto max-w-[1200px] px-6 py-8 lg:py-12">
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
-          
+
           {/* Left: Image Gallery */}
           <div className="w-full lg:w-1/2 flex flex-col gap-4">
             <div className="relative aspect-[3/4] bg-white rounded-xl border border-[#eaeaea] overflow-hidden group">
-              <img 
-                src={images[activeImage]} 
+              <img
+                src={images[activeImage]}
                 alt={costume.name}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -122,9 +128,8 @@ export default function ProductDetailPage() {
                   <button
                     key={idx}
                     onClick={() => setActiveImage(idx)}
-                    className={`relative w-20 aspect-[3/4] flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                      activeImage === idx ? "border-[#1a1a1a] opacity-100" : "border-transparent opacity-60 hover:opacity-100"
-                    }`}
+                    className={`relative w-20 aspect-[3/4] flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all duration-200 ${activeImage === idx ? "border-[#1a1a1a] opacity-100" : "border-transparent opacity-60 hover:opacity-100"
+                      }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -142,7 +147,7 @@ export default function ProductDetailPage() {
               <h1 className="text-[28px] lg:text-[34px] font-bold text-[#1a1a1a] leading-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 {costume.name}
               </h1>
-              
+
               <div className="flex items-center gap-4 text-sm mb-6">
                 <div className="flex items-center gap-1 text-amber-400 text-[13px]">
                   <FontAwesomeIcon icon={faStar} />
@@ -177,23 +182,39 @@ export default function ProductDetailPage() {
                     Kích Thước
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {['S', 'M', 'L', 'XL', 'Free Size'].map((size) => {
-                      const isAvailable = costume.size ? (costume.size.toUpperCase() === size.toUpperCase() || (costume.size === "" && size === "Free Size")) : size === "Free Size";
-                      return (
-                        <button
-                          key={size}
-                          disabled={!isAvailable}
-                          className={`min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border transition-all ${
-                            isAvailable
-                              ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
-                              : "border-[#eaeaea] bg-[#faf9f7] text-[#ccc] cursor-not-allowed"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      );
-                    })}
+                    {costume.variants && costume.variants.length > 0 ? (
+                      costume.variants.map((v) => {
+                        const isOutOfStock = (v.availableStock || 0) === 0;
+                        const isSelected = selectedVariant && selectedVariant._id === v._id;
+                        return (
+                          <button
+                            key={v._id || v.size}
+                            disabled={isOutOfStock}
+                            onClick={() => setSelectedVariant(v)}
+                            className={`min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border transition-all ${isSelected
+                                ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
+                                : isOutOfStock
+                                  ? "border-[#eaeaea] bg-[#faf9f7] text-[#ccc] cursor-not-allowed"
+                                  : "border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a]"
+                              }`}
+                          >
+                            {v.size}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <button className="min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md">
+                        {costume.size || "Free Size"}
+                      </button>
+                    )}
                   </div>
+                  {selectedVariant && (
+                    <p className={`mt-3 text-[12px] font-medium ${selectedVariant.availableStock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {selectedVariant.availableStock > 0
+                        ? `Còn lại ${selectedVariant.availableStock} sản phẩm`
+                        : 'Đã hết hàng cho kích thước này'}
+                    </p>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h4 className="text-[11px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-3">
@@ -207,24 +228,23 @@ export default function ProductDetailPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-8">
-                <button 
+                <button
                   onClick={() => {
                     if (costume.status === "available") {
                       if (!isInCart) addToCart(costume);
                       navigate("/cart");
                     }
                   }}
-                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${
-                    costume.status === "available" 
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${costume.status === "available"
                       ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                       : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={costume.status !== "available"}
                 >
                   Thuê Ngay
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     if (!isInCart && costume.status === "available") {
                       addToCart(costume);
@@ -235,13 +255,12 @@ export default function ProductDetailPage() {
                       showToast("Đã bỏ khỏi giỏ hàng");
                     }
                   }}
-                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${
-                    isInCart 
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${isInCart
                       ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
-                      : costume.status === "available" 
+                      : costume.status === "available"
                         ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
                         : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={costume.status !== "available" && !isInCart}
                 >
                   <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[14px]" />
@@ -277,11 +296,11 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <Toast 
-        isVisible={toast.isVisible} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
