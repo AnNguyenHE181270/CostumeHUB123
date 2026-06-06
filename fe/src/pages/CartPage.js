@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useCart } from "../../context/CartContext";
+import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faArrowRight, faCalendarDays, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 
@@ -9,21 +9,28 @@ function formatPrice(price) {
 }
 
 export default function CartPage() {
-  const [carts, setCarts] = useState([])
   const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
   const navigate = useNavigate();
-  const getItemId = (item) => `${item._id}-${item.size}-${item.startDate}-${item.endDate}`;
+  const getItemId = (item) => {
+    const costumeId = item.costume?._id || item.costumeId || item._id;
+    const variantId = item.variant?._id || item.variant?.size || item.size || 'novar';
+    return `${costumeId}-${variantId}-${item.startDate}-${item.endDate}`;
+  };
+
   const [expandedItem, setExpandedItem] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
 
-
-
   // Đồng bộ selectedIds nếu cartItems thay đổi (vd: bị xóa đi)
   useEffect(() => {
-    setSelectedIds(prev => prev.filter(id => cartItems.some(item => getItemId(item) === id)));
+    setSelectedIds(prev => {
+      const currentIds = cartItems.map(getItemId);
+      if (prev.length === 0 && currentIds.length > 0) {
+        return currentIds;
+      }
+      return prev.filter(id => currentIds.includes(id));
+    });
   }, [cartItems]);
 
-  console.log(cartItems)
   const toggleExpand = (id) => {
     setExpandedItem(prev => prev === id ? null : id);
   };
@@ -33,6 +40,14 @@ export default function CartPage() {
       setSelectedIds(cartItems.map(getItemId));
     } else {
       setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id, checked) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
     }
   };
 
@@ -54,11 +69,11 @@ export default function CartPage() {
 
   const totalRental = selectedCartItems.reduce(
     (acc, item) =>
-      acc + (item.rentalPrice || 0) * getRentalDays(item.startDate, item.endDate) * (item.quantity || 1),
+      acc + (item.costume.rentalPerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
   const totalDeposit = selectedCartItems.reduce(
-    (acc, item) => acc + (item.deposit || 0) * (item.quantity || 1),
+    (acc, item) => acc + (item.costume.price || 0) * (item.quantity || 1),
     0
   );
   const grandTotal = totalRental + totalDeposit;
@@ -107,16 +122,14 @@ export default function CartPage() {
           <p className="text-[#999] text-[13px] mt-1 uppercase tracking-[0.1em]">
             {cartItems.length} sản phẩm trong giỏ
           </p>
-
         </div>
       </div>
 
       <div className="mx-auto max-w-[1200px] px-6 py-8">
-
         <div className="flex flex-col lg:flex-row gap-8 items-start">
+
           {/* Cart Items List */}
-          <div className="w-full lg:w-2/3 flex flex-col gap-4">
-            {/* Toolbar */}
+          <div className="w-full lg:w-2/3 flex flex-col gap-5">
             <div className="flex justify-between items-center">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
@@ -125,9 +138,8 @@ export default function CartPage() {
                   onChange={handleSelectAll}
                   className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
                 />
-                <span className="text-sm font-semibold text-[#1a1a1a] select-none group-hover:text-[#555] transition-colors">
-                  Chọn tất cả ({cartItems.length})
-                </span>
+                Tất cả ({cartItems.length})
+
               </label>
               <button
                 onClick={clearCart}
@@ -136,7 +148,6 @@ export default function CartPage() {
                 Xóa tất cả
               </button>
             </div>
-
             {cartItems.map((item) => {
               const itemId = getItemId(item);
               const isSelected = selectedIds.includes(itemId);
@@ -152,7 +163,7 @@ export default function CartPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      removeFromCart(item._id, item.size, item.startDate, item.endDate);
+                      removeFromCart(item.costumeId || item._id, item.size, item.startDate, item.endDate);
                     }}
                     className="absolute top-1/2 -translate-y-1/2 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors z-10"
                     title="Xóa khỏi giỏ"
@@ -222,19 +233,19 @@ export default function CartPage() {
                   </div>
 
                   {/* Pricing summary for this item */}
-                  <div className="w-full sm:w-[140px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
+                  <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                     <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice(item.rentalPrice || 0)} / ngày
+                      {formatPrice((item.price || 0) * rentalDays * (item.quantity || 1))}
                     </p>
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                      {formatPrice((item.rentalPrice || 0) * rentalDays * (item.quantity || 1))}
+                      {formatPrice(item.rentalPerDay || 0)} / ngày
+
                     </p>
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#666] bg-amber-50 text-amber-700 px-2 py-1 rounded w-max">
-                      <FontAwesomeIcon icon={faCalendarDays} className="text-[10px]" />
-                      {rentalDays} ngày
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
+                      <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
+                      <span>{rentalDays} ngày</span>
                     </div>
                   </div>
-
                 </div>
               )
             })}

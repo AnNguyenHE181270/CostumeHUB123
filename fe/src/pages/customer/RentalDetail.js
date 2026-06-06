@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faPhone, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
+import { formatPrice, formatDate } from "../../utils/formatters"
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
 export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
@@ -15,7 +17,6 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
         setLoading(true)
         try {
           const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-          const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
           const res = await fetch(`${API_URL}/api/rentals/order-detail/${order.id}`, {
             headers: {
               "Authorization": `Bearer ${token}`
@@ -40,14 +41,6 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
   if (!order || !open) return null
 
   const status = statusOrder[order.status]
-
-  const formatCurrency = (val) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(val || 0)
-
-  const formatDate = (dateString) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    return date.toLocaleDateString("vi-VN") + " - " + date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })
-  }
 
   return (
     <div className="flex flex-col w-full h-full rounded-xl border bg-white p-6 mt-2 shadow-sm relative">
@@ -113,7 +106,7 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
               <FontAwesomeIcon icon={faCalendarDays} className="h-4 w-4" />
               <span>Thời gian thuê</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mt-2">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Ngày nhận</p>
                 <p className="mt-1 font-medium text-foreground">{order.startDate}</p>
@@ -140,10 +133,9 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
                 <FontAwesomeIcon icon={faUser} className="h-4 w-4" />
                 <span>Thông tin khách hàng</span>
               </div>
-              <div className="space-y-2 text-sm">
-                <p className="font-medium text-foreground">{detailedOrder.customer?.name}</p>
-                <p className="text-muted-foreground">{detailedOrder.customer?.phone}</p>
-                <p className="text-muted-foreground">{detailedOrder.customer?.email}</p>
+              <div className="space-y-2 text-sm mt-2">
+                <p className="text-foreground">Người nhận: {detailedOrder.customer?.name}</p>
+                <p className="text-muted-foreground">Số điện thoại: {detailedOrder.customer?.phone}</p>
               </div>
             </div>
 
@@ -183,27 +175,27 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
             <div className="mt-4 space-y-2 border-t border-border pt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tiền thuê</span>
-                <span className="text-foreground">{formatCurrency(detailedOrder.payment?.rental)}</span>
+                <span className="text-foreground">{formatPrice(detailedOrder.payment?.rental)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tiền cọc</span>
-                <span className="text-foreground">{formatCurrency(detailedOrder.payment?.deposit)}</span>
+                <span className="text-foreground">{formatPrice(detailedOrder.payment?.deposit)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Phí vận chuyển</span>
-                <span className="text-foreground">{formatCurrency(detailedOrder.payment?.shipping)}</span>
+                <span className="text-foreground">{formatPrice(detailedOrder.payment?.shipping)}</span>
               </div>
               <div className="flex justify-between border-t border-border pt-2">
                 <span className="font-medium text-foreground">Tổng cộng</span>
                 <span className="text-lg font-semibold text-foreground">
-                  {formatCurrency(detailedOrder.payment?.total)}
+                  {formatPrice(detailedOrder.payment?.total)}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 border-t border-border pt-4 mt-auto">
+          <div className="flex flex-wrap gap-3 pt-4 mt-auto">
             {["confirmed", "delivering", "renting", "returning"].includes(order.status) && (
               <button
                 onClick={() => onTrackOrder && onTrackOrder(order)}
@@ -212,23 +204,17 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
                 <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
                 Theo dõi đơn
               </button>
-            )}{order.status === "pending" && (
-              <>
-                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                  <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
-                  Chờ xác nhận
+            )}{order.status === "pending" &&
+              onCancelOrder && (
+                <button
+                  onClick={() => onCancelOrder(order)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                >
+                  <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
+                  Hủy đơn hàng
                 </button>
-                {onCancelOrder && (
-                  <button
-                    onClick={() => onCancelOrder(order)}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
-                  >
-                    <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
-                    Hủy đơn hàng
-                  </button>
-                )}
-              </>
-            )}
+              )
+            }
             {order.status === "rented" && (
               <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
@@ -241,10 +227,7 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
                 Thuê lại
               </button>
             )}
-            <button className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-              <FontAwesomeIcon icon={faPhone} className="h-4 w-4" />
-              Liên hệ hỗ trợ
-            </button>
+
           </div>
         </div>
       ) : (

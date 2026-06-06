@@ -187,7 +187,7 @@ function RentalHistory() {
                         (isDetailOpen ? "lg:w-3/5 opacity-100" : "w-0 opacity-0")
                     }>
                         {isDetailOpen && (
-                            <div className="sticky top-0 h-[calc(100vh-180px)]">
+                            <div className="sticky top-4 h-[calc(100vh-40px)] pb-4">
                                 <OrderDetail
                                     open={true}
                                     order={selectedOrder}

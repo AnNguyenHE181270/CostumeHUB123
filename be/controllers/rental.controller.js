@@ -94,34 +94,25 @@ const createOrder = async (req, res, next) => {
             const costume = await Costume.findById(item.costume);
             // check costume exist
             if (!costume) {
-                return res.status(404).json({ message: "Costume not found." });
+                next(new HttpError("Costume not found.", 404));
             }
 
             // Tìm đúng variant có size khách hàng đang đặt
             const variant = costume.variants.find(v => v.size === item.size);
 
             if (!variant) {
-                return res.status(404).json({ message: `Sản phẩm ${costume.name} không có size ${item.size}.` });
-            }
-
-            // Lấy số lượng tồn kho
-            let availableStock = 0;
-
-            if (variant.stock != null) {
-                // Ưu tiên lấy số lượng từ trường stock (nếu có tồn tại, kể cả bằng 0)
-                availableStock = variant.stock;
-            } else if (variant.items) {
-                // Nếu không có trường stock, đếm số lượng item có trạng thái 'available'
-                availableStock = variant.items.filter(i => i.status === 'available').length;
+                next(new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404));
             }
 
             // check so luong costume con (=size)
-            if (item.quantity > availableStock) {
-                return res.status(400).json({ message: `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng. Kho chỉ còn ${availableStock}.` });
+            if (item.quantity > variant.availableStock) {
+                next(new HttpError(`Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng. Kho chỉ còn ${variant.availableStock}.`, 400));
             }
 
             // ===== TÍNH GIÁ TIỀN =====
 
+            // totalDepsit += costume.price x quantity
+            // totalRental += rentalPerDay x quantity x totalDay
             const depositPrice = costume.price || 0;
             const rentalPricePerDay = costume.rentalPerDay || 0;
 
@@ -147,7 +138,7 @@ const createOrder = async (req, res, next) => {
 
         // BƯỚC 2: Nếu tất cả sản phẩm đều hợp lệ, tiến hành trừ kho
         for (const update of costumesToUpdate) {
-            update.variant.stock -= update.quantityToDeduct;
+            update.variant.availableStock -= update.quantityToDeduct;
             await update.costume.save();
         }
 
