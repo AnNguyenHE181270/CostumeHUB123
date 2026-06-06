@@ -64,7 +64,7 @@ export default function Header() {
             <FontAwesomeIcon icon={faSearch} className="text-[15px] lg:text-[16px]" />
           </button>
           
-          <Link to={user ? "/my-profile" : "/login"} className="text-gray-600 hover:text-black transition-colors hidden sm:block">
+          <Link to={user ? "/user/my-profile" : "/login"} className="text-gray-600 hover:text-black transition-colors hidden sm:block">
             {user ? (
               user.avatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />

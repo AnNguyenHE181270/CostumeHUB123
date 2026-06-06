@@ -1,32 +1,94 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faSave, faUpload, faLink } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faSave, faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars, faCamera, faShieldAlt, faToggleOn } from "@fortawesome/free-solid-svg-icons";
+import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Toast from "../../components/ui/Toast";
+
 export default function AccountDetailPage() {
   const navigate = useNavigate();
-const [loadingPage, setLoadingPage] = useState(true);
+  const [loadingPage, setLoadingPage] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [availableRoles, setAvailableRoles] = useState([]);
   const [avatarFile, setAvatarFile] = useState(null);
+  
   const [form, setForm] = useState({
       phone: "",
       email: "",
       fullName: "",
-      gender: "male",
+      gender: "",
       dateOfBirth: "",
       avatar: "",
-      status: "active",
-      role: "owner",
+      status: "",
+      role: "",
   });
   const { id } = useParams();
+  const { token } = useAuth();
+
+  const getDetailAccount = async () => {
+    try {
+      setLoadingPage(true);
+      setToast({ isVisible: false, message: "", type: "success" });
+  
+      const currentToken = token || localStorage.getItem("token") || sessionStorage.getItem("token");
+  
+      const response = await fetch(
+        `http://localhost:9999/api/users/user/${id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentToken}`,
+          },
+        }
+      );
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        setToast({ isVisible: true, type: "error", message: data.message || "Failed to load user data." });
+        return;
+      }
+      
+      setForm({
+        phone: data.user.phone ,
+        email: data.user.email ,
+        fullName: data.user.fullName ,
+        gender: data.user.gender ,
+        dateOfBirth: data.user.dateOfBirth ? new Date(data.user.dateOfBirth).toISOString().split('T')[0] : "",
+        status: data.user.status ,
+        avatar: data.user.avatar ,
+        role: data.user.role?.name ,
+      });
+
+      try {
+        const roleRes = await fetch("http://localhost:9999/api/roles/get-roles", {
+          headers: { Authorization: `Bearer ${currentToken}` }
+        });
+        const roleData = await roleRes.json();
+        if (roleData.success && roleData.roles) {
+          setAvailableRoles(roleData.roles);
+        }
+      } catch (err) {
+        console.error("Failed to load roles", err);
+      }
+    } catch {
+      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
+    } finally {
+      setLoadingPage(false);
+    }
+  };
+
+  useEffect(() => { getDetailAccount(); }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    // Only allow changing role and status
+    if (name === "role" || name === "status") {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -41,8 +103,6 @@ const [loadingPage, setLoadingPage] = useState(true);
     }
   };
 
-  const { token } = useAuth();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
   
@@ -50,12 +110,10 @@ const [loadingPage, setLoadingPage] = useState(true);
   
     try {
       setSubmitting(true);
-      setError("");
-      setSuccess("");
-  
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      
+      setToast({ isVisible: false, message: "", type: "success" });
+        
       const formData = new FormData();
+      
       Object.keys(form).forEach(key => {
         if (key !== 'avatar' && form[key] !== null && form[key] !== undefined) {
           formData.append(key, form[key]);
@@ -82,109 +140,38 @@ const [loadingPage, setLoadingPage] = useState(true);
       const data = await response.json();
   
       if (!response.ok) {
-        setError(
-          data.errors?.[0]?.msg ||
-          data.message ||
-          "Update failed."
-        );
+        setToast({
+          isVisible: true,
+          type: "error",
+          message: data.errors?.[0]?.msg || data.message || "Update failed."
+        });
         return;
       }
 
-      setSuccess("Account updated successfully!");
+      setToast({ isVisible: true, type: "success", message: "Cập nhật tài khoản thành công!" });
       setTimeout(() => {
-        setSuccess("");
+        setToast(prev => ({ ...prev, isVisible: false }));
         navigate(-1);
       }, 1500);
     } catch {
-      setError("Network error. Please try again.");
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getDetailAccount = async () => {
-    try {
-      setLoadingPage(true);
-      setError("");
-  
-      const currentToken = token || localStorage.getItem("token") || sessionStorage.getItem("token");
-  
-      const response = await fetch(
-        `http://localhost:9999/api/users/user/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setError(data.message || "Failed to load user data.");
-        return;
-      }
-      
-      setForm({
-        phone: data.user.phone ,
-        email: data.user.email ,
-        fullName: data.user.fullName ,
-        gender: data.user.gender ,
-        dateOfBirth: data.user.dateOfBirth ? new Date(data.user.dateOfBirth).toISOString().split('T')[0] : "",
-        status: data.user.status ,
-        avatar: data.user.avatar ,
-        role: data.user.role.name ,
-      });
-
-      try {
-        const roleRes = await fetch("http://localhost:9999/api/roles/get-roles", {
-          headers: { Authorization: `Bearer ${currentToken}` }
-        });
-        const roleData = await roleRes.json();
-        if (roleData.success && roleData.roles) {
-          setAvailableRoles(roleData.roles.filter(r => r.name !== 'owner'));
-        }
-      } catch (err) {
-        console.error("Failed to load roles", err);
-      }
-    } catch {
-      setError("Network error while loading data.");
-    } finally {
-      setLoadingPage(false);
-    }
-  };
-
-  useEffect(() => {getDetailAccount()},[])
-  
-
-  
   if (loadingPage) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#eaeaea] border-t-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#eaeaea] border-t-[#1a1a1a]"></div>
       </div>
     );
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      {/* Toast Notifications */}
-      {error && (
-        <div className="fixed top-4 right-4 z-50 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md max-w-md">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
-        </div>
-      )}
-      {success && (
-        <div className="fixed top-4 right-4 z-50 bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-md max-w-md">
-          <p className="font-medium">Success</p>
-          <p className="text-sm">{success}</p>
-        </div>
-      )}
-
+    <div className="space-y-6">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-6">
         <div>
           <button
             type="button"
@@ -197,206 +184,201 @@ const [loadingPage, setLoadingPage] = useState(true);
             Hồ Sơ Tài Khoản
           </h2>
           <p className="text-[#999] text-[14px] mt-2">
-            Quản lý thông tin cá nhân và quyền truy cập hệ thống.
+            Quản lý thông tin và quyền truy cập của người dùng này.
           </p>
         </div>
-        <div className="shrink-0">
-          <button
-            type="submit"
-            className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-8 py-3.5 hover:bg-[#333] transition-colors flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faSave} /> Lưu Thay Đổi
-          </button>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
-        {/* Left Column: Avatar & System Access (4 cols) */}
-        <div className="lg:col-span-4 space-y-10">
-          
-          {/* Avatar Block */}
-          <div className="bg-white border border-[#eaeaea] p-8 text-center flex flex-col items-center">
-            <div className="relative group mb-6">
-              <div className="w-32 h-32 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative">
-                {form.avatar ? (
-                  <img src={form.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="font-serif italic text-5xl text-[#ccc]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                    {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
-                  </span>
-                )}
-                {/* Upload Overlay */}
-                <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
-                  <FontAwesomeIcon icon={faUpload} className="text-[#1a1a1a] text-xl mb-1" />
-                  <span className="text-[#1a1a1a] text-[10px] font-semibold uppercase tracking-wider">Tải lên</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                </label>
-              </div>
-            </div>
-            
-            <h3 className="text-xl font-bold text-[#1a1a1a] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{form.fullName || "Người Dùng"}</h3>
-            <p className="text-[12px] text-[#999] tracking-[0.1em] uppercase">{form.role}</p>
+      <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full">
+        <Toast 
+          isVisible={toast.isVisible} 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast({ ...toast, isVisible: false })} 
+        />
 
-            <div className="w-full mt-6 text-left">
-              <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Hoặc dán liên kết ảnh</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999]">
-                  <FontAwesomeIcon icon={faLink} className="text-[12px]" />
-                </div>
-                <input
-                  type="url"
-                  name="avatar"
-                  value={form.avatar}
-                  onChange={handleChange}
-                  placeholder="https://..."
-                  className="w-full pl-9 pr-4 py-2.5 border border-[#eaeaea] bg-[#faf9f7] outline-none focus:border-[#1a1a1a] text-[13px] text-[#1a1a1a] transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* System Access Block */}
-          <div className="bg-white border border-[#eaeaea] p-8">
-            <h3 className="text-lg font-bold text-[#1a1a1a] mb-6 border-b border-[#eaeaea] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Phân Quyền Hệ Thống</h3>
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
             
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Vai trò</label>
-                <div className="relative">
-                  <select
-                    name="role"
-                    value={form.role || "owner"}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:border-[#1a1a1a] outline-none transition-all appearance-none text-[13px] font-medium"
-                  >
-                    {availableRoles.length > 0 ? (
-                      availableRoles.map((r) => (
-                        <option key={r._id} value={r.name}>
-                          {r.name.charAt(0).toUpperCase() + r.name.slice(1).replace("-", " ")}
-                        </option>
-                      ))
+            {/* Left Column: Avatar & System Access */}
+            <div className="flex flex-col lg:w-[280px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
+              
+              <div className="flex flex-col items-center mb-10">
+                <div className="relative group mb-6">
+                  <div className="w-40 h-40 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
+                    {form.avatar ? (
+                      <img src={form.avatar} alt="User Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <>
-                        <option value="staff">Staff</option>
-                        <option value="online-customer">Online Customer</option>
-                      </>
+                      <span className="font-serif italic text-5xl text-[#ccc]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                        {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
+                      </span>
                     )}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#999]">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    
+                    <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
+                      <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-2xl mb-2" />
+                      <span className="text-[#1a1a1a] text-[11px] font-bold uppercase tracking-wider">Chọn ảnh</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-lg font-bold text-[#1a1a1a] mb-1">{form.fullName || "Người Dùng"}</h4>
+                  <p className="text-[11px] text-[#999] tracking-[0.1em] uppercase mb-4">{form.role}</p>
+                </div>
+              </div>
+
+              {/* Phân quyền hệ thống */}
+              <div>
+                <h4 className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-[0.1em] mb-6 pb-2 border-b border-[#eaeaea]">
+                  Phân Quyền
+                </h4>
+                <div className="space-y-6">
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faShieldAlt} /> Vai trò
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="role"
+                        value={form.role}
+                        onChange={handleChange}
+                        className="w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 appearance-none"
+                      >
+                        {availableRoles.length > 0 ? (
+                          availableRoles.map((r) => (
+                            <option key={r._id} value={r.name}>
+                              {r.name.charAt(0).toUpperCase() + r.name.slice(1).replace("-", " ")}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="staff">Staff</option>
+                            <option value="online-customer">Online Customer</option>
+                          </>
+                        )}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#999]">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faToggleOn} /> Trạng thái
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="status"
+                        value={form.status}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200 focus:ring-1 appearance-none ${
+                          form.status === "blocked" 
+                            ? "border-red-200 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500" 
+                            : "bg-surface border-borderorder text-text-primary focus:border-primary-500 focus:bg-background focus:ring-primary-500"
+                        }`}
+                      >
+                        <option value="active">Hoạt động (Active)</option>
+                        <option value="pending">Chờ xử lý (Pending)</option>
+                        <option value="blocked">Đã khóa (Blocked)</option>
+                      </select>
+                      <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 ${form.status === "blocked" ? "text-red-500" : "text-[#999]"}`}>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
+            </div>
+
+            {/* Right Column: Form Section */}
+            <div className="flex-1">
+              
+              {/* Thông tin cá nhân (Read Only) */}
               <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Trạng thái tài khoản</label>
-                <div className="relative">
-                  <select
-                    name="status"
-                    value={form.status || "active"}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border outline-none transition-all appearance-none text-[13px] font-medium ${
-                      form.status === "blocked" 
-                        ? "border-red-200 bg-red-50 text-red-900" 
-                        : "border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:border-[#1a1a1a]"
-                    }`}
-                  >
-                    <option value="active">Hoạt động (Active)</option>
-                    <option value="pending">Chờ xử lý (Pending)</option>
-                    <option value="blocked">Đã khóa (Blocked)</option>
-                  </select>
-                  <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 ${form.status === "blocked" ? "text-red-500" : "text-[#999]"}`}>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                <h4 className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-[0.1em] mb-6 pb-2 border-b border-[#eaeaea]">
+                  Thông Tin Cá Nhân <span className="text-[#999] ml-2 normal-case font-normal text-[12px]">(Chỉ đọc)</span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faUser} /> Họ và Tên
+                    </label>
+                    <Input
+                      type="text"
+                      name="fullName"
+                      value={form.fullName}
+                      readOnly
+                      className="bg-[#f5f5f5] text-[#858585] cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faEnvelope} /> Địa chỉ Email
+                    </label>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      readOnly
+                      className="bg-[#f5f5f5] text-[#858585] cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faPhone} /> Số Điện Thoại
+                    </label>
+                    <Input
+                      type="tel"
+                      name="phone"
+                      value={form.phone}
+                      readOnly
+                      className="bg-[#f5f5f5] text-[#858585] cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faVenusMars} /> Giới Tính
+                    </label>
+                    <Input
+                      type="text"
+                      name="gender"
+                      value={form.gender === "male" ? "Nam" : form.gender === "female" ? "Nữ" : "Khác"}
+                      readOnly
+                      className="bg-[#f5f5f5] text-[#858585] cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
+                      <FontAwesomeIcon icon={faCalendarDay} /> Ngày Sinh
+                    </label>
+                    <Input
+                      type="date"
+                      name="dateOfBirth"
+                      value={form.dateOfBirth}
+                      readOnly
+                      className="bg-[#f5f5f5] text-[#858585] cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 pt-6 mt-2 border-t border-[#eaeaea] flex items-center justify-end">
+                    <Button type="submit" variant="primary" disabled={submitting}>
+                      <FontAwesomeIcon icon={faSave} className="mr-2" /> 
+                      {submitting ? "Đang lưu..." : "Lưu Thay Đổi"}
+                    </Button>
                   </div>
                 </div>
-                
-                {form.status === "blocked" && (
-                  <p className="mt-3 text-sm text-red-500 flex items-center gap-1.5 font-medium">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    Người dùng đã bị khóa khỏi hệ thống.
-                  </p>
-                )}
               </div>
+              
             </div>
           </div>
-          
-        </div>
-
-        {/* Right Column: Personal Info (8 cols) */}
-        <div className="lg:col-span-8">
-          <div className="bg-white border border-[#eaeaea] p-8 md:p-12 h-full">
-            <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Thông Tin Cá Nhân</h3>
-            <p className="text-[13px] text-[#999] mb-10 pb-6 border-b border-[#eaeaea]">Cập nhật thông tin định danh của người dùng này.</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Họ và Tên</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={form.fullName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Địa chỉ Email <span className="text-[#999] ml-1 normal-case tracking-normal">(Chỉ đọc)</span></label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email || ""}
-                  readOnly
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#f5f5f5] text-[#999] cursor-not-allowed outline-none text-[14px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Số Điện Thoại <span className="text-[#999] ml-1 normal-case tracking-normal">(Chỉ đọc)</span></label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={form.phone || ""}
-                  readOnly
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#f5f5f5] text-[#999] cursor-not-allowed outline-none text-[14px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Ngày Sinh</label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={form.dateOfBirth || ""}
-                  onChange={handleChange}
-                  max={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">Giới Tính</label>
-                <div className="relative">
-                  <select
-                    name="gender"
-                    value={form.gender || "male"}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all appearance-none text-[14px]"
-                  >
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="other">Khác</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#999]">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }

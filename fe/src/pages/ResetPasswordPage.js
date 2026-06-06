@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "../routes/routePaths";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
-import AuthLayout from "../components/layout/AuthLayout";
+import AuthLayout from "../layouts/AuthLayout";
 
 export default function ResetPasswordPage() {
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
