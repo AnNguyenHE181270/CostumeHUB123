@@ -122,19 +122,18 @@ const createOrder = async (req, res, next) => {
 
             // ===== TÍNH GIÁ TIỀN =====
 
-            // totalDeposit = priceCostume * quantity 
-
-            const depositPrice = variant.price || 0;
+            const depositPrice = costume.price || 0;
+            const rentalPricePerDay = costume.rentalPerDay || 0;
 
             // Cộng dồn vào tổng đơn
-            totalRentalPrice += depositPrice * item.quantity;
-            totalDeposit += totalRentalPrice * rentalDays;
+            totalRentalPrice += rentalPricePerDay * item.quantity * rentalDays;
+            totalDeposit += depositPrice * item.quantity;
 
             formattedItems.push({
                 costume: costume._id,
                 size: item.size,
                 quantity: item.quantity,
-                rentalPricePerDay: variant.price,
+                rentalPricePerDay: rentalPricePerDay,
                 depositPrice: depositPrice
             });
 

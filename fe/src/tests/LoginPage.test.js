@@ -13,7 +13,7 @@ jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
 }));
-jest.mock("../layouts/AuthLayout", () => ({
+jest.mock("../components/layout/AuthLayout", () => ({
     __esModule: true,
     default: ({ children }) => <div>{children}</div>,
 }));

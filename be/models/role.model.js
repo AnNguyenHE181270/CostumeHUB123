@@ -6,12 +6,9 @@ const roleSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
+    enum: ["online-customer", "staff", "owner"]
   },
   description: { type: String, default: "" },
-  permissions: {
-    type: [String],
-    default: [],
-  },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

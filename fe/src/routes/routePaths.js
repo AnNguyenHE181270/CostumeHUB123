@@ -7,7 +7,7 @@ export const ROUTES = {
   VERIFY: "/verify-otp/:email",
   FORGOTPASSWORD: "/forgot-password",
   RESETPASSWORD: "/reset-password/:token",
-
+  MY_PROFILE: "/my-profile",
   // Customer / Protected Routes (Cần đăng nhập để thuê)
   RENT_COSTUME: "/rent/:costumeId",
   PRODUCT_DETAIL: "/product/:id",
@@ -16,7 +16,7 @@ export const ROUTES = {
   STORE_OWNER_BASE: "/owner", // Dùng cho Layout Route bọc bên ngoài
   STOR_OWNER_ACCOUNT: "accounts",
   STOR_OWNER_DETAIL_ACCOUNT: "accounts/detail-account/:id",
-  STOR_OWNER_CREATE_ACCOUNT: "accounts/create",
+
   // Sau này bạn có thể thêm các path khác của Owner ở đây
   STORE_OWNER_PRODUCTS: "products",
   STORE_OWNER_CATEGORIES: "categories",
