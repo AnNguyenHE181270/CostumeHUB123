@@ -44,6 +44,16 @@ const costumeSchema = new mongoose.Schema(
       enum: ["available", "out_of_stock", "maintenance", "dry_cleaning", "hidden"],
       default: "available",
     },
+    price: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    rentalPerDay: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
 
     variants: [{
       size: String,
@@ -53,12 +63,8 @@ const costumeSchema = new mongoose.Schema(
         min: 0,
         default: 0
       },
-      price: {
-        type: Number,
-        min: 0,
-        default: 0
-      },
-      items: [{
+
+      variants: [{
         status: {
           type: String,
           enum: [
@@ -70,8 +76,23 @@ const costumeSchema = new mongoose.Schema(
           ],
           default: "available",
         },
-        condition: String
-      }]
+        size: String,
+        sku: {
+          type: String,
+        },
+        availableStock: {
+          type: Number,
+          min: 0,
+          default: 0
+        },
+        totalStock: {
+          type: Number,
+          min: 0,
+          default: 0
+        },
+      }],
+
+
     }],
 
 

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../../context/CartContext";
-
+import { formatPrice } from "../../utils/formatters";
+import { AddToCartModal } from "../../pages/customer/AddToCartModal";
 const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500" },
   rented: { label: "Đang Thuê", color: "bg-red-500" },
@@ -14,10 +15,6 @@ const STATUS_MAP = {
 const PLACEHOLDER_IMG =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect fill='%23f0ece8' width='400' height='500'/%3E%3Ctext fill='%23c4bdb5' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EHình Ảnh Sản Phẩm%3C/text%3E%3C/svg%3E";
 
-function formatPrice(price) {
-  return new Intl.NumberFormat("vi-VN").format(price) + "đ";
-}
-
 function StarRating({ rating = 0, count = 0 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -25,9 +22,8 @@ function StarRating({ rating = 0, count = 0 }) {
         {[1, 2, 3, 4, 5].map((star) => (
           <svg
             key={star}
-            className={`w-3.5 h-3.5 ${
-              star <= Math.round(rating) ? "text-amber-400" : "text-gray-200"
-            }`}
+            className={`w-3.5 h-3.5 ${star <= Math.round(rating) ? "text-amber-400" : "text-gray-200"
+              }`}
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -44,8 +40,9 @@ export default function ProductCard({ costume, showToast }) {
   const navigate = useNavigate();
   const { addToCart, removeFromCart, cartItems } = useCart();
   const [imgError, setImgError] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isInCart = cartItems.some(item => item.costume._id === costume._id);
+  const isInCart = cartItems.some(item => item?.costume?._id === costume?._id);
 
   const imgSrc =
     !imgError && costume.images && costume.images.length > 0
@@ -59,27 +56,29 @@ export default function ProductCard({ costume, showToast }) {
       : "";
 
   return (
-    <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-      {/* Image */}
-      <div 
-        className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
-        onClick={() => navigate(`/product/${costume._id}`)}
-      >
-        <img
-          src={imgSrc}
-          alt={costume.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={() => setImgError(true)}
-        />
+    <>
+      <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        {/* Image */}
+        <div
+          className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
+          onClick={() => navigate(`/product/${costume._id}`)}
+        >
+          <img
+            src={imgSrc}
+            alt={costume.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImgError(true)}
+          />
 
-        {/* Status badge */}
-        <div className="absolute top-3 left-3">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white ${statusInfo.color} shadow-sm`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-            {statusInfo.label}
-          </span>
+          {/* Status badge */}
+          <div className="absolute top-3 left-3">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white ${statusInfo.color} shadow-sm`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+              {statusInfo.label}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -135,8 +134,7 @@ export default function ProductCard({ costume, showToast }) {
             onClick={(e) => {
               e.stopPropagation();
               if (!isInCart && costume.status === "available") {
-                addToCart(costume);
-                if (showToast) showToast("Đã thêm vào giỏ hàng");
+                setIsModalOpen(true);
               }
               else if (isInCart) {
                 removeFromCart(costume._id);
@@ -155,6 +153,13 @@ export default function ProductCard({ costume, showToast }) {
           </button>
         </div>
       </div>
-    </div>
+
+      <AddToCartModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        costume={costume}
+        showToast={showToast}
+      />
+    </>
   );
 }

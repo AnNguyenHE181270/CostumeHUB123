@@ -26,24 +26,32 @@ const getAllCostumes = async (req, res, next) => {
         $or: [
           { parentId: { $in: allTargetCategoryIds } },
           { "parentId.$oid": { $in: allTargetCategoryIds } },
-          { "parentId": { $in: allTargetCategoryIds.map(id => {
-              try { return new require('mongoose').Types.ObjectId(id); } 
-              catch(e) { return id; }
-          })}}
+          {
+            "parentId": {
+              $in: allTargetCategoryIds.map(id => {
+                try { return new require('mongoose').Types.ObjectId(id); }
+                catch (e) { return id; }
+              })
+            }
+          }
         ]
       });
       const childIds = childCategories.map(c => c._id.toString());
-      
+
       const finalCategoryIds = [...new Set([...allTargetCategoryIds, ...childIds])];
-      
+
       // Update filter to support raw $oid format in costumes collection too
       filter.$or = [
         { categoryId: { $in: finalCategoryIds } },
         { "categoryId.$oid": { $in: finalCategoryIds } },
-        { categoryId: { $in: finalCategoryIds.map(id => {
-            try { return new require('mongoose').Types.ObjectId(id); } 
-            catch(e) { return id; }
-        })}}
+        {
+          categoryId: {
+            $in: finalCategoryIds.map(id => {
+              try { return new require('mongoose').Types.ObjectId(id); }
+              catch (e) { return id; }
+            })
+          }
+        }
       ];
     }
 
@@ -134,20 +142,20 @@ const getCostumeById = async (req, res, next) => {
 
 const createCostume = async (req, res, next) => {
   try {
-    const { 
+    const {
       name, slug, sku, categoryId, description, images, size, color, condition,
       rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
     } = req.body;
 
     const newCostume = new Costume({
-      name, slug, sku, categoryId, description, 
-      images: images || [], 
+      name, slug, sku, categoryId, description,
+      images: images || [],
       size, color, condition,
-      rentalRates: rentalRates || { pricePerDay: 0 }, 
-      deposit: deposit || 0, 
-      minRentalDays: minRentalDays || 1, 
-      lateFeePerDay: lateFeePerDay || 0, 
-      status: status || "available", 
+      rentalRates: rentalRates || { pricePerDay: 0 },
+      deposit: deposit || 0,
+      minRentalDays: minRentalDays || 1,
+      lateFeePerDay: lateFeePerDay || 0,
+      status: status || "available",
       specifications: specifications || {},
       createdBy: req.userData.id,
     });
@@ -162,7 +170,7 @@ const createCostume = async (req, res, next) => {
 const updateCostume = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { 
+    const {
       name, slug, sku, categoryId, description, images, size, color, condition,
       rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
     } = req.body;
