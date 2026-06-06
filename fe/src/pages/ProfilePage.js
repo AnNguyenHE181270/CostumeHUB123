@@ -1,118 +1,161 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRightFromBracket, faCamera, faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars } from "@fortawesome/free-solid-svg-icons";
-import { Link, useNavigate } from "react-router-dom";
+import { faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars, faCamera } from "@fortawesome/free-solid-svg-icons";
+import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import Toast from "../components/ui/Toast";
 
 export default function ProfilePage() {
-  const { user, role, logout } = useAuth();
-  const navigate = useNavigate();
-
+  const { loading, user, token, login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [avatarFile, setAvatarFile] = useState(null);
   
+  const [form, setForm] = useState({
+      fullName: "",
+      phone: "",
+      gender: "",
+      dateOfBirth: "",
+      avatar: "",
+  });
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        fullName: user.fullName ,
+        phone: user.phone ,
+        gender: user.gender ,
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
+        avatar: user.avatar ,
+      });
+    }
+  }, [user]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
+  
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm((prev) => ({ ...prev, avatar: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+  
+    if (submitting) return;
+  
+    try {
+      setSubmitting(true);
+      setToast({ isVisible: false, message: "", type: "success" });
+      
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (key !== 'avatar' && form[key] !== null && form[key] !== undefined) {
+          formData.append(key, form[key]);
+        }
+      });
+
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      } else if (form.avatar && !form.avatar.startsWith("data:image")) {
+        formData.append("avatar", form.avatar);
+      }
+
+      const response = await fetch(
+        `http://localhost:9999/api/users/update-my-profile`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        setToast({
+          isVisible: true,
+          type: "error",
+          message: data.errors?.[0]?.msg || data.message || "Cập nhật thất bại."
+        });
+        return;
+      }
+
+      // Refetch profile to update Header/Sidebar globally
+      await login(token, true);
+
+      setToast({ isVisible: true, type: "success", message: "Cập nhật thông tin thành công!" });
+    } catch {
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading || !user) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 md:py-20 font-body">
+    <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full">
+      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-10 pb-4 border-b border-[#eaeaea]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+        Thông Tin Cá Nhân
+      </h3>
+      
+      <Toast 
+        isVisible={toast.isVisible} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ ...toast, isVisible: false })} 
+      />
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#1a1a1a] tracking-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Hồ Sơ Của Tôi
-          </h1>
-          <p className="text-[14px] text-[#858585]">
-            Quản lý thông tin cá nhân và tài khoản của bạn.
-          </p>
-        </div>
-        <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
-          {(role === "owner" || role === "staff") && (
-            <Link 
-              to={role === "owner" ? "/owner" : "/staff"} 
-              className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-[#333] transition-colors flex items-center justify-center border border-[#1a1a1a] w-full sm:w-auto"
-            >
-              Trang Quản Trị
-            </Link>
-          )}
-          {/* Nút Đăng xuất ở ngay đây để user dễ thấy */}
-          <button 
-            onClick={handleLogout}
-            className="bg-red-50 text-red-600 text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-200 w-full sm:w-auto"
-          >
-            <FontAwesomeIcon icon={faArrowRightFromBracket} /> Đăng xuất
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Column: Avatar & Quick Links */}
-        <div className="lg:col-span-4 space-y-8">
-          {/* Avatar Card */}
-          <div className="bg-white border border-[#eaeaea] p-8 text-center flex flex-col items-center">
-            <div className="relative group mb-6">
-              <div className="w-32 h-32 rounded-full border-2 border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
-                <img src="https://i.pravatar.cc/300" alt="User Avatar" className="w-full h-full object-cover" />
-                
-                {/* Upload Overlay */}
-                <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
-                  <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-xl mb-1" />
-                  <span className="text-[#1a1a1a] text-[10px] font-semibold uppercase tracking-wider">Đổi ảnh</span>
-                  <input type="file" accept="image/*" className="hidden" />
-                </label>
-              </div>
+      <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
+        {/* Avatar Section */}
+        <div className="flex flex-col items-center lg:w-[280px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
+          <div className="relative group mb-6">
+            <div className="w-40 h-40 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
+              <img src={form.avatar || user.avatar || "https://i.pravatar.cc/300"} alt="User Avatar" className="w-full h-full object-cover" />
+              
+              <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
+                <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-2xl mb-2" />
+                <span className="text-[#1a1a1a] text-[11px] font-bold uppercase tracking-wider">Chọn ảnh</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+              </label>
             </div>
-            
-            <h2 className="text-2xl font-bold text-[#1a1a1a] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Nguyễn Văn A</h2>
-            <p className="text-[12px] text-[#999] tracking-[0.1em] uppercase">Thành viên Vogue</p>
           </div>
-
-          {/* Sidebar Menu */}
-          <div className="bg-white border border-[#eaeaea]">
-            <ul className="flex flex-col">
-              <li>
-                <Link to="/profile" className="block px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-[#1a1a1a] bg-[#faf9f7] border-l-4 border-[#1a1a1a]">
-                  Thông tin cá nhân
-                </Link>
-              </li>
-              <li className="border-t border-[#eaeaea]">
-                <Link to="/rental-history" className="block px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-[#858585] hover:text-[#1a1a1a] hover:bg-[#faf9f7] transition-colors border-l-4 border-transparent">
-                  Lịch sử thuê đồ
-                </Link>
-              </li>
-              <li className="border-t border-[#eaeaea]">
-                <Link to="/wishlist" className="block px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-[#858585] hover:text-[#1a1a1a] hover:bg-[#faf9f7] transition-colors border-l-4 border-transparent">
-                  Danh sách yêu thích
-                </Link>
-              </li>
-              <li className="border-t border-[#eaeaea]">
-                <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-red-600 hover:bg-red-50 transition-colors border-l-4 border-transparent"
-                >
-                  Đăng xuất
-                </button>
-              </li>
-            </ul>
+          <div className="text-center">
+            <h4 className="text-lg font-bold text-[#1a1a1a] mb-1">{form.fullName || user.fullName}</h4>
+            <p className="text-[11px] text-[#999] tracking-[0.1em] uppercase mb-4">Thành viên Vogue</p>
+            <p className="text-[12px] text-[#858585] mb-1">Dung lượng tối đa 1 MB</p>
+            <p className="text-[12px] text-[#858585]">Định dạng: .JPEG, .PNG</p>
           </div>
         </div>
 
-        {/* Right Column: Edit Profile Form */}
-        <div className="lg:col-span-8">
-          <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full">
-            <h3 className="text-2xl font-bold text-[#1a1a1a] mb-8 pb-4 border-b border-[#eaeaea]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Cập Nhật Thông Tin
-            </h3>
-            
-            <form className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+        <div className="flex-1">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
               <div className="md:col-span-2">
                 <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
                   <FontAwesomeIcon icon={faUser} /> Họ và Tên
                 </label>
-                <input
+                <Input
                   type="text"
                   name="fullName"
-                  defaultValue="Nguyễn Văn A"
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  value={form.fullName}
+                  onChange={handleChange}
                 />
               </div>
 
@@ -120,12 +163,11 @@ export default function ProfilePage() {
                 <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
                   <FontAwesomeIcon icon={faEnvelope} /> Địa chỉ Email
                 </label>
-                <input
+                <Input
                   type="email"
                   name="email"
-                  defaultValue="nguyenvana@example.com"
+                  defaultValue={user.email}
                   readOnly
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#f0f0f0] text-[#888] cursor-not-allowed outline-none transition-all text-[14px]"
                 />
               </div>
 
@@ -133,11 +175,11 @@ export default function ProfilePage() {
                 <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
                   <FontAwesomeIcon icon={faPhone} /> Số Điện Thoại
                 </label>
-                <input
+                <Input
                   type="tel"
                   name="phone"
-                  defaultValue="0987654321"
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  value={form.phone}
+                  onChange={handleChange}
                 />
               </div>
 
@@ -148,8 +190,9 @@ export default function ProfilePage() {
                 <div className="relative">
                   <select
                     name="gender"
-                    defaultValue="male"
-                    className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all appearance-none text-[14px]"
+                    value={form.gender}
+                    onChange={handleChange}
+                    className="w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 appearance-none"
                   >
                     <option value="male">Nam</option>
                     <option value="female">Nữ</option>
@@ -165,24 +208,21 @@ export default function ProfilePage() {
                 <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
                   <FontAwesomeIcon icon={faCalendarDay} /> Ngày Sinh
                 </label>
-                <input
+                <Input
                   type="date"
                   name="dateOfBirth"
-                  defaultValue="2000-01-01"
-                  className="w-full px-4 py-3 border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] focus:bg-white focus:border-[#1a1a1a] outline-none transition-all text-[14px]"
+                  value={form.dateOfBirth}
+                  onChange={handleChange}
                 />
               </div>
 
               <div className="md:col-span-2 pt-6 mt-2 border-t border-[#eaeaea]">
-                <button
-                  type="button"
-                  className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-8 py-3.5 hover:bg-[#333] transition-colors w-full sm:w-auto"
-                >
-                  Lưu Thay Đổi
-                </button>
+                <Button type="submit" variant="primary" disabled={submitting}>
+                  {submitting ? "Đang lưu..." : "Lưu Thay Đổi"}
+                </Button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       </div>
     </div>

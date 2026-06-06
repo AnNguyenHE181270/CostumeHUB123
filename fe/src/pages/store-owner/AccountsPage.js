@@ -13,7 +13,7 @@ const getRoleInfo = (roleName) => {
   const name = roleName?.toLowerCase();
   if (name === "owner") return { label: "Owner", color: "bg-purple-100 text-purple-700", icon: faUserShield };
   if (name === "staff") return { label: "Staff", color: "bg-[#eaeaea] text-[#1a1a1a]", icon: faUserTie }; // ← blue → primary
-  if (name === "customer") return { label: "Online Customer", color: "bg-gray-100 text-[#555]", icon: faUser };
+  if (name === "online-customer") return { label: "Online Customer", color: "bg-gray-100 text-[#555]", icon: faUser };
 
   return { label: "Unknown", color: "bg-surface text-[#555]", icon: faUser };
 };
@@ -125,7 +125,7 @@ export default function AccountsPage() {
           <option value="all">All Roles</option>
           <option value="owner">Owner</option>
           <option value="staff">Staff</option>
-          <option value="customer">Online Customer</option>
+          <option value="online-customer">Online Customer</option>
         </select>
 
         <select

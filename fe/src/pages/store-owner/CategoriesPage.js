@@ -333,12 +333,12 @@ const CategoriesPage = () => {
                         icon={faSearch}
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
                       />
-                      <input
+                      <Input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Tìm kiếm theo tên danh mục..."
-                        className="w-full pl-10 pr-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent text-sm"
+                        className="!pl-10"
                       />
                     </div>
             

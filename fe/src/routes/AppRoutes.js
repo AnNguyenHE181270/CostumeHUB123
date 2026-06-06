@@ -25,10 +25,12 @@ import OrdersPage from "../pages/store-owner/OrdersPage";
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
+import AddressPage from "../pages/customer/AddressPage";
 
 import { ROUTES } from "./routePaths";
-import DashboardLayout from "../components/layout/DashboardLayout";
-import MainLayout from "../components/layout/MainLayout"; 
+import DashboardLayout from "../layouts/DashboardLayout";
+import MainLayout from "../layouts/MainLayout"; 
+import ProfileLayout from "../layouts/ProfileLayout"; 
 
 function AppRoutes() {
   return (
@@ -42,7 +44,11 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
-          <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
+          
+          <Route element={<ProfileLayout />}>
+            <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
+            <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
+          </Route>
         </Route>
       </Route>
 

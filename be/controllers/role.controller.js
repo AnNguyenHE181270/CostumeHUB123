@@ -4,7 +4,7 @@ const Role = require("../models/role.model");
 
 const getAllRoles = async (req, res, next) => {
   try {
-    const roles = await Role.find({});
+    const roles = await Role.find({"name": {$ne: "owner"}});
     return res.status(200).json({
       success: true,
       roles,
