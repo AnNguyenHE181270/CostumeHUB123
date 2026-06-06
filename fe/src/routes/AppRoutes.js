@@ -10,7 +10,7 @@ import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
-import CartPage from "../pages/CartPage";
+import CartPage from "../pages/customer/CartPage";
 import ProductDetailPage from "../pages/ProductDetailPage";
 
 // Trang của Owner
@@ -19,7 +19,7 @@ import AccountsPage from "../pages/store-owner/AccountsPage";
 import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
-import OrdersPage from "../pages/store-owner/OrdersPage"; 
+import OrdersPage from "../pages/store-owner/OrdersPage";
 import CreateUserPage from "../pages/store-owner/CreateUserPage";
 
 // Trang Customer
@@ -30,7 +30,7 @@ import ProfilePage from "../pages/customer/ProfilePage";
 
 import { ROUTES } from "./routePaths";
 import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout"; 
+import MainLayout from "../layouts/MainLayout";
 
 function AppRoutes() {
   return (
@@ -67,7 +67,7 @@ function AppRoutes() {
       {/* ======================================================== */}
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
-           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
+          <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
 

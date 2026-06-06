@@ -40,8 +40,8 @@ export function Checkout() {
 
     // Lấy ID các sản phẩm đã được chọn từ Giỏ hàng
     const selectedIds = location.state?.selectedIds || [];
-    const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
-    
+    const getItemId = (item) => `${item.costumeId}-${item.size}-${item.startDate}-${item.endDate}`;
+
     const checkoutItems = selectedIds.length > 0
         ? cartItems.filter(item => selectedIds.includes(getItemId(item)))
         : cartItems; // Nếu vào thẳng link không qua giỏ, fallback lấy hết
@@ -73,14 +73,14 @@ export function Checkout() {
 
     const subtotal = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-        const price = item.costume.rentalRates?.pricePerDay || 0
+        const price = item.rentalPrice || 0
         return sum + (price * qty * rentalDays)
     }, 0)
 
     const originalTotal = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
         // Giả lập giá gốc gấp đôi nếu không có price
-        const originalPrice = item.costume.price || ((item.costume.rentalRates?.pricePerDay || 0) * 2)
+        const originalPrice = (item.rentalPrice || 0) * 2
         return sum + (originalPrice * qty * rentalDays)
     }, 0)
 
@@ -103,9 +103,9 @@ export function Checkout() {
                 startDate: new Date(startDate).toISOString(),
                 endDate: new Date(endDate).toISOString(),
                 items: checkoutItems.map(item => ({
-                    costume: item.costume._id,
-                    size: item.variant?.size || item.costume.variants?.[0]?.size || "M",
-                    color: item.costume.color || "Mặc định",
+                    costume: item.costumeId,
+                    size: item.size || "M",
+                    color: item.color || "Mặc định",
                     quantity: item.quantity || 1
                 })),
                 shippingFee: deliveryFee,
@@ -135,7 +135,7 @@ export function Checkout() {
                 if (checkoutItems.length === cartItems.length) {
                     clearCart();
                 } else {
-                    checkoutItems.forEach(item => removeFromCart(item.costume._id, item.variant?._id, item.startDate, item.endDate));
+                    checkoutItems.forEach(item => removeFromCart(item.costumeId, item.size, item.startDate, item.endDate));
                 }
                 navigate("/rental-history");
             } else {
@@ -218,14 +218,13 @@ export function Checkout() {
                     <div className="lg:col-span-1 space-y-4 mb-6">
                         {/* Mapped Product Cards from Checkout */}
                         {checkoutItems.map((cartItem, idx) => {
-                            const costume = cartItem.costume;
                             const qty = cartItem.quantity || 1;
-                            const price = costume.rentalRates?.pricePerDay || 0;
-                            const image = costume.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop";
-                            const selectedSize = cartItem.variant?.size || costume.variants?.[0]?.size || "M";
+                            const price = cartItem.rentalPrice || 0;
+                            const image = cartItem.image || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop";
+                            const selectedSize = cartItem.size || "M";
 
                             return (
-                                <div key={`${costume._id}-${idx}`} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
+                                <div key={`${cartItem.costumeId}-${idx}`} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
                                     <div className="px-4">
                                         <div className="flex flex-row gap-4 md:gap-6">
                                             {/* Image Gallery */}
@@ -233,7 +232,7 @@ export function Checkout() {
                                                 <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface">
                                                     <img
                                                         src={image}
-                                                        alt={costume.name}
+                                                        alt={cartItem.costumeName}
                                                         className="w-full h-full object-cover"
                                                         crossOrigin="anonymous"
                                                     />
@@ -244,7 +243,7 @@ export function Checkout() {
                                             <div className="flex-1 space-y-4">
                                                 <div className="my-4">
                                                     <h2 className="text-xl font-semibold text-foreground mb-1 text-pretty">
-                                                        {costume.name}
+                                                        {cartItem.costumeName}
                                                     </h2>
                                                     <div className="flex items-baseline gap-2">
                                                         <span className="text-2xl font-bold text-primary">
@@ -507,11 +506,11 @@ export function Checkout() {
                                     <div className="space-y-3 text-sm">
                                         {checkoutItems.map((item, idx) => {
                                             const qty = item.quantity || 1;
-                                            const price = item.costume.rentalRates?.pricePerDay || 0;
+                                            const price = item.rentalPrice || 0;
                                             return (
-                                                <div key={`${item.costume._id}-${idx}`} className="flex justify-between">
+                                                <div key={`${item.costumeId}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">
-                                                        {item.costume.name} × {qty}
+                                                        {item.costumeName} × {qty}
                                                     </span>
                                                     <span className="font-medium text-foreground shrink-0">{formatCurrency(price * qty * rentalDays)}</span>
                                                 </div>

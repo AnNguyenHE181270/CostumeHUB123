@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faPhone, faFileLines, faTruck } from "@fortawesome/free-solid-svg-icons"
+import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faPhone, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
 
-export function OrderDetail({ open, onOpenChange, order, onTrackOrder }) {
+export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -212,6 +212,22 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder }) {
                 <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
                 Theo dõi đơn
               </button>
+            )}{order.status === "pending" && (
+              <>
+                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                  <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
+                  Chờ xác nhận
+                </button>
+                {onCancelOrder && (
+                  <button
+                    onClick={() => onCancelOrder(order)}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                  >
+                    <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
+                    Hủy đơn hàng
+                  </button>
+                )}
+              </>
             )}
             {order.status === "rented" && (
               <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
