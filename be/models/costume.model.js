@@ -49,10 +49,22 @@ const costumeSchema = new mongoose.Schema(
       min: 0,
       default: 0
     },
-    rentalPerDay: {
+
+    rentalRates: {
+      pricePerDay: { type: Number, default: 0 },
+      pricePer3Days: { type: Number },
+      pricePerWeek: { type: Number },
+    },
+
+    deposit: {
       type: Number,
       min: 0,
       default: 0
+    },
+
+    minRentalDays: {
+      type: Number,
+      default: 1
     },
 
     variants: [{
@@ -64,6 +76,7 @@ const costumeSchema = new mongoose.Schema(
           "maintenance",
           "dry_cleaning",
           "hidden",
+          "out_of_stock",
         ],
         default: "available",
       },
