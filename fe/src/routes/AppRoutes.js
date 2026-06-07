@@ -8,6 +8,7 @@ import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
+import ProductDetailPage from "../pages/ProductDetailPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 
@@ -42,6 +43,7 @@ function AppRoutes() {
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
 
         <Route element={<ProtectedRoutes />}>
           <Route path="/cart" element={<CartPage />} />
