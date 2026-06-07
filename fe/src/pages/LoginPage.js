@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
-import AuthLayout from "../components/layout/AuthLayout";
+import AuthLayout from "../layouts/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
 import { useAuth } from "../context/AuthContext";
 
@@ -46,6 +46,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.isPending) {
+          navigate(`/verify-otp/${encodeURIComponent(data.email)}`, { state: { fromRegister: true } });
+          return;
+        }
+
         setError(
           data.errors?.[0]?.msg ||
           data.message ||

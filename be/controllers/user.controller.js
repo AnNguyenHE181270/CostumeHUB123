@@ -9,7 +9,7 @@ const crypto = require("crypto");
 const { uploadImage } = require("../services/cloudinary.service");
 const fs = require("fs");
 const OTP_TTL_MS = 1 * 60 * 1000;
-const { ObjectId } = require('mongodb');
+const { ObjectId } = require("mongodb");
 
 const register = async (req, res, next) => {
   let newUser = null;
@@ -21,18 +21,38 @@ const register = async (req, res, next) => {
     const existUser = await User.findOne({ email });
 
     if (existUser && existUser.status === "active") {
-      return next(new HttpError("An account with this email already exists. Please log in instead.", 422));
+      return next(
+        new HttpError(
+          "An account with this email already exists. Please log in instead.",
+          422,
+        ),
+      );
     }
 
     if (phone) {
       const existPhone = await User.findOne({ phone });
-      if (existPhone && existPhone.status === "active" && (!existUser || existPhone._id.toString() !== existUser._id.toString())) {
-        return next(new HttpError("An account with this phone number already exists.", 422));
+      if (
+        existPhone &&
+        existPhone.status === "active" &&
+        (!existUser || existPhone._id.toString() !== existUser._id.toString())
+      ) {
+        return next(
+          new HttpError(
+            "An account with this phone number already exists.",
+            422,
+          ),
+        );
       }
     }
 
-    if (existUser && existUser.status == "blocked" && existUser.isEmailVerified == true) {
-      return next(new HttpError("This account cannot be registered again.", 403));
+    if (
+      existUser &&
+      existUser.status == "blocked" &&
+      existUser.isEmailVerified == true
+    ) {
+      return next(
+        new HttpError("This account cannot be registered again.", 403),
+      );
     }
 
     const roleUser = await Role.findOne({ name: "online-customer" });
@@ -49,7 +69,11 @@ const register = async (req, res, next) => {
     const otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
     const otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
 
-    if (existUser && existUser.status === "pending" && existUser.isEmailVerified == false) {
+    if (
+      existUser &&
+      existUser.status === "pending" &&
+      existUser.isEmailVerified == false
+    ) {
       const updatedUser = await User.findByIdAndUpdate(
         existUser._id,
         {
@@ -70,7 +94,8 @@ const register = async (req, res, next) => {
       await sendEmailVerification(email, otp, fullName);
 
       return res.status(200).json({
-        message: "Registration successful. Please check your email for the OTP.",
+        message:
+          "Registration successful. Please check your email for the OTP.",
         type: "new",
         user: {
           id: updatedUser._id,
@@ -130,7 +155,20 @@ const sendEmailVerification = async (email, otp, fullName) => {
     to: email,
     subject: "Vogue Rental — Xác thực tài khoản của bạn",
     text: `Mã xác thực của bạn là: ${otp}`,
-    html: `...`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Xin chào ${fullName || "bạn"},</h2>
+        <p>Cảm ơn bạn đã đăng ký tài khoản tại Vogue Rental.</p>
+        <p>Mã xác thực (OTP) của bạn là:</p>
+        <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>Vui lòng nhập mã này trên trang xác nhận để hoàn tất đăng ký.</p>
+        <p>Mã này sẽ hết hạn sau 10 phút.</p>
+        <br/>
+        <p>Trân trọng,<br/>Đội ngũ Vogue Rental</p>
+      </div>
+    `,
   });
 };
 
@@ -139,7 +177,9 @@ const verifyOtp = async (req, res, next) => {
     const { email } = req.params;
     const { otp } = req.body;
 
-    const existUser = await User.findOne({ email }).select("+otpCode +otpExpires +otpCooldownUntil");
+    const existUser = await User.findOne({ email }).select(
+      "+otpCode +otpExpires +otpCooldownUntil",
+    );
 
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
@@ -160,7 +200,9 @@ const verifyOtp = async (req, res, next) => {
     const nowDate = new Date();
 
     if (existUser.otpExpires < nowDate) {
-      return next(new HttpError("OTP has expired. Please register again.", 400));
+      return next(
+        new HttpError("OTP has expired. Please register again.", 400),
+      );
     }
 
     const isValidOtp = await bcrypt.compare(otp, existUser.otpCode);
@@ -187,15 +229,59 @@ const verifyOtp = async (req, res, next) => {
       },
     });
   } catch (err) {
-    return next(new HttpError(err.message || "Email verification failed.", 500));
+    return next(
+      new HttpError(err.message || "Email verification failed.", 500),
+    );
   }
 };
 
+const resendOtp = async (req, res, next) => {
+  try {
+    const { email } = req.params;
+    const existUser = await User.findOne({ email }).select("+otpCooldownUntil");
+
+    if (!existUser) {
+      return next(new HttpError("User not found.", 404));
+    }
+
+    if (existUser.status === "active" && existUser.isEmailVerified) {
+      return next(new HttpError("User is already verified.", 400));
+    }
+
+    if (existUser.status === "blocked") {
+      return next(new HttpError("This account is blocked.", 403));
+    }
+
+    const now = new Date();
+    if (existUser.otpCooldownUntil && existUser.otpCooldownUntil > now) {
+      return next(
+        new HttpError("Please wait before requesting a new OTP.", 429),
+      );
+    }
+
+    const otp = generateOTP();
+    const salt = await bcrypt.genSalt(10);
+    const otpHash = await bcrypt.hash(otp, salt);
+
+    existUser.otpCode = otpHash;
+    existUser.otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
+    existUser.otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
+    await existUser.save();
+
+    await sendEmailVerification(existUser.email, otp, existUser.fullName);
+
+    return res.status(200).json({ message: "OTP resent successfully." });
+  } catch (err) {
+    return next(new HttpError(err.message || "Failed to resend OTP.", 500));
+  }
+};
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const existUser = await User.findOne({ email }).select("+password").populate("role");
+    const existUser = await User.findOne({ email })
+      .select("+password")
+      .populate("role");
 
     if (!existUser) {
       return next(new HttpError("User not found.", 404));
@@ -205,14 +291,33 @@ const login = async (req, res, next) => {
       return next(new HttpError("User is blocked", 400));
     }
 
-    if(existUser.status == "pending"){
-      return next(new HttpError("User is not verify, please register again",400))
-    }
-
     const checkPassword = await bcrypt.compare(password, existUser.password);
 
     if (!checkPassword) {
       return next(new HttpError("Incorrect password.", 401));
+    }
+
+    if (existUser.status === "pending" && !existUser.isEmailVerified) {
+      // Tự động gửi lại mã OTP mới khi đăng nhập
+      const otp = generateOTP();
+      const salt = await bcrypt.genSalt(10);
+      const otpHash = await bcrypt.hash(otp, salt);
+
+      const now = new Date();
+      existUser.otpCode = otpHash;
+      existUser.otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
+      existUser.otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
+      await existUser.save();
+
+      await sendEmailVerification(existUser.email, otp, existUser.fullName);
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "Tài khoản của bạn chưa được xác thực email. Một mã OTP mới đã được gửi.",
+        isPending: true,
+        email: existUser.email,
+      });
     }
 
     const token = jwt.sign(
@@ -222,7 +327,7 @@ const login = async (req, res, next) => {
         role: existUser.role.name,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.status(200).json({
@@ -234,7 +339,7 @@ const login = async (req, res, next) => {
   }
 };
 
-const getProfile = async (req, res, next) => {
+const getMyProfile = async (req, res, next) => {
   try {
     const email = req.userData.email;
 
@@ -253,6 +358,7 @@ const getProfile = async (req, res, next) => {
         dateOfBirth: user.dateOfBirth,
         provider: user.provider,
         role: user.role.name,
+        avatar: user.avatar,
       },
     });
   } catch (err) {
@@ -265,7 +371,21 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
     to: email,
     subject: "Vogue Rental — Đặt lại mật khẩu",
     text: `Bạn yêu cầu đặt lại mật khẩu. Nhấn vào link sau (hiệu lực 15 phút): ${resetUrl}`,
-    html: `...`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Xin chào ${fullName || "bạn"},</h2>
+        <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản Vogue Rental của bạn.</p>
+        <p>Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu mới. Link này chỉ có hiệu lực trong 15 phút.</p>
+        <div style="margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+            Đặt Lại Mật Khẩu
+          </a>
+        </div>
+        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+        <br/>
+        <p>Trân trọng,<br/>Đội ngũ Vogue Rental</p>
+      </div>
+    `,
   });
 };
 
@@ -274,19 +394,37 @@ const forgotPassword = async (req, res, next) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return next(new HttpError("If an account with this email exists, password reset instructions have been sent.", 200));
+      return next(
+        new HttpError(
+          "If an account with this email exists, password reset instructions have been sent.",
+          200,
+        ),
+      );
     }
 
     if (!user.isEmailVerified) {
-      return next(new HttpError("Email is not verified. Please verify your email before resetting your password.", 403));
+      return next(
+        new HttpError(
+          "Email is not verified. Please verify your email before resetting your password.",
+          403,
+        ),
+      );
     }
 
     if (user.status === "blocked") {
-      return next(new HttpError("Your account has been blocked. Please contact support for assistance.", 403));
+      return next(
+        new HttpError(
+          "Your account has been blocked. Please contact support for assistance.",
+          403,
+        ),
+      );
     }
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
@@ -296,7 +434,8 @@ const forgotPassword = async (req, res, next) => {
     const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
     await sendResetPasswordEmail(user.email, resetUrl, user.fullName);
     res.status(200).json({
-      message: "If an account with this email exists, password reset instructions have been sent.",
+      message:
+        "If an account with this email exists, password reset instructions have been sent.",
     });
   } catch (err) {
     return next(new HttpError(err.message || "Error system.", 500));
@@ -345,7 +484,7 @@ const getAllUsers = async (req, res, next) => {
         role: u.role.name,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
-        id: u._id
+        id: u._id,
       })),
     });
   } catch (err) {
@@ -371,7 +510,6 @@ const findUserById = async (req, res, next) => {
       success: true,
       user,
     });
-
   } catch (err) {
     return next(new HttpError(err.message, 500));
   }
@@ -380,23 +518,37 @@ const findUserById = async (req, res, next) => {
 const updateUsers = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { email, phone, fullName, gender, dateOfBirth, age, avatar, role, status } = req.body;
+    const {
+      email,
+      phone,
+      fullName,
+      gender,
+      dateOfBirth,
+      age,
+      avatar,
+      role,
+      status,
+    } = req.body;
 
     if (!ObjectId.isValid(id)) {
       return next(new HttpError("Invalid id", 400));
     }
 
     if (req.userData && id === req.userData.id) {
-       return next(new HttpError("You cannot change your own role or status", 403));
+      return next(
+        new HttpError("You cannot change your own role or status", 403),
+      );
     }
 
     const findRole = await Role.findOne({ name: role });
     if (!findRole) {
       return next(new HttpError("Not found role", 404));
     }
-    
+
     if (findRole.name === "owner") {
-      return next(new HttpError("You cannot assign the owner role to a user.", 403));
+      return next(
+        new HttpError("You cannot assign the owner role to a user.", 403),
+      );
     }
 
     if (email) {
@@ -419,16 +571,20 @@ const updateUsers = async (req, res, next) => {
       fs.unlinkSync(req.file.path);
     }
 
-    let user = await User.findByIdAndUpdate(id, {
-      email,
-      phone,
-      fullName,
-      gender,
-      dateOfBirth: dateOfBirth,
-      status,
-      avatar: newAvatar,
-      role: findRole._id
-    }, { new: true });
+    let user = await User.findByIdAndUpdate(
+      id,
+      {
+        email,
+        phone,
+        fullName,
+        gender,
+        dateOfBirth: dateOfBirth,
+        status,
+        avatar: newAvatar,
+        role: findRole._id,
+      },
+      { new: true },
+    );
 
     if (!user) {
       return next(new HttpError("User not found", 404));
@@ -436,13 +592,12 @@ const updateUsers = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      user
+      user,
     });
   } catch (err) {
     return next(new HttpError(err.message, 500));
   }
 };
-
 
 const updateMyProfile = async (req, res, next) => {
   try {
@@ -470,7 +625,7 @@ const updateMyProfile = async (req, res, next) => {
         dateOfBirth,
         avatar: newAvatar,
       },
-      { new: true }
+      { new: true },
     );
 
     return res.status(200).json({
@@ -481,15 +636,75 @@ const updateMyProfile = async (req, res, next) => {
   }
 };
 
+const createAddress = async (req, res, next) => {
+  try {
+    const {
+      receiverName,
+      receiverPhone,
+      province,
+      district,
+      ward,
+      addressDetail,
+      note,
+      isDefault,
+    } = req.body;
+
+    const email = req.userData.email;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+
+    if (isDefault) {
+      user.addresses.forEach(addr => addr.isDefault = false);
+    }
+
+    const newAddress = {
+      receiverName,
+      receiverPhone,
+      province,
+      district,
+      ward,
+      addressDetail,
+      note,
+      isDefault: isDefault || user.addresses.length === 0
+    };
+
+    user.addresses.push(newAddress);
+    await user.save();
+
+    const addedAddress = user.addresses[user.addresses.length - 1];
+
+    res.status(200).json(addedAddress);
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
+const getAllAddresses = async (req, res, next) => {
+  try {
+    const email = req.userData.email;
+    const user = await User.findOne({"email": email})
+
+    res.status(200).json({ addresses: user.addresses });
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
 module.exports = {
   register,
   verifyOtp,
+  resendOtp,
   login,
-  getProfile,
+  getMyProfile,
   forgotPassword,
   resetPassword,
   getAllUsers,
   updateUsers,
   findUserById,
-  updateMyProfile
+  updateMyProfile,
+  createAddress,
+  getAllAddresses
 };

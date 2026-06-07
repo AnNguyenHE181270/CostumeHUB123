@@ -169,6 +169,51 @@ const updateMyProfileValidator = [
     .isURL()
     .withMessage("Avatar must be a valid URL"),
 ];
+const createAddressValidator = [
+  body("receiverName")
+    .trim()
+    .notEmpty()
+    .withMessage("Receiver name is required")
+    .isString()
+    .withMessage("Receiver name must be a string"),
+
+  body("receiverPhone")
+    .trim()
+    .notEmpty()
+    .withMessage("Receiver phone is required")
+    .isMobilePhone()
+    .withMessage("Invalid phone number"),
+
+  body("province")
+    .trim()
+    .notEmpty()
+    .withMessage("Province is required"),
+
+  body("district")
+    .trim()
+    .notEmpty()
+    .withMessage("District is required"),
+
+  body("ward")
+    .trim()
+    .notEmpty()
+    .withMessage("Ward is required"),
+
+  body("addressDetail")
+    .trim()
+    .notEmpty()
+    .withMessage("Address detail is required"),
+
+  body("note")
+    .optional()
+    .isString()
+    .withMessage("Note must be a string"),
+
+  body("isDefault")
+    .optional()
+    .isBoolean()
+    .withMessage("isDefault must be a boolean value"),
+];
 module.exports = {
   registerValidator,
   verifyOtpValidator,
@@ -178,4 +223,5 @@ module.exports = {
   findUserByIdValidator,
   updateUserValidator,
   updateMyProfileValidator,
+  createAddressValidator
 };

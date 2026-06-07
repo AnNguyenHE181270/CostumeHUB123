@@ -7,7 +7,8 @@ export const ROUTES = {
   VERIFY: "/verify-otp/:email",
   FORGOTPASSWORD: "/forgot-password",
   RESETPASSWORD: "/reset-password/:token",
-  MY_PROFILE: "/my-profile",
+  MY_PROFILE: "/user/my-profile",
+  MY_ADDRESS: "/user/addresses",
   // Customer / Protected Routes (Cần đăng nhập để thuê)
   RENT_COSTUME: "/rent/:costumeId",
   PRODUCT_DETAIL: "/product/:id",
