@@ -5,6 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faXmark, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 import Modal from "../../components/Modal"
 import Radio from "../../components/ui/Radio"
+import { formatOrderId } from "../../utils/formatters"
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
 const cancelReasons = [
     "Đổi ý, không muốn thuê nữa",
@@ -20,20 +22,38 @@ export function CancelOrderModal({ open, onOpenChange, orderId, onConfirm }) {
     const [otherReason, setOtherReason] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!selectedReason) return
 
         setIsSubmitting(true)
         const reason = selectedReason === "Khác" ? otherReason : selectedReason
 
-        // Simulate API call
-        setTimeout(() => {
-            onConfirm(reason)
+        try {
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token")
+
+            const res = await fetch(`${API_URL}/api/rentals/${orderId}/cancel`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ cancelReason: reason })
+            })
+
+            if (res.ok) {
+                if (onConfirm) onConfirm()
+                handleClose()
+            } else {
+                const errorData = await res.json()
+                console.error("Lỗi khi hủy đơn hàng:", errorData.message)
+                alert(errorData.message || "Không thể hủy đơn hàng lúc này.")
+            }
+        } catch (err) {
+            console.error("Lỗi kết nối khi hủy đơn:", err)
+            alert("Lỗi kết nối đến máy chủ.")
+        } finally {
             setIsSubmitting(false)
-            setSelectedReason("")
-            setOtherReason("")
-            onOpenChange(false)
-        }, 1000)
+        }
     }
 
     const handleClose = () => {
@@ -43,7 +63,7 @@ export function CancelOrderModal({ open, onOpenChange, orderId, onConfirm }) {
     }
 
     return (
-        <Modal isOpen={open} onClose={handleClose} title="Hủy đơn hàng" children={orderId}>
+        <Modal isOpen={open} onClose={handleClose} title={`Hủy đơn hàng ${formatOrderId(orderId)}`}>
             <div className="p-4">
                 <p className="text-sm text-gray-500 mb-4">
                     Vui lòng cho chúng tôi biết lý do bạn muốn hủy đơn hàng này:

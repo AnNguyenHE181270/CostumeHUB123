@@ -1,11 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import apiClient from "../services/apiClient";
+import { useNavigate } from "react-router-dom";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   const [cartItems, setCartItems] = useState(() => {
     const saved = localStorage.getItem("costume_cart");
@@ -20,40 +24,14 @@ export function CartProvider({ children }) {
   });
 
   useEffect(() => {
-    const fetchCart = async () => {
-      if (token) {
-        try {
-          const response = await apiClient.get('/api/carts');
-          // if (Array.isArray(response)) {
-          //   // Chuẩn hóa dữ liệu từ backend để tương thích với component hiện tại (như CheckoutPage)
-          //   const formattedCart = response.map(item => ({
-          //     ...item,
-          //     costumeId: item._id,
-          //     costume: { _id: item._id, name: item.costumeName, images: [item.image] },
-          //     variant: { size: item.size, price: item.rentalPrice }
-          //   }));
-          setCartItems(response);
-          // }
-        } catch (error) {
-          console.error("Lỗi khi lấy giỏ hàng từ backend:", error);
-        }
-      }
-    };
-
-    fetchCart();
-  }, [token]);
-
-  useEffect(() => {
     localStorage.setItem("costume_cart", JSON.stringify(cartItems));
   }, [cartItems]);
 
 
   const fetchCart = async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) return;
 
     try {
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
       const response = await fetch(`${API_URL}/api/carts`, {
         method: "GET",
         headers: {
@@ -71,96 +49,63 @@ export function CartProvider({ children }) {
     }
   };
 
-  // Gọi API lấy giỏ hàng mỗi khi load lại trang
   useEffect(() => {
     fetchCart();
-  }, []);
+  }, [token]);
 
   const addToCart = async (costume, variant, quantity, startDateStr, endDateStr, rentalDays) => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    // 1. Nếu user đã đăng nhập, tiến hành gọi API lưu giỏ hàng
-    if (token) {
-      try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
-        const response = await fetch(`${API_URL}/api/carts/add-cart`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            costumeId: costume._id, // Trích xuất _id từ object truyền xuống BE
-            size: variant?.size || "M",
-            quantity: quantity,
-            startDate: startDateStr,
-            endDate: endDateStr
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          return { success: false, message: data.message };
-        }
-
-        // Quan trọng: Gọi fetchCart ngay sau khi thêm thành công để lấy dữ liệu có Format chuẩn 
-        // từ Backend (đầy đủ costumeName, image, category...) giúp CartPage hiển thị ngay lập tức
-        await fetchCart();
-        return { success: true };
-      } catch (error) {
-        console.error("Lỗi khi thêm vào giỏ hàng backend:", error);
-        return { success: false, message: "Lỗi kết nối máy chủ" };
-      }
+    // 1. Nếu user chưa đăng nhập, điều hướng đến màn login
+    if (!token) {
+      navigate("/login");
+      return { success: false, message: "Vui lòng đăng nhập để thêm vào giỏ hàng." };
     }
 
-    // 2. Cập nhật state local cho UI (Chỉ áp dụng cho Guest/Chưa đăng nhập)
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => (item.costumeId || item.costume?._id) === costume._id
-          && item.size === (variant?.size || "M")
-          && item.startDate === startDateStr
-          && item.endDate === endDateStr
-      );
+    // 2. Nếu đã đăng nhập, tiến hành gọi API lưu giỏ hàng
+    try {
+      const response = await fetch(`${API_URL}/api/carts/add-cart`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          costumeId: costume._id,
+          size: variant?.size || "M",
+          quantity: quantity,
+          startDate: startDateStr,
+          endDate: endDateStr
+        })
+      });
 
-      if (existingIndex >= 0) {
-        // If exact same item exists, increment its quantity
-        const newCart = [...prev];
-        const newQty = newCart[existingIndex].quantity + quantity;
-        // Don't exceed variant's availableStock
-        newCart[existingIndex].quantity = Math.min(newQty, variant?.availableStock || newQty);
-        return newCart;
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, message: data.message };
       }
 
-      return [
-        ...prev,
-        {
-          // Bổ sung các trường phẳng để CartPage hiển thị đầy đủ ngay lập tức cho Guest
-          _id: costume._id,
-          costumeId: costume._id,
-          costumeName: costume.name,
-          image: costume.images?.[0] || null,
-          category: costume.categoryId?.name || "",
-          size: variant?.size || "M",
-          rentalPerDay: costume.rentalPerDay || 0,
-          price: costume.price || 0,
-          costume,
-          variant: variant || { size: "M" },
-          quantity,
-          startDate: startDateStr,
-          endDate: endDateStr,
-          rentalDays,
-        },
-      ];
-    });
-
-    return { success: true };
+      await fetchCart();
+      return { success: true };
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng backend:", error);
+      return { success: false, message: "Lỗi kết nối máy chủ" };
+    }
   };
 
   const removeFromCart = async (costumeId, variantId, startDateStr, endDateStr) => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    // 1. Xóa state local để UI cập nhật ngay lập tức (Áp dụng cho cả Guest & Logged In)
+    setCartItems((prev) => prev.filter((item) => {
+      const currentId = item.costumeId || item._id || item.costume?._id;
+      const currentSize = item.size || item.variant?.size;
+      if (variantId || startDateStr) {
+        return !(currentId === costumeId
+          && currentSize === variantId
+          && item.startDate === startDateStr
+          && item.endDate === endDateStr);
+      }
+      return currentId !== costumeId;
+    }));
 
-    // 1. Gọi API xóa khỏi Database nếu đã đăng nhập
+    // 2. Gọi API xóa khỏi Database nếu đã đăng nhập
     if (token) {
       try {
         const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
@@ -228,32 +173,22 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    // 1. Xóa giỏ hàng dưới Database nếu người dùng đã đăng nhập
-    if (token) {
-      try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
-        // Lưu ý: Hãy đảm bảo endpoint `/api/carts/clear` khớp với route gọi hàm removeAllCartByCustomer ở Backend của bạn
-        const response = await fetch(`${API_URL}/api/carts/clear`, {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          console.error("Lỗi khi xóa toàn bộ giỏ hàng ở backend");
-        } else {
-          await fetchCart();
-          return;
-        }
-      } catch (error) {
-        console.error("Lỗi kết nối máy chủ khi xóa giỏ hàng:", error);
-      }
+    if (!token) {
+      navigate("/login");
+      return;
     }
 
-    // 2. Xóa state local để UI cập nhật ngay lập tức
+    try {
+      await fetch(`${API_URL}/api/carts/clear`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Lỗi kết nối máy chủ khi xóa giỏ hàng:", error);
+    }
+
     setCartItems([]);
   };
 

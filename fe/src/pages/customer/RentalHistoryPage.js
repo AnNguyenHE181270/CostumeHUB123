@@ -30,6 +30,12 @@ function RentalHistory() {
             });
             const data = await res.json();
             setRentalOrders(data);
+            setSelectedOrder((prev) => {
+                if (prev) {
+                    return data.find(o => o.id === prev.id) || prev;
+                }
+                return null;
+            });
         } catch (err) {
             console.error("Failed to fetch rental orders:", err);
         } finally {
@@ -62,28 +68,9 @@ function RentalHistory() {
         setIsCancelOpen(true);
     };
 
-    const handleConfirmCancel = async (reason) => {
-        try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-            const res = await fetch(`${API_URL}/api/rentals/${selectedOrder.id}/status`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: "cancelled", cancelReason: reason })
-            });
-
-            if (res.ok) {
-                fetchOrders(); // Tải lại danh sách đơn
-                setIsCancelOpen(false);
-            } else {
-                console.error("Lỗi khi hủy đơn hàng");
-            }
-        } catch (err) {
-            console.error("Lỗi kết nối khi hủy đơn:", err);
-        }
+    const handleConfirmCancel = () => {
+        fetchOrders(); // Tải lại danh sách đơn
+        setIsCancelOpen(false);
     };
 
     const handleViewDetail = (order) => {

@@ -3,6 +3,8 @@ const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
 const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
+const Cart = require('../models/cart.model');
+const sendEmail = require('../services/email.service');
 
 
 //==========================================================================
@@ -12,19 +14,26 @@ const getRentalHistory = async (req, res, next) => {
         const userId = req.userData.id;
 
         const orders = await Rental.find({ customerId: userId })
-            .populate("items.costume", "name images")
+            .populate("items.costume", "name images rentalPerDay")
             .sort({ createdAt: -1 });
 
         const result = orders.map(order => ({
             id: order._id,
-            productName: order.items[0]?.costume?.name || "Đơn hàng thuê",
-            productImage: order.items[0]?.costume?.images?.[0] || "",
+            costumeName: order.items[0]?.costume?.name || "Đơn hàng thuê",
+            costumeImage: order.items[0]?.costume?.images?.[0] || "",
             rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) || 1} ngày`,
             startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
             endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
             status: order.status,
             totalPrice: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalAmount),
-            address: `${order.shippingAddress.addressDetail}, ${order.shippingAddress.ward}, ${order.shippingAddress.district}, ${order.shippingAddress.province}`
+            address: order.shippingAddress.addressDetail,
+            items: order.items.map(item => ({
+                costumeName: item.costume?.name || "Sản phẩm",
+                image: item.costume?.images?.[0] || "",
+                size: item.size,
+                quantity: item.quantity,
+                rentalPerDay: item.costume?.rentalPerDay || item.rentalPricePerDay || 0
+            }))
         }));
 
         res.status(200).json(result);
@@ -39,7 +48,7 @@ const orderDetail = async (req, res, next) => {
         const customerId = req.userData.id;
         const order = await Rental.findOne({ _id: orderId, customerId: customerId })
             .populate("customerId", "fullName phone email")
-            .populate("items.costume", "name images")
+            .populate("items.costume", "name images price rentalPerDay")
         if (!order) {
             return res.status(404).json({ message: "Orders not found." })
         }
@@ -66,6 +75,8 @@ const orderDetail = async (req, res, next) => {
                 image: item.costume.images[0],
                 size: item.size,
                 quantity: item.quantity,
+                price: item.costume.price,
+                rentalPerDay: item.costume.rentalPerDay
             })),
         })
     } catch (error) {
@@ -160,13 +171,146 @@ const createOrder = async (req, res, next) => {
 
         await newOrder.save();
 
-        res.status(201).json({ message: "Đặt hàng thành công", order: newOrder });
+        // BƯỚC 3: Tự động dọn dẹp các sản phẩm đã đặt khỏi Giỏ hàng (Cart)
+        try {
+            const cart = await Cart.findOne({ customerId });
+            if (cart) {
+                const orderStart = new Date(startDate).getTime();
+                const orderEnd = new Date(endDate).getTime();
 
-        // sau 15p, chưa payment -> status Cancelled
+                // Lọc bỏ những item có trong danh sách vừa đặt
+                cart.items = cart.items.filter(cartItem => {
+                    const isOrdered = items.some(orderItem =>
+                        orderItem.costume.toString() === cartItem.costume.toString() &&
+                        orderItem.size === cartItem.size &&
+                        new Date(cartItem.startDate).getTime() === orderStart &&
+                        new Date(cartItem.endDate).getTime() === orderEnd
+                    );
+                    return !isOrdered; // Giữ lại những item CHƯA được order
+                });
+
+                if (cart.items.length === 0) {
+                    await Cart.findOneAndDelete({ customerId });
+                } else {
+                    await cart.save();
+                }
+            }
+        } catch (cartError) {
+            console.error("[Cart Cleanup Error] Lỗi khi dọn dẹp giỏ hàng sau khi đặt:", cartError);
+        }
+
+        // Sau 15p, chưa payment -> status Cancelled
+        setTimeout(async () => {
+            try {
+                const checkOrder = await Rental.findById(newOrder._id);
+                if (checkOrder && checkOrder.status === 'pending') {
+                    checkOrder.status = 'cancelled';
+                    checkOrder.cancelReason = 'Quá hạn thanh toán (15 phút)';
+                    await checkOrder.save();
+
+                    // Hoàn lại availableStock cho costume
+                    for (const item of checkOrder.items) {
+                        const costumeToRestock = await Costume.findById(item.costume);
+                        if (costumeToRestock) {
+                            const variantToRestock = costumeToRestock.variants.find(v => v.size === item.size);
+                            if (variantToRestock) {
+                                variantToRestock.availableStock += item.quantity;
+                                await costumeToRestock.save();
+                            }
+                        }
+                    }
+
+                    // Gửi email thông báo hủy đơn
+                    try {
+                        const user = await User.findById(checkOrder.customerId);
+                        if (user && user.email) {
+                            await sendEmail({
+                                to: user.email,
+                                subject: "CostumeHUB — Thông báo hủy đơn hàng",
+                                text: `Chào ${user.fullName},\n\nĐơn hàng ${checkOrder._id} của bạn đã bị tự động hủy.\nLý do: ${checkOrder.cancelReason}\n\nCảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.`,
+                                html: `
+                                    <p>Chào <b>${user.fullName}</b>,</p>
+                                    <p>Đơn hàng <b>${checkOrder._id}</b> của bạn đã bị tự động hủy.</p>
+                                    <p>Lý do: <span style="color: red;">${checkOrder.cancelReason}</span></p>
+                                    <p>Cảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.</p>
+                                `
+                            });
+                        }
+                    } catch (mailError) {
+                        console.error("[Auto-Cancel Error] Lỗi khi gửi email hủy đơn: ", mailError);
+                    }
+
+                    console.log(`[Auto-Cancel] Đơn hàng ${checkOrder._id} đã tự động hủy do quá thời gian thanh toán.`);
+                }
+            } catch (err) {
+                console.error('[Auto-Cancel Error] Lỗi khi tự động hủy đơn:', err);
+            }
+        }, 15 * 60 * 1000); // 15 phút
+
+        res.status(201).json({ message: "Đặt hàng thành công", order: newOrder });
     } catch (error) {
         next(new HttpError(error.message || 'Creating order failed', 500));
     }
 };
+
+const cancellOrrder = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { cancelReason } = req.body;
+        const customerId = req.userData.id;
+
+        // 1. check đơn đó tồn tại không
+        const order = await Rental.findOne({ _id: id, customerId });
+        if (!order) {
+            return next(new HttpError('Không tìm thấy đơn hàng.', 404));
+        }
+
+        if (!['pending'].includes(order.status)) {
+            return next(new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400));
+        }
+
+        // 2. cancell success + add lí do
+        order.status = 'cancelled';
+        order.cancelReason = cancelReason || 'Người dùng hủy đơn';
+        await order.save();
+
+        // 3. update lại availableStock cho costume
+        for (const item of order.items) {
+            const costume = await Costume.findById(item.costume);
+            if (costume) {
+                const variant = costume.variants.find(v => v.size === item.size);
+                if (variant) {
+                    variant.availableStock += item.quantity;
+                    await costume.save();
+                }
+            }
+        }
+
+        // 4. send mail
+        try {
+            const user = await User.findById(customerId);
+            if (user && user.email) {
+                await sendEmail({
+                    to: user.email,
+                    subject: "CostumeHUB — Thông báo hủy đơn hàng",
+                    text: `Chào ${user.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy.\nLý do: ${order.cancelReason}\n\nCảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.`,
+                    html: `
+                        <p>Chào <b>${user.fullName}</b>,</p>
+                        <p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy.</p>
+                        <p>Lý do: <span style="color: red;">${order.cancelReason}</span></p>
+                        <p>Cảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.</p>
+                    `
+                });
+            }
+        } catch (mailError) {
+            console.error("Lỗi khi gửi email hủy đơn: ", mailError);
+        }
+
+        res.status(200).json({ message: 'Hủy đơn hàng thành công', order });
+    } catch (error) {
+        next(new HttpError(error.message || 'Cancel order failed', 500));
+    }
+}
 
 //==========================================================================
 
@@ -228,4 +372,4 @@ const updateOrderStatus = async (req, res, next) => {
 };
 
 
-module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail };
+module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail, cancellOrrder };

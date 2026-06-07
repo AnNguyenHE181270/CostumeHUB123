@@ -28,7 +28,6 @@ const getAllCarts = async (req, res, next) => {
             size: item.size,
             quantity: item.quantity,
             status: item.status,
-
             startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : item.startDate,
             endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : item.endDate,
             rentalPerDay: item.rentalPrice || item.costume?.rentalPerDay || 0,
@@ -95,7 +94,7 @@ const addCart = async (req, res, next) => {
         endNormalized.setHours(0, 0, 0, 0);
 
         if (startNormalized <= tomorrow) {
-            return next(new HttpError("Ngày nhận đồ phải sau ngày mai", 400));
+            return next(new HttpError("Vui lòng đặt thuê đồ trước 1 ngày", 400));
         }
 
         if (endNormalized < startNormalized) {
@@ -140,14 +139,12 @@ const addCart = async (req, res, next) => {
                     return next(new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400));
                 }
 
-                // Dùng $inc (Atomic update) để cộng dồn trực tiếp trong Database, khắc phục lỗi VersionError (Race Condition)
                 cart = await Cart.findOneAndUpdate(
                     { customerId },
                     { $inc: { [`items.${itemIndex}.quantity`]: numQuantity } },
                     { new: true }
                 );
             } else {
-                // Dùng $push (Atomic update) để nhét item vào mảng an toàn
                 cart = await Cart.findOneAndUpdate(
                     { customerId },
                     { $push: { items: newItem } },
@@ -156,7 +153,6 @@ const addCart = async (req, res, next) => {
             }
         }
 
-        // Populate dữ liệu để hiển thị chi tiết ở Postman giống hệt lúc Get Cart
         if (cart) {
             await cart.populate({
                 path: "items.costume",

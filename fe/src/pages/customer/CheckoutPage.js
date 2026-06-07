@@ -32,9 +32,8 @@ const additionalItems = [
 export function Checkout() {
     const navigate = useNavigate()
     const location = useLocation()
-    const { cartItems, clearCart, removeFromCart } = useCart()
+    const { cartItems, fetchCart, clearCart, removeFromCart } = useCart()
 
-    // Lấy ID các sản phẩm đã được chọn từ Giỏ hàng
     const selectedIds = location.state?.selectedIds || [];
 
     const getItemId = (item) => {
@@ -66,9 +65,8 @@ export function Checkout() {
     if (rentalDays < 1) rentalDays = 1 // Safe fallback
 
     // tính tiền thuê
-    const subtotal = checkoutItems.reduce((sum, item) => {
+    const totalRental = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-
         const price = item.rentalPerDay || item.rentalPrice || 0
         return sum + (price * qty * rentalDays)
 
@@ -83,7 +81,7 @@ export function Checkout() {
 
     const deliveryFee = deliveryOption === "delivery" ? 50000 : 0
     const insuranceFee = checkoutItems.length > 0 ? 100000 : 0
-    const total = subtotal + totalDeposit + deliveryFee + insuranceFee
+    const total = totalRental + totalDeposit + deliveryFee + insuranceFee
 
     const handleCheckout = async () => {
         if (checkoutItems.length === 0) return;
@@ -103,7 +101,9 @@ export function Checkout() {
                     costume: item.costumeId || item._id || item.costume?._id,
                     size: item.size || item.variant?.size || "M",
                     color: item.color || item.costume?.color || "Mặc định",
-                    quantity: item.quantity || 1
+                    quantity: item.quantity || 1,
+                    cartStartDate: item.startDate,
+                    cartEndDate: item.endDate
                 })),
                 shippingFee: deliveryFee,
                 paymentMethod: paymentMethod,
@@ -127,12 +127,18 @@ export function Checkout() {
             });
 
             if (res.ok) {
-                // Nếu đặt toàn bộ giỏ thì clearCart, nếu chỉ đặt 1 vài món thì remove thủ công
+                // Fallback: Xóa khỏi giỏ thủ công phía Frontend để đảm bảo 100% dọn dẹp
                 if (checkoutItems.length === cartItems.length) {
-                    clearCart();
+                    await clearCart();
                 } else {
-
-                    checkoutItems.forEach(item => removeFromCart(item.costumeId || item._id || item.costume?._id, item.size || item.variant?.size, item.startDate, item.endDate));
+                    for (const item of checkoutItems) {
+                        await removeFromCart(
+                            item.costumeId || item._id || item.costume?._id,
+                            item.size || item.variant?.size,
+                            item.startDate,
+                            item.endDate
+                        );
+                    }
                 }
                 navigate("/rental-history");
             } else {
@@ -515,7 +521,7 @@ export function Checkout() {
                                         })}
 
                                         <div className="flex justify-between">
-                                            <span className="text-muted-foreground font-semibold border-t pt-2 w-full flex justify-between">Tạm tính: <span>{formatPrice(subtotal)}</span></span>
+                                            <span className="text-muted-foreground font-semibold border-t pt-2 w-full flex justify-between">Tạm tính: <span>{formatPrice(totalRental)}</span></span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground font-semibold w-full flex justify-between">Cọc: <span>{formatPrice(totalDeposit)}</span></span>

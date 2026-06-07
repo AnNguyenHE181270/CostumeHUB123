@@ -20,7 +20,6 @@ export default function CartPage() {
   const [expandedItem, setExpandedItem] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
 
-  // Đồng bộ selectedIds nếu cartItems thay đổi (vd: bị xóa đi)
   useEffect(() => {
     setSelectedIds(prev => {
       const currentIds = cartItems.map(getItemId);
@@ -66,17 +65,17 @@ export default function CartPage() {
     const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 1;
   };
-
+  // tính tiền thuê
   const totalRental = selectedCartItems.reduce(
-    (acc, item) =>
-      acc + (item.costume.rentalPerDay || 0) * item.rentalDays * (item.quantity || 1),
+    (sum, item) =>
+      sum + (item.costume.rentalPerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
   const totalDeposit = selectedCartItems.reduce(
-    (acc, item) => acc + (item.costume.price || 0) * (item.quantity || 1),
+    (sum, item) => sum + (item.costume.price || 0) * (item.quantity || 1),
     0
   );
-  const grandTotal = totalRental + totalDeposit;
+  const total = totalRental + totalDeposit;
 
   if (cartItems.length === 0) {
     return (
@@ -278,7 +277,7 @@ export default function CartPage() {
               <div className="flex justify-between items-end mb-8">
                 <span className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-wide">Tổng Thanh Toán</span>
                 <span className="text-[24px] font-bold text-[#1a1a1a] leading-none text-right">
-                  {formatPrice(grandTotal)}
+                  {formatPrice(total)}
                 </span>
               </div>
 

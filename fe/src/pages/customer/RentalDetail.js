@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faPhone, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
-import { formatPrice, formatDate } from "../../utils/formatters"
+import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
 export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (open && order?.id) {
@@ -36,7 +38,7 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
     } else {
       setDetailedOrder(null)
     }
-  }, [open, order])
+  }, [open, order?.id])
 
   if (!order || !open) return null
 
@@ -48,7 +50,7 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
         <div>
           <h2 className=" text-xl font-semibold text-foreground">Chi tiết đơn hàng</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Mã đơn: {order.id} | Đặt ngày: {detailedOrder ? formatDate(detailedOrder.orderDate) : "..."}
+            Mã đơn: {formatOrderId(order.id)} | Đặt ngày: {detailedOrder ? formatDate(detailedOrder.orderDate) : "..."}
           </p>
         </div>
         <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">
@@ -91,7 +93,6 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                       {item.size && <span>Size: {item.size}</span>}
-                      {item.color && <span>Màu: {item.color}</span>}
                       <span>Số lượng: {item.quantity}</span>
                     </div>
                   </div>
@@ -204,25 +205,27 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
                 <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
                 Theo dõi đơn
               </button>
-            )}{order.status === "pending" &&
-              onCancelOrder && (
-                <button
-                  onClick={() => onCancelOrder(order)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
-                >
-                  <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
-                  Hủy đơn hàng
-                </button>
-              )
-            }
+            )}
+            {order.status === "pending" && onCancelOrder && (
+              <button
+                onClick={() => onCancelOrder(order)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              >
+                <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
+                Hủy đơn hàng
+              </button>
+            )}
             {order.status === "rented" && (
               <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>
             )}
-            {order.status === "completed" && (
-              <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            {["completed", "cancelled"].includes(order.status) && (
+              <button
+                onClick={() => navigate('/checkout')}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
+              >
                 <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
                 Thuê lại
               </button>

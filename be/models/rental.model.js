@@ -62,9 +62,6 @@ const rentalSchema = new mongoose.Schema(
         shippingAddress: {
             receiverName: { type: String, required: true },
             receiverPhone: { type: String, required: true },
-            province: { type: String },
-            district: { type: String },
-            ward: { type: String },
             addressDetail: { type: String },
             note: { type: String },
         },
