@@ -44,10 +44,18 @@ const costumeSchema = new mongoose.Schema(
       min: 0,
       default: 0
     },
-    price: {
-      type: Number,
-      min: 0,
-      default: 0
+
+    status: {
+      type: String,
+      enum: [
+        "available",
+        "rented",
+        "maintenance",
+        "dry_cleaning",
+        "hidden",
+        "out_of_stock",
+      ],
+      default: "available",
     },
 
     rentalRates: {
