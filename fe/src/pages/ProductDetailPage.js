@@ -52,8 +52,8 @@ export default function ProductDetailPage() {
     setToast({ isVisible: true, message, type });
   };
 
-  const isInCart = costume && selectedVariant 
-    ? cartItems.some(item => item.costume._id === costume._id && item.variant?._id === selectedVariant._id && item.startDate === startDate && item.endDate === endDate)
+  const isInCart = costume && selectedVariant
+    ? cartItems.some(item => item.costume?._id === costume._id && item.variant?._id === selectedVariant._id && item.startDate === startDate && item.endDate === endDate)
     : false;
 
   useEffect(() => {
@@ -243,10 +243,10 @@ export default function ProductDetailPage() {
                             disabled={isOutOfStock}
                             onClick={() => setSelectedVariant(v)}
                             className={`min-w-[40px] px-3 py-2 text-[13px] font-medium rounded border transition-all ${isSelected
-                                ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
-                                : isOutOfStock
-                                  ? "border-[#eaeaea] bg-[#faf9f7] text-[#ccc] cursor-not-allowed"
-                                  : "border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a]"
+                              ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
+                              : isOutOfStock
+                                ? "border-[#eaeaea] bg-[#faf9f7] text-[#ccc] cursor-not-allowed"
+                                : "border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a]"
                               }`}
                           >
                             {v.size}
@@ -282,12 +282,12 @@ export default function ProductDetailPage() {
                 <h4 className="text-[13px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-4 border-b border-[#eaeaea] pb-2">
                   Tùy chọn Thuê
                 </h4>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
                   <div>
                     <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">Ngày nhận đồ</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={startDate}
                       min={new Date().toISOString().split("T")[0]}
                       onChange={(e) => {
@@ -299,8 +299,8 @@ export default function ProductDetailPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">Ngày trả đồ</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={endDate}
                       min={startDate}
                       onChange={(e) => setEndDate(e.target.value)}
@@ -358,8 +358,8 @@ export default function ProductDetailPage() {
                     }
                   }}
                   className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${costume.status === "available"
-                      ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-                      : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
+                    ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                    : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
                     }`}
                   disabled={costume.status !== "available" || !selectedVariant}
                 >
@@ -378,10 +378,10 @@ export default function ProductDetailPage() {
                     }
                   }}
                   className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${isInCart
-                      ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
-                      : costume.status === "available"
-                        ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
-                        : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
+                    ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
+                    : costume.status === "available"
+                      ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
+                      : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
                     }`}
                   disabled={costume.status !== "available" && !isInCart}
                 >

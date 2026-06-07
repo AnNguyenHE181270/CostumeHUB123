@@ -2,7 +2,7 @@ import Button from '../Button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { statusOrder } from "../../constants/statusOrder"
-
+import { formatOrderId } from "../../utils/formatters"
 function OrderCard({ order, onViewDetail, onTrackOrder, isSelected, isCompact }) {
     const status = statusOrder[order.status]
 
@@ -20,17 +20,16 @@ function OrderCard({ order, onViewDetail, onTrackOrder, isSelected, isCompact })
                 "flex " +
                 (isCompact ? "flex-row" : "flex-col sm:flex-row")
             }>
-                {/* Product Image */}
                 <div className={
                     "relative shrink-0 bg-[oklch(0.92_0.03_130)] overflow-hidden " +
                     (isCompact
                         ? "h-40 w-20 sm:h-auto sm:w-20"
                         : "h-40 w-full sm:h-auto sm:w-32")
                 }>
-                    {order.productImage ? (
+                    {order.costumeImage ? (
                         <img
-                            src={order.productImage}
-                            alt={order.productName}
+                            src={order.costumeImage}
+                            alt={order.costumeName}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                     ) : (
@@ -56,7 +55,7 @@ function OrderCard({ order, onViewDetail, onTrackOrder, isSelected, isCompact })
                                 (isCompact ? "justify-between w-full" : "")
                             }>
                                 <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                    {order.id}
+                                    {formatOrderId(order.id)}
                                 </span>
                                 <span className={
                                     "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium " +
@@ -72,7 +71,7 @@ function OrderCard({ order, onViewDetail, onTrackOrder, isSelected, isCompact })
                                 }
                                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
                             >
-                                {order.productName}
+                                {order.costumeName}
                             </h3>
                         </div>
                         {!isCompact && (

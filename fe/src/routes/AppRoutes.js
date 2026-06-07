@@ -10,6 +10,7 @@ import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+
 import CartPage from "../pages/CartPage";
 import ProfilePage from "../pages/ProfilePage";
 
@@ -19,7 +20,8 @@ import AccountsPage from "../pages/store-owner/AccountsPage";
 import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
-import OrdersPage from "../pages/store-owner/OrdersPage"; 
+
+import OrdersPage from "../pages/store-owner/OrdersPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
@@ -28,9 +30,11 @@ import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 
 import { ROUTES } from "./routePaths";
+
 import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout"; 
-import ProfileLayout from "../layouts/ProfileLayout"; 
+import MainLayout from "../layouts/MainLayout";
+import ProfileLayout from "../layouts/ProfileLayout";
+
 
 function AppRoutes() {
   return (
@@ -44,7 +48,7 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
-          
+
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
@@ -64,7 +68,7 @@ function AppRoutes() {
 
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
-           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
+          <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
 

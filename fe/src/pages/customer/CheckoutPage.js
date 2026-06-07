@@ -4,19 +4,15 @@ import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-    faClock,
-    faMapMarkerAlt,
-    faShieldAlt,
-    faTruck,
-    faCheck,
-    faCreditCard,
-} from '@fortawesome/free-solid-svg-icons'
+import { faClock, faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@fortawesome/free-solid-svg-icons'
 import Button from "../../components/Button"
 import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
 import QuantitySelector from "../../components/ui/QuantitySelector"
 import SizeSelector from "../../components/ui/SizeSelector"
+import { formatPrice } from "../../utils/formatters"
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+
 
 const additionalItems = [
     {
@@ -36,11 +32,15 @@ const additionalItems = [
 export function Checkout() {
     const navigate = useNavigate()
     const location = useLocation()
-    const { cartItems, clearCart, removeFromCart } = useCart()
+    const { cartItems, fetchCart, clearCart, removeFromCart } = useCart()
 
-    // Lấy ID các sản phẩm đã được chọn từ Giỏ hàng
     const selectedIds = location.state?.selectedIds || [];
-    const getItemId = (item) => item.cartItemId || `${item._id || item.costumeId || item.costume?._id}-${item.size || item.variant?.size || 'novar'}-${item.startDate}-${item.endDate}`;
+
+    const getItemId = (item) => {
+        const costumeId = item.costume?._id || item.costumeId || item._id;
+        const variantId = item.variant?._id || item.size || item.variant?.size || 'novar';
+        return item.cartItemId || `${costumeId}-${variantId}-${item.startDate}-${item.endDate}`;
+    };
 
     const checkoutItems = selectedIds.length > 0
         ? cartItems.filter(item => selectedIds.includes(getItemId(item)))
@@ -54,39 +54,34 @@ export function Checkout() {
         return d.toISOString().split('T')[0]
     })
     const [deliveryOption, setDeliveryOption] = useState("delivery")
-    const [paymentMethod, setPaymentMethod] = useState("Tiền mặt")
+    const [paymentMethod, setPaymentMethod] = useState("VietQR")
 
     const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
     const [isLoading, setIsLoading] = useState(false)
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-        }).format(amount)
-    }
 
     const startObj = new Date(startDate)
     const endObj = new Date(endDate)
     let rentalDays = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24))
     if (rentalDays < 1) rentalDays = 1 // Safe fallback
 
-    const subtotal = checkoutItems.reduce((sum, item) => {
+    // tính tiền thuê
+    const totalRental = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-        const price = item.rentalPerDay || item.rentalPrice || item.costume?.rentalRates?.pricePerDay || 0
+        const price = item.rentalPerDay || item.rentalPrice || 0
         return sum + (price * qty * rentalDays)
+
     }, 0)
 
-    const originalTotal = checkoutItems.reduce((sum, item) => {
+    // tính tiền cọc
+    const totalDeposit = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-        // Giả lập giá gốc gấp đôi nếu không có price
-        const originalPrice = item.price || item.costume?.deposit || ((item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * 2)
-        return sum + (originalPrice * qty * rentalDays)
+        const price = item.price || 0
+        return sum + (price * qty)
     }, 0)
 
     const deliveryFee = deliveryOption === "delivery" ? 50000 : 0
     const insuranceFee = checkoutItems.length > 0 ? 100000 : 0
-    const total = subtotal + deliveryFee + insuranceFee
+    const total = totalRental + totalDeposit + deliveryFee + insuranceFee
 
     const handleCheckout = async () => {
         if (checkoutItems.length === 0) return;
@@ -106,7 +101,9 @@ export function Checkout() {
                     costume: item.costumeId || item._id || item.costume?._id,
                     size: item.size || item.variant?.size || "M",
                     color: item.color || item.costume?.color || "Mặc định",
-                    quantity: item.quantity || 1
+                    quantity: item.quantity || 1,
+                    cartStartDate: item.startDate,
+                    cartEndDate: item.endDate
                 })),
                 shippingFee: deliveryFee,
                 paymentMethod: paymentMethod,
@@ -120,7 +117,6 @@ export function Checkout() {
                 }
             };
 
-            const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
             const res = await fetch(`${API_URL}/api/rentals/create`, {
                 method: "POST",
                 headers: {
@@ -131,11 +127,18 @@ export function Checkout() {
             });
 
             if (res.ok) {
-                // Nếu đặt toàn bộ giỏ thì clearCart, nếu chỉ đặt 1 vài món thì remove thủ công
+                // Fallback: Xóa khỏi giỏ thủ công phía Frontend để đảm bảo 100% dọn dẹp
                 if (checkoutItems.length === cartItems.length) {
-                    clearCart();
+                    await clearCart();
                 } else {
-                    checkoutItems.forEach(item => removeFromCart(item.costumeId || item._id || item.costume?._id, item.size || item.variant?.size, item.startDate, item.endDate));
+                    for (const item of checkoutItems) {
+                        await removeFromCart(
+                            item.costumeId || item._id || item.costume?._id,
+                            item.size || item.variant?.size,
+                            item.startDate,
+                            item.endDate
+                        );
+                    }
                 }
                 navigate("/rental-history");
             } else {
@@ -213,11 +216,12 @@ export function Checkout() {
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+                <div className="grid lg:grid-cols-[1fr_400px] gap-10">
                     {/* Left Column - Product Details */}
                     <div className="lg:col-span-1 space-y-4 mb-6">
                         {/* Mapped Product Cards from Checkout */}
                         {checkoutItems.map((cartItem, idx) => {
+
                             const costume = cartItem.costume || {};
                             const qty = cartItem.quantity || 1;
                             const price = cartItem.rentalPerDay || cartItem.rentalPrice || costume.rentalRates?.pricePerDay || 0;
@@ -226,14 +230,15 @@ export function Checkout() {
                             const name = cartItem.costumeName || costume.name || "Sản phẩm";
 
                             return (
-                                <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-6 rounded-xl border py-4 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-4">
-                                    <div className="px-4">
-                                        <div className="flex flex-row gap-4 md:gap-6">
+                                <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-4 rounded-xl border py-3 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-3">
+                                    <div className="px-3">
+                                        <div className="flex flex-row gap-3 md:gap-4">
                                             {/* Image Gallery */}
-                                            <div className="relative w-24 md:w-32 shrink-0">
+                                            <div className="relative w-16 md:w-24 shrink-0">
                                                 <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface">
                                                     <img
                                                         src={image}
+
                                                         alt={name}
                                                         className="w-full h-full object-cover"
                                                         crossOrigin="anonymous"
@@ -242,27 +247,27 @@ export function Checkout() {
                                             </div>
 
                                             {/* Product Info */}
-                                            <div className="flex-1 space-y-4">
-                                                <div className="my-4">
-                                                    <h2 className="text-xl font-semibold text-foreground mb-1 text-pretty">
+                                            <div className="flex-1 space-y-3">
+                                                <div className="my-3">
+                                                    <h2 className="text-lg font-semibold text-foreground mb-1 text-pretty">
                                                         {name}
                                                     </h2>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-2xl font-bold text-primary">
-                                                            {formatCurrency(price)}
+                                                        <span className="text-xl font-bold text-primary">
+                                                            {formatPrice(price)}
                                                         </span>
                                                         <span className="text-sm text-muted-foreground">/ngày</span>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-wrap gap-3 items-center">
-                                                    <span className="text-xs text-muted-foreground">Kích cỡ:</span>
-                                                    <span className="font-semibold">{selectedSize}</span>
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-3 items-center">
-                                                    <span className="text-xs text-muted-foreground">Số lượng:</span>
-                                                    <span className="font-semibold">{qty}</span>
+                                                <div className="flex flex-wrap justify-between">
+                                                    <div className="flex flex-wrap gap-2 items-center">
+                                                        <span className="text-xs text-muted-foreground">Kích cỡ:</span>
+                                                        <span className="font-semibold">{selectedSize}</span>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2 items-center">
+                                                        <span className="font-semibold">x {qty}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -339,7 +344,7 @@ export function Checkout() {
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">Giao hàng tận nơi</span>
                                                 <span className="text-sm font-semibold text-primary">
-                                                    {formatCurrency(50000)}
+                                                    {formatPrice(50000)}
                                                 </span>
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-1">
@@ -477,7 +482,7 @@ export function Checkout() {
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-foreground">{addItem.name}</p>
                                                 <p className="text-sm text-primary font-semibold">
-                                                    {formatCurrency(addItem.pricePerDay)}/ngày
+                                                    {formatPrice(addItem.pricePerDay)}/ngày
                                                 </p>
                                             </div>
                                             <Button variant="outline" size="sm">
@@ -494,50 +499,49 @@ export function Checkout() {
                     <div>
                         <div className="sticky top-24">
                             <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm border-border shadow-lg transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl">
-                                <div className="px-6 p-6">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <div variant="secondary" className="bg-primary/10 text-sm border-0">
-                                            Giá đã bao gồm tất cả phí
-                                        </div>
-                                    </div>
-
-                                    <h3 className="text-xl font-semibold text-foreground mb-6">
+                                <div className="px-6">
+                                    <h3 className="text-3xl font-bold text-foreground text-center">
                                         Tóm tắt đơn hàng
                                     </h3>
+                                    <span className="block text-center italic text-sm mb-6">Giá đã bao gồm tất cả phí</span>
 
                                     <div className="space-y-3 text-sm">
                                         {checkoutItems.map((item, idx) => {
                                             const qty = item.quantity || 1;
-                                            const price = item.rentalPerDay || item.rentalPrice || item.costume?.rentalRates?.pricePerDay || 0;
-                                            const name = item.costumeName || item.costume?.name || "Sản phẩm";
+                                            const price = item.rentalPerDay || item.rentalPrice || 0;
+                                            const name = item.costumeName || item.costume?.name;
                                             return (
                                                 <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">
                                                         {name} × {qty}
                                                     </span>
-                                                    <span className="font-medium text-foreground shrink-0">{formatCurrency(price * qty * rentalDays)}</span>
+                                                    <span className="font-medium text-foreground shrink-0">{formatPrice(price * qty * rentalDays)}</span>
                                                 </div>
                                             )
                                         })}
 
                                         <div className="flex justify-between">
-                                            <span className="text-muted-foreground font-semibold border-t border-border pt-2 w-full flex justify-between">Tạm tính: <span>{formatCurrency(subtotal)}</span></span>
+                                            <span className="text-muted-foreground font-semibold border-t pt-2 w-full flex justify-between">Tạm tính: <span>{formatPrice(totalRental)}</span></span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-semibold w-full flex justify-between">Cọc: <span>{formatPrice(totalDeposit)}</span></span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Phí giao hàng</span>
                                             <span className="font-medium text-foreground">
-                                                {deliveryFee === 0 ? "Miễn phí" : formatCurrency(deliveryFee)}
+                                                {deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between">
+
+                                        {/* <div className="flex justify-between">
                                             <span className="text-muted-foreground flex items-center gap-1">
                                                 <FontAwesomeIcon icon={faShieldAlt} className="h-3.5 w-3.5" />
                                                 Phí bảo hiểm
                                             </span>
                                             <span className="font-medium text-foreground">
-                                                {formatCurrency(insuranceFee)}
+                                                {formatPrice(insuranceFee)}
                                             </span>
-                                        </div>
+                                        </div> */}
                                     </div>
 
                                     <div className="bg-border shrink-0 h-px w-full my-4" />
@@ -545,10 +549,8 @@ export function Checkout() {
                                     <div className="flex justify-between items-baseline mb-6">
                                         <span className="text-foreground font-medium">Tổng cộng</span>
                                         <div className="text-right">
-                                            <span className="text-sm text-muted-foreground line-through mr-2">
-                                                {formatCurrency(originalTotal)}
-                                            </span>
-                                            <span className="text-2xl font-bold text-primary">{formatCurrency(total)}</span>
+
+                                            <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
                                         </div>
                                     </div>
 
@@ -560,8 +562,8 @@ export function Checkout() {
                                         {isLoading ? "Đang xử lý..." : "Đặt thuê ngay"}
                                     </Button>
 
-                                    <p className="text-xs text-center text-muted-foreground mt-3">
-                                        Bạn chưa bị tính phí ngay bây giờ
+                                    <p className="text-xs text-center text-red-600 font-medium italic animate-pulse mt-3">
+                                        Vui lòng kiểm tra kỹ thông tin!
                                     </p>
 
                                     <div className="mt-6 pt-4 border-t border-border space-y-2">

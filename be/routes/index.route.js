@@ -5,6 +5,7 @@ const costumeRoute = require("./costume.route");
 const categoryRoute = require("./category.route");
 const rentalRoute = require("./rental.route");
 const roleRoute = require("./role.route")
+
 const cartRoute = require('./cart.route')
 router.use("/users", userRoute);
 router.use("/costumes", costumeRoute);

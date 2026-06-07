@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../../context/CartContext";
+
 import { formatPrice } from "../../utils/formatters";
 import { AddToCartModal } from "../../pages/customer/AddToCartModal";
 const STATUS_MAP = {
@@ -42,6 +43,7 @@ export default function ProductCard({ costume, showToast }) {
   const [imgError, setImgError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+
   const isInCart = cartItems.some(item => item?.costume?._id === costume?._id);
 
   const imgSrc =
@@ -80,80 +82,59 @@ export default function ProductCard({ costume, showToast }) {
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-4">
-        {/* Category */}
-        {categoryName && (
-          <p className="text-[10px] uppercase tracking-[0.12em] text-[#999] font-medium mb-1">
-            {categoryName}
-          </p>
-        )}
+        {/* Content */}
+        <div className="p-4">
+          {/* Category */}
+          {categoryName && (
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#999] font-medium mb-1">
+              {categoryName}
+            </p>
+          )}
 
-        {/* Name */}
-        <h3
-          onClick={() => navigate(`/product/${costume._id}`)}
-          className="text-[14px] font-semibold text-[#1a1a1a] leading-snug mb-2 line-clamp-2
-                     group-hover:text-[#444] transition-colors cursor-pointer"
-        >
-          {costume.name}
-        </h3>
-
-        {/* Rating */}
-        <StarRating
-          rating={costume.ratingAverage || 0}
-          count={costume.reviewCount || 0}
-        />
-
-        {/* Price */}
-        <p className="mt-2.5 text-[18px] font-bold text-[#1a1a1a] tracking-tight">
-          {formatPrice(costume.rentalRates?.pricePerDay || 0)}
-          <span className="text-[11px] font-normal text-[#999] ml-1">/ngày</span>
-        </p>
-
-        {/* Size & Color */}
-        {(costume.size || costume.color) && (
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-[#999]">
-            {costume.size && (
-              <span className="px-2 py-0.5 bg-[#f5f5f5] rounded text-[#666]">
-                Size {costume.size}
-              </span>
-            )}
-            {costume.color && (
-              <span className="px-2 py-0.5 bg-[#f5f5f5] rounded text-[#666]">
-                {costume.color}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isInCart && costume.status === "available") {
-                setIsModalOpen(true);
-              }
-              else if (isInCart) {
-                removeFromCart(costume._id);
-                if (showToast) showToast("Đã bỏ khỏi giỏ hàng");
-              }
-            }}
-            className={`w-full flex items-center justify-center gap-2 text-white
-                       text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
-                       active:scale-[0.98] transition-all duration-200
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       ${isInCart ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#1a1a1a] hover:bg-[#333]"}`}
-            disabled={costume.status !== "available" && !isInCart}
+          {/* Name */}
+          <h3
+            onClick={() => navigate(`/product/${costume._id}`)}
+            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-gray-600 transition-colors line-clamp-1"
           >
-            <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[12px]" />
-            {isInCart ? "Đã Thêm" : "Thêm Giỏ Hàng"}
-          </button>
+            {costume.name || "Tên sản phẩm"}
+          </h3>
+
+          <StarRating rating={costume.rating || 5} count={costume.reviewsCount || 0} />
+
+          {/* Price */}
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[14px] font-bold text-[#1a1a1a]">
+              {formatPrice(costume.rentalRates?.pricePerDay || 0)}/ngày
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isInCart && costume.status === "available") {
+                  setIsModalOpen(true);
+                }
+                else if (isInCart) {
+                  removeFromCart(costume._id);
+                  if (showToast) showToast("Đã bỏ khỏi giỏ hàng");
+                }
+              }}
+              className={`w-full flex items-center justify-center gap-2 text-white
+                           text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
+                           active:scale-[0.98] transition-all duration-200
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           ${isInCart ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#1a1a1a] hover:bg-[#333]"}`}
+              disabled={costume.status !== "available" && !isInCart}
+            >
+              <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[12px]" />
+              {isInCart ? "Đã Thêm" : "Thêm Giỏ Hàng"}
+            </button>
+          </div>
         </div>
       </div>
-
       <AddToCartModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}

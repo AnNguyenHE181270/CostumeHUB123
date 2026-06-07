@@ -94,7 +94,7 @@ const addCart = async (req, res, next) => {
         endNormalized.setHours(0, 0, 0, 0);
 
         if (startNormalized <= tomorrow) {
-            return next(new HttpError("Ngày nhận đồ phải sau ngày mai", 400));
+            return next(new HttpError("Vui lòng đặt thuê đồ trước 1 ngày", 400));
         }
 
         if (endNormalized < startNormalized) {
@@ -103,6 +103,7 @@ const addCart = async (req, res, next) => {
 
         // rentalDays = endDate-startDate +1
         const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+
         const rentalPrice = costume.rentalPerDay || 0;
 
         const newItem = {
@@ -138,14 +139,12 @@ const addCart = async (req, res, next) => {
                     return next(new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400));
                 }
 
-                // Dùng $inc (Atomic update) để cộng dồn trực tiếp trong Database, khắc phục lỗi VersionError (Race Condition)
                 cart = await Cart.findOneAndUpdate(
                     { customerId },
                     { $inc: { [`items.${itemIndex}.quantity`]: numQuantity } },
                     { new: true }
                 );
             } else {
-                // Dùng $push (Atomic update) để nhét item vào mảng an toàn
                 cart = await Cart.findOneAndUpdate(
                     { customerId },
                     { $push: { items: newItem } },
@@ -154,7 +153,6 @@ const addCart = async (req, res, next) => {
             }
         }
 
-        // Populate dữ liệu để hiển thị chi tiết ở Postman giống hệt lúc Get Cart
         if (cart) {
             await cart.populate({
                 path: "items.costume",
@@ -168,6 +166,7 @@ const addCart = async (req, res, next) => {
         next(new HttpError(error.message || 'Creating cart failed', 500));
     }
 }
+
 
 const updateCart = async (req, res, next) => {
     try {
@@ -314,6 +313,7 @@ const removeAllCartByCustomer = async (req, res, next) => {
         next(new HttpError(error.message || 'Xóa giỏ hàng thất bại', 500));
     }
 };
+
 
 const removeCartItem = async (req, res, next) => {
     try {

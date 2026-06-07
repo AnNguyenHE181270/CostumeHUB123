@@ -11,14 +11,23 @@ function formatPrice(price) {
 export default function CartPage() {
   const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
   const navigate = useNavigate();
-  const getItemId = (item) => `${item.costume._id}-${item.variant?._id || 'novar'}-${item.startDate}-${item.endDate}`;
+  const getItemId = (item) => {
+    const costumeId = item.costume?._id || item.costumeId || item._id;
+    const variantId = item.variant?._id || item.variant?.size || item.size || 'novar';
+    return `${costumeId}-${variantId}-${item.startDate}-${item.endDate}`;
+  };
 
   const [expandedItem, setExpandedItem] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
 
-  // Đồng bộ selectedIds nếu cartItems thay đổi (vd: bị xóa đi)
   useEffect(() => {
-    setSelectedIds(prev => prev.filter(id => cartItems.some(item => getItemId(item) === id)));
+    setSelectedIds(prev => {
+      const currentIds = cartItems.map(getItemId);
+      if (prev.length === 0 && currentIds.length > 0) {
+        return currentIds;
+      }
+      return prev.filter(id => currentIds.includes(id));
+    });
   }, [cartItems]);
 
   const toggleExpand = (id) => {
@@ -56,17 +65,17 @@ export default function CartPage() {
     const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 1;
   };
-
+  // tính tiền thuê
   const totalRental = selectedCartItems.reduce(
-    (acc, item) =>
-      acc + (item.costume.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1),
+    (sum, item) =>
+      sum + (item.costume.rentalPerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
   const totalDeposit = selectedCartItems.reduce(
-    (acc, item) => acc + (item.costume.deposit || 0) * (item.quantity || 1),
+    (sum, item) => sum + (item.costume.price || 0) * (item.quantity || 1),
     0
   );
-  const grandTotal = totalRental + totalDeposit;
+  const total = totalRental + totalDeposit;
 
   if (cartItems.length === 0) {
     return (
@@ -223,17 +232,19 @@ export default function CartPage() {
                   </div>
 
                   {/* Pricing summary for this item */}
-                  <div className="w-full sm:w-[140px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
+                  <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                     <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice(item.rentalPerDay || 0)} / ngày
+                      {formatPrice((item.price || 0) * rentalDays * (item.quantity || 1))}
                     </p>
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                      {formatPrice((item.rentalPerDay || 0) * rentalDays * (item.quantity || 1))}
-                    </p>
-                    <FontAwesomeIcon icon={faCalendarDays} className="text-[10px]" />
-                    {rentalDays} ngày
-                  </div>
+                      {formatPrice(item.rentalPerDay || 0)} / ngày
 
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
+                      <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
+                      <span>{rentalDays} ngày</span>
+                    </div>
+                  </div>
                 </div>
               )
             })}
@@ -266,7 +277,7 @@ export default function CartPage() {
               <div className="flex justify-between items-end mb-8">
                 <span className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-wide">Tổng Thanh Toán</span>
                 <span className="text-[24px] font-bold text-[#1a1a1a] leading-none text-right">
-                  {formatPrice(grandTotal)}
+                  {formatPrice(total)}
                 </span>
               </div>
 

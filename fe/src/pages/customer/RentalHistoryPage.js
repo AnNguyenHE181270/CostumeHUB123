@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { OrderTrackingModal } from './OrderTrackingModal'
+import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
 import { faBox } from '@fortawesome/free-solid-svg-icons'
 
@@ -15,25 +16,34 @@ function RentalHistory() {
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+    const [isCancelOpen, setIsCancelOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchOrders = async () => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const res = await fetch(`${API_URL}/api/rentals/rental-history`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            setRentalOrders(data);
+            setSelectedOrder((prev) => {
+                if (prev) {
+                    return data.find(o => o.id === prev.id) || prev;
+                }
+                return null;
+            });
+        } catch (err) {
+            console.error("Failed to fetch rental orders:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-                const res = await fetch(`${API_URL}/api/rentals/rental-history`, {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                setRentalOrders(data);
-
-            } catch (err) {
-                console.error("Failed to fetch rental orders:", err);
-            }
-        };
-
         fetchOrders();
     }, []);
 
@@ -51,6 +61,16 @@ function RentalHistory() {
     const handleTrackOrder = (order) => {
         setSelectedOrder(order);
         setIsTrackingOpen(true);
+    };
+
+    const handleCancelOrder = (order) => {
+        setSelectedOrder(order);
+        setIsCancelOpen(true);
+    };
+
+    const handleConfirmCancel = () => {
+        fetchOrders(); // Tải lại danh sách đơn
+        setIsCancelOpen(false);
     };
 
     const handleViewDetail = (order) => {
@@ -117,7 +137,11 @@ function RentalHistory() {
                             "px-4 py-6 " +
                             (isDetailOpen ? "lg:pr-4" : "")
                         }>
-                            {filteredOrders.length === 0 ? (
+                            {isLoading ? (
+                                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                                    <p>Đang tải dữ liệu đơn hàng...</p>
+                                </div>
+                            ) : filteredOrders.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
                                     <div className="rounded-full bg-muted p-4">
                                         <FontAwesomeIcon icon={faBox} className="h-8 w-8 text-muted-foreground" />
@@ -150,15 +174,37 @@ function RentalHistory() {
                         (isDetailOpen ? "lg:w-3/5 opacity-100" : "w-0 opacity-0")
                     }>
                         {isDetailOpen && (
-                            <div className="sticky top-0 h-[calc(100vh-180px)]">
+                            <div className="sticky top-4 h-[calc(100vh-40px)] pb-4">
                                 <OrderDetail
                                     open={true}
                                     order={selectedOrder}
                                     onOpenChange={(val) => { if (!val) handleCloseDetail() }}
                                     onTrackOrder={handleTrackOrder}
+                                    onCancelOrder={handleCancelOrder}
                                 />
                             </div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Detail Panel - Mobile Overlay */}
+            <div
+                className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${isDetailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                onClick={handleCloseDetail}
+            >
+                <div
+                    className={`absolute inset-x-0 bottom-0 top-16 bg-[#faf9f7] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isDetailOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="h-full overflow-y-auto p-4 sm:p-6 pb-20">
+                        <OrderDetail
+                            open={true}
+                            order={selectedOrder}
+                            onOpenChange={(val) => { if (!val) handleCloseDetail() }}
+                            onTrackOrder={handleTrackOrder}
+                            onCancelOrder={handleCancelOrder}
+                        />
                     </div>
                 </div>
             </div>
@@ -168,6 +214,14 @@ function RentalHistory() {
                 open={isTrackingOpen}
                 onOpenChange={setIsTrackingOpen}
                 order={selectedOrder}
+            />
+
+            {/* Cancel Modal */}
+            <CancelOrderModal
+                open={isCancelOpen}
+                onOpenChange={setIsCancelOpen}
+                orderId={selectedOrder?.id}
+                onConfirm={handleConfirmCancel}
             />
         </div>
     )
