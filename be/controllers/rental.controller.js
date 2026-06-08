@@ -14,7 +14,7 @@ const getRentalHistory = async (req, res, next) => {
         const userId = req.userData.id;
 
         const orders = await Rental.find({ customerId: userId })
-            .populate("items.costume", "name images rentalPerDay")
+            .populate("items.costume", "name images rentalRates")
             .sort({ createdAt: -1 });
 
         const result = orders.map(order => ({
@@ -32,7 +32,7 @@ const getRentalHistory = async (req, res, next) => {
                 image: item.costume?.images?.[0] || "",
                 size: item.size,
                 quantity: item.quantity,
-                rentalPerDay: item.costume?.rentalPerDay || item.rentalPricePerDay || 0
+                rentalPerDay: item.costume?.rentalRates?.pricePerDay || item.rentalPricePerDay || 0
             }))
         }));
 
@@ -48,7 +48,7 @@ const orderDetail = async (req, res, next) => {
         const customerId = req.userData.id;
         const order = await Rental.findOne({ _id: orderId, customerId: customerId })
             .populate("customerId", "fullName phone email")
-            .populate("items.costume", "name images price rentalPerDay")
+            .populate("items.costume", "name images price rentalRates")
         if (!order) {
             return res.status(404).json({ message: "Orders not found." })
         }
@@ -76,7 +76,7 @@ const orderDetail = async (req, res, next) => {
                 size: item.size,
                 quantity: item.quantity,
                 price: item.costume.price,
-                rentalPerDay: item.costume.rentalPerDay
+                rentalPerDay: item.costume.rentalRates?.pricePerDay || 0
             })),
         })
     } catch (error) {
@@ -122,10 +122,10 @@ const createOrder = async (req, res, next) => {
 
             // ===== TÍNH GIÁ TIỀN =====
 
-            // totalDepsit += costume.price x quantity
-            // totalRental += rentalPerDay x quantity x totalDay
-            const depositPrice = costume.price || 0;
-            const rentalPricePerDay = costume.rentalPerDay || 0;
+            // totalDepsit += costume.deposit x quantity
+            // totalRental += rentalRates.pricePerDay x quantity x totalDay
+            const depositPrice = costume.deposit || costume.price || 0;
+            const rentalPricePerDay = costume.rentalRates?.pricePerDay || 0;
 
             // Cộng dồn vào tổng đơn
             totalRentalPrice += rentalPricePerDay * item.quantity * rentalDays;
@@ -337,7 +337,8 @@ const checkAvailability = async (req, res, next) => {
         });
 
         const rentedQty = overlaps.reduce((sum, order) => sum + order.quantity, 0);
-        const availableQty = costume.stock - rentedQty; // Giả sử model Costume dùng trường 'stock'
+        const totalStock = costume.variants.reduce((sum, v) => sum + (v.totalStock || 0), 0);
+        const availableQty = totalStock - rentedQty;
 
         res.status(200).json({
             isAvailable: availableQty >= quantity,

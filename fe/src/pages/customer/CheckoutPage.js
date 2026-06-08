@@ -67,7 +67,7 @@ export function Checkout() {
     // tính tiền thuê
     const totalRental = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-        const price = item.rentalPerDay || item.rentalPrice || 0
+        const price = item.rentalPerDay || item.rentalPrice || item.costume?.rentalRates?.pricePerDay || 0
         return sum + (price * qty * rentalDays)
 
     }, 0)
@@ -75,7 +75,7 @@ export function Checkout() {
     // tính tiền cọc
     const totalDeposit = checkoutItems.reduce((sum, item) => {
         const qty = item.quantity || 1
-        const price = item.price || 0
+        const price = item.depositPrice || item.deposit || item.costume?.deposit || item.costume?.price || 0
         return sum + (price * qty)
     }, 0)
 
