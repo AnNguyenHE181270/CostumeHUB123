@@ -97,41 +97,17 @@ const costumeSchema = new mongoose.Schema(
         min: 0,
         default: 0
       },
-
-
-      variants: [{
-        status: {
-          type: String,
-          enum: [
-            "available",
-            "rented",
-            "maintenance",
-            "dry_cleaning",
-            "hidden",
-          ],
-          default: "available",
-        },
-        size: String,
-        sku: {
-          type: String,
-        },
-        availableStock: {
-          type: Number,
-          min: 0,
-          default: 0
-        },
-        totalStock: {
-          type: Number,
-          min: 0,
-          default: 0
-        },
-      }],
+      totalStock: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      bustSize: String,
+      waistSize: String,
     }],
     specifications: {
       material: String,
       includedAccessories: [String],
-      bustSize: String,
-      waistSize: String,
     },
 
     reviewCount: {
