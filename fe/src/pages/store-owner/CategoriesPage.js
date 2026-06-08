@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Input from "../../components/ui/Input";
@@ -19,7 +19,7 @@ const CategoriesPage = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
   const [pendingData, setPendingData] = useState(null);
-
+  const [search, setSearch] = useState("");
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
     setToast({ isVisible: true, message, type });
@@ -36,7 +36,6 @@ const CategoriesPage = () => {
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories);
-        buildTree(data.categories);
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
@@ -73,6 +72,22 @@ const CategoriesPage = () => {
       [nodeId]: !prev[nodeId]
     }));
   };
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories;
+    return categories.filter((cat) => {
+      const matchSearch =
+        cat.name?.toLowerCase().includes(search.toLowerCase()) ||
+        cat.description?.toLowerCase().includes(search.toLowerCase());
+      return matchSearch;
+    });
+  }, [categories, search]);
+
+  useEffect(() => {
+    buildTree(filteredCategories);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCategories]);
+
 
   // ---- Form Handlers ----
   const handleOpenAddRoot = () => {
@@ -221,9 +236,11 @@ const CategoriesPage = () => {
       const hasChildren = node.children && node.children.length > 0;
 
       return (
+        
         <React.Fragment key={node._id}>
+          
           <div
-            className={`group flex items-center justify-between p-3 border-b hover:bg-orange-50 transition-colors ${!node.isActive ? 'bg-gray-50 opacity-60' : 'bg-white'}`}
+            className={`group flex items-center justify-between p-3 border-b hover:bg-[#faf9f7] transition-colors ${!node.isActive ? 'bg-[#faf9f7] opacity-60' : 'bg-white'}`}
             style={{ paddingLeft: `${level * 2 + 1}rem` }}
           >
             <div
@@ -234,40 +251,41 @@ const CategoriesPage = () => {
                 {hasChildren && (
                   <FontAwesomeIcon
                     icon={isExpanded ? faChevronDown : faChevronRight}
-                    className="text-gray-400 hover:text-[#f94a00] transition-colors"
+                    className="text-[#999] hover:text-[#1a1a1a] transition-colors"
                   />
                 )}
               </div>
 
               <FontAwesomeIcon
                 icon={isExpanded || !hasChildren ? faFolderOpen : faFolder}
-                className={node.isActive ? "text-[#f94a00]" : "text-gray-400"}
+                className={node.isActive ? "text-[#1a1a1a]" : "text-[#999]"}
               />
 
-              <span className={`font-medium ${!node.isActive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+              <span className={`font-medium ${!node.isActive ? 'line-through text-[#999]' : 'text-[#1a1a1a]'}`}>
                 {node.name}
               </span>
 
               {node.description && (
-                <span className="text-sm text-gray-500 hidden md:inline-block ml-2 italic">
+                <span className="text-sm text-[#999] hidden md:inline-block ml-2 italic">
                   - {node.description}
                 </span>
               )}
             </div>
+                  
 
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               {node.isActive && (
                 <>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
-                    className="p-2 text-[#f94a00] hover:bg-orange-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Thêm danh mục con"
                   >
                     <FontAwesomeIcon icon={faPlus} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
-                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
                     title="Sửa danh mục"
                   >
                     <FontAwesomeIcon icon={faEdit} />
@@ -294,42 +312,65 @@ const CategoriesPage = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="flex justify-between items-center p-6 border-b">
-        <h2 className="text-xl font-bold text-gray-800">Quản lý Danh mục</h2>
-        <Button onClick={handleOpenAddRoot} className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faPlus} />
-          <span>Thêm danh mục gốc</span>
-        </Button>
+    <div className="space-y-6">
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Quản lý Danh mục
+          </h2>
+          <p className="text-[#999] text-sm mt-1">
+            Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn danh mục
+          </p>
+        </div>
+        <div>
+          <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />
+        </div>
       </div>
-
-      <div className="p-4">
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                      <FontAwesomeIcon
+                        icon={faSearch}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
+                      />
+                      <Input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Tìm kiếm theo tên danh mục..."
+                        className="!pl-10"
+                      />
+                    </div>
+            
+                  </div>
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm">
         {tree.length > 0 ? (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border border-[#f0f0f0] rounded-xl overflow-hidden">
             {renderTree(tree)}
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-10">Chưa có danh mục nào.</p>
+          <p className="text-center text-[#999] py-10">Chưa có danh mục nào.</p>
         )}
       </div>
+      
 
       {/* Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 m-4">
-            <h2 className="text-xl font-bold mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold mb-4 border-b pb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               {editingCategory ? "Sửa danh mục" : (formData.parentId ? "Thêm danh mục con" : "Thêm danh mục gốc")}
             </h2>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
+                <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
                 <select
                   name="parentId"
                   value={formData.parentId}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f94a00] outline-none"
+                  className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none"
                   disabled={editingCategory} // Tạm khóa đổi cha để tránh vòng lặp đệ quy lỗi
                 >
                   <option value="">-- Không có (Danh mục gốc) --</option>

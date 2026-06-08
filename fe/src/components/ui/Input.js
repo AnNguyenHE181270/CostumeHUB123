@@ -12,6 +12,7 @@ export default function Input({
   onRightIconClick,
   className = "",
   children,
+  ...props
 }) {
   const baseInputClasses = `
     w-full bg-surface border border-borderorder rounded-xl 
@@ -43,6 +44,7 @@ export default function Input({
             placeholder={placeholder}
             required={required}
             className={baseInputClasses}
+            {...props}
           />
         )}
 

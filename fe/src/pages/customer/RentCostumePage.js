@@ -45,7 +45,7 @@ export default function RentCostumePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-6 bg-white shadow-lg rounded-lg border border-gray-100">
+    <div className="max-w-md mx-auto mt-20 p-6 bg-white shadow-lg rounded-lg border border-[#f0f0f0]">
       <h2 className="text-2xl font-bold mb-6 text-midnight-ink">Chọn ngày thuê</h2>
       <div className="space-y-4">
         <Input label="Ngày nhận" type="date" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})} />

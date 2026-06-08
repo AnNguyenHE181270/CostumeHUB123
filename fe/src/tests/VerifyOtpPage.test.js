@@ -14,7 +14,7 @@ jest.mock("react-router-dom", () => ({
 }));
 
 // Giả lập Layout bọc ứng dụng để tránh lỗi không render được Context/Theme
-jest.mock("../layouts/AuthLayout", () => ({
+jest.mock("../components/layout/AuthLayout", () => ({
     __esModule: true,
     default: ({ children }) => <div>{children}</div>,
 }));

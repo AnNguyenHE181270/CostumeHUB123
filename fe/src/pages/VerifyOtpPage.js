@@ -102,7 +102,7 @@ export default function VerifyOtpPage() {
                 </div>
                 
                 <div className="mx-auto w-14 h-14 rounded-2xl bg-surface border border-borderorder flex items-center justify-center mb-8">
-                    <FontAwesomeIcon icon={faShieldHalved} className="text-primary-600 text-xl" />
+                    <FontAwesomeIcon icon={faShieldHalved} className="text-[#1a1a1a] text-xl" />
                 </div>
                 
                 <div className="mb-10">
@@ -126,7 +126,7 @@ export default function VerifyOtpPage() {
                                 onChange={(e) => handleChange(e, index)} 
                                 onKeyDown={(e) => handleKeyDown(e, index)} 
                                 onFocus={handleFocus}
-                                className="w-12 h-14 text-center text-xl font-medium text-text-primary bg-surface border border-borderorder rounded-xl outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 uppercase" 
+                                className="w-12 h-14 text-center text-xl font-medium text-text-primary bg-surface border border-borderorder rounded-xl outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-[#1a1a1a] uppercase" 
                             />
                         ))}
                     </div>
@@ -143,13 +143,13 @@ export default function VerifyOtpPage() {
                     
                     <div className="text-sm text-text-secondary pt-2">
                         {timeLeft > 0 ? (
-                            <>Resend code in <span className="text-primary-600 font-medium tabular-nums">{formatTime(timeLeft)}</span></>
+                            <>Resend code in <span className="text-[#1a1a1a] font-medium tabular-nums">{formatTime(timeLeft)}</span></>
                         ) : (
                             <button 
                                 type="button" 
                                 onClick={handleResendOtp} 
                                 disabled={isResending} 
-                                className="text-primary-600 font-medium hover:text-primary-700 transition-colors disabled:opacity-50"
+                                className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors disabled:opacity-50"
                             >
                                 {isResending ? "Sending..." : "Resend OTP"}
                             </button>
