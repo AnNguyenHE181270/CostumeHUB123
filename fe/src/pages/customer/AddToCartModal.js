@@ -114,7 +114,7 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
                         </h3>
                         <span className="text-muted-foreground text-xs">{formatPrice(costume.price)}</span>
                         <p className="mt-1 text-md font-semibold text-foreground">
-                            {formatPrice(costume.rentalPerDay || 0)}/ngày
+                            {formatPrice(costume.rentalRates?.pricePerDay || costume.rentalPerDay || 0)}/ngày
                         </p>
                     </div>
                 </div>

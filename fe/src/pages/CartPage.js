@@ -68,11 +68,11 @@ export default function CartPage() {
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce(
     (sum, item) =>
-      sum + (item.costume.rentalPerDay || 0) * item.rentalDays * (item.quantity || 1),
+      sum + (item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1),
     0
   );
   const totalDeposit = selectedCartItems.reduce(
-    (sum, item) => sum + (item.costume.price || 0) * (item.quantity || 1),
+    (sum, item) => sum + (item.deposit || item.depositPrice || item.costume?.deposit || item.costume?.price || 0) * (item.quantity || 1),
     0
   );
   const total = totalRental + totalDeposit;
@@ -234,7 +234,7 @@ export default function CartPage() {
                   {/* Pricing summary for this item */}
                   <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                     <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice((item.price || 0) * rentalDays * (item.quantity || 1))}
+                      {formatPrice((item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * rentalDays * (item.quantity || 1))}
                     </p>
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
                       {formatPrice(item.rentalPerDay || 0)} / ngày

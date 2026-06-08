@@ -30,8 +30,9 @@ const getAllCarts = async (req, res, next) => {
             status: item.status,
             startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : item.startDate,
             endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : item.endDate,
-            rentalPerDay: item.rentalPrice || item.costume?.rentalPerDay || 0,
+            rentalPerDay: item.rentalPrice || item.costume?.rentalRates?.pricePerDay || 0,
             price: item.costume?.price || 0,
+            deposit: item.depositPrice || item.costume?.deposit || 0,
             rentalDays: item.rentalDays,
             variants: item.costume?.variants || [],
             costume: item.costume || {},
@@ -104,13 +105,15 @@ const addCart = async (req, res, next) => {
         // rentalDays = endDate-startDate +1
         const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
 
-        const rentalPrice = costume.rentalPerDay || 0;
+        const rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        const depositPrice = costume.deposit || 0;
 
         const newItem = {
             costume: costumeId,
             size,
             quantity: numQuantity,
             rentalPrice,
+            depositPrice,
             startDate: start,
             endDate: end,
             rentalDays,
@@ -225,9 +228,9 @@ const updateCart = async (req, res, next) => {
             return next(new HttpError("Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ", 400));
         }
 
-        // rentalDays = endDate-startDate +1
         const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-        const rentalPrice = costume.rentalPerDay || 0;
+        const rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        const depositPrice = costume.deposit || 0;
 
         // Lấy thông tin định danh cũ (nếu có update Size/Date)
         const oldSize = req.body.oldSize || size;
@@ -273,6 +276,7 @@ const updateCart = async (req, res, next) => {
                 cart.items[existingItemIndex].quantity = newTotalQuantity;
                 cart.items[existingItemIndex].rentalDays = rentalDays;
                 cart.items[existingItemIndex].rentalPrice = rentalPrice;
+                cart.items[existingItemIndex].depositPrice = depositPrice;
 
                 // Xóa item cũ đi
                 cart.items.splice(itemIndex, 1);
@@ -284,6 +288,7 @@ const updateCart = async (req, res, next) => {
                 cart.items[itemIndex].endDate = end;
                 cart.items[itemIndex].rentalDays = rentalDays;
                 cart.items[itemIndex].rentalPrice = rentalPrice;
+                cart.items[itemIndex].depositPrice = depositPrice;
             }
         } else {
             // Chỉ cập nhật số lượng (Quantity)
