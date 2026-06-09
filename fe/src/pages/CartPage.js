@@ -3,26 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faArrowRight, faCalendarDays, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-
-function formatPrice(price) {
-  return new Intl.NumberFormat("vi-VN").format(price) + "đ";
-}
+import { formatPrice, getRentalDays } from "../utils/formatters"
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
   const navigate = useNavigate();
-  const getItemId = (item) => {
-    const costumeId = item.costume?._id || item.costumeId || item._id;
-    const variantId = item.variant?._id || item.variant?.size || item.size || 'novar';
-    return `${costumeId}-${variantId}-${item.startDate}-${item.endDate}`;
-  };
 
   const [expandedItem, setExpandedItem] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
+  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(item => item.cartItemId));
 
   useEffect(() => {
     setSelectedIds(prev => {
-      const currentIds = cartItems.map(getItemId);
+      const currentIds = cartItems.map(item => item.cartItemId);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
       }
@@ -36,7 +28,7 @@ export default function CartPage() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(cartItems.map(getItemId));
+      setSelectedIds(cartItems.map(item => item.cartItemId));
     } else {
       setSelectedIds([]);
     }
@@ -56,15 +48,9 @@ export default function CartPage() {
     );
   };
 
-  const selectedCartItems = cartItems.filter(item => selectedIds.includes(getItemId(item)));
+  const selectedCartItems = cartItems.filter(item => selectedIds.includes(item.cartItemId));
 
-  const getRentalDays = (start, end) => {
-    if (!start || !end) return 1;
-    const startObj = new Date(start);
-    const endObj = new Date(end);
-    const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
-    return days > 0 ? days : 1;
-  };
+
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce(
     (sum, item) =>
@@ -148,7 +134,7 @@ export default function CartPage() {
               </button>
             </div>
             {cartItems.map((item) => {
-              const itemId = getItemId(item);
+              const itemId = item.cartItemId;
               const isSelected = selectedIds.includes(itemId);
               const rentalDays = getRentalDays(item.startDate, item.endDate);
 
@@ -233,12 +219,11 @@ export default function CartPage() {
 
                   {/* Pricing summary for this item */}
                   <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                    <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice((item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * rentalDays * (item.quantity || 1))}
-                    </p>
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
                       {formatPrice(item.rentalPerDay || 0)} / ngày
-
+                    </p>
+                    <p className="text-[11px] text-[#999] mb-1">
+                      {formatPrice((item.rentalPerDay) * rentalDays * (item.quantity || 1))}
                     </p>
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
                       <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />

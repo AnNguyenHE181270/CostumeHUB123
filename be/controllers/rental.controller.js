@@ -153,7 +153,7 @@ const createOrder = async (req, res, next) => {
             await update.costume.save();
         }
 
-        const totalAmount = totalRentalPrice + totalDeposit + (shippingFee || 0);
+        const totalAmount = totalRentalPrice + totalDeposit + shippingFee;
 
         const newOrder = new Rental({
             customerId,

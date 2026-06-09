@@ -10,21 +10,22 @@ export function CartProvider({ children }) {
   const { token } = useAuth();
   const navigate = useNavigate();
 
-  const [cartItems, setCartItems] = useState(() => {
-    const saved = localStorage.getItem("costume_cart");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
+  // const [cartItems, setCartItems] = useState(() => {
+  // const saved = localStorage.getItem("costume_cart");
+  // if (saved) {
+  //   try {
+  //     return JSON.parse(saved);
+  //   } catch (e) {
+  //     return [];
+  //   }
+  // }
+  // return [];
+  // });
+  const [cartItems, setCartItems] = useState([])
 
-  useEffect(() => {
-    localStorage.setItem("costume_cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+  // useEffect(() => {
+  //   localStorage.setItem("costume_cart", JSON.stringify(cartItems));
+  // }, [cartItems]);
 
 
   const fetchCart = async () => {
@@ -50,7 +51,7 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     fetchCart();
-  }, [token]);
+  }, [token, cartItems]);
 
   const addToCart = async (costume, variant, quantity, startDateStr, endDateStr, rentalDays) => {
     // 1. Nếu user chưa đăng nhập, điều hướng đến màn login

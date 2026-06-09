@@ -101,7 +101,7 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
             <div className="overflow-y-auto max-h-[calc(90vh-180px)] px-4">
                 {/* Product Preview */}
                 <div className="flex gap-4 rounded-lg mb-5">
-                    <div className="h-20 w-16 shrink-0 rounded-lg overflow-hidden bg-[oklch(0.92_0.03_130)] flex items-center justify-center">
+                    <div className="w-20 shrink-0 rounded-lg overflow-hidden bg-[oklch(0.92_0.03_130)] flex items-center justify-center self-stretch">
                         {costume?.images?.[0] ? (
                             <img src={costume.images[0]} alt={costume.name} className="h-full w-full object-cover" crossOrigin="anonymous" />
                         ) : (
@@ -112,9 +112,8 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
                         <h3 className="font-serif text-md font-medium text-foreground line-clamp-2">
                             {costume?.name}
                         </h3>
-                        <span className="text-muted-foreground text-xs">{formatPrice(costume.price)}</span>
                         <p className="mt-1 text-md font-semibold text-foreground">
-                            {formatPrice(costume.rentalRates?.pricePerDay || costume.rentalPerDay || 0)}/ngày
+                            {formatPrice(costume.rentalRates.pricePerDay || 0)}/ngày
                         </p>
                     </div>
                 </div>
