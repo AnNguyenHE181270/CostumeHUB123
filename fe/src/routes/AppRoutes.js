@@ -31,11 +31,19 @@ import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage"
 import { ROUTES } from "./routePaths";
+<<<<<<< HEAD
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
 import ProfileLayout from "../layouts/ProfileLayout";
 
+=======
+
+import DashboardLayout from "../layouts/DashboardLayout";
+import MainLayout from "../layouts/MainLayout"; 
+import ProfileLayout from "../layouts/ProfileLayout"; 
+
+>>>>>>> 1260cde0e689d877bc07c770a89163446680e0e0
 
 function AppRoutes() {
   return (
