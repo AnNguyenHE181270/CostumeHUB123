@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClock, faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@fortawesome/free-solid-svg-icons'
-import Button from "../../components/Button"
+import Button from "../../components/ui/Button"
 import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
 import QuantitySelector from "../../components/ui/QuantitySelector"
@@ -157,7 +157,7 @@ export function Checkout() {
         return (
             <div className="min-h-screen bg-[#faf9f7] pt-32 text-center">
                 <h2 className="text-2xl font-bold mb-4">Giỏ hàng của bạn đang trống</h2>
-                <Button onClick={() => navigate("/category")} className="bg-black text-white hover:bg-black/90">
+                <Button onClick={() => navigate("/category")} className="w-auto mx-auto bg-black text-white hover:bg-black/90 px-8">
                     Khám phá sản phẩm
                 </Button>
             </div>
@@ -485,7 +485,7 @@ export function Checkout() {
                                                     {formatPrice(addItem.pricePerDay)}/ngày
                                                 </p>
                                             </div>
-                                            <Button variant="outline" size="sm">
+                                            <Button variant="outline" className="w-auto px-4 py-2 text-xs">
                                                 Thêm
                                             </Button>
                                         </div>
@@ -556,8 +556,8 @@ export function Checkout() {
 
                                     <Button
                                         onClick={handleCheckout}
-                                        disabled={isLoading}
-                                        className="w-full h-12 text-base font-semibold bg-black hover:bg-black/90 text-white"
+                                        loading={isLoading}
+                                        className="h-12 text-base font-semibold bg-black hover:bg-black/90 text-white"
                                     >
                                         {isLoading ? "Đang xử lý..." : "Đặt thuê ngay"}
                                     </Button>

@@ -25,11 +25,5 @@ export const profile = [
       { id: "returned", title: "Trả hàng", path: "/customer/orders?status=returned" },
       { id: "cancelled", title: "Đã hủy", path: "/customer/orders?status=cancelled" }
     ]
-  },
-  {
-    id: "wishlist",
-    title: "Danh sách yêu thích",
-    role: "online-customer",
-    path: "/wishlist"
   }
 ];

@@ -13,7 +13,7 @@ export default function MainLayout() {
     <div className="min-h-screen flex flex-col bg-[#fafafa] font-body text-[#1a1a1a]">
       <Header />
 
-      <main className="flex-1 pt-[88px] bg-white">
+      <main className="flex-1 pt-[104px] bg-gray-200">
         <Outlet />
       </main>
 
