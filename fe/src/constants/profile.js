@@ -15,15 +15,15 @@ export const profile = [
     id: "orders",
     title: "Đơn đã mua",
     role: "online-customer",
-    path: "/user/orders",
+    path: "/rental-history",
     subMenu: [
-      { id: "all", title: "Tất cả", path: "/customer/orders?status=all" },
-      { id: "pending", title: "Chờ xác nhận", path: "/customer/orders?status=pending" },
-      { id: "pickup", title: "Chờ lấy hàng", path: "/customer/orders?status=pickup" },
-      { id: "delivering", title: "Chờ giao hàng", path: "/customer/orders?status=delivering" },
-      { id: "delivered", title: "Đã giao", path: "/customer/orders?status=delivered" },
-      { id: "returned", title: "Trả hàng", path: "/customer/orders?status=returned" },
-      { id: "cancelled", title: "Đã hủy", path: "/customer/orders?status=cancelled" }
+      { id: "all", title: "Tất cả", path: "/rental-history?status=all" },
+      { id: "pending", title: "Chờ xác nhận", path: "/rental-history?status=pending" },
+      { id: "pickup", title: "Chờ lấy hàng", path: "/rental-history?status=pickup" },
+      { id: "delivering", title: "Chờ giao hàng", path: "/rental-history?status=delivering" },
+      { id: "delivered", title: "Đã giao", path: "/rental-history?status=delivered" },
+      { id: "returned", title: "Trả hàng", path: "/rental-history?status=returned" },
+      { id: "cancelled", title: "Đã hủy", path: "/rental-history?status=cancelled" }
     ]
   },
   {
