@@ -1,16 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faShoppingBag, faBars, faTimes, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faUser, faShoppingBag, faBars, faTimes, faSearch, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
 
 export default function Header() {
-  const { user, role } = useAuth();
+  const { user, role, logout } = useAuth();
   const { cartCount } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const profileDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -64,20 +82,6 @@ export default function Header() {
             <FontAwesomeIcon icon={faSearch} className="text-[15px] lg:text-[16px]" />
           </button>
           
-          <Link to={user ? "/user/my-profile" : "/login"} className="text-gray-600 hover:text-black transition-colors hidden sm:block">
-            {user ? (
-              user.avatar ? (
-                <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">
-                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
-                </div>
-              )
-            ) : (
-              <FontAwesomeIcon icon={faUser} className="text-[15px] lg:text-[16px]" />
-            )}
-          </Link>
-
           <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
             <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
             {cartCount > 0 && (
@@ -86,6 +90,36 @@ export default function Header() {
               </span>
             )}
           </Link>
+
+          {user ? (
+            <div className="relative hidden sm:block" ref={profileDropdownRef}>
+              <button 
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="text-gray-600 hover:text-black transition-colors flex items-center gap-2 outline-none focus:outline-none"
+              >
+                {user.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">
+                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )}
+              </button>
+              
+              <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
+                  Hồ sơ của tôi
+                </Link>
+                <button onClick={() => { setProfileDropdownOpen(false); handleLogout(); }} className="w-full text-left px-4 py-2 text-[13px] text-red-600 hover:bg-red-50 transition-colors">
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Link to="/login" className="text-gray-600 hover:text-black transition-colors hidden sm:block">
+              <FontAwesomeIcon icon={faUser} className="text-[15px] lg:text-[16px]" />
+            </Link>
+          )}
         </div>
       </div>
 

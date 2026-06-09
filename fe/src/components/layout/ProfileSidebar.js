@@ -57,14 +57,6 @@ export default function ProfileSidebar({ handleLogout }) {
               </li>
             );
           })}
-          <li className="border-t border-[#eaeaea]">
-            <button 
-              onClick={handleLogout}
-              className="w-full text-left px-6 py-4 text-[13px] font-semibold tracking-[0.05em] uppercase text-red-600 hover:bg-red-50 transition-colors border-l-4 border-transparent"
-            >
-              Đăng xuất
-            </button>
-          </li>
         </ul>
       </div>
     </div>

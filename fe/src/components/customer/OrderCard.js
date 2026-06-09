@@ -1,4 +1,3 @@
-import Button from '../Button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { statusOrder } from "../../constants/statusOrder"
