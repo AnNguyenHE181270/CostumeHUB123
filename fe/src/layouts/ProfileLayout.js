@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
-import ProfileSidebar from '../components/ProfileSidebar';
+import ProfileSidebar from '../components/layout/ProfileSidebar';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";

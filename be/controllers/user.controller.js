@@ -686,12 +686,170 @@ const getAllAddresses = async (req, res, next) => {
   try {
     const email = req.userData.email;
     const user = await User.findOne({"email": email})
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
 
     res.status(200).json({ addresses: user.addresses });
   } catch (err) {
     return next(new HttpError(err.message, 500));
   }
 };
+
+const updateAddress = async (req, res, next) => {
+  try {
+    const email = req.userData.email;
+    const { id } = req.params;
+
+    const {
+      receiverName,
+      receiverPhone,
+      province,
+      district,
+      ward,
+      addressDetail,
+      note,
+      isDefault,
+    } = req.body;
+
+    console.log(req.body)
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+
+    const address = user.addresses.find(
+      (ua) => ua._id.toString() === id
+    );
+
+    if (!address) {
+      return next(new HttpError("Address not found", 404));
+    }
+
+    if (isDefault) {
+      user.addresses.forEach((addr) => {
+        addr.isDefault = false;
+      });
+    }
+
+    address.receiverName =
+      receiverName ?? address.receiverName;
+
+    address.receiverPhone =
+      receiverPhone ?? address.receiverPhone;
+
+    address.province =
+      province ?? address.province;
+
+    address.district =
+      district ?? address.district;
+
+    address.ward =
+      ward ?? address.ward;
+
+    address.addressDetail =
+      addressDetail ?? address.addressDetail;
+
+    address.note =
+      note ?? address.note;
+
+    address.isDefault =
+      isDefault ?? address.isDefault;
+
+    await user.save();
+
+    return res.status(200).json({
+      address: address,
+    });
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+const deleteAddress = async (req, res, next) => {
+  try {
+    const email = req.userData.email;
+    const { id } = req.params;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(
+        new HttpError("User not found", 404)
+      );
+    }
+
+    const address = user.addresses.find(
+      (addr) => addr._id.toString() === id
+    );
+
+    if (!address) {
+      return next(
+        new HttpError("Address not found", 404)
+      );
+    }
+
+
+    if (user.addresses.length === 1) {
+      return next(
+        new HttpError(
+          "Cannot delete the last address",
+          400
+        )
+      );
+    }
+
+    user.addresses = user.addresses.filter(
+      (addr) => addr._id.toString() !== id
+    );
+
+    const hasDefault = user.addresses.some(
+      (addr) => addr.isDefault
+    );
+
+    if (!hasDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Address deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    return next(new HttpError(err.message, 500));
+  }
+};
+const findAddressById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const email = req.userData.email;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new HttpError("User not found", 404));
+    }
+
+    const address = user.addresses.find(
+      (ua) => ua._id.toString() === id
+    );
+
+    if (!address) {
+      return next(new HttpError("Address not found", 404));
+    }
+
+    return res.status(200).json({
+      address
+    });
+
+  } catch (err) {
+    return next(new HttpError(err.message, 500));
+  }
+};
+
 
 module.exports = {
   register,
@@ -706,5 +864,8 @@ module.exports = {
   findUserById,
   updateMyProfile,
   createAddress,
-  getAllAddresses
+  getAllAddresses,
+  updateAddress,
+  deleteAddress,
+  findAddressById
 };

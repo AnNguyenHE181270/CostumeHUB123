@@ -4,7 +4,10 @@ const router = express.Router();
 const { 
   registerValidator, verifyOtpValidator, loginValidator, 
   forgotPasswordValidator, resetPasswordValidator, updateUserValidator, 
-  findUserByIdValidator, updateMyProfileValidator, createAddressValidator 
+  findUserByIdValidator, updateMyProfileValidator, createAddressValidator, 
+  updateAddressValidator,
+  deleteAddressValidator,
+  findAddressByIdValidator
 } = require("../validators/user.validator");
 
 const validate = require("../middlewares/validate.middleware");
@@ -14,7 +17,10 @@ const {
   register, verifyOtp, resendOtp, login, getMyProfile, forgotPassword, 
   resetPassword, getAllUsers, updateUsers, findUserById, 
   updateMyProfile, createAddress, 
-  getAllAddresses
+  getAllAddresses,
+  updateAddress,
+  deleteAddress,
+  findAddressById
 } = require("../controllers/user.controller");
 
 const { checkAuth, isOwner, isOnlineCustomer, isStaff } = require("../middlewares/check-auth.middleware");
@@ -40,4 +46,7 @@ router.get("/user/:id", isOwner, findUserByIdValidator, validate, findUserById);
 router.put("/update-user/:id", isOwner, upload.single("avatar"), updateUserValidator, validate, updateUsers);
 router.post("/create-address", isOnlineCustomer, createAddressValidator, validate, createAddress)
 router.get("/addresses", isOnlineCustomer,  getAllAddresses)
+router.put("/update-address/:id", isOnlineCustomer, updateAddressValidator, validate, updateAddress)
+router.delete("/delete-address", isOnlineCustomer, deleteAddressValidator, validate, deleteAddress)
+router.get("/address/:id", isOnlineCustomer, findAddressByIdValidator, validate, findAddressById)
 module.exports = router;
