@@ -5,6 +5,7 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
+import { useNavigate } from 'react-router-dom';
 
 export default function AddressPage() {
   const { user, token } = useAuth();
@@ -17,6 +18,7 @@ export default function AddressPage() {
   const [form, setForm] = useState({
     receiverName: "", receiverPhone: "", province: "", district: "", ward: "", addressDetail: "", note: "", isDefault: false
   });
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -120,7 +122,11 @@ const handleSubmit = async (e) => {
       setLoadingPage(false);
     }
   }  
+
   useEffect(() => { getAllAddresses(); }, []);
+  const handleClick = (id) =>{
+    navigate(`/user/address/${id}`)
+  }
   return (
     <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full relative">
       <Toast 
@@ -245,7 +251,7 @@ const handleSubmit = async (e) => {
             </div>
             
             <div className="flex items-center gap-4 mt-4 md:mt-0">
-              <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] hover:text-[#555] transition-colors">
+              <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] hover:text-[#555] transition-colors" onClick={() =>handleClick(addr._id)}>
                 Sửa
               </button>
               {!addr.isDefault && (

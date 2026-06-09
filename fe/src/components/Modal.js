@@ -98,7 +98,6 @@ export default function Modal({
           ${className}
         `}
       >
-        {/* ── Header ── */}
         {(title || showClose) && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#e8e8e8]">
             {title && (

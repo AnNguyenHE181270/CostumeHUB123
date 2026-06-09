@@ -9,6 +9,7 @@ export const ROUTES = {
   RESETPASSWORD: "/reset-password/:token",
   MY_PROFILE: "/user/my-profile",
   MY_ADDRESS: "/user/addresses",
+  MY_DETAIL_ADDRESS: "/user/address/:id",
   // Customer / Protected Routes (Cần đăng nhập để thuê)
   RENT_COSTUME: "/rent/:costumeId",
   PRODUCT_DETAIL: "/product/:id",

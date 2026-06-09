@@ -214,6 +214,74 @@ const createAddressValidator = [
     .isBoolean()
     .withMessage("isDefault must be a boolean value"),
 ];
+const updateAddressValidator = [
+  param("id")
+    .isMongoId()
+    .withMessage("Invalid address ID"),
+
+  body("receiverName")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Receiver name cannot be empty")
+    .isString()
+    .withMessage("Receiver name must be a string"),
+
+  body("receiverPhone")
+    .optional()
+    .trim()
+    .isMobilePhone()
+    .withMessage("Invalid phone number"),
+
+  body("province")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Province cannot be empty"),
+
+  body("district")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("District cannot be empty"),
+
+  body("ward")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Ward cannot be empty"),
+
+  body("addressDetail")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Address detail cannot be empty"),
+
+  body("note")
+    .optional()
+    .isString()
+    .withMessage("Note must be a string"),
+
+  body("isDefault")
+    .optional()
+    .isBoolean()
+    .withMessage("isDefault must be a boolean value"),
+];
+
+const deleteAddressValidator = [
+  param("id")
+    .isMongoId()
+    .withMessage("Invalid address ID"),
+];
+
+const findAddressByIdValidator = [
+  param("id")
+    .trim()
+    .notEmpty()
+    .withMessage("Address ID is required")
+    .isMongoId()
+    .withMessage("Invalid address ID"),
+];
 module.exports = {
   registerValidator,
   verifyOtpValidator,
@@ -223,5 +291,8 @@ module.exports = {
   findUserByIdValidator,
   updateUserValidator,
   updateMyProfileValidator,
-  createAddressValidator
+  createAddressValidator,
+  updateAddressValidator,
+  deleteAddressValidator,
+  findAddressByIdValidator
 };

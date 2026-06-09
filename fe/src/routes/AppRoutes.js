@@ -29,7 +29,7 @@ import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
-
+import DetailAddressPage from "../pages/customer/DetailAddressPage"
 import { ROUTES } from "./routePaths";
 
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -53,6 +53,7 @@ function AppRoutes() {
 
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
+            <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage/>} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
           </Route>
         </Route>
