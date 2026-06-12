@@ -65,7 +65,7 @@ const userSchema = new mongoose.Schema(
       ref: "Role",
       required: true,
     },
-  
+
     status: {
       type: String,
       enum: ["active", "blocked", "pending"],
@@ -87,6 +87,12 @@ const userSchema = new mongoose.Schema(
     addresses: {
       type: [addressSchema],
       default: [],
+      validate: {
+        validator: function (addresses) {
+          return addresses.length <= 5;
+        },
+        message: "A user can have a maximum of 5 addresses",
+      },
     },
 
     wishlist: [
