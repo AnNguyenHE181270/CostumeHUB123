@@ -123,6 +123,48 @@ const handleSubmit = async (e) => {
     }
   }  
 
+  const handleDelete = async (id) => {
+  try {
+    const response = await fetch(
+      `http://localhost:9999/api/users/delete-address/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setToast({
+        isVisible: true,
+        type: "error",
+        message: data.message || "Failed to delete address.",
+      });
+      return;
+    }
+
+
+    setToast({
+      isVisible: true,
+      type: "success",
+      message: data.message || "Delete address successfully!",
+    });
+
+    await getAllAddresses()
+  } catch {
+    setToast({
+      isVisible: true,
+      type: "error",
+      message: "Network error while deleting data.",
+    });
+  } finally {
+    setLoadingPage(false);
+  }
+};
   useEffect(() => { getAllAddresses(); }, []);
   const handleClick = (id) =>{
     navigate(`/user/address/${id}`)
@@ -255,7 +297,7 @@ const handleSubmit = async (e) => {
                 Sửa
               </button>
               {!addr.isDefault && (
-                <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-red-600 hover:text-red-800 transition-colors">
+                <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-red-600 hover:text-red-800 transition-colors "onClick={() =>handleDelete(addr._id)}>
                   Xóa
                 </button>
               )}

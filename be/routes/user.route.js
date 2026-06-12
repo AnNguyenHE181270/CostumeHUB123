@@ -47,6 +47,6 @@ router.put("/update-user/:id", isOwner, upload.single("avatar"), updateUserValid
 router.post("/create-address", isOnlineCustomer, createAddressValidator, validate, createAddress)
 router.get("/addresses", isOnlineCustomer,  getAllAddresses)
 router.put("/update-address/:id", isOnlineCustomer, updateAddressValidator, validate, updateAddress)
-router.delete("/delete-address", isOnlineCustomer, deleteAddressValidator, validate, deleteAddress)
+router.delete("/delete-address/:id", isOnlineCustomer, deleteAddressValidator, validate, deleteAddress)
 router.get("/address/:id", isOnlineCustomer, findAddressByIdValidator, validate, findAddressById)
 module.exports = router;
