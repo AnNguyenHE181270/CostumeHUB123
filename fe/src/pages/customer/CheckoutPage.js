@@ -2,13 +2,8 @@ import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-<<<<<<< HEAD
-import { faClock, faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@fortawesome/free-solid-svg-icons'
-import Button from "../../components/ui/Button"
-=======
 import { faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@fortawesome/free-solid-svg-icons'
-import Button from "../../components/Button"
->>>>>>> mai
+import Button from "../../components/ui/Button"
 import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
 import Toast from "../../components/ui/Toast"
@@ -19,6 +14,7 @@ export function Checkout() {
     const navigate = useNavigate()
     const location = useLocation()
     const selectedIds = location.state?.selectedIds || [];
+    const buyNow = location.state?.buyNow;
 
     const { cartItems, clearCart, removeFromCart } = useCart()
     const [deliveryOption, setDeliveryOption] = useState("delivery")
@@ -31,9 +27,16 @@ export function Checkout() {
         setToast({ isVisible: true, message, type });
     };
 
-    const checkoutItems = selectedIds.length > 0
-        ? cartItems.filter(item => selectedIds.includes(item._id))
-        : cartItems;
+    const checkoutItems = buyNow
+        ? cartItems.filter(item =>
+            (item.costumeId === buyNow.costumeId || item.costume?._id === buyNow.costumeId) &&
+            (item.size === buyNow.size || item.variant?.size === buyNow.size) &&
+            (item.startDate || "").substring(0, 10) === (buyNow.startDate || "").substring(0, 10) &&
+            (item.endDate || "").substring(0, 10) === (buyNow.endDate || "").substring(0, 10)
+        )
+        : selectedIds.length > 0
+            ? cartItems.filter(item => selectedIds.includes(item._id))
+            : cartItems;
     const orderStartDate = checkoutItems[0]?.startDate;
     const orderEndDate = checkoutItems[0]?.endDate;
 
@@ -218,49 +221,28 @@ export function Checkout() {
                             return (
                                 <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-4 rounded-xl border py-3 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-3">
                                     <div className="px-3">
-                                        <div className="flex flex-row gap-3 md:gap-4">
+                                        <div className="flex flex-row gap-4 md:gap-5 items-stretch">
                                             {/* Image Gallery */}
-                                            <div className="relative w-16 md:w-24 shrink-0">
-                                                <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface">
-                                                    <img
-                                                        src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
-                                                        alt={cartItem.costumeName || cartItem.costume?.name}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
+                                            <div className="relative w-24 md:w-32 shrink-0 rounded-lg overflow-hidden bg-surface">
+                                                <img
+                                                    src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
+                                                    alt={cartItem.costumeName || cartItem.costume?.name}
+                                                    className="absolute inset-0 w-full h-full object-cover"
+                                                />
                                             </div>
 
                                             {/* Product Info */}
-                                            <div className="flex-1 space-y-3">
-                                                <div className="my-3">
-                                                    <h2 className="text-lg font-semibold text-foreground mb-1 text-pretty">
-                                                        {cartItem.costumeName}
-                                                    </h2>
-                                                    <div className="flex items-baseline gap-2">
-                                                        <span className="text-xl font-bold text-primary">
-                                                            {formatPrice(calculatedPrice)}
-                                                        </span>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {isPackage ? `(Gói ${isPackage} ngày)` : `(/ ${rDays} ngày)`}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap justify-between">
-                                                    <div className="flex flex-wrap gap-2 items-center">
-                                                        <span className="text-sm">Kích cỡ:</span>
-                                                        <span className="font-semibold">{cartItem.size}</span>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-2 items-center">
-                                                        <span className="font-semibold">x {cartItem.quantity}</span>
-                                                    </div>
-
-                                                </div>
-                                                <span className="text-sm">
-                                                    Thời gian thuê ({getRentalDays(cartItem.startDate, cartItem.endDate)} ngày): {getRentalDays(cartItem.startDate, cartItem.endDate) === 1
-                                                        ? <span className="font-medium text-foreground">Trong ngày {formatDateNoHours(cartItem.startDate)}</span>
-                                                        : <span className="font-medium text-foreground">Từ {formatDateNoHours(cartItem.startDate)} đến {formatDateNoHours(cartItem.endDate)}</span>}
-                                                </span>
+                                            <div className="flex-1 text-sm space-y-2 py-1">
+                                                <h2 className="text-lg font-bold text-foreground mb-2 text-pretty" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                                                    {cartItem.costumeName}
+                                                </h2>
+                                                <p className="text-md font-bold text-primary">Giá thuê: {formatPrice(calculatedPrice)} </p>
+                                                <p className="text-muted-foreground">Kích cỡ: <span className="font-medium text-foreground">{cartItem.size}</span></p>
+                                                <p className="text-muted-foreground">Số lượng: <span className="font-medium text-foreground">{cartItem.quantity}</span></p>
+                                                <p className="text-muted-foreground"> Thời gian thuê ({getRentalDays(cartItem.startDate, cartItem.endDate)} ngày): {getRentalDays(cartItem.startDate, cartItem.endDate) === 1
+                                                    ? <span className="font-medium text-foreground">Trong ngày {formatDateNoHours(cartItem.startDate)}</span>
+                                                    : <span className="font-medium text-foreground">Từ {formatDateNoHours(cartItem.startDate)} đến {formatDateNoHours(cartItem.endDate)}</span>}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>

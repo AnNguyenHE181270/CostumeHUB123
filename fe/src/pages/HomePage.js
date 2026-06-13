@@ -79,12 +79,7 @@ export default function HomePage() {
             <motion.div
               key={p._id}
               variants={item}
-              whileHover={{
-                scale: 1.05,
-                y: -8,
-              }}
-              transition={{ type: "spring", stiffness: 200 }}
-              className="w-[280px]"
+              className="w-[280px] transition-all duration-300 hover:-translate-y-2 hover:scale-105"
             >
               <ProductCard costume={p} />
             </motion.div>
@@ -110,12 +105,11 @@ export default function HomePage() {
           >
             <motion.div
               variants={item}
-              whileHover={{ scale: 1.02 }}
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-hidden transition-transform duration-300 hover:scale-[1.02]"
             >
               {newArrivals[0] && (
-  <ProductCard costume={newArrivals[0]} />
-)}
+                <ProductCard costume={newArrivals[0]} />
+              )}
             </motion.div>
 
             <div className="lg:col-span-2 grid grid-cols-2 gap-6">
@@ -123,10 +117,7 @@ export default function HomePage() {
                 <motion.div
                   key={p._id}
                   variants={item}
-                  whileHover={{
-                    scale: 1.03,
-                    y: -6,
-                  }}
+                  className="transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1.5"
                 >
                   <ProductCard costume={p} />
                 </motion.div>

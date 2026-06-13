@@ -81,7 +81,7 @@ export default function Modal({
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50 animate-fade-in"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in transition-opacity duration-300"
         onClick={handleOverlayClick}
         aria-hidden="true"
       />
@@ -91,19 +91,19 @@ export default function Modal({
         ref={modalRef}
         tabIndex={-1}
         className={`
-          relative w-full bg-white rounded-xl shadow-2xl
-          animate-scale-in outline-none
-          flex flex-col max-h-[90vh]
+          relative w-full bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)]
+          ring-1 ring-black/5 animate-scale-in outline-none
+          flex flex-col max-h-[90vh] overflow-hidden
           ${sizeClasses[size] || sizeClasses.md}
           ${className}
         `}
       >
         {(title || showClose) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#e8e8e8]">
+          <div className="flex items-center justify-between px-7 py-5 border-b border-[#f0ece8] bg-white relative z-10">
             {title && (
               <h2
                 id="modal-title"
-                className="text-[18px] font-semibold text-[#1a1a1a]"
+                className="text-[22px] font-bold text-[#1a1a1a] tracking-tight"
                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
               >
                 {title}
@@ -113,9 +113,9 @@ export default function Modal({
             {showClose && (
               <button
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full
-                           text-[#999] hover:text-[#1a1a1a] hover:bg-[#f5f5f5]
-                           transition-all duration-200"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-[#f5f5f5]
+                           text-[#888] hover:text-rose-600 hover:bg-rose-50
+                           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                 aria-label="Đóng"
               >
                 <FontAwesomeIcon icon={faTimes} className="text-[14px]" />
@@ -125,13 +125,13 @@ export default function Modal({
         )}
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto p-7">
           {children}
         </div>
 
         {/* ── Footer ── */}
         {footer && (
-          <div className="px-6 py-4 border-t border-[#e8e8e8] flex items-center justify-end gap-3">
+          <div className="px-7 py-5 border-t border-[#f0ece8] bg-[#faf9f7] flex items-center justify-end gap-3 rounded-b-2xl relative z-10">
             {footer}
           </div>
         )}

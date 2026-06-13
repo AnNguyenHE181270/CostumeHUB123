@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faArrowRight, faCalendarDays, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faArrowRight, faCalendarDays, faShieldHalved, faTags } from "@fortawesome/free-solid-svg-icons";
 import { formatPrice, getRentalDays } from "../utils/formatters"
 import CustomDateRangePicker from "../components/ui/CustomDateRangePicker"
 import Modal from "../components/Modal"
@@ -348,7 +348,9 @@ export default function CartPage() {
 
               <div className="space-y-4 text-[14px]">
                 <div className="flex justify-between text-[#666]">
-                  <span>Tổng tiền thuê ({cartItems.length} món)</span>
+                  <span className="flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faTags} className="text-[#1a1a1a]" /> Tổng tiền thuê
+                  </span>
                   <span className="font-semibold text-[#1a1a1a]">{formatPrice(totalRental)}</span>
                 </div>
                 <div className="flex justify-between text-[#666]">
