@@ -32,6 +32,7 @@ import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage"
 import { ROUTES } from "./routePaths";
 
+
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
 import ProfileLayout from "../layouts/ProfileLayout";
@@ -53,7 +54,7 @@ function AppRoutes() {
 
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
-            <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage/>} />
+            <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
           </Route>
         </Route>

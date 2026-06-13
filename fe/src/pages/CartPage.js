@@ -3,26 +3,25 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faArrowRight, faCalendarDays, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-
-function formatPrice(price) {
-  return new Intl.NumberFormat("vi-VN").format(price) + "đ";
-}
+import { formatPrice, getRentalDays } from "../utils/formatters"
+import CustomDateRangePicker from "../components/ui/CustomDateRangePicker"
+import Modal from "../components/Modal"
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateDates, clearCart } = useCart();
+  const { cartItems, removeFromCart, addToCart, clearCart, updateCartItem } = useCart();
   const navigate = useNavigate();
-  const getItemId = (item) => {
-    const costumeId = item.costume?._id || item.costumeId || item._id;
-    const variantId = item.variant?._id || item.variant?.size || item.size || 'novar';
-    return `${costumeId}-${variantId}-${item.startDate}-${item.endDate}`;
-  };
 
-  const [expandedItem, setExpandedItem] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(getItemId));
+  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(item => item._id));
+  const [editingDateItem, setEditingDateItem] = useState(null);
+  const [tempDateRange, setTempDateRange] = useState([{
+    startDate: new Date(),
+    endDate: new Date(),
+    key: 'selection'
+  }]);
 
   useEffect(() => {
     setSelectedIds(prev => {
-      const currentIds = cartItems.map(getItemId);
+      const currentIds = cartItems.map(item => item._id);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
       }
@@ -30,13 +29,49 @@ export default function CartPage() {
     });
   }, [cartItems]);
 
-  const toggleExpand = (id) => {
-    setExpandedItem(prev => prev === id ? null : id);
+  const openDateModal = (item) => {
+    setEditingDateItem(item);
+    setTempDateRange([{
+      startDate: new Date(item.startDate),
+      endDate: new Date(item.endDate),
+      key: 'selection'
+    }]);
+  };
+
+  const handleSelectDateRange = (ranges) => {
+    setTempDateRange([ranges.selection]);
+  };
+
+  const handleSaveDates = async () => {
+    if (editingDateItem) {
+      const start = tempDateRange[0].startDate;
+      const end = tempDateRange[0].endDate;
+      const formatLocal = (date) => {
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const newStart = formatLocal(start);
+      const newEnd = formatLocal(end);
+
+      if (updateCartItem) {
+        await updateCartItem(
+          editingDateItem.costumeId || editingDateItem._id,
+          editingDateItem.size,
+          editingDateItem.startDate,
+          editingDateItem.endDate,
+          editingDateItem.size,
+          editingDateItem.quantity,
+          newStart,
+          newEnd
+        );
+      }
+      setEditingDateItem(null);
+    }
   };
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(cartItems.map(getItemId));
+      setSelectedIds(cartItems.map(item => item._id));
     } else {
       setSelectedIds([]);
     }
@@ -56,21 +91,22 @@ export default function CartPage() {
     );
   };
 
-  const selectedCartItems = cartItems.filter(item => selectedIds.includes(getItemId(item)));
+  const selectedCartItems = cartItems.filter(item => selectedIds.includes(item._id));
 
-  const getRentalDays = (start, end) => {
-    if (!start || !end) return 1;
-    const startObj = new Date(start);
-    const endObj = new Date(end);
-    const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
-    return days > 0 ? days : 1;
-  };
+
   // tính tiền thuê
-  const totalRental = selectedCartItems.reduce(
-    (sum, item) =>
-      sum + (item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * item.rentalDays * (item.quantity || 1),
-    0
-  );
+  const totalRental = selectedCartItems.reduce((sum, item) => {
+    const rDays = getRentalDays(item.startDate, item.endDate);
+    const rates = item.rentalRates || item.costume?.rentalRates || {};
+    let price = (rates.pricePerDay || 0) * rDays;
+    if (rDays === 3 && rates.pricePer3Days) {
+      price = rates.pricePer3Days;
+    } else if (rDays === 7 && rates.pricePerWeek) {
+      price = rates.pricePerWeek;
+    }
+    return sum + price * (item.quantity || 1);
+  }, 0);
+
   const totalDeposit = selectedCartItems.reduce(
     (sum, item) => sum + (item.deposit || item.depositPrice || item.costume?.deposit || item.costume?.price || 0) * (item.quantity || 1),
     0
@@ -148,9 +184,44 @@ export default function CartPage() {
               </button>
             </div>
             {cartItems.map((item) => {
-              const itemId = getItemId(item);
+              const itemId = item._id;
               const isSelected = selectedIds.includes(itemId);
               const rentalDays = getRentalDays(item.startDate, item.endDate);
+
+              const rates = item.rentalRates || item.costume?.rentalRates || {};
+              let calculatedPrice = (rates.pricePerDay || 0) * rentalDays;
+              let isPackage = null;
+              if (rentalDays === 3 && rates.pricePer3Days) {
+                calculatedPrice = rates.pricePer3Days;
+                isPackage = 3;
+              } else if (rentalDays === 7 && rates.pricePerWeek) {
+                calculatedPrice = rates.pricePerWeek;
+                isPackage = 7;
+              }
+
+              const handleItemQuickSelect = async (days) => {
+                const start = new Date(item.startDate);
+                const end = new Date(start);
+                end.setDate(end.getDate() + (days - 1));
+                const formatLocal = (date) => {
+                  const d = new Date(date);
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                };
+                const newEndStr = formatLocal(end);
+
+                if (updateCartItem) {
+                  await updateCartItem(
+                    item.costumeId || item._id,
+                    item.size,
+                    item.startDate,
+                    item.endDate,
+                    item.size,
+                    item.quantity,
+                    item.startDate,
+                    newEndStr
+                  );
+                }
+              };
 
               return (
                 <div
@@ -189,56 +260,72 @@ export default function CartPage() {
                         {item.costumeName}
                       </Link>
 
-                      <div className="flex items-center gap-6 text-[13px] text-[#666] mb-3">
-                        <span>Size: <strong className="text-[#1a1a1a]">{item.size}</strong></span>
-                        <span>Số lượng: <strong className="text-[#1a1a1a]">{item.quantity}</strong></span>
+                      <div className="flex items-center gap-2 mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-[13px] text-[#666]">Size:</span>
+                        <select
+                          value={item.size}
+                          onChange={(e) => console.log("Cần viết thêm hàm updateSize cho: ", e.target.value)}
+                          className="text-[13px] font-bold text-[#1a1a1a] border rounded px-2 py-0.5 outline-none cursor-pointer focus:border-[#1a1a1a] transition-colors bg-white"
+                        >
+                          {item.variants?.map((v, idx) => (
+                            <option key={idx} value={v.size} disabled={v.availableStock === 0}>
+                              {v.size} {v.availableStock === 0 ? "(Hết hàng)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 mb-1">
+                        <span className="text-[13px] text-[#666]">Số lượng:</span>
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
+                            }}
+                            disabled={item.quantity <= 1}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
+                          <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
+                            }}
+                            disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
+                        </div>
                       </div>
 
                       {/* Toggle button to expand dates */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleExpand(itemId); }}
-                        className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1.5 relative z-10"
+                        onClick={(e) => { e.stopPropagation(); openDateModal(item); }}
+                        className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1 relative z-10"
                       >
                         <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
-                        {expandedItem === itemId ? "Ẩn chi tiết thuê" : "Tùy chỉnh ngày thuê"}
+                        Tùy chỉnh ngày thuê
                       </button>
                     </div>
 
-                    {/* Dates Selection (Collapsible) */}
-                    {expandedItem === itemId && (
-                      <div className="bg-[#faf9f7] rounded-lg p-2 grid grid-cols-2 gap-4 mt-4 animate-fade-in relative z-10" onClick={(e) => e.stopPropagation()}>
-                        <div>
-                          <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày nhận</label>
-                          <input
-                            type="date"
-                            value={item.startDate}
-                            min={new Date().toISOString().split('T')[0]}
-                            onChange={(e) => updateDates(item.costumeId, e.target.value, item.endDate)}
-                            className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-2 py-1 focus:border-[#1a1a1a] outline-none transition-colors cursor-text"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1">Ngày trả</label>
-                          <input
-                            type="date"
-                            value={item.endDate}
-                            min={item.startDate}
-                            onChange={(e) => updateDates(item.costumeId, item.startDate, e.target.value)}
-                            className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-2 py-1 focus:border-[#1a1a1a] outline-none transition-colors cursor-text"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    {/* Quick select blocks */}
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(1); }}
+                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 1 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Thuê lẻ 1 ngày</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(3); }}
+                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 3 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Gói 3 ngày</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(7); }}
+                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 7 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Gói 1 tuần</button>
+                    </div>
                   </div>
 
                   {/* Pricing summary for this item */}
                   <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                    <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice((item.rentalPerDay || item.costume?.rentalRates?.pricePerDay || 0) * rentalDays * (item.quantity || 1))}
-                    </p>
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                      {formatPrice(item.rentalPerDay || 0)} / ngày
-
+                      {formatPrice(calculatedPrice * (item.quantity || 1))}
+                    </p>
+                    <p className="text-[11px] text-[#999] mb-1">
+                      {isPackage ? `Gói ${isPackage} ngày` : `${formatPrice(rates.pricePerDay || 0)} / ngày`}
                     </p>
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
                       <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
@@ -298,6 +385,31 @@ export default function CartPage() {
 
         </div>
       </div>
+
+      {/* Modal Customize Date */}
+      <Modal isOpen={!!editingDateItem} onClose={() => setEditingDateItem(null)} title="Tùy chỉnh thời gian thuê">
+        <CustomDateRangePicker
+          dateRange={tempDateRange}
+          onChange={handleSelectDateRange}
+          minDate={new Date()}
+        />
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => setEditingDateItem(null)}
+            className="flex-1 rounded-xl border border-[#eaeaea] bg-white px-4 py-3 text-[13px] uppercase tracking-[0.08em] font-bold text-[#555] hover:bg-[#fafafa] transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleSaveDates}
+            className="flex-1 rounded-xl px-4 py-3 text-[13px] uppercase tracking-[0.08em] font-bold transition-all bg-[#1a1a1a] text-white hover:bg-[#333] shadow-md"
+          >
+            Xác nhận
+          </button>
+        </div>
+      </Modal>
+
     </div>
   );
 }

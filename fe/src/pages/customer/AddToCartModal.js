@@ -2,9 +2,10 @@ import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faShoppingCart, faBox, faCalendarDays } from "@fortawesome/free-solid-svg-icons"
 import { useCart } from '../../context/CartContext'
+import CustomDateRangePicker from "../../components/ui/CustomDateRangePicker"
 import QuantitySelector from "../../components/ui/QuantitySelector"
 import Modal from "../../components/Modal"
-import { formatPrice } from "../../utils/formatters"
+import { formatPrice, getRentalDays } from "../../utils/formatters"
 export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
     const { addToCart } = useCart()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -35,6 +36,12 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
         startDate: tomorrowStr,
         endDate: dayAfterStr
     })
+    const [selectedPackage, setSelectedPackage] = useState(null)
+    const [dateRange, setDateRange] = useState([{
+        startDate: new Date(tomorrowStr),
+        endDate: new Date(dayAfterStr),
+        key: 'selection'
+    }])
 
     useEffect(() => {
         if (open) {
@@ -44,19 +51,30 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
                 startDate: tomorrowStr,
                 endDate: dayAfterStr
             })
+            setDateRange([{
+                startDate: new Date(tomorrowStr),
+                endDate: new Date(dayAfterStr),
+                key: 'selection'
+            }])
+            setSelectedPackage(null)
         }
     }, [open, costume?._id])
 
+    // Đồng bộ highlight lịch khi user bấm các nút Gói 3 ngày, 7 ngày...
+    useEffect(() => {
+        if (formData.startDate && formData.endDate) {
+            setDateRange([{
+                startDate: new Date(formData.startDate),
+                endDate: new Date(formData.endDate),
+                key: 'selection'
+            }]);
+        }
+    }, [formData.startDate, formData.endDate]);
+
     const handleSubmit = async () => {
         if (!formData.size || !formData.startDate || !formData.endDate) return
-
         setIsSubmitting(true)
-
-        const startObj = new Date(formData.startDate);
-        const endObj = new Date(formData.endDate);
-        let diffDays = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
-        if (diffDays <= 0) diffDays = 1;
-
+        let diffDays = getRentalDays(formData.startDate, formData.endDate)
         const res = await addToCart(
             costume,
             { size: formData.size },
@@ -83,6 +101,11 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
             startDate: tomorrowStr,
             endDate: dayAfterStr,
         })
+        setDateRange([{
+            startDate: new Date(tomorrowStr),
+            endDate: new Date(dayAfterStr),
+            key: 'selection'
+        }])
     }
 
     const handleClose = () => {
@@ -90,117 +113,144 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
         onOpenChange(false)
     }
 
+    const handleSelectDateRange = (ranges) => {
+        const { selection } = ranges;
+        setDateRange([selection]);
+
+        // Tránh lỗi lệch Timezone khi convert sang String
+        const formatLocal = (date) => {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        setFormData(prev => ({
+            ...prev,
+            startDate: formatLocal(selection.startDate),
+            endDate: formatLocal(selection.endDate)
+        }));
+        setSelectedPackage(null);
+    };
 
     const isFormValid = formData.size && formData.startDate && formData.endDate
 
     const currentSelectedVariant = allVariants.find(v => v.size === formData.size);
     const maxStock = currentSelectedVariant ? (currentSelectedVariant.availableStock ?? currentSelectedVariant.stock ?? 0) : 0;
 
+    let diffDays = getRentalDays(formData.startDate, formData.endDate);
+
+    let calculatedPrice = 0;
+    if (selectedPackage === 3) {
+        calculatedPrice = costume?.rentalRates?.pricePer3Days;
+    } else if (selectedPackage === 7) {
+        calculatedPrice = costume?.rentalRates?.pricePerWeek;
+    } else {
+        calculatedPrice = costume?.rentalRates?.pricePerDay;
+    }
+
     return (
         <Modal isOpen={open} onClose={handleClose} title="Thêm vào giỏ hàng">
-            <div className="overflow-y-auto max-h-[calc(90vh-180px)] px-4">
+            <div className="overflow-y-auto max-h-[calc(90vh-180px)] px-2 sm:px-4 select-none">
                 {/* Product Preview */}
-                <div className="flex gap-4 rounded-lg mb-5">
-                    <div className="h-20 w-16 shrink-0 rounded-lg overflow-hidden bg-[oklch(0.92_0.03_130)] flex items-center justify-center">
+                <div className="flex gap-4 rounded-xl border border-[#eaeaea] p-1 mb-6 bg-[#faf9f7] shadow-sm">
+                    <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg flex items-center justify-center bg-white border border-[#eaeaea]">
                         {costume?.images?.[0] ? (
-                            <img src={costume.images[0]} alt={costume.name} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                            <img src={costume.images[0]} alt={costume.name} className="h-full w-full object-cover" />
                         ) : (
-                            <FontAwesomeIcon icon={faBox} className="h-6 w-6 text-[oklch(0.7_0.04_130)]" />
+                            <FontAwesomeIcon icon={faBox} className="h-6 w-6 text-[#ccc]" />
                         )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-serif text-md font-medium text-foreground line-clamp-2">
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <h3 className="text-lg font-bold text-[#1a1a1a] line-clamp-2 leading-tight mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                             {costume?.name}
                         </h3>
-                        <span className="text-muted-foreground text-xs">{formatPrice(costume.price)}</span>
-                        <p className="mt-1 text-md font-semibold text-foreground">
-                            {formatPrice(costume.rentalRates?.pricePerDay || costume.rentalPerDay || 0)}/ngày
-                        </p>
+                        <p className="text-[14px] font-medium text-[#f94a00]"> {formatPrice(calculatedPrice)} </p>
                     </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="space-y-6">
                     {/* Size Selection */}
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
+                        <label className="block text-[12px] uppercase tracking-[0.05em] font-semibold text-[#1a1a1a] mb-3">
                             Kích thước <span className="text-red-500">*</span>
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {availableSizes.length === 0 && (
                                 <span className="text-sm text-red-500 font-medium py-2">Tất cả kích thước đã hết hàng</span>
                             )}
-                            {allVariants.map((variant) => {
-                                const size = variant.size;
-                                const isOutOfStock = (variant.availableStock ?? variant.stock ?? 0) <= 0;
-                                return (
-                                    <button
-                                        type="button"
-                                        key={size}
-                                        disabled={isOutOfStock}
-                                        onClick={() => setFormData(prev => ({ ...prev, size, quantity: 1 }))}
-                                        className={`h-10 min-w-[40px] rounded-lg border px-3 text-sm font-medium transition-all ${isOutOfStock
-                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                            : formData.size === size
-                                                ? "border-black bg-black text-white"
-                                                : "border-border text-foreground hover:border-gray-400"
-                                            }`}
-                                    >
-                                        {size}
-                                    </button>
-                                );
-                            })}
+                            {allVariants.map((variant) =>
+                                <button
+                                    type="button"
+                                    key={variant.size}
+                                    disabled={(variant.availableStock ?? variant.stock ?? 0) <= 0}
+                                    onClick={() => setFormData(prev => ({ ...prev, size: variant.size, quantity: 1 }))}
+                                    className={`h-10 min-w-[45px] rounded-lg border px-4 text-[13px] font-medium transition-all ${(variant.availableStock ?? variant.stock ?? 0) <= 0
+                                        ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                                        : formData.size === variant.size
+                                            ? "border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md"
+                                            : "border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a]"
+                                        }`}
+                                >
+                                    {variant.size}
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Rental Period */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                                Ngày bắt đầu thuê <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <FontAwesomeIcon icon={faCalendarDays} className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                <input
-                                    type="date"
-                                    value={formData.startDate}
-                                    min={tomorrowStr}
-                                    onChange={(e) => {
-                                        const newStart = e.target.value;
-                                        setFormData(prev => {
-                                            const updates = { startDate: newStart };
-                                            if (prev.endDate && new Date(newStart) > new Date(prev.endDate)) {
-                                                updates.endDate = newStart;
-                                            }
-                                            return { ...prev, ...updates };
-                                        });
-                                    }}
-                                    className="h-10 w-full rounded-lg border pl-10 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
+                    <div>
+                        <label className="block text-[12px] uppercase tracking-[0.05em] font-semibold text-[#1a1a1a] mb-3">
+                            Thời gian thuê <span className="text-red-500">*</span>
+                        </label>
+
+                        <CustomDateRangePicker
+                            dateRange={dateRange}
+                            onChange={handleSelectDateRange}
+                            minDate={new Date(tomorrowStr)}
+                        />
+
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const start = new Date(formData.startDate);
+                                    const end = new Date(start);
+                                    end.setDate(end.getDate() + 0);
+                                    setFormData(prev => ({ ...prev, endDate: end.toISOString().split('T')[0] }));
+                                    setSelectedPackage(1);
+                                }}
+                                className={`px-4 py-2 border text-[12px] font-medium rounded-lg transition-all ${selectedPackage === 1 ? 'border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md' : 'border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a] hover:bg-[#fafafa]'}`}>Thuê lẻ 1 ngày</button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const start = new Date(formData.startDate);
+                                    const end = new Date(start);
+                                    end.setDate(end.getDate() + 2);
+                                    setFormData(prev => ({ ...prev, endDate: end.toISOString().split('T')[0] }));
+                                    setSelectedPackage(3);
+                                }}
+                                className={`px-4 py-2 border text-[12px] font-medium rounded-lg transition-all ${selectedPackage === 3 ? 'border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md' : 'border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a] hover:bg-[#fafafa]'}`}>Gói 3 ngày</button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const start = new Date(formData.startDate);
+                                    const end = new Date(start);
+                                    end.setDate(end.getDate() + 6);
+                                    setFormData(prev => ({ ...prev, endDate: end.toISOString().split('T')[0] }));
+                                    setSelectedPackage(7);
+                                }}
+                                className={`px-4 py-2 border text-[12px] font-medium rounded-lg transition-all ${selectedPackage === 7 ? 'border-[#1a1a1a] bg-[#1a1a1a] text-white shadow-md' : 'border-[#eaeaea] bg-white text-[#1a1a1a] hover:border-[#1a1a1a] hover:bg-[#fafafa]'}`}>Gói 1 tuần</button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                                Ngày kết thúc thuê <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <FontAwesomeIcon icon={faCalendarDays} className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                <input
-                                    type="date"
-                                    value={formData.endDate}
-                                    min={formData.startDate || tomorrowStr}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                                    className="h-10 w-full rounded-lg border pl-10 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
+                        <p className="text-[12px] text-[#f94a00] font-medium italic mt-3 bg-[#fff5f0] p-2 rounded-lg border border-[#ffe5d9]">
+                            * Gợi ý: Chọn các gói dịch vụ có sẵn để nhận mức giá ưu đãi hơn.
+                        </p>
                     </div>
 
                     {/* Quantity */}
                     <div className="flex justify-between items-center">
-                        <label className="block text-sm font-medium text-foreground mt-1">
+                        <label className="block text-[12px] uppercase tracking-[0.05em] font-semibold text-[#1a1a1a]">
                             Số lượng
                             {formData.size && (
-                                <span className="text-muted-foreground text-xs ml-1">(Còn {maxStock})</span>
+                                <span className="text-[#666] normal-case tracking-normal ml-2 font-medium">(Còn lại {maxStock})</span>
                             )}
                         </label>
                         <QuantitySelector
@@ -215,11 +265,11 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
                         />
                     </div>
                 </div>
-                <div className="flex gap-3 mt-4">
+                <div className="flex gap-3 mt-8 pb-4">
                     <button
                         type="button"
                         onClick={handleClose}
-                        className="flex-1 rounded-lg border px-4 py-2 text-sm font-medium"
+                        className="flex-1 rounded-xl border border-[#eaeaea] bg-white px-4 py-3.5 text-[13px] uppercase tracking-[0.08em] font-bold text-[#555] hover:bg-[#fafafa] transition-colors"
                     >
                         Hủy
                     </button>
@@ -227,12 +277,12 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
                         type="button"
                         onClick={handleSubmit}
                         disabled={!isFormValid || isSubmitting}
-                        className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${isFormValid && !isSubmitting
-                            ? "bg-black text-white hover:bg-black/60"
-                            : "bg-muted text-muted-foreground cursor-not-allowed"
+                        className={`flex-[2] flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-[13px] uppercase tracking-[0.08em] font-bold transition-all ${isFormValid && !isSubmitting
+                            ? "bg-[#1a1a1a] text-white hover:bg-[#333] shadow-md"
+                            : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
                             }`}
                     >
-                        <FontAwesomeIcon icon={faShoppingCart} className="h-4 w-4" />
+                        <FontAwesomeIcon icon={faShoppingCart} className="text-[14px]" />
                         {isSubmitting ? "Đang thêm..." : "Thêm vào giỏ"}
                     </button>
                 </div>

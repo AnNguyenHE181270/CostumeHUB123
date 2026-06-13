@@ -9,24 +9,7 @@ const CartContext = createContext();
 export function CartProvider({ children }) {
   const { token } = useAuth();
   const navigate = useNavigate();
-
-  const [cartItems, setCartItems] = useState(() => {
-    const saved = localStorage.getItem("costume_cart");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("costume_cart", JSON.stringify(cartItems));
-  }, [cartItems]);
-
-
+  const [cartItems, setCartItems] = useState([])
   const fetchCart = async () => {
     if (!token) return;
 
@@ -53,13 +36,11 @@ export function CartProvider({ children }) {
   }, [token]);
 
   const addToCart = async (costume, variant, quantity, startDateStr, endDateStr, rentalDays) => {
-    // 1. Nếu user chưa đăng nhập, điều hướng đến màn login
     if (!token) {
       navigate("/login");
       return { success: false, message: "Vui lòng đăng nhập để thêm vào giỏ hàng." };
     }
 
-    // 2. Nếu đã đăng nhập, tiến hành gọi API lưu giỏ hàng
     try {
       const response = await fetch(`${API_URL}/api/carts/add-cart`, {
         method: "POST",
@@ -191,6 +172,55 @@ export function CartProvider({ children }) {
     setCartItems([]);
   };
 
+  const updateCartItem = async (costumeId, currentSize, oldStartDate, oldEndDate, newSize, newQuantity, newStartDate, newEndDate) => {
+    const finalStartDate = newStartDate || oldStartDate;
+    const finalEndDate = newEndDate || oldEndDate;
+
+    try {
+      if (!token) return;
+
+      // Cập nhật giao diện tạm thời
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          ((item.costumeId === costumeId || item._id === costumeId) &&
+            item.size === currentSize &&
+            item.startDate === oldStartDate &&
+            item.endDate === oldEndDate)
+            ? { ...item, size: newSize, quantity: newQuantity, startDate: finalStartDate, endDate: finalEndDate }
+            : item
+        )
+      );
+
+      const res = await fetch(`${API_URL}/api/carts/update-cart/${costumeId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          oldSize: currentSize,
+          oldStartDate: oldStartDate,
+          oldEndDate: oldEndDate,
+          size: newSize,
+          quantity: newQuantity,
+          startDate: finalStartDate,
+          endDate: finalEndDate
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Cập nhật giỏ hàng thất bại. Vui lòng kiểm tra lại!");
+      }
+
+      // Fetch lại giỏ hàng để đồng bộ data variants chuẩn từ backend
+      await fetchCart();
+    } catch (error) {
+      console.error("Lỗi kết nối khi cập nhật giỏ hàng:", error);
+      fetchCart();
+    }
+  };
+
   const cartCount = cartItems.length;
 
   return (
@@ -203,6 +233,7 @@ export function CartProvider({ children }) {
         clearCart,
         cartCount,
         fetchCart,
+        updateCartItem,
       }}
     >
       {children}
