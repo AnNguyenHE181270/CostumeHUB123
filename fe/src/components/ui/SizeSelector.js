@@ -1,25 +1,23 @@
 import React from "react";
 
-export default function SizeSelector({ variants = [], selectedSize, onSizeChange }) {
-    // Nếu sản phẩm không có chia variant thì chỉ hiển thị text bình thường
-    if (!variants || variants.length === 0) {
-        return <p className="text-sm font-medium text-foreground">{selectedSize || "M"}</p>;
-    }
-
+export default function SizeSelector({ size, variants, onChange }) {
     return (
-        <select
-            value={selectedSize}
-            onChange={(e) => onSizeChange(e.target.value)}
-            className="bg-background border border-border text-foreground text-sm font-medium rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-        >
-            {variants.map((v, index) => {
-                const isOutOfStock = v.stock === 0;
-                return (
-                    <option key={`${v.size}-${index}`} value={v.size} disabled={isOutOfStock}>
-                        {v.size} {v.stock !== undefined && `(Còn ${v.stock})`}
+        <div className="flex items-center gap-2 mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[13px] text-[#666]">Size:</span>
+            <select
+                value={size}
+                onChange={(e) => {
+                    if (onChange) onChange(e.target.value);
+                    else console.log("Cần viết thêm hàm updateSize cho: ", e.target.value);
+                }}
+                className="text-[13px] font-bold text-[#1a1a1a] border rounded px-2 py-1 outline-none cursor-pointer focus:border-[#1a1a1a] transition-colors bg-white"
+            >
+                {variants?.map((v, idx) => (
+                    <option key={idx} value={v.size} disabled={v.availableStock === 0}>
+                        {v.size} {v.availableStock === 0 ? "(Hết hàng)" : ""}
                     </option>
-                );
-            })}
-        </select>
+                ))}
+            </select>
+        </div>
     );
 }

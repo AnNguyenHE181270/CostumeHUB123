@@ -21,7 +21,7 @@ const getRentalHistory = async (req, res, next) => {
             id: order._id,
             costumeName: order.items[0]?.costume?.name || "Đơn hàng thuê",
             costumeImage: order.items[0]?.costume?.images?.[0] || "",
-            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) || 1} ngày`,
+            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1} ngày`,
             startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
             endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
             status: order.status,
@@ -32,7 +32,7 @@ const getRentalHistory = async (req, res, next) => {
                 image: item.costume?.images?.[0] || "",
                 size: item.size,
                 quantity: item.quantity,
-                rentalPerDay: item.costume?.rentalRates?.pricePerDay || item.rentalPricePerDay || 0
+                rentalPerDay: item.rentalPricePerDay || item.costume?.rentalRates?.pricePerDay || 0
             }))
         }));
 
@@ -69,14 +69,14 @@ const orderDetail = async (req, res, next) => {
             },
             notes: order.shippingAddress.note,
             orderDate: order.createdAt,
-            rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) || 1,
+            rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
             items: order.items.map(item => ({
                 costumeName: item.costume.name,
                 image: item.costume.images[0],
                 size: item.size,
                 quantity: item.quantity,
                 price: item.costume.price,
-                rentalPerDay: item.costume.rentalRates?.pricePerDay || 0
+                rentalPerDay: item.rentalPricePerDay || item.costume?.rentalRates?.pricePerDay || 0
             })),
         })
     } catch (error) {
@@ -85,6 +85,7 @@ const orderDetail = async (req, res, next) => {
 }
 
 // Khách hàng tạo đơn thuê
+// case Khách đặt trùng lịch của cùng một chiếc váy trong cùng một ngày.
 const createOrder = async (req, res, next) => {
     try {
         const customerId = req.userData.id;
@@ -93,7 +94,7 @@ const createOrder = async (req, res, next) => {
         // Tính số ngày thuê
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
+        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
         let totalRentalPrice = 0;
         let totalDeposit = 0;
@@ -107,7 +108,18 @@ const createOrder = async (req, res, next) => {
             if (!costume) {
                 next(new HttpError("Costume not found.", 404));
             }
+            // check khách đặt trùng lịch của cùng một chiếc váy trong cùng một ngày.
 
+            const existingOrder = await Rental.findOne({
+                "items.costume": item.costume,
+                "items.size": item.size,
+                status: { $in: ['pending', 'confirmed', 'delivering', 'renting'] },
+                startDate: { $lte: new Date(endDate) },
+                endDate: { $gte: new Date(startDate) },
+            })
+            if (existingOrder) {
+                return next(new HttpError(`Sản phẩm đã được đặt trong vài giờ qua. Vui lòng kiểm tra đơn hàng.`, 400));
+            }
             // Tìm đúng variant có size khách hàng đang đặt
             const variant = costume.variants.find(v => v.size === item.size);
 
@@ -122,20 +134,24 @@ const createOrder = async (req, res, next) => {
 
             // ===== TÍNH GIÁ TIỀN =====
 
-            // totalDepsit += costume.deposit x quantity
-            // totalRental += rentalRates.pricePerDay x quantity x totalDay
             const depositPrice = costume.deposit || costume.price || 0;
-            const rentalPricePerDay = costume.rentalRates?.pricePerDay || 0;
+
+            let itemRentalPrice = (costume.rentalRates?.pricePerDay || 0) * rentalDays;
+            if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
+                itemRentalPrice = costume.rentalRates.pricePer3Days;
+            } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
+                itemRentalPrice = costume.rentalRates.pricePerWeek;
+            }
 
             // Cộng dồn vào tổng đơn
-            totalRentalPrice += rentalPricePerDay * item.quantity * rentalDays;
+            totalRentalPrice += itemRentalPrice * item.quantity;
             totalDeposit += depositPrice * item.quantity;
 
             formattedItems.push({
                 costume: costume._id,
                 size: item.size,
                 quantity: item.quantity,
-                rentalPricePerDay: rentalPricePerDay,
+                rentalPricePerDay: itemRentalPrice / rentalDays,
                 depositPrice: depositPrice
             });
 

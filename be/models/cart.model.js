@@ -44,7 +44,6 @@ const cartSchema = new mongoose.Schema({
         rentalDays: {
             type: Number
         },
-        _id: false
     }],
 }, { timestamps: true });
 

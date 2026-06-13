@@ -6,6 +6,7 @@ import { faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@f
 import Button from "../../components/Button"
 import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
+import Toast from "../../components/ui/Toast"
 import { formatPrice, formatDateNoHours, getRentalDays } from "../../utils/formatters"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -19,22 +20,30 @@ export function Checkout() {
     const [paymentMethod, setPaymentMethod] = useState("VietQR")
     const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
     const [isLoading, setIsLoading] = useState(false)
+    const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" })
+
+    const showToast = (message, type = "error") => {
+        setToast({ isVisible: true, message, type });
+    };
 
     const checkoutItems = selectedIds.length > 0
-        ? cartItems.filter(item => selectedIds.includes(item.cartItemId))
+        ? cartItems.filter(item => selectedIds.includes(item._id))
         : cartItems;
-    // Lấy ngày của sản phẩm đầu tiên làm mốc cho cả đơn hàng
     const orderStartDate = checkoutItems[0]?.startDate;
     const orderEndDate = checkoutItems[0]?.endDate;
 
-
-
-
-
     // tính tiền thuê
     const totalRental = checkoutItems.reduce((sum, item) => {
-        return sum + (item.rentalPerDay * item.quantity * getRentalDays(item.startDate, item.endDate))
-    }, 0)
+        const rDays = getRentalDays(item.startDate, item.endDate);
+        const rates = item.rentalRates || item.costume?.rentalRates || {};
+        let price = (rates.pricePerDay || 0) * rDays;
+        if (rDays === 3 && rates.pricePer3Days) {
+            price = rates.pricePer3Days;
+        } else if (rDays === 7 && rates.pricePerWeek) {
+            price = rates.pricePerWeek;
+        }
+        return sum + price * (item.quantity || 1);
+    }, 0);
 
     // tính tiền cọc
     const totalDeposit = checkoutItems.reduce((sum, item) => {
@@ -48,18 +57,15 @@ export function Checkout() {
         if (checkoutItems.length === 0) return;
 
         if (deliveryOption === "delivery" && (!address.name || !address.phone || !address.detail)) {
-            alert("Vui lòng nhập đầy đủ thông tin giao hàng!");
+            showToast("Vui lòng nhập đầy đủ thông tin giao hàng!");
             return;
         }
 
-        // Kiểm tra logic: Bắt buộc các item phải có cùng ngày nhận/trả để tạo chung 1 đơn
         const isSameDates = checkoutItems.every(item => item.startDate === orderStartDate && item.endDate === orderEndDate);
         if (!isSameDates) {
-            alert("Các sản phẩm trong cùng một đơn hàng phải có CÙNG ngày nhận và ngày trả đồ. Vui lòng quay lại giỏ hàng để chia thành các đơn khác nhau.");
-            navigate("/cart");
+            showToast("Các sản phẩm trong đơn hàng phải có CÙNG ngày nhận và ngày trả. Vui lòng quay lại giỏ hàng để tách đơn.");
             return;
         }
-
         setIsLoading(true);
         try {
             const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -109,11 +115,11 @@ export function Checkout() {
                 navigate("/rental-history");
             } else {
                 const data = await res.json();
-                alert(data.message || "Lỗi khi đặt hàng");
+                showToast(data.message || "Lỗi khi đặt hàng");
             }
         } catch (err) {
             console.error("Lỗi đặt hàng:", err);
-            alert("Lỗi kết nối đến máy chủ");
+            showToast("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
         } finally {
             setIsLoading(false);
         }
@@ -132,6 +138,12 @@ export function Checkout() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-white via-[#fbf9f6] to-[#faf9f7] pt-20 transition-colors duration-300">
+            <Toast
+                isVisible={toast.isVisible}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+            />
             <div className="center mx-auto px-4 max-w-6xl">
                 {/* Page Header & Stepper */}
                 <div className="mb-12 pb-4">
@@ -187,6 +199,17 @@ export function Checkout() {
                     <div className="lg:col-span-1 space-y-4 mb-6">
                         {/* Mapped Product Cards from Checkout */}
                         {checkoutItems.map((cartItem, idx) => {
+                            const rDays = getRentalDays(cartItem.startDate, cartItem.endDate);
+                            const rates = cartItem.rentalRates || cartItem.costume?.rentalRates || {};
+                            let calculatedPrice = (rates.pricePerDay || 0) * rDays;
+                            let isPackage = null;
+                            if (rDays === 3 && rates.pricePer3Days) {
+                                calculatedPrice = rates.pricePer3Days;
+                                isPackage = 3;
+                            } else if (rDays === 7 && rates.pricePerWeek) {
+                                calculatedPrice = rates.pricePerWeek;
+                                isPackage = 7;
+                            }
                             return (
                                 <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-4 rounded-xl border py-3 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-3">
                                     <div className="px-3">
@@ -198,7 +221,6 @@ export function Checkout() {
                                                         src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
                                                         alt={cartItem.costumeName || cartItem.costume?.name}
                                                         className="w-full h-full object-cover"
-                                                        crossOrigin="anonymous"
                                                     />
                                                 </div>
                                             </div>
@@ -211,9 +233,11 @@ export function Checkout() {
                                                     </h2>
                                                     <div className="flex items-baseline gap-2">
                                                         <span className="text-xl font-bold text-primary">
-                                                            {formatPrice(cartItem.rentalPerDay)}
+                                                            {formatPrice(calculatedPrice)}
                                                         </span>
-                                                        <span className="text-sm text-muted-foreground">/ngày</span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {isPackage ? `(Gói ${isPackage} ngày)` : `(/ ${rDays} ngày)`}
+                                                        </span>
                                                     </div>
                                                 </div>
 
@@ -399,12 +423,21 @@ export function Checkout() {
 
                                     <div className="space-y-3 text-sm">
                                         {checkoutItems.map((item, idx) => {
+                                            const rDays = getRentalDays(item.startDate, item.endDate);
+                                            const rates = item.rentalRates || item.costume?.rentalRates || {};
+                                            let calculatedPrice = (rates.pricePerDay || 0) * rDays;
+                                            if (rDays === 3 && rates.pricePer3Days) {
+                                                calculatedPrice = rates.pricePer3Days;
+                                            } else if (rDays === 7 && rates.pricePerWeek) {
+                                                calculatedPrice = rates.pricePerWeek;
+                                            }
+
                                             return (
                                                 <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">
                                                         {item.costumeName}
                                                     </span>
-                                                    <span className="font-medium text-foreground shrink-0">{formatPrice(item.rentalPerDay * item.quantity * item.rentalDays)}</span>
+                                                    <span className="font-medium text-foreground shrink-0">{formatPrice(calculatedPrice * (item.quantity || 1))}</span>
                                                 </div>
                                             )
                                         })}

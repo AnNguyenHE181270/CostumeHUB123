@@ -31,19 +31,12 @@ import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage"
 import { ROUTES } from "./routePaths";
-<<<<<<< HEAD
+
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
 import ProfileLayout from "../layouts/ProfileLayout";
 
-=======
-
-import DashboardLayout from "../layouts/DashboardLayout";
-import MainLayout from "../layouts/MainLayout"; 
-import ProfileLayout from "../layouts/ProfileLayout"; 
-
->>>>>>> 1260cde0e689d877bc07c770a89163446680e0e0
 
 function AppRoutes() {
   return (
@@ -61,7 +54,7 @@ function AppRoutes() {
 
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
-            <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage/>} />
+            <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
           </Route>
         </Route>
