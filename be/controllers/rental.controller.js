@@ -369,7 +369,13 @@ const checkAvailability = async (req, res, next) => {
 // MATSL-04-08: Lấy danh sách đơn (Cho Staff/Owner)
 const getAllOrders = async (req, res, next) => {
     try {
-        const orders = await RentalOrder.find().populate('user', 'fullName email').populate('costume', 'name');
+        // QUAN TRỌNG: Đổi từ RentalOrder thành Rental
+        // Cập nhật đúng tên trường là 'customerId' và 'items.costume'
+        const orders = await Rental.find()
+            .populate('customerId', 'fullName email phone')
+            .populate('items.costume', 'name')
+            .sort({ createdAt: -1 }); // Sắp xếp đơn mới nhất lên đầu
+            
         res.status(200).json(orders);
     } catch (error) {
         next(new HttpError('Fetching orders failed', 500));

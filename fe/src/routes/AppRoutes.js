@@ -73,6 +73,8 @@ function AppRoutes() {
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
+          {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
+          <Route path="rentals" element={<OrdersPage />} />
         </Route>
       </Route>
 
@@ -80,11 +82,13 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
-
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
+
+          {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
+          <Route path="rentals" element={<OrdersPage />} />
         </Route>
       </Route>
 
