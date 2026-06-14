@@ -21,11 +21,11 @@ const getRentalHistory = async (req, res, next) => {
             id: order._id,
             costumeName: order.items[0]?.costume?.name || "Đơn hàng thuê",
             costumeImage: order.items[0]?.costume?.images?.[0] || "",
-            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1} ngày`,
+            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24))} ngày`,
             startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
             endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
             status: order.status,
-            totalPrice: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalAmount),
+            totalPrice: order.totalAmount,
             address: order.shippingAddress.addressDetail,
             items: order.items.map(item => ({
                 costumeName: item.costume?.name || "Sản phẩm",
@@ -94,7 +94,7 @@ const createOrder = async (req, res, next) => {
         // Tính số ngày thuê
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
         let totalRentalPrice = 0;
         let totalDeposit = 0;
@@ -135,23 +135,15 @@ const createOrder = async (req, res, next) => {
             // ===== TÍNH GIÁ TIỀN =====
 
             const depositPrice = costume.deposit || costume.price || 0;
-
-            let itemRentalPrice = (costume.rentalRates?.pricePerDay || 0) * rentalDays;
-            if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
-                itemRentalPrice = costume.rentalRates.pricePer3Days;
-            } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
-                itemRentalPrice = costume.rentalRates.pricePerWeek;
-            }
-
             // Cộng dồn vào tổng đơn
-            totalRentalPrice += itemRentalPrice * item.quantity;
+            totalRentalPrice += costume.pricePerDay * item.quantity * rentalDays;
             totalDeposit += depositPrice * item.quantity;
 
             formattedItems.push({
                 costume: costume._id,
                 size: item.size,
                 quantity: item.quantity,
-                rentalPricePerDay: itemRentalPrice / rentalDays,
+                rentalPricePerDay: costume.pricePerDay / rentalDays,
                 depositPrice: depositPrice
             });
 
