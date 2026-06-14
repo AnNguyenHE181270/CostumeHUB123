@@ -24,6 +24,10 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import OrdersPage from "../pages/store-owner/OrdersPage";
 
+// Trang Staff
+import StaffDashboard from "../pages/staff/StaffDashboard";
+import StaffProductsPage from "../pages/staff/StaffProductsPage";
+
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
@@ -70,6 +74,8 @@ function AppRoutes() {
 
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
+          <Route index element={<StaffDashboard />} />
+          <Route path={ROUTES.STAFF_PRODUCTS} element={<StaffProductsPage />} />
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
         </Route>
       </Route>
