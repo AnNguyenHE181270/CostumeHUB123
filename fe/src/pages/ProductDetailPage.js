@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -9,9 +9,13 @@ import {
   faRotateLeft,
   faStar,
   faCheck,
+  faCalendarDays,
 } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../context/CartContext";
 import Toast from "../components/ui/Toast";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -47,6 +51,19 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [rentalDays, setRentalDays] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
+
+  const [activePicker, setActivePicker] = useState(null);
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        setActivePicker(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -289,31 +306,119 @@ export default function ProductDetailPage() {
                   Tùy chọn Thuê
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">Ngày nhận đồ</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        if (e.target.value > endDate) setEndDate(e.target.value);
-                      }}
-                      className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-3 py-2.5 focus:border-[#1a1a1a] outline-none transition-colors"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" ref={pickerRef}>
+                  {/* Ngày Nhận */}
+                  <div className="relative">
+                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">
+                      Ngày nhận đồ
+                    </label>
+                    <button
+                      onClick={() => setActivePicker(activePicker === 'start' ? null : 'start')}
+                      className={`w-full text-left bg-white border ${
+                        activePicker === 'start' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
+                      } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
+                    >
+                      {new Date(startDate).toLocaleDateString('vi-VN')}
+                      <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'start' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {activePicker === 'start' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute z-20 mt-2 p-3 bg-white rounded-xl shadow-xl border border-[#eaeaea] custom-calendar-wrapper left-0 min-w-[280px]"
+                        >
+                          <Calendar
+                            onChange={(date) => {
+                              const startStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+                              setStartDate(startStr);
+                              if (startStr > endDate) setEndDate(startStr);
+                              setActivePicker('end'); // Tự động chuyển sang chọn ngày trả
+                            }}
+                            value={new Date(startDate)}
+                            minDate={new Date()}
+                            className="border-none text-[13px] font-sans w-full"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">Ngày trả đồ</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      min={startDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full bg-white border border-[#eaeaea] text-[13px] text-[#1a1a1a] rounded px-3 py-2.5 focus:border-[#1a1a1a] outline-none transition-colors"
-                    />
+
+                  {/* Ngày Trả */}
+                  <div className="relative">
+                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">
+                      Ngày trả đồ
+                    </label>
+                    <button
+                      onClick={() => setActivePicker(activePicker === 'end' ? null : 'end')}
+                      className={`w-full text-left bg-white border ${
+                        activePicker === 'end' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
+                      } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
+                    >
+                      {new Date(endDate).toLocaleDateString('vi-VN')}
+                      <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'end' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {activePicker === 'end' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute z-20 mt-2 p-3 bg-white rounded-xl shadow-xl border border-[#eaeaea] custom-calendar-wrapper right-0 min-w-[280px]"
+                        >
+                          <Calendar
+                            onChange={(date) => {
+                              const endStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+                              setEndDate(endStr);
+                              setActivePicker(null); // Chọn xong thì đóng lịch
+                            }}
+                            value={new Date(endDate)}
+                            minDate={new Date(startDate)}
+                            className="border-none text-[13px] font-sans w-full"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
+
+                <style>{`
+                  .custom-calendar-wrapper .react-calendar {
+                    border: none !important;
+                    font-family: inherit;
+                    width: 100%;
+                  }
+                  .custom-calendar-wrapper .react-calendar__tile {
+                    padding: 0.6em 0.2em;
+                    border-radius: 8px;
+                    transition: background 0.2s;
+                  }
+                  .custom-calendar-wrapper .react-calendar__tile:enabled:hover {
+                    background: #f5f5f5 !important;
+                  }
+                  .custom-calendar-wrapper .react-calendar__tile--active {
+                    background: #1a1a1a !important;
+                    color: white !important;
+                    font-weight: bold;
+                    border-radius: 8px;
+                  }
+                  .custom-calendar-wrapper .react-calendar__navigation button {
+                    border-radius: 8px;
+                    min-width: 36px;
+                  }
+                  .custom-calendar-wrapper .react-calendar__navigation button:enabled:hover,
+                  .custom-calendar-wrapper .react-calendar__navigation button:enabled:focus {
+                    background-color: #f5f5f5;
+                  }
+                  .custom-calendar-wrapper .react-calendar__month-view__days__day--weekend {
+                    color: #d10000;
+                  }
+                `}</style>
 
                 {/* Quick select blocks */}
                 <div className="flex gap-2 mb-6">
