@@ -19,23 +19,21 @@ const getAllCarts = async (req, res, next) => {
         }
 
         const result = carts.flatMap(cart => cart.items.map(item => ({
-            cartItemId: item._id,
-            _id: item.costume?._id,
+            _id: item._id,
             costumeId: item.costume?._id,
-            costumeName: item.costume?.name || "",
+            costumeName: item.costume.name,
             image: item.costume?.images?.[0] || null,
-            category: item.costume?.categoryId?.name || "",
+            category: item.costume.categoryId.name,
             size: item.size,
             quantity: item.quantity,
             status: item.status,
-            startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : item.startDate,
-            endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : item.endDate,
-            rentalPerDay: item.rentalPrice || item.costume?.rentalRates?.pricePerDay || 0,
-            price: item.costume?.price || 0,
-            deposit: item.depositPrice || item.costume?.deposit || 0,
+            startDate: item.startDate,
+            endDate: item.endDate,
+            rentalRates: item.costume.rentalRates,
+            deposit: item.costume?.deposit || 0,
             rentalDays: item.rentalDays,
+            rentalPerDay: item.rentalPrice,
             variants: item.costume?.variants || [],
-            costume: item.costume || {},
             variant: item.costume?.variants?.find(v => v.size === item.size) || { size: item.size }
         })));
 
@@ -103,9 +101,15 @@ const addCart = async (req, res, next) => {
         }
 
         // rentalDays = endDate-startDate +1
-        const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+        const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
 
-        const rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        let rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
+            rentalPrice = costume.rentalRates.pricePer3Days;
+        } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
+            rentalPrice = costume.rentalRates.pricePerWeek;
+        }
+
         const depositPrice = costume.deposit || 0;
 
         const newItem = {
@@ -228,8 +232,14 @@ const updateCart = async (req, res, next) => {
             return next(new HttpError("Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ", 400));
         }
 
-        const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-        const rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
+        let rentalPrice = costume.rentalRates?.pricePerDay || 0;
+        if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
+            rentalPrice = costume.rentalRates.pricePer3Days / 3;
+        } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
+            rentalPrice = costume.rentalRates.pricePerWeek / 7;
+        }
+
         const depositPrice = costume.deposit || 0;
 
         // Lấy thông tin định danh cũ (nếu có update Size/Date)

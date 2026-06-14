@@ -1,8 +1,8 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router-dom";
-import { profile } from "../constants/profile";
-import { useAuth } from "../context/AuthContext";
+import { profile } from "../../constants/profile";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ProfileSidebar({ handleLogout }) {
   const location = useLocation();

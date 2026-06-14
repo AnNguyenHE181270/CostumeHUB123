@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
@@ -12,12 +13,26 @@ import { faBox } from '@fortawesome/free-solid-svg-icons'
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 function RentalHistory() {
-    const [activeTab, setActiveTab] = useState("all");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = searchParams.get("status") || "all";
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isTrackingOpen, setIsTrackingOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const status = searchParams.get("status");
+        if (status && status !== activeTab) {
+            setActiveTab(status);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (tabId) => {
+        setActiveTab(tabId);
+        setSearchParams({ status: tabId });
+    };
 
     const fetchOrders = async () => {
         setIsLoading(true);
@@ -107,7 +122,7 @@ function RentalHistory() {
                             return (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => handleTabChange(tab.id)}
                                     className={
                                         "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all " +
                                         (isActive

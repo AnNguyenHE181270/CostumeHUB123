@@ -46,6 +46,7 @@ export default function ProductDetailPage() {
   });
   const [quantity, setQuantity] = useState(1);
   const [rentalDays, setRentalDays] = useState(1);
+  const [isBuying, setIsBuying] = useState(false);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -53,7 +54,12 @@ export default function ProductDetailPage() {
   };
 
   const isInCart = costume && selectedVariant
-    ? cartItems.some(item => item.costume?._id === costume._id && item.variant?._id === selectedVariant._id && item.startDate === startDate && item.endDate === endDate)
+    ? cartItems.some(item =>
+      (item.costumeId === costume._id || item.costume?._id === costume._id) &&
+      (item.size === selectedVariant.size || item.variant?.size === selectedVariant.size) &&
+      (item.startDate || "").substring(0, 10) === startDate &&
+      (item.endDate || "").substring(0, 10) === endDate
+    )
     : false;
 
   useEffect(() => {
@@ -351,29 +357,50 @@ export default function ProductDetailPage() {
               {/* Action Buttons */}
               <div className="flex gap-3 mb-8">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (costume.status === "available") {
-                      if (!isInCart) addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
-                      navigate("/cart");
+                      if (!isInCart) {
+                        setIsBuying(true);
+                        const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
+                        setIsBuying(false);
+                        if (res && !res.success) {
+                          showToast(res.message || "Có lỗi xảy ra", "error");
+                          return;
+                        }
+                      }
+                      navigate("/checkout", {
+                        state: {
+                          buyNow: {
+                            costumeId: costume._id,
+                            size: selectedVariant.size,
+                            startDate,
+                            endDate
+                          }
+                        }
+                      });
                     }
                   }}
                   className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 ${costume.status === "available"
                     ? "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                     : "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
                     }`}
-                  disabled={costume.status !== "available" || !selectedVariant}
+                  disabled={costume.status !== "available" || !selectedVariant || isBuying}
                 >
-                  Thuê Ngay
+                  {isBuying ? "Đang xử lý..." : "Thuê Ngay"}
                 </button>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isInCart && costume.status === "available") {
-                      addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
-                      showToast("Đã thêm vào giỏ hàng");
+                      const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
+                      if (res && !res.success) {
+                        showToast(res.message || "Có lỗi xảy ra", "error");
+                      } else {
+                        showToast("Đã thêm vào giỏ hàng");
+                      }
                     }
                     else if (isInCart) {
-                      removeFromCart(costume._id, selectedVariant?._id, startDate, endDate);
+                      await removeFromCart(costume._id, selectedVariant?.size, startDate, endDate);
                       showToast("Đã bỏ khỏi giỏ hàng");
                     }
                   }}

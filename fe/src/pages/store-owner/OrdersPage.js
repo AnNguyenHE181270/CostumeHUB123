@@ -7,6 +7,10 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  
+  // State cho Modal thu tiền tại quầy
+  const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
+  const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const fetchOrders = async () => {
     const token = localStorage.getItem("token");
@@ -45,9 +49,41 @@ export default function OrdersPage() {
 
       if (res.ok) {
         setToast({ show: true, message: "Cập nhật trạng thái thành công!", type: "success" });
-        fetchOrders(); // Tải lại bảng để cập nhật màu sắc và trạng thái khóa
+        fetchOrders();
       } else {
         setToast({ show: true, message: data.message || "Lỗi cập nhật", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
+  // Hàm xử lý khi xác nhận thu tiền tại quầy
+  const handleConfirmPayment = async () => {
+    if (!paymentModal.order) return;
+    const token = localStorage.getItem("token");
+    
+    try {
+      // Gửi request cập nhật trạng thái đơn hàng thành picked_up và kèm phương thức thanh toán
+      const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          status: "picked_up",
+          paymentMethod: paymentMethod 
+        })
+      });
+
+      if (res.ok) {
+        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Đơn đã chuyển sang Đang thuê.", type: "success" });
+        setPaymentModal({ isOpen: false, order: null });
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        setToast({ show: true, message: data.message || "Lỗi ghi nhận thanh toán", type: "error" });
       }
     } catch (error) {
       setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
@@ -68,10 +104,26 @@ export default function OrdersPage() {
 
   const columns = [
     { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id.slice(-6).toUpperCase()}</span> },
-    { header: "Khách hàng", accessor: (row) => row.user?.fullName || "N/A" },
+    { header: "Khách hàng", accessor: (row) => row.user?.fullName || "Khách vãng lai" },
     { header: "Trang phục", accessor: (row) => row.costume?.name || "N/A" },
     { header: "Ngày lấy", accessor: (row) => new Date(row.startDate).toLocaleDateString('vi-VN') },
     { header: "Ngày trả", accessor: (row) => new Date(row.endDate).toLocaleDateString('vi-VN') },
+    { 
+      header: "Thanh toán", 
+      accessor: (row) => {
+        if (row.status === 'pending' || row.status === 'draft') {
+          return (
+            <button 
+              onClick={() => setPaymentModal({ isOpen: true, order: row })}
+              className="text-[12px] font-semibold bg-[#1a1a1a] text-white px-3 py-1.5 rounded hover:bg-[#333] transition-colors"
+            >
+              Thu tiền
+            </button>
+          );
+        }
+        return <span className="text-[12px] font-medium text-[#858585]">Đã thanh toán</span>;
+      }
+    },
     { 
       header: "Trạng thái", 
       accessor: (row) => {
@@ -97,7 +149,7 @@ export default function OrdersPage() {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
@@ -112,6 +164,59 @@ export default function OrdersPage() {
           type={toast.type} 
           onClose={() => setToast({ ...toast, show: false })} 
         />
+      )}
+
+      {/* Modal Ghi nhận thanh toán tại quầy */}
+      {paymentModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in">
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Ghi nhận thanh toán</h2>
+            <p className="text-sm text-[#555] mb-6">
+              Xác nhận thu đủ tiền cọc và tiền thuê cho đơn hàng mã <span className="font-semibold text-[#1a1a1a]">{paymentModal.order._id.slice(-6).toUpperCase()}</span>.
+            </p>
+
+            <div className="mb-6 space-y-3">
+              <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="cash" 
+                  checked={paymentMethod === "cash"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                />
+                <span className="text-sm font-medium text-[#1a1a1a]">Tiền mặt</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="vnpay_qr" 
+                  checked={paymentMethod === "vnpay_qr"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                />
+                <span className="text-sm font-medium text-[#1a1a1a]">Mã QR VNPay (Tĩnh)</span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setPaymentModal({ isOpen: false, order: null })}
+                className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleConfirmPayment}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#1a1a1a] rounded-md hover:bg-[#333] transition-colors"
+              >
+                Xác nhận đã thu
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

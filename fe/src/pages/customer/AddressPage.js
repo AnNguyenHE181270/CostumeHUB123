@@ -5,6 +5,7 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
+import { useNavigate } from 'react-router-dom';
 
 export default function AddressPage() {
   const { user, token } = useAuth();
@@ -17,6 +18,7 @@ export default function AddressPage() {
   const [form, setForm] = useState({
     receiverName: "", receiverPhone: "", province: "", district: "", ward: "", addressDetail: "", note: "", isDefault: false
   });
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -120,7 +122,53 @@ const handleSubmit = async (e) => {
       setLoadingPage(false);
     }
   }  
+
+  const handleDelete = async (id) => {
+  try {
+    const response = await fetch(
+      `http://localhost:9999/api/users/delete-address/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setToast({
+        isVisible: true,
+        type: "error",
+        message: data.message || "Failed to delete address.",
+      });
+      return;
+    }
+
+
+    setToast({
+      isVisible: true,
+      type: "success",
+      message: data.message || "Delete address successfully!",
+    });
+
+    await getAllAddresses()
+  } catch {
+    setToast({
+      isVisible: true,
+      type: "error",
+      message: "Network error while deleting data.",
+    });
+  } finally {
+    setLoadingPage(false);
+  }
+};
   useEffect(() => { getAllAddresses(); }, []);
+  const handleClick = (id) =>{
+    navigate(`/user/address/${id}`)
+  }
   return (
     <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full relative">
       <Toast 
@@ -245,11 +293,11 @@ const handleSubmit = async (e) => {
             </div>
             
             <div className="flex items-center gap-4 mt-4 md:mt-0">
-              <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] hover:text-[#555] transition-colors">
+              <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] hover:text-[#555] transition-colors" onClick={() =>handleClick(addr._id)}>
                 Sửa
               </button>
               {!addr.isDefault && (
-                <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-red-600 hover:text-red-800 transition-colors">
+                <button className="text-[12px] uppercase tracking-[0.1em] font-semibold text-red-600 hover:text-red-800 transition-colors "onClick={() =>handleDelete(addr._id)}>
                   Xóa
                 </button>
               )}
