@@ -78,7 +78,6 @@ const addCart = async (req, res, next) => {
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             return next(new HttpError("Ngày tháng không hợp lệ", 400));
         }
-
         // startDate > now, endDate > now
 
         const today = new Date();
@@ -92,8 +91,10 @@ const addCart = async (req, res, next) => {
         const endNormalized = new Date(end);
         endNormalized.setHours(0, 0, 0, 0);
 
-        if (startNormalized <= tomorrow) {
-            return next(new HttpError("Vui lòng đặt thuê đồ trước 1 ngày", 400));
+        if (startNormalized < tomorrow) {
+            return next(
+                new HttpError("Vui lòng đặt thuê đồ trước ít nhất 1 ngày", 400)
+            );
         }
 
         if (endNormalized < startNormalized) {
