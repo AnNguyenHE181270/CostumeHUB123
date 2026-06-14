@@ -6,6 +6,7 @@ import { faTrash, faArrowRight, faCalendarDays, faShieldHalved, faTags } from "@
 import { formatPrice, getRentalDays } from "../utils/formatters"
 import CustomDateRangePicker from "../components/ui/CustomDateRangePicker"
 import Modal from "../components/Modal"
+import DatePickerGroup from "../components/ui/DatePickerGroup"
 
 export default function CartPage() {
   const { cartItems, removeFromCart, addToCart, clearCart, updateCartItem } = useCart();
@@ -96,19 +97,11 @@ export default function CartPage() {
 
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce((sum, item) => {
-    const rDays = getRentalDays(item.startDate, item.endDate);
-    const rates = item.rentalRates || item.costume?.rentalRates || {};
-    let price = (rates.pricePerDay || 0) * rDays;
-    if (rDays === 3 && rates.pricePer3Days) {
-      price = rates.pricePer3Days;
-    } else if (rDays === 7 && rates.pricePerWeek) {
-      price = rates.pricePerWeek;
-    }
-    return sum + price * (item.quantity || 1);
+    return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
   }, 0);
 
   const totalDeposit = selectedCartItems.reduce(
-    (sum, item) => sum + (item.deposit || item.depositPrice || item.costume?.deposit || item.costume?.price || 0) * (item.quantity || 1),
+    (sum, item) => sum + item.deposit * (item.quantity || 1),
     0
   );
   const total = totalRental + totalDeposit;
@@ -187,18 +180,6 @@ export default function CartPage() {
               const itemId = item._id;
               const isSelected = selectedIds.includes(itemId);
               const rentalDays = getRentalDays(item.startDate, item.endDate);
-
-              const rates = item.rentalRates || item.costume?.rentalRates || {};
-              let calculatedPrice = (rates.pricePerDay || 0) * rentalDays;
-              let isPackage = null;
-              if (rentalDays === 3 && rates.pricePer3Days) {
-                calculatedPrice = rates.pricePer3Days;
-                isPackage = 3;
-              } else if (rentalDays === 7 && rates.pricePerWeek) {
-                calculatedPrice = rates.pricePerWeek;
-                isPackage = 7;
-              }
-
               const handleItemQuickSelect = async (days) => {
                 const start = new Date(item.startDate);
                 const end = new Date(start);
@@ -227,10 +208,10 @@ export default function CartPage() {
                 <div
                   key={itemId}
                   onClick={() => toggleItemSelection(itemId)}
-                  className={`rounded-xl border p-3 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-center ${isSelected ? "bg-white border-[#8CE882]" : "bg-white border-[#f0ece8]"}`}
+                  className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch`}
                 >
                   {/* Checkbox */}
-                  <div className="pl-2 sm:pl-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="pl-2 sm:pl-3 flex items-center" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -252,9 +233,9 @@ export default function CartPage() {
                   </button>
 
                   {/* Image */}
-                  <div className="w-[100px] h-[130px] rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0">
+                  <div className="w-[100px] sm:w-[130px] aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0 self-start">
                     <img
-                      src={item.image || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=200&h=300&fit=crop"}
+                      src={item.image}
                       alt={item.costumeName}
                       className="w-full h-full object-cover"
                     />
@@ -262,80 +243,74 @@ export default function CartPage() {
 
                   {/* Details */}
                   <div className="flex flex-col flex-1 py-2">
-                    <div className="">
-                      <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-semibold mb-1">
-                        {item.category}
-                      </p>
-                      <Link to={`/product/${item.costumeId}`} onClick={(e) => e.stopPropagation()} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2 relative z-10 w-fit block">
-                        {item.costumeName}
-                      </Link>
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-semibold mb-1">
+                      {item.category}
+                    </p>
+                    <Link to={`/product/${item.costumeId}`} onClick={(e) => e.stopPropagation()} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2 relative z-10 w-fit block">
+                      {item.costumeName}
+                    </Link>
 
-                      <div className="flex items-center gap-2 mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-[13px] text-[#666]">Size:</span>
-                        <select
-                          value={item.size}
-                          onChange={(e) => console.log("Cần viết thêm hàm updateSize cho: ", e.target.value)}
-                          className="text-[13px] font-bold text-[#1a1a1a] border rounded px-2 py-0.5 outline-none cursor-pointer focus:border-[#1a1a1a] transition-colors bg-white"
-                        >
-                          {item.variants?.map((v, idx) => (
-                            <option key={idx} value={v.size} disabled={v.availableStock === 0}>
-                              {v.size} {v.availableStock === 0 ? "(Hết hàng)" : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 mb-1">
-                        <span className="text-[13px] text-[#666]">Số lượng:</span>
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
-                            }}
-                            disabled={item.quantity <= 1}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
-                          <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
-                            }}
-                            disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
-                        </div>
-                      </div>
-
-                      {/* Toggle button to expand dates */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openDateModal(item); }}
-                        className="text-[11px] font-medium text-[#1a1a1a] underline hover:text-[#666] transition-colors flex items-center gap-1 relative z-10"
+                    <div className="flex items-center gap-2 mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[13px] text-[#666]">Size:</span>
+                      <select
+                        value={item.size}
+                        onChange={(e) => console.log("Cần viết thêm hàm updateSize cho: ", e.target.value)}
+                        className="text-[13px] font-bold text-[#1a1a1a] border rounded px-2 py-0.5 outline-none cursor-pointer focus:border-[#1a1a1a] transition-colors bg-white"
                       >
-                        <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
-                        Tùy chỉnh ngày thuê
-                      </button>
+                        {item.variants?.map((v, idx) => (
+                          <option key={idx} value={v.size} disabled={v.availableStock === 0}>
+                            {v.size} {v.availableStock === 0 ? "(Hết hàng)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[13px] text-[#666]">Số lượng:</span>
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
+                          }}
+                          disabled={item.quantity <= 1}
+                          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
+                        <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
+                          }}
+                          disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
+                          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
+                      </div>
                     </div>
 
-                    {/* Quick select blocks */}
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(1); }}
-                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 1 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Thuê lẻ 1 ngày</button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(3); }}
-                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 3 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Gói 3 ngày</button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleItemQuickSelect(7); }}
-                        className={`px-3 py-1 border text-[11px] rounded transition-colors ${rentalDays === 7 ? 'border-black bg-black text-white' : 'border-[#eaeaea] hover:border-[#1a1a1a]'}`}>Gói 1 tuần</button>
+                    <div onClick={(e) => e.stopPropagation()} className="mt-2">
+                      <DatePickerGroup
+                        startDate={item.startDate}
+                        setStartDate={(newStart) => {
+                          const newEnd = newStart > item.endDate ? newStart : item.endDate;
+                          if (updateCartItem) {
+                            updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
+                          }
+                        }}
+                        endDate={item.endDate}
+                        setEndDate={(newEnd) => {
+                          if (updateCartItem) {
+                            updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, item.startDate, newEnd);
+                          }
+                        }}
+                      />
                     </div>
                   </div>
 
                   {/* Pricing summary for this item */}
                   <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                     <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                      {formatPrice(calculatedPrice * (item.quantity || 1))}
+                      {formatPrice(item.rentalPerDay * (item.quantity || 1))}
                     </p>
                     <p className="text-[11px] text-[#999] mb-1">
-                      {isPackage ? `Gói ${isPackage} ngày` : `${formatPrice(rates.pricePerDay || 0)} / ngày`}
+                      {formatPrice(item.rentalPerDay)} / ngày
                     </p>
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
                       <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
@@ -397,31 +372,6 @@ export default function CartPage() {
 
         </div>
       </div>
-
-      {/* Modal Customize Date */}
-      <Modal isOpen={!!editingDateItem} onClose={() => setEditingDateItem(null)} title="Tùy chỉnh thời gian thuê">
-        <CustomDateRangePicker
-          dateRange={tempDateRange}
-          onChange={handleSelectDateRange}
-          minDate={new Date()}
-        />
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={() => setEditingDateItem(null)}
-            className="flex-1 rounded-xl border border-[#eaeaea] bg-white px-4 py-3 text-[13px] uppercase tracking-[0.08em] font-bold text-[#555] hover:bg-[#fafafa] transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSaveDates}
-            className="flex-1 rounded-xl px-4 py-3 text-[13px] uppercase tracking-[0.08em] font-bold transition-all bg-[#1a1a1a] text-white hover:bg-[#333] shadow-md"
-          >
-            Xác nhận
-          </button>
-        </div>
-      </Modal>
-
     </div>
   );
 }
