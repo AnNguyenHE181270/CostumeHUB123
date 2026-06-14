@@ -94,8 +94,10 @@ const addCart = async (req, res, next) => {
         const endNormalized = new Date(end);
         endNormalized.setHours(0, 0, 0, 0);
 
-        if (startNormalized <= tomorrow) {
-            return next(new HttpError("Vui lòng đặt thuê đồ trước 1 ngày", 400));
+        if (startNormalized < tomorrow) {
+            return next(
+                new HttpError("Vui lòng đặt thuê đồ trước ít nhất 1 ngày", 400)
+            );
         }
 
         if (endNormalized < startNormalized) {

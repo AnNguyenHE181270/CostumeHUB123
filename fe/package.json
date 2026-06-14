@@ -16,6 +16,7 @@
     "chart.js": "^4.5.1",
     "framer-motion": "^12.40.0",
     "react": "^19.2.6",
+    "react-calendar": "^6.0.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.6",
     "react-router-dom": "^6.30.3",
