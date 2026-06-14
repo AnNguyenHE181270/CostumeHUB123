@@ -26,24 +26,32 @@ const getAllCostumes = async (req, res, next) => {
         $or: [
           { parentId: { $in: allTargetCategoryIds } },
           { "parentId.$oid": { $in: allTargetCategoryIds } },
-          { "parentId": { $in: allTargetCategoryIds.map(id => {
-              try { return new require('mongoose').Types.ObjectId(id); } 
-              catch(e) { return id; }
-          })}}
+          {
+            "parentId": {
+              $in: allTargetCategoryIds.map(id => {
+                try { return new require('mongoose').Types.ObjectId(id); }
+                catch (e) { return id; }
+              })
+            }
+          }
         ]
       });
       const childIds = childCategories.map(c => c._id.toString());
-      
+
       const finalCategoryIds = [...new Set([...allTargetCategoryIds, ...childIds])];
-      
+
       // Update filter to support raw $oid format in costumes collection too
       filter.$or = [
         { categoryId: { $in: finalCategoryIds } },
         { "categoryId.$oid": { $in: finalCategoryIds } },
-        { categoryId: { $in: finalCategoryIds.map(id => {
-            try { return new require('mongoose').Types.ObjectId(id); } 
-            catch(e) { return id; }
-        })}}
+        {
+          categoryId: {
+            $in: finalCategoryIds.map(id => {
+              try { return new require('mongoose').Types.ObjectId(id); }
+              catch (e) { return id; }
+            })
+          }
+        }
       ];
     }
 
@@ -56,10 +64,17 @@ const getAllCostumes = async (req, res, next) => {
 
     // Filter by status (comma-separated)
     if (status) {
-      const statuses = status.split(",").filter(Boolean);
-      if (statuses.length > 0) {
-        filter.status = { $in: statuses };
+      if (status === "all") {
+        delete filter.status;
+      } else {
+        const statuses = status.split(",").filter(Boolean);
+        if (statuses.length > 0) {
+          filter.status = { $in: statuses };
+        }
       }
+    } else {
+      // Customer view: only show costumes with availableStock > 0
+      filter["variants.availableStock"] = { $gt: 0 };
     }
 
     // Search by name
@@ -127,21 +142,30 @@ const getCostumeById = async (req, res, next) => {
 
 const createCostume = async (req, res, next) => {
   try {
-    const { 
+    const {
       name, slug, sku, categoryId, description, images, size, color, condition,
-      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
+      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
     } = req.body;
 
+    let processedVariants = [];
+    if (variants && Array.isArray(variants)) {
+      processedVariants = variants.map(v => ({
+        ...v,
+        availableStock: v.totalStock || 0
+      }));
+    }
+
     const newCostume = new Costume({
-      name, slug, sku, categoryId, description, 
-      images: images || [], 
+      name, slug, sku, categoryId, description,
+      images: images || [],
       size, color, condition,
-      rentalRates: rentalRates || { pricePerDay: 0 }, 
-      deposit: deposit || 0, 
-      minRentalDays: minRentalDays || 1, 
-      lateFeePerDay: lateFeePerDay || 0, 
-      status: status || "available", 
+      rentalRates: rentalRates || { pricePerDay: 0 },
+      deposit: deposit || 0,
+      minRentalDays: minRentalDays || 1,
+      lateFeePerDay: lateFeePerDay || 0,
+      status: status || "available",
       specifications: specifications || {},
+      variants: processedVariants,
       createdBy: req.userData.id,
     });
 
@@ -155,9 +179,9 @@ const createCostume = async (req, res, next) => {
 const updateCostume = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { 
+    const {
       name, slug, sku, categoryId, description, images, size, color, condition,
-      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications
+      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
     } = req.body;
 
     const costume = await Costume.findById(id);
@@ -180,6 +204,27 @@ const updateCostume = async (req, res, next) => {
     if (lateFeePerDay !== undefined) costume.lateFeePerDay = lateFeePerDay;
     if (status !== undefined) costume.status = status;
     if (specifications !== undefined) costume.specifications = specifications;
+    
+    if (variants && Array.isArray(variants)) {
+      const newVariants = variants.map(incoming => {
+        const existing = costume.variants.find(v => v.sku === incoming.sku || (v._id && incoming._id && v._id.toString() === incoming._id));
+        if (existing) {
+          const oldTotal = existing.totalStock || 0;
+          const oldAvailable = existing.availableStock || 0;
+          const diff = (incoming.totalStock || 0) - oldTotal;
+          return {
+            ...incoming,
+            availableStock: Math.max(0, oldAvailable + diff)
+          };
+        } else {
+          return {
+            ...incoming,
+            availableStock: incoming.totalStock || 0
+          };
+        }
+      });
+      costume.variants = newVariants;
+    }
 
     await costume.save();
     res.status(200).json({ costume });

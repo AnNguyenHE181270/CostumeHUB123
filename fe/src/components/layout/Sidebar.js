@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react"; // Thêm useRef, u
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faChevronLeft, faSignOutAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faBars, faChevronLeft, faSignOutAlt, faSearch, faUser } from "@fortawesome/free-solid-svg-icons";
 import NavLinkSideBar from "../ui/NavLinkSideBar";
 
 export default function Sidebar({ menuItems }) { // Nhận props menuItems
@@ -13,6 +13,17 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
   const [searchTerm, setSearchTerm] = useState("");
   
   const searchInputRef = useRef(null); // Dùng để tự động focus vào ô search
+  const sidebarRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!collapsed && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        setCollapsed(true);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [collapsed]);
 
   const handleLogout = () => {
     logout();
@@ -25,7 +36,6 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
     );
   }, [searchTerm, menuItems]);
 
-  // Khi sidebar được mở rộng, tự động focus vào ô search
   useEffect(() => {
     if (!collapsed && searchInputRef.current) {
       searchInputRef.current.focus();
@@ -34,16 +44,17 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
 
   return (
     <aside
-      className={`sticky top-0 h-screen bg-white border-r shadow-sm transition-all duration-300 flex flex-col ${
+      ref={sidebarRef}
+      className={`sticky top-0 h-screen bg-white border-r border-[#eaeaea] shadow-sm transition-all duration-300 flex flex-col z-50 ${
         collapsed ? "w-20" : "w-64"
       }`}
     >
-      <div className="p-4 border-border">
+      <div className="p-4 border-b border-[#eaeaea]">
         <div className="flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1 className="font-bold text-lg">Luxe Rent</h1>
-              <p className="text-sm text-gray-500">{user?.name}</p>
+              <h1 className="font-semibold text-[24px] text-[#1a1a1a] tracking-[0.06em]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>CostumeHUB</h1>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-[#858585] mt-0.5 font-medium">{user?.fullName || "Admin"}</p>
             </div>
           )}
 
@@ -95,10 +106,19 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
             )}
       </nav>
 
-      <div className="p-3 border-t">
+      <div className="p-3 border-t flex flex-col gap-2">
+        <button
+          onClick={() => navigate("/user/my-profile")}
+          className="w-full text-gray-700 py-3 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors"
+          title="Hồ sơ của tôi"
+        >
+          <FontAwesomeIcon icon={faUser} />
+          {!collapsed && <span>Hồ sơ của tôi</span>}
+        </button>
         <button
           onClick={handleLogout}
-          className="w-full bg-red-500 text-white py-3 rounded-xl flex items-center justify-center gap-3 hover:bg-red-600"
+          className="w-full bg-red-500 text-white py-3 rounded-xl flex items-center justify-center gap-3 hover:bg-red-600 transition-colors"
+          title="Đăng xuất"
         >
           <FontAwesomeIcon icon={faSignOutAlt} />
           {!collapsed && <span>Đăng xuất</span>}

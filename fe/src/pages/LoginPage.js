@@ -46,6 +46,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.isPending) {
+          navigate(`/verify-otp/${encodeURIComponent(data.email)}`, { state: { fromRegister: true } });
+          return;
+        }
+
         setError(
           data.errors?.[0]?.msg ||
           data.message ||
@@ -88,7 +93,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-10">
-          <p className="text-primary-600 text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
+          <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
             Welcome Back
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
@@ -147,7 +152,7 @@ export default function LoginPage() {
 
             <a
               href="/forgot-password"
-              className="text-primary-600 text-sm font-medium hover:text-primary-700 transition-colors"
+              className="text-[#1a1a1a] text-sm font-medium hover:text-[#1a1a1a] transition-colors"
             >
               Forgot Password?
             </a>
@@ -170,7 +175,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => navigate(ROUTES.REGISTER)}
-              className="text-primary-600 font-medium hover:text-primary-700 transition-colors"
+              className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
               Create an account
             </button>

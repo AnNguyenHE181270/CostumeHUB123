@@ -10,15 +10,9 @@ const costumeSchema = new mongoose.Schema(
 
     description: {
       type: String,
-      required: true,
     },
 
     slug: {
-      type: String,
-      trim: true,
-    },
-
-    sku: {
       type: String,
       trim: true,
     },
@@ -35,22 +29,6 @@ const costumeSchema = new mongoose.Schema(
       },
     ],
 
-    rentalRates: {
-      pricePerDay: { type: Number, required: true, min: 0 },
-      pricePer3Days: { type: Number },
-      pricePerWeek: { type: Number },
-    },
-
-    deposit: {
-      type: Number,
-      default: 0,
-    },
-
-    minRentalDays: {
-      type: Number,
-      default: 1,
-    },
-
     lateFeePerDay: {
       type: Number,
       default: 0,
@@ -61,23 +39,10 @@ const costumeSchema = new mongoose.Schema(
       default: "",
     },
 
-    color: {
-      type: String,
-    },
-
-    size: {
-      type: String,
-    },
-
-    condition: {
-      type: String,
-    },
-
-    specifications: {
-      material: String,
-      includedAccessories: [String],
-      bustSize: String,
-      waistSize: String,
+    price: {
+      type: Number,
+      min: 0,
+      default: 0
     },
 
     status: {
@@ -88,21 +53,64 @@ const costumeSchema = new mongoose.Schema(
         "maintenance",
         "dry_cleaning",
         "hidden",
+        "out_of_stock",
       ],
       default: "available",
     },
 
-    ratingAverage: {
+    rentalRates: {
+      pricePerDay: { type: Number, default: 0 },
+      pricePer3Days: { type: Number },
+      pricePerWeek: { type: Number },
+    },
+
+    deposit: {
       type: Number,
-      default: 0,
+      min: 0,
+      default: 0
+    },
+
+    minRentalDays: {
+      type: Number,
+      default: 1
+    },
+
+    variants: [{
+      status: {
+        type: String,
+        enum: [
+          "available",
+          "rented",
+          "maintenance",
+          "dry_cleaning",
+          "hidden",
+          "out_of_stock",
+        ],
+        default: "available",
+      },
+      size: String,
+      sku: {
+        type: String,
+      },
+      availableStock: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      totalStock: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      bustSize: String,
+      waistSize: String,
+    }],
+    specifications: {
+      material: String,
+      includedAccessories: [String],
     },
 
     reviewCount: {
-      type: Number,
-      default: 0,
-    },
-
-    totalRentals: {
       type: Number,
       default: 0,
     },

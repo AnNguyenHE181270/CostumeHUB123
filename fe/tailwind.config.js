@@ -9,19 +9,20 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
+          50: "#f9f9f9",
+          100: "#f0f0f0",
+          400: "#555555",
+          500: "#333333",
+          600: "#1a1a1a",
+          700: "#000000",
         },
         background: "#ffffff",
-        surface: "#f9fafb",
-        border: "#e5e7eb",
+        surface: "#faf9f7",
+        border: "#eaeaea",
         text: {
-          primary: "#111827",
-          secondary: "#4b5563",
-          muted: "#9ca3af",
+          primary: "#1a1a1a",
+          secondary: "#555555",
+          muted: "#999999",
         },
         success: {
           50: "#ecfdf5",

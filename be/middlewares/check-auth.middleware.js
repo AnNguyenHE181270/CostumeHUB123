@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const HttpError = require("../models/http-error.model");
-const userModel = require("../models/user.model");
 
 const checkAuth = (req, res, next) => {
   if (req.method === "OPTIONS") {
@@ -21,14 +20,12 @@ const checkAuth = (req, res, next) => {
     }
 
     const token = parts[1];
-
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
     req.userData = {
       id: decodedToken.id,
       email: decodedToken.email,
-      role: decodedToken.role ,
-      permissions: decodedToken.permissions
+      role: decodedToken.role 
     };
 
     next();
@@ -37,21 +34,42 @@ const checkAuth = (req, res, next) => {
   }
 };
 
-const requirePermission = (permission) => (req, res, next) => {
+const isOnlineCustomer = (req, res, next) => {
   try {
-    const permissions = req.userData.permissions 
-
-    if (!permissions.includes(permission)) {
-      return next(new HttpError("Access denied!", 403))
+    if (req.userData.role !== "online-customer") {
+      return next(new HttpError("Access denied: Online Customer role required!", 403));
     }
-
-    next()
+    next();
   } catch (err) {
-    return next(new HttpError("Authorization failed!", 403))
+    return next(new HttpError("Authorization failed!", 403));
   }
-}
+};
+
+const isStaff = (req, res, next) => {
+  try {
+    if (req.userData.role !== "staff") {
+      return next(new HttpError("Access denied: Staff role required!", 403));
+    }
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
+
+const isOwner = (req, res, next) => {
+  try {
+    if (req.userData.role !== "owner") {
+      return next(new HttpError("Access denied: Owner role required!", 403));
+    }
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
 
 module.exports = {
   checkAuth,
-  requirePermission
+  isOnlineCustomer,
+  isStaff,
+  isOwner
 };
