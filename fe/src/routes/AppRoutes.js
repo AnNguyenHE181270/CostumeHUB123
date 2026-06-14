@@ -42,12 +42,17 @@ import MainLayout from "../layouts/MainLayout";
 import ProfileLayout from "../layouts/ProfileLayout";
 
 
+import CategoryPage from "../pages/customer/CategoryPage";
+import SearchPage from "../pages/customer/SearchPage";
+
 function AppRoutes() {
   return (
     <Routes>
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
+        <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
 
         <Route element={<ProtectedRoutes />}>

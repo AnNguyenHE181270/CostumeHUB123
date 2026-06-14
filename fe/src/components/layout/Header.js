@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faShoppingBag, faBars, faTimes, faSearch, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
+import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
+import SearchBar from "../customer/SearchBar";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -46,18 +47,44 @@ export default function Header() {
     { label: "VỀ CHÚNG TÔI", href: "/about" },
   ];
 
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+        const res = await fetch(`${API_URL}/api/categories?all=true`);
+        if (res.ok) {
+          const data = await res.json();
+          const cats = data.categories || [];
+          
+          // Build tree
+          const parents = cats.filter(c => !c.parentId);
+          const tree = parents.map(p => ({
+            ...p,
+            children: cats.filter(c => c.parentId === p._id || c.parentId?.$oid === p._id)
+          }));
+          setCategories(tree);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
-    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-4" : "bg-white py-6"}`}>
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between">
+    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-4" : "bg-white pt-6"}`}>
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-6">
         
         {/* Left: Mobile Menu Toggle or Desktop Links */}
         <div className="flex-1 flex items-center">
           <button className="lg:hidden text-gray-800 text-xl hover:text-black transition-colors" onClick={() => setMobileMenuOpen(true)}>
             <FontAwesomeIcon icon={faBars} />
           </button>
-          <nav className="hidden lg:flex gap-10">
+          <nav className="hidden lg:flex gap-10 items-center">
             {NAV_LINKS.map(link => (
-              <Link key={link.href} to={link.href} className="text-[12px] font-medium tracking-[0.15em] text-gray-600 hover:text-black transition-colors">
+              <Link key={link.href} to={link.href} className="text-[12px] font-medium tracking-[0.15em] text-gray-600 hover:text-black transition-colors uppercase">
                 {link.label}
               </Link>
             ))}
@@ -65,7 +92,7 @@ export default function Header() {
         </div>
 
         {/* Center: Logo */}
-        <div className="flex-shrink-0 text-center">
+        <div className="flex-shrink-0 text-center -translate-y-2">
           <Link to="/" className="flex flex-col items-center">
             <h1 className="text-3xl lg:text-4xl font-semibold text-black leading-none tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               CostumeHUB
@@ -77,10 +104,10 @@ export default function Header() {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex-1 flex items-center justify-end gap-6 lg:gap-8">
-          <button className="text-gray-600 hover:text-black transition-colors" aria-label="Search">
-            <FontAwesomeIcon icon={faSearch} className="text-[15px] lg:text-[16px]" />
-          </button>
+        <div className="flex-1 flex items-center justify-end gap-6 lg:gap-8 relative z-[60]">
+          <div className="hidden lg:flex flex-1 max-w-[300px] justify-end w-full">
+            <SearchBar />
+          </div>
           
           <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
             <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
@@ -123,6 +150,38 @@ export default function Header() {
         </div>
       </div>
 
+      {/* Bottom Category Bar */}
+      <div className="hidden lg:block w-full bg-[#f9f5ed] border-t border-[#e8dfc8]">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+          <nav className="flex justify-center gap-12 items-center">
+            {categories.map(cat => (
+              <div key={cat._id} className="relative group">
+                <Link to={`/category/${cat._id}`} className="block text-[11px] font-bold tracking-[0.15em] text-[#4a453e] hover:text-black transition-colors uppercase py-4">
+                  {cat.name}
+                </Link>
+                
+                {/* Dropdown for child categories */}
+                {cat.children && cat.children.length > 0 && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 bg-white shadow-xl border border-gray-50 transition-all duration-200 z-50 min-w-[220px] opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 py-2">
+                    <div className="flex flex-col text-center">
+                      {cat.children.map(child => (
+                        <Link 
+                          key={child._id} 
+                          to={`/category/${child._id}`} 
+                          className="px-6 py-3.5 text-[11px] text-[#555] hover:bg-[#fcfaf5] hover:text-black transition-colors font-normal uppercase tracking-[0.15em]"
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+        </div>
+      </div>
+
       {/* Mobile Drawer Overlay */}
       <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`} onClick={() => setMobileMenuOpen(false)}>
         {/* Mobile Drawer */}
@@ -134,10 +193,25 @@ export default function Header() {
             </button>
           </div>
           <nav className="flex flex-col px-6 py-8 gap-6 flex-1 overflow-y-auto">
-            {NAV_LINKS.map(link => (
-              <Link key={link.href} to={link.href} className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase transition-colors">
-                {link.label}
-              </Link>
+            {categories.map(cat => (
+              <div key={cat._id} className="flex flex-col gap-3">
+                <Link to={`/category/${cat._id}`} className="text-[13px] font-bold tracking-[0.1em] text-gray-800 hover:text-black uppercase transition-colors">
+                  {cat.name}
+                </Link>
+                {cat.children && cat.children.length > 0 && (
+                  <div className="flex flex-col gap-3 pl-4 border-l border-gray-100">
+                    {cat.children.map(child => (
+                      <Link 
+                        key={child._id} 
+                        to={`/category/${child._id}`} 
+                        className="text-[12px] font-medium tracking-[0.05em] text-gray-500 hover:text-black uppercase transition-colors"
+                      >
+                        {child.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
             <hr className="border-gray-100 my-2" />
             <Link to={user ? "/my-profile" : "/login"} className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors">

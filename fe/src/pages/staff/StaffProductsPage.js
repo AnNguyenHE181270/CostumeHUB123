@@ -229,7 +229,6 @@ export default function StaffProductsPage() {
                         src={costume.images[0]}
                         alt={costume.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        crossOrigin="anonymous"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#ccc]">
@@ -379,7 +378,7 @@ export default function StaffProductsPage() {
                 <div className="md:w-2/5 flex-shrink-0">
                   <div className="aspect-[3/4] rounded-lg overflow-hidden bg-[#f5f5f5]">
                     {selectedCostume.images?.[0] ? (
-                      <img src={selectedCostume.images[0]} alt={selectedCostume.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                      <img src={selectedCostume.images[0]} alt={selectedCostume.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#ccc]">
                         <FontAwesomeIcon icon={faBox} className="text-5xl" />
@@ -391,7 +390,7 @@ export default function StaffProductsPage() {
                     <div className="flex gap-2 mt-3">
                       {selectedCostume.images.slice(0, 4).map((img, i) => (
                         <div key={i} className="w-14 h-14 rounded-md overflow-hidden border border-[#eaeaea] flex-shrink-0">
-                          <img src={img} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                          <img src={img} alt="" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {selectedCostume.images.length > 4 && (
@@ -435,21 +434,13 @@ export default function StaffProductsPage() {
                     </div>
                   </div>
 
-                  {/* Additional pricing */}
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="bg-[#faf9f7] rounded-lg p-2.5">
-                      <p className="text-[10px] text-[#999]">3 ngày</p>
-                      <p className="text-sm font-semibold text-[#1a1a1a]">{formatPrice(selectedCostume.rentalRates?.pricePer3Days)}</p>
+                  {/* Phạt trễ */}
+                  {selectedCostume.lateFeePerDay > 0 && (
+                    <div className="bg-red-50 rounded-lg p-3 flex items-center justify-between">
+                      <p className="text-xs text-red-600">Phạt trễ / ngày</p>
+                      <p className="text-sm font-bold text-red-600">{formatPrice(selectedCostume.lateFeePerDay)}</p>
                     </div>
-                    <div className="bg-[#faf9f7] rounded-lg p-2.5">
-                      <p className="text-[10px] text-[#999]">1 tuần</p>
-                      <p className="text-sm font-semibold text-[#1a1a1a]">{formatPrice(selectedCostume.rentalRates?.pricePerWeek)}</p>
-                    </div>
-                    <div className="bg-[#faf9f7] rounded-lg p-2.5">
-                      <p className="text-[10px] text-[#999]">Phạt trễ / ngày</p>
-                      <p className="text-sm font-semibold text-red-600">{formatPrice(selectedCostume.lateFeePerDay)}</p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Variants table */}
                   {selectedCostume.variants?.length > 0 && (

@@ -227,8 +227,18 @@ export default function CartPage() {
                 <div
                   key={itemId}
                   onClick={() => toggleItemSelection(itemId)}
-                  className={`rounded-xl border p-3 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer ${isSelected ? "bg-white border-[#8CE882]" : "bg-white border-[#f0ece8]"}`}
+                  className={`rounded-xl border p-3 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-center ${isSelected ? "bg-white border-[#8CE882]" : "bg-white border-[#f0ece8]"}`}
                 >
+                  {/* Checkbox */}
+                  <div className="pl-2 sm:pl-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleItemSelection(itemId)}
+                      className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
+                    />
+                  </div>
+
                   {/* Delete Btn */}
                   <button
                     onClick={(e) => {
@@ -242,7 +252,7 @@ export default function CartPage() {
                   </button>
 
                   {/* Image */}
-                  <div className="w-[100px] h-[130px] rounded-lg overflow-hidden bg-[#f5f5f5]">
+                  <div className="w-[100px] h-[130px] rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0">
                     <img
                       src={item.image || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=200&h=300&fit=crop"}
                       alt={item.costumeName}
