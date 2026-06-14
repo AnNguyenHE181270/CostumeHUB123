@@ -6,6 +6,7 @@ import Button from "../../components/ui/Button";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
 import { useNavigate } from 'react-router-dom';
+import GHNAddressSelect from "../../components/GHNAddressSelect";
 
 export default function AddressPage() {
   const { user, token } = useAuth();
@@ -16,13 +17,20 @@ export default function AddressPage() {
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [addresses, setAddresses] = useState([]);
   const [form, setForm] = useState({
-    receiverName: "", receiverPhone: "", province: "", district: "", ward: "", addressDetail: "", note: "", isDefault: false
+    receiverName: "", receiverPhone: "", province: "", provinceId: null, district: "", districtId: null, ward: "", wardCode: "", addressDetail: "", note: "", isDefault: false
   });
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+  
+  const handleGHNChange = (ghnData) => {
+    setForm(prev => ({
+        ...prev,
+        ...ghnData
+    }));
   };
   console.log(user)
   const handlePhoneTypeChange = (type) => {
@@ -187,7 +195,7 @@ const handleSubmit = async (e) => {
             onClick={() => {
               setPhoneType("my");
               setForm({
-                receiverName: "", receiverPhone: user?.phone || "", province: "", district: "", ward: "", addressDetail: "", note: "", isDefault: false
+                receiverName: "", receiverPhone: user?.phone || "", province: "", provinceId: null, district: "", districtId: null, ward: "", wardCode: "", addressDetail: "", note: "", isDefault: false
               });
               setShowAddForm(true);
             }}
@@ -231,17 +239,12 @@ const handleSubmit = async (e) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                  <Input label="Tỉnh / Thành phố">
-                    <input type="text" name="province" value={form.province} onChange={handleChange} placeholder="Nhập tỉnh/thành" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-                  </Input>
-                  <Input label="Quận / Huyện">
-                    <input type="text" name="district" value={form.district} onChange={handleChange} placeholder="Nhập quận/huyện" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-                  </Input>
-                  <Input label="Phường / Xã">
-                    <input type="text" name="ward" value={form.ward} onChange={handleChange} placeholder="Nhập phường/xã" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-                  </Input>
-                </div>
+                <GHNAddressSelect 
+                  provinceId={form.provinceId}
+                  districtId={form.districtId}
+                  wardCode={form.wardCode}
+                  onChange={handleGHNChange}
+                />
 
                 <Input label="Địa chỉ cụ thể (Số nhà, tên đường)">
                   <textarea name="addressDetail" value={form.addressDetail} onChange={handleChange} placeholder="Ví dụ: Số 12, ngõ 34, đường ABC" rows="2" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999] resize-none" required />

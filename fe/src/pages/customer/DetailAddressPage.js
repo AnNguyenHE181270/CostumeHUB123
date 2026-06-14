@@ -4,6 +4,7 @@ import { faArrowLeft, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useParams, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Toast from "../../components/ui/Toast";
+import GHNAddressSelect from "../../components/GHNAddressSelect";
 import { useAuth } from "../../context/AuthContext";
 
 export default function DetailAddressPage() {
@@ -19,12 +20,22 @@ export default function DetailAddressPage() {
     receiverName: "",
     receiverPhone: "",
     province: "",
+    provinceId: null,
     district: "",
+    districtId: null,
     ward: "",
+    wardCode: "",
     addressDetail: "",
     note: "",
     isDefault: false
   });
+
+  const handleGHNChange = (ghnData) => {
+    setForm(prev => ({
+        ...prev,
+        ...ghnData
+    }));
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,8 +70,11 @@ export default function DetailAddressPage() {
         receiverName: data.address.receiverName,
         receiverPhone: data.address.receiverPhone,
         province: data.address.province,
+        provinceId: data.address.provinceId,
         district: data.address.district,
+        districtId: data.address.districtId,
         ward: data.address.ward,
+        wardCode: data.address.wardCode,
         addressDetail: data.address.addressDetail,
         note: data.address.note,
         isDefault: data.address.isDefault,
@@ -156,17 +170,12 @@ export default function DetailAddressPage() {
             <Input label="Số điện thoại" name="receiverPhone" type="tel" value={form.receiverPhone} onChange={handleChange} placeholder="Ví dụ: 0912345678" required />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <Input label="Tỉnh / Thành phố">
-              <input type="text" name="province" value={form.province} onChange={handleChange} placeholder="Nhập tỉnh/thành" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-            </Input>
-            <Input label="Quận / Huyện">
-              <input type="text" name="district" value={form.district} onChange={handleChange} placeholder="Nhập quận/huyện" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-            </Input>
-            <Input label="Phường / Xã">
-              <input type="text" name="ward" value={form.ward} onChange={handleChange} placeholder="Nhập phường/xã" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999]" required />
-            </Input>
-          </div>
+          <GHNAddressSelect 
+            provinceId={form.provinceId}
+            districtId={form.districtId}
+            wardCode={form.wardCode}
+            onChange={handleGHNChange}
+          />
 
           <Input label="Địa chỉ cụ thể (Số nhà, tên đường)">
             <textarea name="addressDetail" value={form.addressDetail} onChange={handleChange} placeholder="Ví dụ: Số 12, ngõ 34, đường ABC" rows="2" className="w-full bg-surface border border-[#eaeaea] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] outline-none transition-all duration-200 focus:border-[#1a1a1a] focus:bg-white focus:ring-1 focus:ring-[#1a1a1a] placeholder:text-[#999] resize-none" required />
