@@ -78,7 +78,6 @@ const addCart = async (req, res, next) => {
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             return next(new HttpError("Ngày tháng không hợp lệ", 400));
         }
-
         // startDate > now, endDate > now
 
         const today = new Date();
