@@ -359,6 +359,7 @@ const getMyProfile = async (req, res, next) => {
         provider: user.provider,
         role: user.role.name,
         avatar: user.avatar,
+        addresses: user.addresses,
       },
     });
   } catch (err) {
@@ -642,8 +643,11 @@ const createAddress = async (req, res, next) => {
       receiverName,
       receiverPhone,
       province,
+      provinceId,
       district,
+      districtId,
       ward,
+      wardCode,
       addressDetail,
       note,
       isDefault,
@@ -664,8 +668,11 @@ const createAddress = async (req, res, next) => {
       receiverName,
       receiverPhone,
       province,
+      provinceId,
       district,
+      districtId,
       ward,
+      wardCode,
       addressDetail,
       note,
       isDefault: isDefault || user.addresses.length === 0
@@ -705,8 +712,11 @@ const updateAddress = async (req, res, next) => {
       receiverName,
       receiverPhone,
       province,
+      provinceId,
       district,
+      districtId,
       ward,
+      wardCode,
       addressDetail,
       note,
       isDefault,
@@ -734,29 +744,17 @@ const updateAddress = async (req, res, next) => {
       });
     }
 
-    address.receiverName =
-      receiverName ?? address.receiverName;
-
-    address.receiverPhone =
-      receiverPhone ?? address.receiverPhone;
-
-    address.province =
-      province ?? address.province;
-
-    address.district =
-      district ?? address.district;
-
-    address.ward =
-      ward ?? address.ward;
-
-    address.addressDetail =
-      addressDetail ?? address.addressDetail;
-
-    address.note =
-      note ?? address.note;
-
-    address.isDefault =
-      isDefault ?? address.isDefault;
+    if (receiverName) address.receiverName = receiverName;
+    if (receiverPhone) address.receiverPhone = receiverPhone;
+    if (province) address.province = province;
+    if (provinceId !== undefined) address.provinceId = provinceId;
+    if (district) address.district = district;
+    if (districtId !== undefined) address.districtId = districtId;
+    if (ward) address.ward = ward;
+    if (wardCode !== undefined) address.wardCode = wardCode;
+    if (addressDetail) address.addressDetail = addressDetail;
+    if (note) address.note = note;
+    if (isDefault !== undefined) address.isDefault = isDefault;
 
     await user.save();
 

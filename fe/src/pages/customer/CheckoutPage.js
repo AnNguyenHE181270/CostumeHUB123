@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
+import { useAuth } from "../../context/AuthContext"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faMapMarkerAlt, faShieldAlt, faTruck, faCheck, faCreditCard, } from '@fortawesome/free-solid-svg-icons'
 import Button from "../../components/ui/Button"
@@ -17,11 +18,44 @@ export function Checkout() {
     const buyNow = location.state?.buyNow;
 
     const { cartItems, clearCart, removeFromCart } = useCart()
+    const { user } = useAuth()
     const [deliveryOption, setDeliveryOption] = useState("delivery")
-    const [paymentMethod, setPaymentMethod] = useState("VietQR")
+    const [paymentMethod, setPaymentMethod] = useState("VNPAY")
     const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
+    const [selectedAddress, setSelectedAddress] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" })
+
+    useEffect(() => {
+        if (deliveryOption === "delivery" && paymentMethod === "Cash") {
+            setPaymentMethod("VNPAY");
+        }
+    }, [deliveryOption, paymentMethod]);
+
+    useEffect(() => {
+        if (user) {
+            let defaultAddress = user.addresses?.find(a => a.isDefault);
+            if (!defaultAddress && user.addresses?.length > 0) {
+                defaultAddress = user.addresses[0];
+            }
+            if (defaultAddress) {
+                setSelectedAddress(defaultAddress);
+                const parts = [defaultAddress.addressDetail, defaultAddress.ward, defaultAddress.district, defaultAddress.province].filter(Boolean);
+                setAddress({
+                    name: defaultAddress.receiverName || user.fullName || "",
+                    phone: defaultAddress.receiverPhone || user.phone || "",
+                    detail: parts.join(", ")
+                });
+            } else {
+                setSelectedAddress(null);
+                setAddress(prev => ({
+                    ...prev,
+                    name: user.fullName || "",
+                    phone: user.phone || ""
+                }));
+            }
+        }
+    }, [user]);
 
     const showToast = (message, type = "error") => {
         setToast({ isVisible: true, message, type });
@@ -50,7 +84,7 @@ export function Checkout() {
         return sum + (item.deposit * item.quantity)
     }, 0)
 
-    const deliveryFee = deliveryOption === "delivery" ? 50000 : 0
+    const deliveryFee = 0; // Miễn phí giao hàng trọn gói
     const total = totalRental + totalDeposit + deliveryFee
 
     const handleCheckout = async () => {
@@ -85,7 +119,13 @@ export function Checkout() {
                 shippingAddress: {
                     receiverName: deliveryOption === "delivery" ? address.name : "Khách nhận tại cửa hàng",
                     receiverPhone: deliveryOption === "delivery" ? address.phone : "Tại cửa hàng",
-                    addressDetail: deliveryOption === "delivery" ? address.detail : "Nhận tại cửa hàng"
+                    addressDetail: deliveryOption === "delivery" ? address.detail : "Nhận tại cửa hàng",
+                    provinceId: deliveryOption === "delivery" && selectedAddress ? selectedAddress.provinceId : null,
+                    districtId: deliveryOption === "delivery" && selectedAddress ? selectedAddress.districtId : null,
+                    wardCode: deliveryOption === "delivery" && selectedAddress ? selectedAddress.wardCode : null,
+                    province: deliveryOption === "delivery" && selectedAddress ? selectedAddress.province : null,
+                    district: deliveryOption === "delivery" && selectedAddress ? selectedAddress.district : null,
+                    ward: deliveryOption === "delivery" && selectedAddress ? selectedAddress.ward : null
                 }
             };
 
@@ -99,6 +139,7 @@ export function Checkout() {
             });
 
             if (res.ok) {
+                const data = await res.json();
                 // Fallback: Xóa khỏi giỏ thủ công phía Frontend để đảm bảo 100% dọn dẹp
                 if (checkoutItems.length === cartItems.length) {
                     await clearCart();
@@ -112,6 +153,30 @@ export function Checkout() {
                         );
                     }
                 }
+
+                if (paymentMethod === "VNPAY") {
+                    try {
+                        const vnpayRes = await fetch(`${API_URL}/api/vnpays/create-payment-url`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${token}` 
+                            },
+                            body: JSON.stringify({ rentalId: data.order?._id })
+                        });
+                        
+                        if (vnpayRes.ok) {
+                            const vnpayData = await vnpayRes.json();
+                            if (vnpayData.paymentUrl) {
+                                window.location.href = vnpayData.paymentUrl;
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Lỗi chuyển hướng VNPAY:", err);
+                    }
+                }
+
                 navigate("/rental-history");
             } else {
                 const data = await res.json();
@@ -257,8 +322,8 @@ export function Checkout() {
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">Giao hàng tận nơi</span>
-                                                <span className="text-sm font-semibold text-primary">
-                                                    {formatPrice(50000)}
+                                                <span className="text-sm font-semibold text-green-600">
+                                                    Miễn phí
                                                 </span>
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-1">
@@ -295,29 +360,44 @@ export function Checkout() {
                                 </div>
 
                                 {deliveryOption === "delivery" && (
-                                    <div className="mt-4 space-y-3">
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                            <FontAwesomeIcon icon={faMapMarkerAlt} className="h-4 w-4" />
-                                            <span>Địa chỉ giao hàng</span>
+                                    <div className="mt-4">
+                                        <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <FontAwesomeIcon icon={faMapMarkerAlt} className="h-4 w-4 text-primary" />
+                                                <span className="font-semibold text-foreground">Địa chỉ giao hàng</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => navigate("/user/addresses")} 
+                                                className="text-[12px] uppercase tracking-[0.1em] font-semibold text-primary hover:underline transition-colors"
+                                            >
+                                                Thay đổi
+                                            </button>
                                         </div>
-                                        <Input
-                                            placeholder="Tên người nhận"
-                                            value={address.name}
-                                            onChange={(e) => setAddress({ ...address, name: e.target.value })}
-                                            className="bg-background"
-                                        />
-                                        <Input
-                                            placeholder="Số điện thoại"
-                                            value={address.phone}
-                                            onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                                            className="bg-background"
-                                        />
-                                        <Input
-                                            placeholder="Địa chỉ giao hàng chi tiết"
-                                            value={address.detail}
-                                            onChange={(e) => setAddress({ ...address, detail: e.target.value })}
-                                            className="bg-background"
-                                        />
+                                        {selectedAddress ? (
+                                            <div className="border border-[#eaeaea] p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 transition-colors rounded-xl bg-primary/5">
+                                                <div>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <span className="font-bold text-[#1a1a1a] text-base">{selectedAddress.receiverName}</span>
+                                                        <span className="text-[#858585]">|</span>
+                                                        <span className="text-[#555] font-medium">{selectedAddress.receiverPhone}</span>
+                                                        {selectedAddress.isDefault && (
+                                                            <span className="text-[10px] uppercase tracking-[0.1em] font-semibold border border-primary text-primary px-2 py-1 ml-2 rounded-sm bg-white">
+                                                                Mặc định
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[#555] text-sm mb-1">{selectedAddress.addressDetail}</p>
+                                                    <p className="text-[#555] text-sm">{selectedAddress.ward}, {selectedAddress.district}, {selectedAddress.province}</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-red-200 bg-red-50 p-4 rounded-xl text-center">
+                                                <p className="text-red-600 text-sm mb-3">Bạn chưa có địa chỉ giao hàng nào.</p>
+                                                <Button onClick={() => navigate("/user/addresses")} className="bg-red-600 hover:bg-red-700 text-white text-sm h-9 px-6 rounded-lg font-medium mx-auto w-auto">
+                                                    Thêm địa chỉ ngay
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -332,26 +412,6 @@ export function Checkout() {
                                 </h3>
 
                                 <div className="space-y-3">
-                                    <label
-                                        htmlFor="vietqr"
-                                        className={[
-                                            "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
-                                            paymentMethod === "VietQR" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
-                                        ].filter(Boolean).join(' ')}
-                                    >
-                                        <Radio
-                                            value="VietQR"
-                                            id="vietqr"
-                                            name="paymentMethod"
-                                            checked={paymentMethod === "VietQR"}
-                                            onChange={(e) => setPaymentMethod(e.target.value)}
-                                            className="mt-0.5"
-                                        />
-                                        <div className="flex-1">
-                                            <span className="font-medium text-foreground">Chuyển khoản ngân hàng (VietQR)</span>
-                                        </div>
-                                    </label>
-
                                     <label
                                         htmlFor="vnpay"
                                         className={[
@@ -371,6 +431,28 @@ export function Checkout() {
                                             <span className="font-medium text-foreground">Thanh toán qua VNPAY</span>
                                         </div>
                                     </label>
+
+                                    {deliveryOption === "pickup" && (
+                                        <label
+                                            htmlFor="cash"
+                                            className={[
+                                                "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
+                                                paymentMethod === "Cash" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
+                                            ].filter(Boolean).join(' ')}
+                                        >
+                                            <Radio
+                                                value="Cash"
+                                                id="cash"
+                                                name="paymentMethod"
+                                                checked={paymentMethod === "Cash"}
+                                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                                className="mt-0.5"
+                                            />
+                                            <div className="flex-1">
+                                                <span className="font-medium text-foreground">Thanh toán bằng tiền mặt tại cửa hàng</span>
+                                            </div>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
                         </div>
