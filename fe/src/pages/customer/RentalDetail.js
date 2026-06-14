@@ -1,9 +1,7 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faPhone, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
+import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"

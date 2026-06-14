@@ -42,15 +42,7 @@ export function Checkout() {
 
     // tính tiền thuê
     const totalRental = checkoutItems.reduce((sum, item) => {
-        const rDays = getRentalDays(item.startDate, item.endDate);
-        const rates = item.rentalRates || item.costume?.rentalRates || {};
-        let price = (rates.pricePerDay || 0) * rDays;
-        if (rDays === 3 && rates.pricePer3Days) {
-            price = rates.pricePer3Days;
-        } else if (rDays === 7 && rates.pricePerWeek) {
-            price = rates.pricePerWeek;
-        }
-        return sum + price * (item.quantity || 1);
+        return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
     }, 0);
 
     // tính tiền cọc
@@ -206,51 +198,37 @@ export function Checkout() {
                     {/* Left Column - Product Details */}
                     <div className="lg:col-span-1 space-y-4 mb-6">
                         {/* Mapped Product Cards from Checkout */}
-                        {checkoutItems.map((cartItem, idx) => {
-                            const rDays = getRentalDays(cartItem.startDate, cartItem.endDate);
-                            const rates = cartItem.rentalRates || cartItem.costume?.rentalRates || {};
-                            let calculatedPrice = (rates.pricePerDay || 0) * rDays;
-                            let isPackage = null;
-                            if (rDays === 3 && rates.pricePer3Days) {
-                                calculatedPrice = rates.pricePer3Days;
-                                isPackage = 3;
-                            } else if (rDays === 7 && rates.pricePerWeek) {
-                                calculatedPrice = rates.pricePerWeek;
-                                isPackage = 7;
-                            }
-                            return (
-                                <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-4 rounded-xl border py-3 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-3">
-                                    <div className="px-3">
-                                        <div className="flex flex-row gap-4 md:gap-5 items-stretch">
-                                            {/* Image Gallery */}
-                                            <div className="relative w-24 md:w-32 shrink-0 rounded-lg overflow-hidden bg-surface">
-                                                <img
-                                                    src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
-                                                    alt={cartItem.costumeName || cartItem.costume?.name}
-                                                    className="absolute inset-0 w-full h-full object-cover"
-                                                />
-                                            </div>
+                        {checkoutItems.map((cartItem, idx) => (
+                            <div key={`${cartItem.costumeId || cartItem._id}-${idx}`} className="bg-white flex flex-col gap-4 rounded-xl border py-3 shadow-sm overflow-hidden duration-200 hover:-translate-y-1 hover:shadow-lg mb-3">
+                                <div className="px-3">
+                                    <div className="flex flex-row gap-4 md:gap-5 items-stretch">
+                                        {/* Image Gallery */}
+                                        <div className="relative w-24 md:w-32 shrink-0 rounded-lg overflow-hidden bg-surface">
+                                            <img
+                                                src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
+                                                alt={cartItem.costumeName || cartItem.costume?.name}
+                                                className="absolute inset-0 w-full h-full object-cover"
+                                            />
+                                        </div>
 
-                                            {/* Product Info */}
-                                            <div className="flex-1 text-sm space-y-2 py-1">
-                                                <h2 className="text-lg font-bold text-foreground mb-2 text-pretty" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                                                    {cartItem.costumeName}
-                                                </h2>
-                                                <p className="text-md font-bold text-primary">Giá thuê: {formatPrice(calculatedPrice)} </p>
-                                                <p className="text-muted-foreground">Kích cỡ: <span className="font-medium text-foreground">{cartItem.size}</span></p>
-                                                <p className="text-muted-foreground">Số lượng: <span className="font-medium text-foreground">{cartItem.quantity}</span></p>
-                                                <p className="text-muted-foreground"> Thời gian thuê ({getRentalDays(cartItem.startDate, cartItem.endDate)} ngày): {getRentalDays(cartItem.startDate, cartItem.endDate) === 1
-                                                    ? <span className="font-medium text-foreground">Trong ngày {formatDateNoHours(cartItem.startDate)}</span>
-                                                    : <span className="font-medium text-foreground">Từ {formatDateNoHours(cartItem.startDate)} đến {formatDateNoHours(cartItem.endDate)}</span>}
-                                                </p>
-                                            </div>
+                                        {/* Product Info */}
+                                        <div className="flex-1 text-sm space-y-2 py-1">
+                                            <h2 className="text-lg font-bold text-foreground mb-2 text-pretty" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                                                {cartItem.costumeName}
+                                            </h2>
+                                            <p className="text-md font-bold text-primary">Giá thuê: {formatPrice(cartItem.rentalPerDay)} </p>
+                                            <p className="text-muted-foreground">Kích cỡ: <span className="font-medium text-foreground">{cartItem.size}</span></p>
+                                            <p className="text-muted-foreground">Số lượng: <span className="font-medium text-foreground">{cartItem.quantity}</span></p>
+                                            <p className="text-muted-foreground"> Thời gian thuê ({getRentalDays(cartItem.startDate, cartItem.endDate)} ngày): {getRentalDays(cartItem.startDate, cartItem.endDate) === 1
+                                                ? <span className="font-medium text-foreground">Trong ngày {formatDateNoHours(cartItem.startDate)}</span>
+                                                : <span className="font-medium text-foreground">Từ {formatDateNoHours(cartItem.startDate)} đến {formatDateNoHours(cartItem.endDate)}</span>}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-                            )
-                        })}
-
-
+                            </div>
+                        )
+                        )}
 
                         {/* Delivery Options */}
                         <div className="bg-white flex flex-col gap-6 rounded-xl border py-6 shadow-sm transform transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
@@ -409,25 +387,15 @@ export function Checkout() {
                                     <span className="block text-center italic text-sm mb-6">Giá đã bao gồm tất cả phí</span>
 
                                     <div className="space-y-3 text-sm">
-                                        {checkoutItems.map((item, idx) => {
-                                            const rDays = getRentalDays(item.startDate, item.endDate);
-                                            const rates = item.rentalRates || item.costume?.rentalRates || {};
-                                            let calculatedPrice = (rates.pricePerDay || 0) * rDays;
-                                            if (rDays === 3 && rates.pricePer3Days) {
-                                                calculatedPrice = rates.pricePer3Days;
-                                            } else if (rDays === 7 && rates.pricePerWeek) {
-                                                calculatedPrice = rates.pricePerWeek;
-                                            }
-
-                                            return (
-                                                <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
-                                                    <span className="text-muted-foreground line-clamp-1 mr-4">
-                                                        {item.costumeName}
-                                                    </span>
-                                                    <span className="font-medium text-foreground shrink-0">{formatPrice(calculatedPrice * (item.quantity || 1))}</span>
-                                                </div>
-                                            )
-                                        })}
+                                        {checkoutItems.map((item, idx) => (
+                                            <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
+                                                <span className="text-muted-foreground line-clamp-1 mr-4">
+                                                    {item.costumeName}
+                                                </span>
+                                                <span className="font-medium text-foreground shrink-0">{formatPrice(item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate))}</span>
+                                            </div>
+                                        )
+                                        )}
 
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground font-semibold border-t pt-2 w-full flex justify-between">Tạm tính: <span>{formatPrice(totalRental)}</span></span>

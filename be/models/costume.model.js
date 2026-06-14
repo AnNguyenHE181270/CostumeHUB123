@@ -58,10 +58,10 @@ const costumeSchema = new mongoose.Schema(
       default: "available",
     },
 
-    rentalRates: {
-      pricePerDay: { type: Number, default: 0 },
-      pricePer3Days: { type: Number },
-      pricePerWeek: { type: Number },
+    pricePerDay: {
+      type: Number,
+      min: 0,
+      default: 0
     },
 
     deposit: {

@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartPlus, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { useCart } from "../../context/CartContext";
 
 import { formatPrice } from "../../utils/formatters";
-import { AddToCartModal } from "../../pages/customer/AddToCartModal";
 const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500" },
   rented: { label: "Đang Thuê", color: "bg-red-500" },
@@ -39,12 +36,7 @@ function StarRating({ rating = 0, count = 0 }) {
 
 export default function ProductCard({ costume, showToast }) {
   const navigate = useNavigate();
-  const { addToCart, removeFromCart, cartItems } = useCart();
   const [imgError, setImgError] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-
-  const isInCart = cartItems.some(item => item?.costume?._id === costume?._id);
 
   const imgSrc =
     !imgError && costume.images && costume.images.length > 0
@@ -105,42 +97,13 @@ export default function ProductCard({ costume, showToast }) {
           {/* Price */}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[14px] font-bold text-[#1a1a1a]">
-              {formatPrice(costume.rentalRates?.pricePerDay || 0)}/ngày
+              {formatPrice(costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0)}/ngày
             </span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isInCart && costume.status === "available") {
-                  setIsModalOpen(true);
-                }
-                else if (isInCart) {
-                  removeFromCart(costume._id);
-                  if (showToast) showToast("Đã bỏ khỏi giỏ hàng");
-                }
-              }}
-              className={`w-full flex items-center justify-center gap-2 text-white
-                           text-[11px] uppercase tracking-[0.08em] font-semibold py-2.5 rounded
-                           active:scale-[0.98] transition-all duration-200
-                           disabled:opacity-50 disabled:cursor-not-allowed
-                           ${isInCart ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#1a1a1a] hover:bg-[#333]"}`}
-              disabled={costume.status !== "available" && !isInCart}
-            >
-              <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[12px]" />
-              {isInCart ? "Đã Thêm" : "Thêm Giỏ Hàng"}
-            </button>
-          </div>
+
         </div>
       </div>
-      <AddToCartModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        costume={costume}
-        showToast={showToast}
-      />
     </>
   );
 }

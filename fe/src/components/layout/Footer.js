@@ -48,7 +48,7 @@ export default function Footer() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12 mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-gray-400 tracking-[0.05em] uppercase">
-        <p>© 2026 CostumeHUB. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} COSTUMEHUB. ALL RIGHTS RESERVED.</p>
         <div className="flex gap-6">
           <Link to="/privacy" className="hover:text-black transition-colors">Bảo mật</Link>
           <Link to="/terms" className="hover:text-black transition-colors">Điều khoản</Link>

@@ -1,11 +1,7 @@
-"use client"
-
 import { useState } from "react"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTruck, faBox, faCheckCircle, faMapMarkerAlt, faPhone } from '@fortawesome/free-solid-svg-icons'
-import { formatOrderId } from "../../utils/formatters"
 import Modal from "../../components/Modal"
-import { formatPrice } from "../../utils/formatters"
 
 const trackingSteps = [
     {
@@ -71,7 +67,6 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
             ? [order.items]
             : []
 
-    const firstItem = items[0] || order
     const hasMoreItems = items.length > 1
 
     return (

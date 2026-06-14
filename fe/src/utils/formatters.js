@@ -23,6 +23,6 @@ export function getRentalDays(start, end) {
     if (!start || !end) return 1;
     const startObj = new Date(start);
     const endObj = new Date(end);
-    const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1;
+    const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 1;
 };

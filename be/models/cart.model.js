@@ -33,14 +33,6 @@ const cartSchema = new mongoose.Schema({
         endDate: {
             type: Date
         },
-        rentalPrice: {
-            type: Number,
-            required: true
-        },
-        depositPrice: {
-            type: Number,
-            required: true
-        },
         rentalDays: {
             type: Number
         },

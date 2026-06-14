@@ -2,6 +2,7 @@ export const ROUTES = {
   // Public Routes
   HOME: "/",
   CATEGORY: "/category/:categoryId",
+  SEARCH: "/search",
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY: "/verify-otp/:email",
@@ -27,5 +28,6 @@ export const ROUTES = {
   // Staff Routes
   STAFF_BASE: "/staff",
   STAFF_ORDERS: "orders",
+  STAFF_PRODUCTS: "products",
   // STAFF_DASHBOARD: "/staff/dashboard",
 };
