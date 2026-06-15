@@ -5,7 +5,6 @@ import { useSearchParams } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
-import { OrderTrackingModal } from './OrderTrackingModal'
 import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
 import { faBox } from '@fortawesome/free-solid-svg-icons'
@@ -18,7 +17,6 @@ function RentalHistory() {
     const [activeTab, setActiveTab] = useState(initialTab);
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
-    const [isTrackingOpen, setIsTrackingOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -72,11 +70,6 @@ function RentalHistory() {
     }
 
     const isDetailOpen = !!selectedOrder;
-
-    const handleTrackOrder = (order) => {
-        setSelectedOrder(order);
-        setIsTrackingOpen(true);
-    };
 
     const handleCancelOrder = (order) => {
         setSelectedOrder(order);
@@ -172,7 +165,6 @@ function RentalHistory() {
                                         <OrderCard
                                             key={order.id}
                                             order={order}
-                                            onTrackOrder={handleTrackOrder}
                                             onViewDetail={handleViewDetail}
                                             isSelected={selectedOrder?.id === order.id}
                                             isCompact={isDetailOpen}
@@ -194,7 +186,6 @@ function RentalHistory() {
                                     open={true}
                                     order={selectedOrder}
                                     onOpenChange={(val) => { if (!val) handleCloseDetail() }}
-                                    onTrackOrder={handleTrackOrder}
                                     onCancelOrder={handleCancelOrder}
                                 />
                             </div>
@@ -217,19 +208,11 @@ function RentalHistory() {
                             open={true}
                             order={selectedOrder}
                             onOpenChange={(val) => { if (!val) handleCloseDetail() }}
-                            onTrackOrder={handleTrackOrder}
                             onCancelOrder={handleCancelOrder}
                         />
                     </div>
                 </div>
             </div>
-
-            {/* Tracking Modal */}
-            <OrderTrackingModal
-                open={isTrackingOpen}
-                onOpenChange={setIsTrackingOpen}
-                order={selectedOrder}
-            />
 
             {/* Cancel Modal */}
             <CancelOrderModal
