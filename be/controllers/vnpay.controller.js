@@ -211,31 +211,8 @@ const vnpayIpn = async (req, res) => {
         // payment success
         if (responseCode === "00") {
             rental.paymentStatus = "paid";
-            // Tự động giao hàng luôn
-            rental.status = "delivering";
-
-            if (!rental.trackingCode && rental.shippingAddress && rental.shippingAddress.districtId) {
-                try {
-                    const ghnOrderData = {
-                        payment_type_id: 1, 
-                        note: "Đã thanh toán VNPAY",
-                        required_note: "CHOXEMHANGKHONGTHU",
-                        to_name: rental.shippingAddress.receiverName,
-                        to_phone: rental.shippingAddress.receiverPhone,
-                        to_address: rental.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
-                        to_ward_code: rental.shippingAddress.wardCode,
-                        to_district_id: rental.shippingAddress.districtId,
-                        weight: 500,
-                        length: 20, width: 20, height: 10,
-                        service_type_id: 2,
-                        items: [{ name: "Trang phục thuê Vogue Rental", quantity: 1, weight: 500 }]
-                    };
-                    const ghnRes = await ghnService.createOrder(ghnOrderData);
-                    rental.trackingCode = ghnRes.order_code;
-                } catch (err) {
-                    console.error("Auto push GHN failed (IPN):", err);
-                }
-            }
+            // Thanh toán thành công -> Chuyển sang cho Staff chuẩn bị đồ
+            rental.status = "preparing";
 
             rental.vnpayInfo = {
                 txnRef: vnp_Params["vnp_TxnRef"],
@@ -306,31 +283,8 @@ const vnpayReturn = async (
                 const rental = await Rental.findById(rentalId);
                 if (rental && rental.paymentStatus !== "paid") {
                     rental.paymentStatus = "paid";
-                    // Tự động đẩy đơn qua GHN luôn khi thanh toán thành công
-                    rental.status = "delivering";
-
-                    if (!rental.trackingCode && rental.shippingAddress && rental.shippingAddress.districtId) {
-                        try {
-                            const ghnOrderData = {
-                                payment_type_id: 1, // 1: Người bán trả ship
-                                note: "Đã thanh toán VNPAY",
-                                required_note: "CHOXEMHANGKHONGTHU",
-                                to_name: rental.shippingAddress.receiverName,
-                                to_phone: rental.shippingAddress.receiverPhone,
-                                to_address: rental.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
-                                to_ward_code: rental.shippingAddress.wardCode,
-                                to_district_id: rental.shippingAddress.districtId,
-                                weight: 500,
-                                length: 20, width: 20, height: 10,
-                                service_type_id: 2,
-                                items: [{ name: "Trang phục thuê Vogue Rental", quantity: 1, weight: 500 }]
-                            };
-                            const ghnRes = await ghnService.createOrder(ghnOrderData);
-                            rental.trackingCode = ghnRes.order_code;
-                        } catch (err) {
-                            console.error("Auto push GHN failed:", err);
-                        }
-                    }
+                    // Thanh toán thành công -> Chuyển sang cho Staff chuẩn bị đồ
+                    rental.status = "preparing";
 
                     rental.vnpayInfo = {
                         txnRef: vnp_Params["vnp_TxnRef"],

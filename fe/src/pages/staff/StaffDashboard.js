@@ -17,11 +17,10 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 // Màu + label cho từng trạng thái đơn hàng
 const STATUS_MAP = {
   pending:         { label: "Chờ duyệt",     bg: "bg-yellow-100", text: "text-yellow-800", color: "#eab308" },
-  confirmed:       { label: "Đã xác nhận",   bg: "bg-blue-100",   text: "text-blue-800",   color: "#3b82f6" },
-  awaitingPayment: { label: "Chờ thanh toán", bg: "bg-purple-100", text: "text-purple-800", color: "#8b5cf6" },
+  awaitingPayment: { label: "Chờ thanh toán", bg: "bg-orange-100", text: "text-orange-800", color: "#f97316" },
+  preparing:       { label: "Đang xử lý",    bg: "bg-blue-100",   text: "text-blue-800",   color: "#3b82f6" },
   delivering:      { label: "Đang giao",      bg: "bg-indigo-100", text: "text-indigo-800", color: "#6366f1" },
   renting:         { label: "Đang thuê",      bg: "bg-emerald-100",text: "text-emerald-800",color: "#10b981" },
-  returning:       { label: "Đang trả",       bg: "bg-orange-100", text: "text-orange-800", color: "#f97316" },
   completed:       { label: "Hoàn tất",       bg: "bg-gray-100",   text: "text-gray-800",   color: "#6b7280" },
   cancelled:       { label: "Đã hủy",         bg: "bg-red-100",    text: "text-red-800",    color: "#ef4444" },
   overdue:         { label: "Quá hạn",         bg: "bg-red-100",    text: "text-red-800",    color: "#dc2626" },
