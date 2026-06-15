@@ -501,7 +501,7 @@ const getInventoryUtilization = async (req, res, next) => {
 };
 
 // KAN-124: Nhận lại đồ từ khách (Chỉ đổi trạng thái sang chờ kiểm tra)
-exports.handleReturn = async (req, res) => {
+const handleReturn = async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id);
     if (!rental) {
@@ -521,8 +521,9 @@ exports.handleReturn = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống khi nhận đồ" });
   }
 };
+
 // KAN-125: Kiểm tra hao mòn, khấu trừ cọc và đưa đồ đi giặt
-exports.inspectReturn = async (req, res) => {
+const inspectReturn = async (req, res) => {
   const { id } = req.params;
   const { damageFee, missingNotes, actualReturnDate } = req.body; 
 
@@ -596,5 +597,7 @@ module.exports = {
     cancellOrrder,
     getTotalRevenue,
     getActiveRentals,
-    getInventoryUtilization
+    getInventoryUtilization,
+    handleReturn, 
+    inspectReturn
 };
