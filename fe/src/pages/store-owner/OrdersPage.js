@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
-import DataTable from "../../components/ui/DataTable";
 import Toast from "../../components/ui/Toast";
+import Pagination from "../../components/ui/Pagination";
 // Import useAuth để lấy token chuẩn từ hệ thống
 import { useAuth } from "../../context/AuthContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function OrdersPage() {
-  // Lấy token trực tiếp từ Context thay vì localStorage
-  const { token } = useAuth(); 
+  // Lấy token và role trực tiếp từ Context thay vì localStorage
+  const { token, role } = useAuth(); 
 
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
   const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
@@ -174,6 +180,20 @@ export default function OrdersPage() {
     }
   };
 
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'pending': return 'Chờ xử lý';
+      case 'awaitingPayment': return 'Chờ thanh toán';
+      case 'preparing': return 'Đang chuẩn bị đồ';
+      case 'delivering': return 'Đang giao';
+      case 'renting': return 'Đang thuê';
+      case 'completed': return 'Hoàn tất';
+      case 'cancelled': return 'Đã hủy';
+      case 'overdue': return 'Quá hạn';
+      default: return status;
+    }
+  };
+
   const columns = [
     { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id ? row._id.slice(-6).toUpperCase() : "N/A"}</span> },
     { header: "Khách hàng", accessor: (row) => row.customerId?.fullName || "Khách vãng lai" },
@@ -210,6 +230,15 @@ export default function OrdersPage() {
       header: "Trạng thái", 
       accessor: (row) => {
         const isLocked = row.status === 'completed' || row.status === 'cancelled';
+        
+        if (role === 'staff') {
+          return (
+            <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold ${getStatusColor(row.status)}`}>
+              {getStatusLabel(row.status)}
+            </span>
+          );
+        }
+
         return (
           <select 
             value={row.status || ""} 
@@ -231,14 +260,94 @@ export default function OrdersPage() {
     }
   ];
 
+  // Đưa về trang 1 khi filter đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const filteredOrders = orders.filter((order) => {
+    const searchMatch = 
+      (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.customerId?.fullName && order.customerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+    const statusMatch = statusFilter === "all" || order.status === statusFilter;
+    
+    return searchMatch && statusMatch;
+  });
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const currentOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <input 
+          type="text" 
+          placeholder="Tìm mã đơn, tên khách hàng..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-80"
+        />
+        
+        <select 
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="pending">Chờ xử lý</option>
+          <option value="awaitingPayment">Chờ thanh toán</option>
+          <option value="preparing">Đang chuẩn bị đồ</option>
+          <option value="delivering">Đang giao</option>
+          <option value="renting">Đang thuê</option>
+          <option value="completed">Hoàn tất</option>
+          <option value="cancelled">Đã hủy</option>
+          <option value="overdue">Quá hạn</option>
+        </select>
+      </div>
       
       <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
-        <DataTable columns={columns} data={orders} />
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">
+              {columns.map((col, idx) => (
+                <th key={idx} className="p-4 font-semibold whitespace-nowrap">{col.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {currentOrders.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-8 text-gray-400 text-sm">Không có đơn hàng nào</td>
+              </tr>
+            ) : (
+              currentOrders.map((row, idx) => (
+                <tr key={idx} className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors">
+                  {columns.map((col, cIdx) => (
+                    <td key={cIdx} className="p-4 text-sm text-[#555]">
+                      {typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor]}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        
+        {filteredOrders.length > 0 && (
+          <Pagination 
+            displayCount={currentOrders.length}
+            totalCount={filteredOrders.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
+        )}
       </div>
 
       {toast.show && (
