@@ -165,7 +165,7 @@ export default function SearchBar() {
                       <div className="flex flex-col overflow-hidden">
                         <span className="text-[13px] text-[#333] truncate">{product.name}</span>
                         <span className="text-[12px] text-[#f94a00] font-medium">
-                          {formatPrice(product.pricePerDay || product.price || product.rentalRates?.pricePerDay || 0)}
+                          {formatPrice(product.pricePerDay || product.price || 0)}
                         </span>
                       </div>
                     </li>

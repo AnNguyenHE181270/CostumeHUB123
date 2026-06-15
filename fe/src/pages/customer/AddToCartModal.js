@@ -138,14 +138,7 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
 
     let diffDays = getRentalDays(formData.startDate, formData.endDate);
 
-    let calculatedPrice = 0;
-    if (selectedPackage === 3) {
-        calculatedPrice = costume?.rentalRates?.pricePer3Days;
-    } else if (selectedPackage === 7) {
-        calculatedPrice = costume?.rentalRates?.pricePerWeek;
-    } else {
-        calculatedPrice = costume?.rentalRates?.pricePerDay;
-    }
+    let calculatedPrice = costume?.pricePerDay || costume?.price || 0;
 
     return (
         <Modal isOpen={open} onClose={handleClose} title="Thêm vào giỏ hàng">

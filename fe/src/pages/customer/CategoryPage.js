@@ -206,7 +206,7 @@ export default function CategoryPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {costumes.map((costume) => (
                     <div key={costume._id} className="h-full">
-                      <ProductCard costume={costume} />
+                      <ProductCard costume={costume} hideRentButton={true} />
                     </div>
                   ))}
                 </div>
