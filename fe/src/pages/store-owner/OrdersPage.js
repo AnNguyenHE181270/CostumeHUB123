@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
+// Import useAuth để lấy token chuẩn từ hệ thống
 import { useAuth } from "../../context/AuthContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function OrdersPage() {
-  const { token, role } = useAuth();
+  // Lấy token và role trực tiếp từ Context thay vì localStorage
+  const { token, role } = useAuth(); 
+
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   
@@ -16,11 +19,6 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  
-  const [showInspectModal, setShowInspectModal] = useState(false);
-  const [inspectForm, setInspectForm] = useState({ damageFee: "", missingNotes: "" });
-
   const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
@@ -29,6 +27,7 @@ export default function OrdersPage() {
   const [handoverPhotos, setHandoverPhotos] = useState([]);
 
   const fetchOrders = async () => {
+    // Rào chắn bảo vệ: Chỉ gọi API khi token đã thực sự sẵn sàng
     if (!token) return; 
 
     try {
@@ -37,7 +36,7 @@ export default function OrdersPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        const validOrders = Array.isArray(data) ? data : (data.rentals || data.data || data.orders || []);
+        const validOrders = Array.isArray(data) ? data : (data.rentals || data.data || []);
         setOrders(validOrders);
       } else {
         console.error("Không thể tải danh sách đơn hàng - HTTP Error");
@@ -47,6 +46,7 @@ export default function OrdersPage() {
     }
   };
 
+  // Lắng nghe sự thay đổi của token. Chỉ khi có token mới bắt đầu gọi dữ liệu
   useEffect(() => { 
     if (token) {
       fetchOrders(); 
@@ -57,7 +57,7 @@ export default function OrdersPage() {
     if (!id || !token) return;
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
@@ -69,9 +69,6 @@ export default function OrdersPage() {
 
       if (res.ok) {
         setToast({ show: true, message: "Cập nhật trạng thái thành công!", type: "success" });
-        if (selectedOrder && selectedOrder._id === id) {
-          setSelectedOrder({ ...selectedOrder, status: newStatus });
-        }
         fetchOrders();
       } else {
         setToast({ show: true, message: data.message || "Lỗi cập nhật", type: "error" });
@@ -81,58 +78,14 @@ export default function OrdersPage() {
     }
   };
 
-  const handleReturnItem = async (id) => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_URL}/api/rentals/${id}/return`, {
-        method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setToast({ show: true, message: "Đã nhận đồ từ khách!", type: "success" });
-        if (selectedOrder && selectedOrder._id === id) {
-          setSelectedOrder({ ...selectedOrder, status: 'returning' });
-        }
-        fetchOrders();
-      } else {
-        setToast({ show: true, message: "Lỗi khi nhận đồ", type: "error" });
-      }
-    } catch (error) {
-      setToast({ show: true, message: "Lỗi kết nối", type: "error" });
-    }
-  };
-
-  const submitInspection = async () => {
-    if (!token || !selectedOrder) return;
-    try {
-      const res = await fetch(`${API_URL}/api/rentals/${selectedOrder._id}/inspect`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({
-          damageFee: Number(inspectForm.damageFee) || 0,
-          missingNotes: inspectForm.missingNotes || "Đồ nguyên vẹn"
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setToast({ show: true, message: `Hoàn tất! Phạt: ${data.data.totalFine}đ. Hoàn cọc: ${data.data.refundAmount}đ`, type: "success" });
-        setShowInspectModal(false);
-        setSelectedOrder({ ...selectedOrder, status: 'completed' });
-        fetchOrders();
-      } else {
-        setToast({ show: true, message: "Lỗi kiểm tra đồ", type: "error" });
-      }
-    } catch (error) {
-      setToast({ show: true, message: "Lỗi kết nối", type: "error" });
-    }
-  };
-
   const handleConfirmPreparation = async (id) => {
     if (!id || !token) return;
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/confirm`, {
         method: "PUT",
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { 
+          "Authorization": `Bearer ${token}` 
+        }
       });
       const data = await res.json();
       if (res.ok) {
@@ -148,15 +101,20 @@ export default function OrdersPage() {
 
   const handleConfirmPayment = async () => {
     if (!paymentModal.order || !paymentModal.order._id || !token) return;
+    
     try {
       const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ status: "preparing", paymentMethod: paymentMethod })
+        body: JSON.stringify({ 
+          status: "preparing",
+          paymentMethod: paymentMethod 
+        })
       });
+
       if (res.ok) {
         setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng chuẩn bị đồ.", type: "success" });
         setPaymentModal({ isOpen: false, order: null });
@@ -176,8 +134,9 @@ export default function OrdersPage() {
 
   const handleConfirmHandover = async () => {
     if (!handoverModal.order || !handoverModal.order._id || !token) return;
+    
     const formData = new FormData();
-    formData.append("status", "renting"); 
+    formData.append("status", "renting"); // Đổi trạng thái khớp với DB
     formData.append("note", handoverNote);
     handoverPhotos.forEach((file) => {
       formData.append("photos", file);
@@ -186,12 +145,14 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API_URL}/api/rentals/${handoverModal.order._id}/handover`, {
         method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
         body: formData 
       });
 
       if (res.ok) {
-        setToast({ show: true, message: "Đã giao đồ và lưu ảnh thành công!", type: "success" });
+        setToast({ show: true, message: "Đã giao đồ và lưu ảnh tình trạng thành công!", type: "success" });
         setHandoverModal({ isOpen: false, order: null });
         setHandoverNote("");
         setHandoverPhotos([]);
@@ -212,7 +173,6 @@ export default function OrdersPage() {
       case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'returning': return 'bg-orange-100 text-orange-800 border-orange-300';
       case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
       case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
       case 'overdue': return 'bg-red-50 text-red-700 border-red-200';
@@ -227,7 +187,6 @@ export default function OrdersPage() {
       case 'preparing': return 'Đang chuẩn bị đồ';
       case 'delivering': return 'Đang giao';
       case 'renting': return 'Đang thuê';
-      case 'returning': return 'Chờ kiểm tra';
       case 'completed': return 'Hoàn tất';
       case 'cancelled': return 'Đã hủy';
       case 'overdue': return 'Quá hạn';
@@ -237,24 +196,22 @@ export default function OrdersPage() {
 
   const columns = [
     { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id ? row._id.slice(-6).toUpperCase() : "N/A"}</span> },
-    { header: "Khách hàng", accessor: (row) => row.shippingAddress?.receiverName || row.customerId?.fullName || "Khách vãng lai" },
+    { header: "Khách hàng", accessor: (row) => row.customerId?.fullName || "Khách vãng lai" },
     { header: "Trang phục", accessor: (row) => row.items && row.items.length > 0 ? row.items.map(i => i.costume?.name).join(', ') : "N/A" },
     { header: "Ngày lấy", accessor: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : "N/A" },
-    { header: "Tổng tiền", accessor: (row) => <span className="font-semibold text-[#555]">{row.totalAmount?.toLocaleString('vi-VN')} đ</span> },
+    { header: "Ngày trả", accessor: (row) => row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : "N/A" },
     { 
       header: "Thao tác", 
       accessor: (row) => {
-        if (row.status === 'pending' || row.status === 'awaitingPayment') {
-          return <button onClick={(e) => { e.stopPropagation(); setPaymentModal({ isOpen: true, order: row }); }} className="text-[12px] font-semibold bg-[#1a1a1a] text-white px-3 py-1.5 rounded hover:bg-[#333] transition-colors">Xác nhận tiền</button>;
-        }
-        if (row.status === 'preparing') {
-          return <button onClick={(e) => { e.stopPropagation(); handleConfirmPreparation(row._id); }} className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors">Chuẩn bị xong</button>;
-        }
-        if (row.status === 'renting') {
-          return <button onClick={(e) => { e.stopPropagation(); handleReturnItem(row._id); }} className="text-[12px] font-semibold bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600 transition-colors">Khách trả đồ</button>;
-        }
-        if (row.status === 'returning') {
-          return <button onClick={(e) => { e.stopPropagation(); setSelectedOrder(row); setShowInspectModal(true); }} className="text-[12px] font-semibold bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors">Kiểm tra hao mòn</button>;
+        if (row.status === 'pending' || row.status === 'preparing') {
+          return (
+            <button 
+              onClick={() => handleConfirmPreparation(row._id)}
+              className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
+            >
+              Xác nhận giao hàng
+            </button>
+          );
         }
         return <span className="text-[12px] font-medium text-[#858585]">Không có</span>;
       }
@@ -263,11 +220,19 @@ export default function OrdersPage() {
       header: "Trạng thái", 
       accessor: (row) => {
         const isLocked = row.status === 'completed' || row.status === 'cancelled';
+
+        if (role === 'staff') {
+          return (
+            <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold ${getStatusColor(row.status)}`}>
+              {getStatusLabel(row.status)}
+            </span>
+          );
+        }
+
         return (
           <select 
             value={row.status || ""} 
             onChange={(e) => updateStatus(row._id, e.target.value)}
-            onClick={(e) => e.stopPropagation()}
             disabled={isLocked}
             className={`border px-2 py-1.5 rounded-md text-[13px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${getStatusColor(row.status)}`}
           >
@@ -276,7 +241,6 @@ export default function OrdersPage() {
             <option value="preparing">Đang chuẩn bị đồ</option>
             <option value="delivering">Đang giao</option>
             <option value="renting">Đang thuê</option>
-            <option value="returning">Chờ kiểm tra</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
             <option value="overdue">Quá hạn</option>
@@ -286,14 +250,18 @@ export default function OrdersPage() {
     }
   ];
 
+  // Đưa về trang 1 khi filter đổi
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
   const filteredOrders = orders.filter((order) => {
-    const nameStr = (order.shippingAddress?.receiverName || order.customerId?.fullName || "").toLowerCase();
-    const searchMatch = (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) || nameStr.includes(searchTerm.toLowerCase());
+    const searchMatch = 
+      (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.customerId?.fullName && order.customerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+      
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
+    
     return searchMatch && statusMatch;
   });
 
@@ -306,6 +274,7 @@ export default function OrdersPage() {
         <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
 
+      {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input 
           type="text" 
@@ -314,6 +283,7 @@ export default function OrdersPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-80"
         />
+        
         <select 
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -325,7 +295,6 @@ export default function OrdersPage() {
           <option value="preparing">Đang chuẩn bị đồ</option>
           <option value="delivering">Đang giao</option>
           <option value="renting">Đang thuê</option>
-          <option value="returning">Chờ kiểm tra</option>
           <option value="completed">Hoàn tất</option>
           <option value="cancelled">Đã hủy</option>
           <option value="overdue">Quá hạn</option>
@@ -348,11 +317,7 @@ export default function OrdersPage() {
               </tr>
             ) : (
               currentOrders.map((row, idx) => (
-                <tr 
-                  key={row._id} 
-                  onClick={() => setSelectedOrder(row)}
-                  className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
-                >
+                <tr key={idx} className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors">
                   {columns.map((col, cIdx) => (
                     <td key={cIdx} className="p-4 text-sm text-[#555]">
                       {typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor]}
@@ -375,54 +340,8 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
-            <h2 className="text-xl font-bold text-[#1a1a1a] mb-4 border-b pb-2">Chi tiết đơn #{selectedOrder._id?.slice(-6).toUpperCase()}</h2>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-sm text-gray-500">Khách hàng</p>
-                <p className="font-semibold">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
-                <p className="text-sm">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Thời gian thuê</p>
-                <p className="font-semibold">{selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"} {" -> "} {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2">Sản phẩm thuê</h3>
-              <ul className="bg-gray-50 p-4 rounded-lg space-y-2">
-                {selectedOrder.items?.map((item, idx) => (
-                  <li key={idx} className="flex justify-between text-sm border-b border-gray-200 pb-2">
-                    <span>{item.costume?.name} (Size: {item.size}) x{item.quantity}</span>
-                    <span className="font-medium">{Math.round(item.rentalPricePerDay || 0).toLocaleString('vi-VN')} đ/ngày</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg border flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Trạng thái hiện tại:</p>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
-                  {getStatusLabel(selectedOrder.status)}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {selectedOrder.status === 'pending' && <button onClick={() => updateStatus(selectedOrder._id, 'confirmed')} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Xác nhận đơn</button>}
-                {selectedOrder.status === 'confirmed' && <button onClick={() => updateStatus(selectedOrder._id, 'renting')} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">Giao đồ cho khách</button>}
-                {selectedOrder.status === 'renting' && <button onClick={() => handleReturnItem(selectedOrder._id)} className="bg-orange-500 text-white px-4 py-2 rounded text-sm hover:bg-orange-600 font-bold">Khách trả đồ (Nhận lại)</button>}
-                {selectedOrder.status === 'returning' && <button onClick={() => setShowInspectModal(true)} className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 font-bold">Kiểm tra hao mòn & Chốt đơn</button>}
-              </div>
-            </div>
-          </div>
-        </div>
+      {toast.show && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       )}
 
       {/* Modal Thu tiền */}
@@ -516,43 +435,6 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
-
-      {/* POPUP KIỂM TRA HAO MÒN (KAN-125) */}
-      {showInspectModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold mb-4 text-red-600">Kiểm tra Hao mòn & Khấu trừ</h3>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Tiền phạt hư hỏng / mất đồ (VNĐ):</label>
-              <input
-                type="number"
-                value={inspectForm.damageFee}
-                onChange={e => setInspectForm({ ...inspectForm, damageFee: e.target.value })}
-                placeholder="Nhập số tiền phạt (nếu có)"
-                className="w-full border px-3 py-2 rounded outline-none focus:border-red-500"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-1">Ghi chú tình trạng trả đồ:</label>
-              <textarea
-                value={inspectForm.missingNotes}
-                onChange={e => setInspectForm({ ...inspectForm, missingNotes: e.target.value })}
-                placeholder="Vd: Rách nhẹ tà áo, đền 50k..."
-                className="w-full border px-3 py-2 rounded outline-none focus:border-red-500 min-h-[80px]"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowInspectModal(false)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Hủy</button>
-              <button onClick={submitInspection} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-red-700">Hoàn tất kiểm tra</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toast.show && <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />}
     </div>
   );
 }

@@ -53,8 +53,8 @@ const rentalSchema = new mongoose.Schema(
         // ===== PAYMENT =====
         paymentMethod: {
             type: String,
-            enum: ["VNPAY", "Cash"],
-            default: "VNPAY",
+            enum: ["VNPAY", "Cash", "WALLET"],
+            default: "WALLET",
         },
 
         paymentStatus: {

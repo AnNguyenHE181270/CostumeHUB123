@@ -64,12 +64,11 @@ function AppRoutes() {
           <Route path="/cart" element={<CartPage />} />
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/rental-history" element={<RentalHistoryPage />} />
-
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
+            <Route path="/rental-history" element={<RentalHistoryPage />} />
           </Route>
         </Route>
       </Route>

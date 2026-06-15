@@ -4,7 +4,7 @@ export const ROUTES = {
   ABOUT_US: "/about",
   COLLECTIONS: "/collections",
   PRODUCTS: "/products",
-  CATEGORY: "/category/:categoryId",
+  CATEGORY: "/category",
   SEARCH: "/search",
   LOGIN: "/login",
   REGISTER: "/register",

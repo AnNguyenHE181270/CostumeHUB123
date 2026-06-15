@@ -6,6 +6,7 @@ import { faXmark, faTriangleExclamation } from "@fortawesome/free-solid-svg-icon
 import Modal from "../../components/Modal"
 import Radio from "../../components/ui/Radio"
 import { formatOrderId } from "../../utils/formatters"
+import { useAuth } from "../../context/AuthContext"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
 const cancelReasons = [
@@ -18,6 +19,7 @@ const cancelReasons = [
 ]
 
 export function CancelOrderModal({ open, onOpenChange, orderId, onConfirm }) {
+    const { refreshProfile } = useAuth()
     const [selectedReason, setSelectedReason] = useState("")
     const [otherReason, setOtherReason] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,7 +34,7 @@ export function CancelOrderModal({ open, onOpenChange, orderId, onConfirm }) {
             const token = localStorage.getItem("token") || sessionStorage.getItem("token")
 
             const res = await fetch(`${API_URL}/api/rentals/${orderId}/cancel`, {
-                method: "PATCH",
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
@@ -41,6 +43,7 @@ export function CancelOrderModal({ open, onOpenChange, orderId, onConfirm }) {
             })
 
             if (res.ok) {
+                await refreshProfile()
                 if (onConfirm) onConfirm()
                 handleClose()
             } else {

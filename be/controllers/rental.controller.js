@@ -164,13 +164,25 @@ const createOrder = async (req, res, next) => {
 
         const totalAmount = totalRentalPrice + totalDeposit + shippingFee;
 
+        const user = await User.findById(customerId);
+        if (!user) return next(new HttpError("Người dùng không tồn tại", 404));
+
+        if (user.balance < totalAmount) {
+            return next(new HttpError("Số dư ví không đủ. Vui lòng nạp thêm tiền.", 400));
+        }
+
+        // Trừ tiền trong ví
+        user.balance -= totalAmount;
+        await user.save();
+
         const newOrder = new Rental({
             customerId,
             items: formattedItems,
             startDate,
             endDate,
             shippingFee,
-            paymentMethod: paymentMethod || "VNPAY",
+            paymentMethod: "WALLET",
+            paymentStatus: "paid",
             shippingAddress,
             totalRentalPrice,
             totalDeposit,
@@ -208,55 +220,7 @@ const createOrder = async (req, res, next) => {
             console.error("[Cart Cleanup Error] Lỗi khi dọn dẹp giỏ hàng sau khi đặt:", cartError);
         }
 
-        // Sau 15p, chưa payment -> status Cancelled
-        setTimeout(async () => {
-            try {
-                const checkOrder = await Rental.findById(newOrder._id);
-                if (checkOrder && checkOrder.status === 'pending') {
-                    checkOrder.status = 'cancelled';
-                    checkOrder.cancelReason = 'Quá hạn thanh toán (15 phút)';
-                    await checkOrder.save();
-
-                    // Hoàn lại availableStock cho costume
-                    for (const item of checkOrder.items) {
-                        const costumeToRestock = await Costume.findById(item.costume);
-                        if (costumeToRestock) {
-                            const variantToRestock = costumeToRestock.variants.find(v => v.size === item.size);
-                            if (variantToRestock) {
-                                variantToRestock.availableStock += item.quantity;
-                                await costumeToRestock.save();
-                            }
-                        }
-                    }
-
-                    // Gửi email thông báo hủy đơn
-                    try {
-                        const user = await User.findById(checkOrder.customerId);
-                        if (user && user.email) {
-                            await sendEmail({
-                                to: user.email,
-                                subject: "CostumeHUB — Thông báo hủy đơn hàng",
-                                text: `Chào ${user.fullName},\n\nĐơn hàng ${checkOrder._id} của bạn đã bị tự động hủy.\nLý do: ${checkOrder.cancelReason}\n\nCảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.`,
-                                html: `
-                                    <p>Chào <b>${user.fullName}</b>,</p>
-                                    <p>Đơn hàng <b>${checkOrder._id}</b> của bạn đã bị tự động hủy.</p>
-                                    <p>Lý do: <span style="color: red;">${checkOrder.cancelReason}</span></p>
-                                    <p>Cảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.</p>
-                                `
-                            });
-                        }
-                    } catch (mailError) {
-                        console.error("[Auto-Cancel Error] Lỗi khi gửi email hủy đơn: ", mailError);
-                    }
-
-                    console.log(`[Auto-Cancel] Đơn hàng ${checkOrder._id} đã tự động hủy do quá thời gian thanh toán.`);
-                }
-            } catch (err) {
-                console.error('[Auto-Cancel Error] Lỗi khi tự động hủy đơn:', err);
-            }
-        }, 15 * 60 * 1000); // 15 phút
-
-        res.status(201).json({ message: "Đặt hàng thành công", order: newOrder });
+        res.status(201).json({ message: "Đặt hàng và thanh toán thành công", order: newOrder });
     } catch (error) {
         next(new HttpError(error.message || 'Creating order failed', 500));
     }
@@ -281,7 +245,15 @@ const cancellOrrder = async (req, res, next) => {
         // 2. cancell success + add lí do
         order.status = 'cancelled';
         order.cancelReason = cancelReason || 'Người dùng hủy đơn';
+        order.paymentStatus = 'refunded';
         await order.save();
+
+        // Hoàn tiền vào ví cho user
+        const user = await User.findById(customerId);
+        if (user) {
+            user.balance = (user.balance || 0) + order.totalAmount;
+            await user.save();
+        }
 
         // 3. update lại availableStock cho costume
         for (const item of order.items) {
@@ -426,8 +398,8 @@ const confirmPreparation = async (req, res, next) => {
         const order = await Rental.findById(id);
         if (!order) return next(new HttpError('Không tìm thấy đơn hàng', 404));
 
-        if (order.status !== 'preparing') {
-            return next(new HttpError('Đơn hàng chưa ở trạng thái Đang chuẩn bị đồ (preparing)', 400));
+        if (order.status !== 'preparing' && order.status !== 'pending') {
+            return next(new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý hoặc Đang chuẩn bị đồ', 400));
         }
 
         if (!order.trackingCode && order.shippingAddress && order.shippingAddress.districtId) {
@@ -458,7 +430,13 @@ const confirmPreparation = async (req, res, next) => {
                 });
             } catch (ghnError) {
                 console.error("Failed to push to GHN:", ghnError);
-                return next(new HttpError('Lỗi khi tạo đơn trên GHN. Vui lòng kiểm tra lại thông tin địa chỉ.', 500));
+                // Vẫn cho phép cập nhật trạng thái nhưng không có trackingCode
+                order.status = 'delivering';
+                await order.save();
+                return res.status(200).json({ 
+                    message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', 
+                    order 
+                });
             }
         } else {
             // Đơn pick up tại cửa hàng hoặc thiếu địa chỉ thì chỉ chuyển status

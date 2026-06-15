@@ -90,23 +90,18 @@ function RentalHistory() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-white via-[#fbf9f6] to-[#faf9f7] transition-colors duration-300">
+        <div className="bg-white border border-[#eaeaea] p-6 md:p-8 h-full rounded-xl">
             {/* Header */}
-            <div className="border-b border-border bg-transparent">
-                <div className="mx-auto max-w-7xl px-4 py-4">
-                    <h1 className="font-serif text-3xl font-medium tracking-tight text-foreground">
-                        Lịch sử đơn thuê
-                    </h1>
-                    <p className="mt-2 text-muted-foreground">
-                        Quản lý và theo dõi tất cả các đơn thuê trang phục của bạn
-                    </p>
-                </div>
-            </div>
+            <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                Lịch sử đơn thuê
+            </h3>
+            <p className="text-[14px] text-[#858585] mb-6 pb-4 border-b border-[#eaeaea]">
+                Quản lý và theo dõi tất cả các đơn thuê trang phục của bạn
+            </p>
 
             {/* Tabs */}
-            <div className="border-b border-border bg-transparent">
-                <div className="mx-auto max-w-7xl px-4">
-                    <nav className="flex gap-1 overflow-x-auto py-2 scrollbar-hide" aria-label="Tabs">
+            <div className="mb-6 border-b border-[#eaeaea]">
+                <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" aria-label="Tabs">
                         {tabs.map((tab) => {
                             const Icon = tab.icon
                             const count = getOrderCount(tab.id)
@@ -130,21 +125,16 @@ function RentalHistory() {
                             )
                         })}
                     </nav>
-                </div>
             </div>
 
             {/* Main Content with Split View */}
-            <div className="mx-auto max-w-7xl">
-                <div className="flex">
+            <div>
+                <div className="flex flex-col lg:flex-row gap-6">
                     {/* Orders List */}
                     <div className={
                         "transition-all duration-300 ease-in-out " +
-                        (isDetailOpen ? "lg:w-2/5 flex-none" : "flex-1 w-full")
+                        (isDetailOpen ? "lg:w-5/12 flex-none" : "w-full")
                     }>
-                        <div className={
-                            "px-4 py-6 " +
-                            (isDetailOpen ? "lg:pr-4" : "")
-                        }>
                             {isLoading ? (
                                 <div className="flex items-center justify-center py-16 text-muted-foreground">
                                     <p>Đang tải dữ liệu đơn hàng...</p>
@@ -172,13 +162,12 @@ function RentalHistory() {
                                     ))}
                                 </div>
                             )}
-                        </div>
                     </div>
 
                     {/* Detail Panel - Desktop */}
                     <div className={
                         "hidden lg:block transition-all duration-300 ease-in-out overflow-hidden " +
-                        (isDetailOpen ? "lg:w-3/5 opacity-100" : "w-0 opacity-0")
+                        (isDetailOpen ? "lg:w-7/12 opacity-100" : "w-0 opacity-0")
                     }>
                         {isDetailOpen && (
                             <div className="sticky top-4 h-[calc(100vh-40px)] pb-4">
