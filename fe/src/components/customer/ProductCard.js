@@ -34,7 +34,7 @@ function StarRating({ rating = 0, count = 0 }) {
   );
 }
 
-export default function ProductCard({ costume, showToast }) {
+export default function ProductCard({ costume, showToast, hideRentButton = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
@@ -50,7 +50,6 @@ export default function ProductCard({ costume, showToast }) {
       : "";
 
   return (
-    <>
       <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
         {/* Image */}
         <div
@@ -99,20 +98,21 @@ export default function ProductCard({ costume, showToast }) {
             <span className="text-[15px] font-bold text-[#1a1a1a]">
               {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/product/${costume._id}`);
-              }}
-              className="w-full py-2 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-[#333] transition-colors text-center"
-            >
-              Thuê ngay
-            </button>
+            {!hideRentButton && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/product/${costume._id}`);
+                }}
+                className="w-full py-2 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-[#333] transition-colors text-center"
+              >
+                Thuê ngay
+              </button>
+            )}
           </div>
 
 
         </div>
       </div>
-    </>
   );
 }
