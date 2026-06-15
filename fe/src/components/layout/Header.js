@@ -42,7 +42,7 @@ export default function Header() {
   }, [location.pathname]);
 
   const NAV_LINKS = [
-    { label: "TRANG PHỤC", href: "/products" },
+    { label: "TRANG CHỦ", href: "/" },
     { label: "BỘ SƯU TẬP", href: "/collections" },
     { label: "VỀ CHÚNG TÔI", href: "/about" },
   ];
