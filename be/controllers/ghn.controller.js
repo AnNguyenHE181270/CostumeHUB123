@@ -1,5 +1,6 @@
 const ghnService = require('../services/ghn.service');
 const HttpError = require('../models/http-error.model');
+const Rental = require('../models/rental.model');
 
 const getProvinces = async (req, res, next) => {
     try {
@@ -32,8 +33,40 @@ const getWards = async (req, res, next) => {
     }
 };
 
+const handleWebhook = async (req, res, next) => {
+    try {
+        const { OrderCode, Status } = req.body;
+
+        // Bỏ qua nếu thiếu dữ liệu
+        if (!OrderCode || !Status) {
+            return res.status(400).json({ message: "Thiếu dữ liệu OrderCode hoặc Status" });
+        }
+
+        // Tìm đơn hàng theo mã vận đơn
+        const rentalOrder = await Rental.findOne({ trackingCode: OrderCode });
+
+        if (!rentalOrder) {
+            // Vẫn trả về 200 để báo cho GHN là đã nhận nhưng không làm gì cả
+            return res.status(200).json({ message: "Không tìm thấy đơn hàng trong hệ thống" });
+        }
+
+        // GHN giao hàng thành công -> cập nhật trạng thái đơn thành 'renting' (Đang thuê)
+        if (Status === "delivered") {
+            rentalOrder.status = "renting";
+            await rentalOrder.save();
+            console.log(`[Webhook] Đơn hàng ${rentalOrder._id} đã được cập nhật sang renting`);
+        } 
+        
+        // Luôn trả về 200 OK cho Webhook
+        return res.status(200).json({ message: "Webhook processed successfully" });
+    } catch (error) {
+        next(new HttpError(error.message, 500));
+    }
+};
+
 module.exports = {
     getProvinces,
     getDistricts,
-    getWards
+    getWards,
+    handleWebhook
 };

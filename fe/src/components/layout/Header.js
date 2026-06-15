@@ -42,7 +42,7 @@ export default function Header() {
   }, [location.pathname]);
 
   const NAV_LINKS = [
-    { label: "TRANG PHỤC", href: "/products" },
+    { label: "TRANG CHỦ", href: "/" },
     { label: "BỘ SƯU TẬP", href: "/collections" },
     { label: "VỀ CHÚNG TÔI", href: "/about" },
   ];
@@ -150,37 +150,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Bottom Category Bar */}
-      <div className="hidden lg:block w-full bg-[#f9f5ed] border-t border-[#e8dfc8]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <nav className="flex justify-center gap-12 items-center">
-            {categories.map(cat => (
-              <div key={cat._id} className="relative group">
-                <Link to={`/category/${cat._id}`} className="block text-[11px] font-bold tracking-[0.15em] text-[#4a453e] hover:text-black transition-colors uppercase py-4">
-                  {cat.name}
-                </Link>
-                
-                {/* Dropdown for child categories */}
-                {cat.children && cat.children.length > 0 && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 bg-white shadow-xl border border-gray-50 transition-all duration-200 z-50 min-w-[220px] opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 py-2">
-                    <div className="flex flex-col text-center">
-                      {cat.children.map(child => (
-                        <Link 
-                          key={child._id} 
-                          to={`/category/${child._id}`} 
-                          className="px-6 py-3.5 text-[11px] text-[#555] hover:bg-[#fcfaf5] hover:text-black transition-colors font-normal uppercase tracking-[0.15em]"
-                        >
-                          {child.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-      </div>
+      {/* Bottom Category Bar Removed */}
 
       {/* Mobile Drawer Overlay */}
       <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`} onClick={() => setMobileMenuOpen(false)}>

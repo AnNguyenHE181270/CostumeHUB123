@@ -17,7 +17,7 @@ router.use("/rentals", rentalRoute)
 router.use("/roles", roleRoute)
 router.use("/carts", cartRoute)
 
-router.use("/staffs", staffRoute)
+router.use("/staff", staffRoute)
 router.use("/vnpays", vnpayRoute)
 router.use("/ghn", ghnRoute);
 
