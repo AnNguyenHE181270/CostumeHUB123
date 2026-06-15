@@ -70,9 +70,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const refreshProfile = async () => {
+    if (token) {
+      await getProfile(token);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ token, user, loading, login, logout, role }}
+      value={{ token, user, loading, login, logout, role, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

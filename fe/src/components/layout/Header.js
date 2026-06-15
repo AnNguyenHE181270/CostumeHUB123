@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import SearchBar from "../customer/SearchBar";
+import { formatPrice } from "../../utils/formatters";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -43,7 +44,7 @@ export default function Header() {
 
   const NAV_LINKS = [
     { label: "TRANG CHỦ", href: "/" },
-    { label: "BỘ SƯU TẬP", href: "/collections" },
+    { label: "BỘ SƯU TẬP", href: "/category" },
     { label: "VỀ CHÚNG TÔI", href: "/about" },
   ];
 
@@ -134,6 +135,9 @@ export default function Header() {
               </button>
               
               <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                <div className="px-4 py-2 text-[13px] text-gray-800 font-bold border-b border-gray-100 mb-1">
+                  Số dư: <span className="text-primary">{formatPrice(user.balance || 0)}</span>
+                </div>
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
                 </Link>

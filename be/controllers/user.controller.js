@@ -360,6 +360,7 @@ const getMyProfile = async (req, res, next) => {
         role: user.role.name,
         avatar: user.avatar,
         addresses: user.addresses,
+        balance: user.balance,
       },
     });
   } catch (err) {

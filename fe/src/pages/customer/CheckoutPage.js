@@ -18,19 +18,15 @@ export function Checkout() {
     const buyNow = location.state?.buyNow;
 
     const { cartItems, clearCart, removeFromCart } = useCart()
-    const { user } = useAuth()
+    const { user, refreshProfile } = useAuth()
     const [deliveryOption, setDeliveryOption] = useState("delivery")
-    const [paymentMethod, setPaymentMethod] = useState("VNPAY")
+    const [paymentMethod, setPaymentMethod] = useState("WALLET")
     const [address, setAddress] = useState({ name: "", phone: "", detail: "" })
     const [selectedAddress, setSelectedAddress] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" })
 
-    useEffect(() => {
-        if (deliveryOption === "delivery" && paymentMethod === "Cash") {
-            setPaymentMethod("VNPAY");
-        }
-    }, [deliveryOption, paymentMethod]);
+
 
     useEffect(() => {
         if (user) {
@@ -153,30 +149,7 @@ export function Checkout() {
                         );
                     }
                 }
-
-                if (paymentMethod === "VNPAY") {
-                    try {
-                        const vnpayRes = await fetch(`${API_URL}/api/vnpays/create-payment-url`, {
-                            method: "POST",
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "Authorization": `Bearer ${token}` 
-                            },
-                            body: JSON.stringify({ rentalId: data.order?._id })
-                        });
-                        
-                        if (vnpayRes.ok) {
-                            const vnpayData = await vnpayRes.json();
-                            if (vnpayData.paymentUrl) {
-                                window.location.href = vnpayData.paymentUrl;
-                                return;
-                            }
-                        }
-                    } catch (err) {
-                        console.error("Lỗi chuyển hướng VNPAY:", err);
-                    }
-                }
-
+                await refreshProfile();
                 navigate("/rental-history");
             } else {
                 const data = await res.json();
@@ -413,46 +386,24 @@ export function Checkout() {
 
                                 <div className="space-y-3">
                                     <label
-                                        htmlFor="vnpay"
+                                        htmlFor="wallet"
                                         className={[
                                             "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
-                                            paymentMethod === "VNPAY" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
+                                            paymentMethod === "WALLET" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
                                         ].filter(Boolean).join(' ')}
                                     >
                                         <Radio
-                                            value="VNPAY"
-                                            id="vnpay"
+                                            value="WALLET"
+                                            id="wallet"
                                             name="paymentMethod"
-                                            checked={paymentMethod === "VNPAY"}
+                                            checked={paymentMethod === "WALLET"}
                                             onChange={(e) => setPaymentMethod(e.target.value)}
                                             className="mt-0.5"
                                         />
                                         <div className="flex-1">
-                                            <span className="font-medium text-foreground">Thanh toán qua VNPAY</span>
+                                            <span className="font-medium text-foreground">Thanh toán bằng số dư ví</span>
                                         </div>
                                     </label>
-
-                                    {deliveryOption === "pickup" && (
-                                        <label
-                                            htmlFor="cash"
-                                            className={[
-                                                "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors",
-                                                paymentMethod === "Cash" ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50" : "border-border hover:bg-surface/50",
-                                            ].filter(Boolean).join(' ')}
-                                        >
-                                            <Radio
-                                                value="Cash"
-                                                id="cash"
-                                                name="paymentMethod"
-                                                checked={paymentMethod === "Cash"}
-                                                onChange={(e) => setPaymentMethod(e.target.value)}
-                                                className="mt-0.5"
-                                            />
-                                            <div className="flex-1">
-                                                <span className="font-medium text-foreground">Thanh toán bằng tiền mặt tại cửa hàng</span>
-                                            </div>
-                                        </label>
-                                    )}
                                 </div>
                             </div>
                         </div>

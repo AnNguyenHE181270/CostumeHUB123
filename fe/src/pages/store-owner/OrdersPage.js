@@ -57,7 +57,7 @@ export default function OrdersPage() {
     if (!id || !token) return;
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
@@ -104,7 +104,7 @@ export default function OrdersPage() {
     
     try {
       const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -203,23 +203,13 @@ export default function OrdersPage() {
     { 
       header: "Thao tác", 
       accessor: (row) => {
-        if (row.status === 'pending' || row.status === 'awaitingPayment') {
-          return (
-            <button 
-              onClick={() => setPaymentModal({ isOpen: true, order: row })}
-              className="text-[12px] font-semibold bg-[#1a1a1a] text-white px-3 py-1.5 rounded hover:bg-[#333] transition-colors"
-            >
-              Xác nhận tiền
-            </button>
-          );
-        }
-        if (row.status === 'preparing') {
+        if (row.status === 'pending' || row.status === 'preparing') {
           return (
             <button 
               onClick={() => handleConfirmPreparation(row._id)}
               className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
             >
-              Chuẩn bị xong (Tạo Đơn)
+              Xác nhận giao hàng
             </button>
           );
         }
@@ -230,7 +220,7 @@ export default function OrdersPage() {
       header: "Trạng thái", 
       accessor: (row) => {
         const isLocked = row.status === 'completed' || row.status === 'cancelled';
-        
+
         if (role === 'staff') {
           return (
             <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold ${getStatusColor(row.status)}`}>
