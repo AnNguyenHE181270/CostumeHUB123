@@ -419,4 +419,96 @@ const updateOrderStatus = async (req, res, next) => {
 };
 
 
-module.exports = { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail, cancellOrrder };
+// MATSL-xxx: Lấy tổng doanh thu (Total Revenue) cho Dashboard
+const getTotalRevenue = async (req, res, next) => {
+    try {
+        // Thường doanh thu sẽ tính trên các đơn không bị hủy
+        const validStatuses = ["confirmed", "delivering", "renting", "returning", "completed", "overdue"];
+        
+        const orders = await Rental.find({ status: { $in: validStatuses } });
+        
+        const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+        
+        res.status(200).json({ totalRevenue });
+    } catch (error) {
+        next(new HttpError('Fetching total revenue failed', 500));
+    }
+};
+
+// MATSL-xxx: Lấy số lượng đơn/trang phục đang được thuê (Active Rentals) cho Dashboard
+const getActiveRentals = async (req, res, next) => {
+    try {
+        // Trạng thái "đang ở ngoài" thường là: delivering, renting, overdue
+        const activeStatuses = ["delivering", "renting", "overdue"];
+        
+        const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+        
+        // Đếm tổng số lượng trang phục đang ở ngoài
+        let totalActiveCostumes = 0;
+        activeOrders.forEach(order => {
+            order.items.forEach(item => {
+                totalActiveCostumes += item.quantity;
+            });
+        });
+
+        res.status(200).json({ 
+            activeOrdersCount: activeOrders.length,
+            totalActiveCostumes 
+        });
+    } catch (error) {
+        next(new HttpError('Fetching active rentals failed', 500));
+    }
+};
+
+// MATSL-xxx: Tỷ lệ khai thác kho (Inventory Utilization) cho Dashboard
+const getInventoryUtilization = async (req, res, next) => {
+    try {
+        // 1. Tính tổng số lượng trang phục hiện có trong kho (tổng của tất cả các size/variant)
+        const costumes = await Costume.find();
+        let totalStock = 0;
+        costumes.forEach(costume => {
+            costume.variants.forEach(variant => {
+                totalStock += (variant.totalStock || 0);
+            });
+        });
+
+        if (totalStock === 0) {
+            return res.status(200).json({ utilizationPercentage: 0, totalStock: 0, currentlyRented: 0 });
+        }
+
+        // 2. Tính tổng số trang phục đang được thuê (đang ở ngoài)
+        const activeStatuses = ["delivering", "renting", "overdue"];
+        const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+        
+        let currentlyRented = 0;
+        activeOrders.forEach(order => {
+            order.items.forEach(item => {
+                currentlyRented += item.quantity;
+            });
+        });
+
+        // 3. Tính tỷ lệ %
+        const utilizationPercentage = ((currentlyRented / totalStock) * 100).toFixed(2);
+
+        res.status(200).json({ 
+            utilizationPercentage: parseFloat(utilizationPercentage), 
+            totalStock, 
+            currentlyRented 
+        });
+    } catch (error) {
+        next(new HttpError('Fetching inventory utilization failed', 500));
+    }
+};
+
+module.exports = { 
+    checkAvailability, 
+    createOrder, 
+    getAllOrders, 
+    updateOrderStatus, 
+    getRentalHistory, 
+    orderDetail, 
+    cancellOrrder,
+    getTotalRevenue,
+    getActiveRentals,
+    getInventoryUtilization
+};

@@ -10,8 +10,74 @@ import {
   faArrowUp,
   faArrowDown,
 } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { Bar, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 export default function FrappeStyleDashboard() {
+  const [loadingPage, setLoadingPage] = useState(true)
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [revenue, setRevenue] = useState();
+  const [activeOrdersCount, setActiveOrdersCount] = useState();
+  const [totalActiveCostumes, setTotalActiveCostumes] = useState();
+  const [inventoryUtilizationPercentage, setInventoryUtilizationPercentage] = useState();
+  const [totalStock, setTotalStock] = useState();
+  const [currentlyRented, setCurrentlyRented] = useState();
+  const {token} = useAuth()
+const fetchDashboardData = async () => {                                                                                               
+        try {                                                                                                                                
+          setLoadingPage(true);                                                                                                              
+          setToast({ isVisible: false, message: "", type: "success" });                                                                      
+                                                                                                                                             
+          const headers = {                                                                                                                  
+            "Content-Type": "application/json",                                                                                              
+            Authorization: `Bearer ${token}`,                                                                                                
+          };                                                                                                                                 
+                                                                                                                                             
+          // 🚀 CHẠY SONG SONG TẤT CẢ API CÙNG LÚC BẰNG Promise.all                                                                          
+          const [resRevenue, resActive, resInventory] = await Promise.all([                                                                  
+            fetch(`http://localhost:9999/api/rentals/dashboard/revenue`, { headers }),                                                       
+            fetch(`http://localhost:9999/api/rentals/dashboard/active-rentals`, { headers }),                                                
+            fetch(`http://localhost:9999/api/rentals/dashboard/inventory-utilization`, { headers })                                          
+          ]);                                                                                                                                
+                                                                                                                                             
+          // Kiểm tra nếu 1 trong các API bị lỗi                                                                                             
+          if (!resRevenue.ok || !resActive.ok || !resInventory.ok) {                                                                         
+            setToast({ isVisible: true, type: "error", message: "Failed to load dashboard data." });                                         
+            return;                                                                                                                          
+          }                                                                                                                                  
+                                                                                                                                             
+          // Parse JSON đồng loạt                                                                                                            
+          const dataRevenue = await resRevenue.json();                                                                                       
+          const dataActive = await resActive.json();                                                                                         
+          const dataInventory = await resInventory.json();                                                                                   
+                                                                                                                                             
+          // Set State                                                                                                                       
+          setRevenue(dataRevenue.totalRevenue);                                                                                              
+                                                                                                                                             
+          // Khai báo 2 biến state riêng cho Đơn và Đồ                                                                                       
+          setActiveOrdersCount(dataActive.activeOrdersCount);                                                                                
+          setTotalActiveCostumes(dataActive.totalActiveCostumes);                                                                            
+                                                                                                                                             
+          // Thêm state cho phần trăm khai thác kho                                                                                          
+          setInventoryUtilizationPercentage(dataInventory.utilizationPercentage);                                                                      
+          setTotalStock(dataInventory.totalStock);                                                                      
+          setCurrentlyRented(dataInventory.currentlyRented);                                                                      
+                                                                                                                                             
+        } catch (error) {                                                                                                                    
+          console.error(error);                                                                                                              
+          setToast({ isVisible: true, type: "error", message: "Network error while loading data." });                                        
+        } finally {                                                                                                                          
+          setLoadingPage(false);                                                                                                             
+        }                                                                                                                                    
+      };                                                                                                                                     
+                                                                                                                                             
+      useEffect(() => {                                                                                                                      
+          fetchDashboardData();                                                                                                              
+      }, []); 
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
       
@@ -57,9 +123,8 @@ export default function FrappeStyleDashboard() {
               <button className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-[#1a1a1a]">$45,230</span>
+              <span className="text-3xl font-bold text-[#1a1a1a]">{revenue}</span>
               <span className="text-sm font-medium text-green-600 mb-1 flex items-center gap-1">
-                <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" /> 12%
               </span>
             </div>
             <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1">
@@ -67,36 +132,98 @@ export default function FrappeStyleDashboard() {
             </div>
           </div>
 
+          {/* --- WIDGET 2: Active Rentals with Chart.js --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-[#555]">Total Orders</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-[#555]">Active Rentals</h3>
               <button className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-[#1a1a1a]">187</span>
-              <span className="text-sm font-medium text-green-600 mb-1 flex items-center gap-1">
-                <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" /> 5%
-              </span>
+            
+            <div className="flex-1 min-h-[100px] relative mt-2">
+              <Bar 
+                data={{
+                  labels: ['Orders', 'Costumes'],
+                  datasets: [{
+                    data: [activeOrdersCount || 0, totalActiveCostumes || 0],
+                    backgroundColor: ['#f59e0b', '#3b82f6'],
+                    borderRadius: 4,
+                    barThickness: 20,
+                  }]
+                }}
+                options={{
+                  indexAxis: 'y', // Biểu đồ cột ngang
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true }
+                  },
+                  scales: {
+                    x: { display: false, beginAtZero: true },
+                    y: { 
+                      grid: { display: false, drawBorder: false },
+                      ticks: { font: { size: 12 }, color: '#555' },
+                      border: { display: false }
+                    }
+                  }
+                }}
+              />
             </div>
             <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1">
-              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Rental orders only
+              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Currently out of store
             </div>
           </div>
 
-          {/* --- WIDGET 3: KPI Number --- */}
+          {/* --- WIDGET 3: Inventory Utilization --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-[#555]">Active Customers</h3>
+              <h3 className="text-sm font-medium text-[#555]">Inventory Utilization</h3>
               <button className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-[#1a1a1a]">1,245</span>
-              <span className="text-sm font-medium text-red-500 mb-1 flex items-center gap-1">
-                <FontAwesomeIcon icon={faArrowDown} className="text-[10px]" /> 2%
-              </span>
+            
+            <div className="flex-1 flex items-center justify-around relative mt-2 mb-2">
+              {/* Biểu đồ tròn */}
+              <div className="relative w-24 h-24">
+                <Doughnut 
+                  data={{
+                    labels: ['Rented', 'Available'],
+                    datasets: [{
+                      data: [currentlyRented || 0, Math.max(0, (totalStock || 0) - (currentlyRented || 0))],
+                      backgroundColor: ['#ef4444', '#f3f4f6'],
+                      borderWidth: 0,
+                      cutout: '75%',
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: { enabled: true }
+                    }
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-[#1a1a1a]">{inventoryUtilizationPercentage || 0}%</span>
+                </div>
+              </div>
+
+              {/* Con số bên cạnh */}
+              <div className="flex flex-col justify-center gap-3">
+                <div>
+                  <p className="text-[10px] text-[#999] uppercase tracking-wide">Rented</p>
+                  <p className="text-xl font-bold text-[#ef4444] leading-none">{currentlyRented || 0}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#999] uppercase tracking-wide">Total Stock</p>
+                  <p className="text-xl font-bold text-[#1a1a1a] leading-none">{totalStock || 0}</p>
+                </div>
+              </div>
             </div>
-            <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1">
-              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Registered this month
+
+            <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1 justify-center">
+              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> 
+              <span>Of total costumes rented</span>
             </div>
           </div>
 
