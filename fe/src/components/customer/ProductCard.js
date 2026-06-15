@@ -97,7 +97,7 @@ export default function ProductCard({ costume, showToast }) {
           {/* Price & Action */}
           <div className="mt-auto pt-4 flex flex-col gap-3">
             <span className="text-[15px] font-bold text-[#1a1a1a]">
-              {formatPrice(costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
+              {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
             </span>
             <button
               onClick={(e) => {

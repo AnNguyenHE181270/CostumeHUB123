@@ -24,7 +24,7 @@ const ProductFormModal = ({
 }) => {
   const [formData, setFormData] = useState({
     name: "", slug: "", categoryId: "", 
-    pricePerDay: "", pricePer3Days: "", pricePerWeek: "",
+    pricePerDay: "", price: "",
     deposit: "", minRentalDays: 1, lateFeePerDay: 0, description: "", 
     images: [], material: "", includedAccessories: "",
     variants: []
@@ -54,9 +54,8 @@ const ProductFormModal = ({
         name: initialData.name || "",
         slug: initialData.slug || "",
         categoryId: currentCatId || "",
-        pricePerDay: initialData.rentalRates?.pricePerDay || "",
-        pricePer3Days: initialData.rentalRates?.pricePer3Days || "",
-        pricePerWeek: initialData.rentalRates?.pricePerWeek || "",
+        pricePerDay: initialData.pricePerDay || initialData.rentalRates?.pricePerDay || "",
+        price: initialData.price || "",
         deposit: initialData.deposit || "",
         minRentalDays: initialData.minRentalDays || 1,
         lateFeePerDay: initialData.lateFeePerDay || 0,
@@ -72,7 +71,7 @@ const ProductFormModal = ({
       setSelectedParentId("");
       setFormData({
         name: "", slug: "", categoryId: "",
-        pricePerDay: "", pricePer3Days: "", pricePerWeek: "",
+        pricePerDay: "", price: "",
         deposit: "", minRentalDays: 1, lateFeePerDay: 0, description: "",
         images: [], material: "", includedAccessories: "",
         variants: []
@@ -175,11 +174,8 @@ const ProductFormModal = ({
       name: formData.name,
       slug: formData.slug,
       categoryId: formData.categoryId,
-      rentalRates: {
-        pricePerDay: Number(formData.pricePerDay),
-        pricePer3Days: formData.pricePer3Days ? Number(formData.pricePer3Days) : undefined,
-        pricePerWeek: formData.pricePerWeek ? Number(formData.pricePerWeek) : undefined,
-      },
+      pricePerDay: Number(formData.pricePerDay),
+      price: formData.price ? Number(formData.price) : 0,
       deposit: Number(formData.deposit) || 0,
       minRentalDays: Number(formData.minRentalDays) || 1,
       lateFeePerDay: Number(formData.lateFeePerDay) || 0,
@@ -274,8 +270,8 @@ const ProductFormModal = ({
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
             <h3 className="text-lg font-semibold border-b border-blue-200 pb-2 mb-4 text-blue-700">Cấu hình Biểu phí & Đặt cọc</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label="Giá thuê/3 ngày (VNĐ) *" name="pricePer3Days" type="number" min="0" value={formData.pricePer3Days} onChange={handleChange} required />
-              <Input label="Giá thuê lẻ/1 ngày (VNĐ)" name="pricePerDay" type="number" min="0" value={formData.pricePerDay} onChange={handleChange} />
+              <Input label="Giá gốc sản phẩm (VNĐ)" name="price" type="number" min="0" value={formData.price} onChange={handleChange} />
+              <Input label="Giá thuê/ngày (VNĐ) *" name="pricePerDay" type="number" min="0" value={formData.pricePerDay} onChange={handleChange} required />
               <Input label="Giá cọc ký quỹ (VNĐ) *" name="deposit" type="number" min="0" value={formData.deposit} onChange={handleChange} required />
               <Input label="Phí trễ hẹn/ngày (VNĐ) *" name="lateFeePerDay" type="number" min="0" value={formData.lateFeePerDay} onChange={handleChange} required />
               <Input label="Số ngày thuê tối thiểu" name="minRentalDays" type="number" min="1" value={formData.minRentalDays} onChange={handleChange} />

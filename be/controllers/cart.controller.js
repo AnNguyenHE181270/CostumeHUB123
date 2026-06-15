@@ -223,12 +223,7 @@ const updateCart = async (req, res, next) => {
         }
 
         const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
-        let rentalPrice = costume.rentalRates?.pricePerDay || 0;
-        if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
-            rentalPrice = costume.rentalRates.pricePer3Days / 3;
-        } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
-            rentalPrice = costume.rentalRates.pricePerWeek / 7;
-        }
+        let rentalPrice = costume.pricePerDay || costume.price || 0;
 
         const depositPrice = costume.deposit || 0;
 

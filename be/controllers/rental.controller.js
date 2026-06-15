@@ -15,7 +15,7 @@ const getRentalHistory = async (req, res, next) => {
         const userId = req.userData.id;
 
         const orders = await Rental.find({ customerId: userId })
-            .populate("items.costume", "name images rentalRates")
+            .populate("items.costume", "name images pricePerDay price")
             .sort({ createdAt: -1 });
 
         const result = orders.map(order => ({
@@ -33,7 +33,7 @@ const getRentalHistory = async (req, res, next) => {
                 image: item.costume?.images?.[0] || "",
                 size: item.size,
                 quantity: item.quantity,
-                rentalPerDay: item.rentalPricePerDay || item.costume?.rentalRates?.pricePerDay || 0
+                rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || 0
             }))
         }));
 
@@ -49,7 +49,7 @@ const orderDetail = async (req, res, next) => {
         const customerId = req.userData.id;
         const order = await Rental.findOne({ _id: orderId, customerId: customerId })
             .populate("customerId", "fullName phone email")
-            .populate("items.costume", "name images price rentalRates")
+            .populate("items.costume", "name images price pricePerDay")
         if (!order) {
             return res.status(404).json({ message: "Orders not found." })
         }
@@ -77,7 +77,7 @@ const orderDetail = async (req, res, next) => {
                 size: item.size,
                 quantity: item.quantity,
                 price: item.costume.price,
-                rentalPerDay: item.rentalPricePerDay || item.costume?.rentalRates?.pricePerDay || 0
+                rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || item.costume?.price || 0
             })),
         })
     } catch (error) {

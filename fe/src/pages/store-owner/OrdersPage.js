@@ -260,7 +260,7 @@ export default function OrdersPage() {
                 {selectedOrder.items?.map((item, idx) => (
                   <li key={idx} className="flex justify-between text-sm border-b border-gray-200 last:border-0 pb-2 last:pb-0">
                     <span>{item.costume?.name} (Size: {item.size}) x{item.quantity}</span>
-                    <span className="font-medium">{item.rentalPricePerDay?.toLocaleString('vi-VN')} đ/ngày</span>
+                    <span className="font-medium">{(item.rentalPricePerDay || item.price || item.costume?.rentalRates?.pricePerDay || item.costume?.pricePerDay || item.costume?.price || 0).toLocaleString('vi-VN')} đ/ngày</span>
                   </li>
                 ))}
               </ul>
