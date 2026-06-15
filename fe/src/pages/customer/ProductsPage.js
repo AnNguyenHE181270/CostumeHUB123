@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilter, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import Pagination from "../../components/ui/Pagination";
 import Toast from "../../components/ui/Toast";
+import ProductCard from "../../components/customer/ProductCard";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -179,26 +180,8 @@ export default function ProductsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((item) => (
-                  <div key={item._id} className="group cursor-pointer flex flex-col bg-white border border-[#eaeaea] rounded-xl overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
-                    <div className="relative overflow-hidden aspect-[3/4]">
-                      <img 
-                        src={item.images?.[0] || "https://images.unsplash.com/photo-1594552072238-16e788bc5dc0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"} 
-                        alt={item.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
-                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-black rounded shadow-sm">
-                        {item.categoryId?.name || "Trang phục"}
-                      </div>
-                    </div>
-                    <div className="p-5 flex flex-col flex-1">
-                      <h3 className="text-[15px] font-medium text-[#1a1a1a] mb-2 line-clamp-2 leading-snug group-hover:text-[#8b7355] transition-colors">{item.name}</h3>
-                      <div className="mt-auto pt-4 border-t border-[#f0f0f0] flex justify-between items-center">
-                        <span className="text-[#8b7355] font-semibold text-lg">{item.pricePerDay?.toLocaleString()} đ<span className="text-[10px] text-[#999] font-normal uppercase tracking-wider"> / ngày</span></span>
-                        <Link to={`/product/${item._id}`} className="text-[11px] font-bold text-black border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors uppercase tracking-wider rounded">
-                          Xem
-                        </Link>
-                      </div>
-                    </div>
+                  <div key={item._id} className="h-full">
+                    <ProductCard costume={item} hideRentButton={true} />
                   </div>
                 ))}
               </div>
