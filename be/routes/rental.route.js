@@ -1,6 +1,10 @@
 const express = require('express');
-const { checkAvailability, createOrder, getAllOrders, updateOrderStatus, getRentalHistory, orderDetail, cancellOrrder } = require('../controllers/rental.controller');
-const { checkAuth } = require('../middlewares/check-auth.middleware');
+const { 
+    checkAvailability, createOrder, getAllOrders, updateOrderStatus, 
+    getRentalHistory, orderDetail, cancellOrrder,
+    getTotalRevenue, getActiveRentals, getInventoryUtilization
+} = require('../controllers/rental.controller');
+const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
 
 const router = express.Router();
 
@@ -11,5 +15,10 @@ router.patch('/:id/status', checkAuth, updateOrderStatus); // Đổi trạng th�
 router.get('/rental-history', checkAuth, getRentalHistory); // Đã thêm checkAuth
 router.get('/order-detail/:orderId', checkAuth, orderDetail);
 router.patch('/:id/cancel', checkAuth, cancellOrrder);
+
+// Dashboard APIs
+router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);
+router.get('/dashboard/active-rentals', checkAuth, isOwner, getActiveRentals);
+router.get('/dashboard/inventory-utilization', checkAuth, isOwner, getInventoryUtilization);
 
 module.exports = router;
