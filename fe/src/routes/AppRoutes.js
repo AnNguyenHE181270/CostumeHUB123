@@ -8,6 +8,7 @@ import Register from "../pages/RegisterPage";
 import VerifyPage from "../pages/VerifyOtpPage";
 import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
+import AboutUs from "../pages/AboutUs";
 import ProductDetailPage from "../pages/ProductDetailPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
@@ -51,6 +52,7 @@ function AppRoutes() {
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.ABOUT_US} element={<AboutUs />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
         <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
