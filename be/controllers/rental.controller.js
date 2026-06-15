@@ -500,6 +500,28 @@ const getInventoryUtilization = async (req, res, next) => {
     }
 };
 
+// KAN-124: Nhận lại đồ từ khách (Chỉ đổi trạng thái sang chờ kiểm tra)
+exports.handleReturn = async (req, res) => {
+  try {
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) {
+      return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
+    }
+    
+    if (rental.status !== 'renting') {
+      return res.status(400).json({ message: "Đơn hàng phải ở trạng thái Đang thuê" });
+    }
+
+    rental.status = 'returning'; // Chuyển sang chờ kiểm tra
+    await rental.save();
+
+    return res.status(200).json({ message: "Đã nhận đồ từ khách. Vui lòng tiến hành kiểm tra hao mòn.", data: rental });
+  } catch (error) {
+    console.error("Lỗi nhận đồ:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi nhận đồ" });
+  }
+};
+
 module.exports = { 
     checkAvailability, 
     createOrder, 
