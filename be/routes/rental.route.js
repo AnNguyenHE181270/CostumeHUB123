@@ -16,6 +16,7 @@ router.get('/rental-history', checkAuth, getRentalHistory); // Đã thêm checkA
 router.get('/order-detail/:orderId', checkAuth, orderDetail);
 router.patch('/:id/cancel', checkAuth, cancellOrrder);
 router.patch('/:id/return', rentalController.handleReturn);
+router.patch('/:id/inspect', rentalController.inspectReturn);
 
 // Dashboard APIs
 router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);
