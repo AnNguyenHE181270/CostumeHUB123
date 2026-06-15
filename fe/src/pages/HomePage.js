@@ -5,6 +5,10 @@ import ProductCard from "../components/customer/ProductCard";
 import Toast from "../components/ui/Toast";
 import { motion } from "framer-motion";
 
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay } from 'swiper/modules';
+import 'swiper/css';
+
 const container = {
   hidden: {},
   show: {
@@ -28,8 +32,6 @@ export default function HomePage() {
   const [recentProducts, setRecentProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const sliderRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -70,20 +72,29 @@ export default function HomePage() {
           </p>
         </motion.div>
 
-        <motion.div
-          ref={sliderRef}
-          className="flex gap-6 px-6 overflow-x-auto"
-          variants={container}
-        >
-          {recentProducts.map((p) => (
-            <motion.div
-              key={p._id}
-              variants={item}
-              className="w-[280px] transition-all duration-300 hover:-translate-y-2 hover:scale-105"
-            >
-              <ProductCard costume={p} />
-            </motion.div>
-          ))}
+        <motion.div variants={container} className="px-6 pb-6">
+          <Swiper
+            modules={[Autoplay]}
+            spaceBetween={24}
+            slidesPerView="auto"
+            speed={800}
+            autoplay={{
+              delay: 2500,
+              disableOnInteraction: false,
+            }}
+            className="w-full px-2"
+          >
+            {recentProducts.map((p) => (
+              <SwiperSlide key={p._id} style={{ width: "240px" }} className="!h-auto pb-4 pt-4 flex">
+                <motion.div
+                  variants={item}
+                  className="w-full h-full transition-all duration-300"
+                >
+                  <ProductCard costume={p} />
+                </motion.div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
         </motion.div>
       </section>
 
@@ -100,29 +111,18 @@ export default function HomePage() {
           </motion.div>
 
           <motion.div
-            className="grid lg:grid-cols-3 gap-6"
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6"
             variants={container}
           >
-            <motion.div
-              variants={item}
-              className="rounded-2xl overflow-hidden transition-transform duration-300 hover:scale-[1.02]"
-            >
-              {newArrivals[0] && (
-                <ProductCard costume={newArrivals[0]} />
-              )}
-            </motion.div>
-
-            <div className="lg:col-span-2 grid grid-cols-2 gap-6">
-              {newArrivals.slice(1).map((p) => (
-                <motion.div
-                  key={p._id}
-                  variants={item}
-                  className="transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1.5"
-                >
-                  <ProductCard costume={p} />
-                </motion.div>
-              ))}
-            </div>
+            {newArrivals.map((p) => (
+              <motion.div
+                key={p._id}
+                variants={item}
+                className="h-full transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1.5"
+              >
+                <ProductCard costume={p} />
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>

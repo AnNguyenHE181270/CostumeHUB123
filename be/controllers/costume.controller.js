@@ -94,6 +94,15 @@ const getAllCostumes = async (req, res, next) => {
       case "popular":
         sortOption = { totalRentals: -1 };
         break;
+      case "name_asc":
+        sortOption = { name: 1 };
+        break;
+      case "name_desc":
+        sortOption = { name: -1 };
+        break;
+      case "oldest":
+        sortOption = { createdAt: 1 };
+        break;
       case "newest":
       default:
         sortOption = { createdAt: -1 };
