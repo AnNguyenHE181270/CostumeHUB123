@@ -153,7 +153,7 @@ const createCostume = async (req, res, next) => {
   try {
     const {
       name, slug, sku, categoryId, description, images, size, color, condition,
-      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
+      pricePerDay, price, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
     } = req.body;
 
     let processedVariants = [];
@@ -168,7 +168,8 @@ const createCostume = async (req, res, next) => {
       name, slug, sku, categoryId, description,
       images: images || [],
       size, color, condition,
-      rentalRates: rentalRates || { pricePerDay: 0 },
+      pricePerDay: pricePerDay || 0,
+      price: price || 0,
       deposit: deposit || 0,
       minRentalDays: minRentalDays || 1,
       lateFeePerDay: lateFeePerDay || 0,
@@ -190,7 +191,7 @@ const updateCostume = async (req, res, next) => {
     const { id } = req.params;
     const {
       name, slug, sku, categoryId, description, images, size, color, condition,
-      rentalRates, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
+      pricePerDay, price, deposit, minRentalDays, lateFeePerDay, status, specifications, variants
     } = req.body;
 
     const costume = await Costume.findById(id);
@@ -207,7 +208,8 @@ const updateCostume = async (req, res, next) => {
     if (size !== undefined) costume.size = size;
     if (color !== undefined) costume.color = color;
     if (condition !== undefined) costume.condition = condition;
-    if (rentalRates !== undefined) costume.rentalRates = rentalRates;
+    if (pricePerDay !== undefined) costume.pricePerDay = pricePerDay;
+    if (price !== undefined) costume.price = price;
     if (deposit !== undefined) costume.deposit = deposit;
     if (minRentalDays !== undefined) costume.minRentalDays = minRentalDays;
     if (lateFeePerDay !== undefined) costume.lateFeePerDay = lateFeePerDay;

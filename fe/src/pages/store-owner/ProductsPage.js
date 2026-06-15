@@ -9,6 +9,8 @@ import Pagination from "../../components/ui/Pagination";
 
 import Input from "../../components/ui/Input";
 import DataTable from "../../components/ui/DataTable";
+import CategoryDropdown from "../../components/ui/CategoryDropdown";
+
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 const PAGE_SIZE = 10;
@@ -22,7 +24,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
    const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCatagory, setFilterCatagory] = useState("all");
+  const [filterCatagory, setFilterCatagory] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete', 'restore', 'change_status'
   const [pendingData, setPendingData] = useState(null);
@@ -73,10 +75,10 @@ export default function ProductsPage() {
         const matchSearch =
           pro.name?.toLowerCase().includes(search.toLowerCase());
         const matchRole =
-          filterCatagory === "all" ||
-          pro.categoryId?.name?.toLowerCase() === filterCatagory.toLowerCase();
+          !filterCatagory || filterCatagory === "all" ||
+          (pro.categoryId?._id === filterCatagory || pro.categoryId === filterCatagory);
         const matchStatus =
-          filterStatus === "all" ||
+          !filterStatus || filterStatus === "all" ||
           pro.status?.toLowerCase() === filterStatus.toLowerCase();
         return matchSearch && matchRole && matchStatus;
       });
@@ -341,17 +343,13 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <select
-                value={filterCatagory}
-                onChange={(e) => setFilterCatagory(e.target.value)}
-                className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
-              >
-                <option value="all">All</option>
-                {categories.map(cat =>(
-                  <option key={cat._id} value={cat.name}>{cat.name}</option>
-                ))}
-                
-              </select>
+              <div className="relative z-20">
+                <CategoryDropdown 
+                  categories={categories} 
+                  value={filterCatagory} 
+                  onChange={setFilterCatagory} 
+                />
+              </div>
       
       
               <select
@@ -416,7 +414,7 @@ export default function ProductsPage() {
                   {product.categoryId?.name || "N/A"}
                 </td>
                 <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
-                  {product.rentalRates?.pricePerDay ? product.rentalRates.pricePerDay.toLocaleString("vi-VN") : "0"}đ
+                  {(product.pricePerDay || product.price || 0).toLocaleString("vi-VN")}đ
                 </td>
                 <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
                   {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ

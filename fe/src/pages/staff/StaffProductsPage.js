@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSearch,
@@ -10,6 +10,7 @@ import {
   faEye,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
+import CategoryDropdown from "../../components/ui/CategoryDropdown";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -49,12 +50,18 @@ export default function StaffProductsPage() {
 
   // Detail modal
   const [selectedCostume, setSelectedCostume] = useState(null);
+  
+  // Search Autocomplete State
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchWrapperRef = useRef(null);
 
   // Fetch categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/categories`);
+        const res = await fetch(`${API_URL}/api/categories?all=true`);
         const data = await res.json();
         setCategories(data.categories || data || []);
       } catch (err) {
@@ -96,10 +103,47 @@ export default function StaffProductsPage() {
     setPage(1);
   }, [search, selectedCategory, selectedStatus, sort]);
 
+  // Handle click outside for suggestions
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Debounced fetch suggestions
+  useEffect(() => {
+    if (!searchInput.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`${API_URL}/api/costumes?search=${encodeURIComponent(searchInput)}&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data.costumes || []);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy gợi ý:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   // Search submit
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSearch(searchInput);
+    setShowSuggestions(false);
   };
 
   // Tổng stock tính từ variants
@@ -136,30 +180,69 @@ export default function StaffProductsPage() {
           <div className="flex flex-wrap items-center gap-4">
 
             {/* Search */}
-            <form onSubmit={handleSearch} className="flex-1 min-w-[200px] relative">
-              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
+            <form onSubmit={handleSearch} ref={searchWrapperRef} className="flex-1 min-w-[200px] relative z-30">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
               <input
                 type="text"
+                placeholder="Tìm kiếm sản phẩm..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Tìm kiếm theo tên sản phẩm..."
-                className="w-full pl-9 pr-4 py-2.5 border border-[#eaeaea] rounded-lg text-sm text-[#1a1a1a] outline-none focus:border-[#1a1a1a] transition-colors"
+                onFocus={() => setShowSuggestions(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSearch(e);
+                }}
+                className="w-full bg-white border border-[#eaeaea] rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#1a1a1a] transition-colors"
               />
+              
+              {showSuggestions && searchInput.trim() && (
+                <div className="absolute top-full left-0 w-full mt-2 bg-white border border-[#eaeaea] rounded-lg shadow-xl overflow-hidden">
+                  {isSearching ? (
+                    <div className="flex items-center justify-center p-4 text-[#999]">
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    <ul>
+                      {suggestions.map(s => (
+                        <li 
+                          key={s._id}
+                          className="px-4 py-3 hover:bg-[#fafafa] cursor-pointer flex items-center gap-3 border-b border-[#f5f5f5] last:border-0"
+                          onClick={() => {
+                            setSearchInput(s.name);
+                            setSearch(s.name);
+                            setShowSuggestions(false);
+                            setSelectedCostume(s);
+                          }}
+                        >
+                          <img src={s.images?.[0] || "https://via.placeholder.com/40"} alt={s.name} className="w-10 h-10 object-cover rounded bg-[#f5f5f5]" />
+                          <div className="flex flex-col overflow-hidden">
+                            <span className="text-sm text-[#1a1a1a] truncate font-medium">{s.name}</span>
+                            <span className="text-xs text-[#999]">{s.sku || "N/A"}</span>
+                          </div>
+                        </li>
+                      ))}
+                      <li 
+                        className="px-4 py-3 text-center bg-[#fafafa] text-[12px] font-semibold text-[#666] hover:text-[#1a1a1a] cursor-pointer"
+                        onClick={handleSearch}
+                      >
+                        Xem tất cả kết quả &rarr;
+                      </li>
+                    </ul>
+                  ) : (
+                    <div className="p-4 text-sm text-[#999] text-center">
+                      Không tìm thấy "{searchInput}"
+                    </div>
+                  )}
+                </div>
+              )}
             </form>
 
             {/* Category Filter */}
-            <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none bg-white border border-[#eaeaea] rounded-lg px-4 py-2.5 pr-8 text-sm text-[#555] outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer"
-              >
-                <option value="">Tất cả danh mục</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))}
-              </select>
-              <FontAwesomeIcon icon={faFilter} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999] text-xs pointer-events-none" />
+            <div className="relative z-20">
+              <CategoryDropdown 
+                categories={categories} 
+                value={selectedCategory} 
+                onChange={setSelectedCategory} 
+              />
             </div>
 
             {/* Status Filter */}
@@ -183,6 +266,7 @@ export default function StaffProductsPage() {
               className="appearance-none bg-white border border-[#eaeaea] rounded-lg px-4 py-2.5 pr-8 text-sm text-[#555] outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer"
             >
               <option value="newest">Mới nhất</option>
+              <option value="oldest">Cũ nhất</option>
               <option value="price_asc">Giá tăng dần</option>
               <option value="price_desc">Giá giảm dần</option>
             </select>
@@ -262,9 +346,8 @@ export default function StaffProductsPage() {
                       {costume.name}
                     </h3>
 
-                    {/* Price */}
                     <p className="text-sm font-bold text-[#1a1a1a] mb-3">
-                      {formatPrice(costume.rentalRates?.pricePerDay)}
+                      {formatPrice(costume.rentalRates?.pricePerDay || costume.pricePerDay || costume.price)}
                       <span className="text-xs font-normal text-[#999]"> /ngày</span>
                     </p>
 
@@ -426,7 +509,7 @@ export default function StaffProductsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[#faf9f7] rounded-lg p-3">
                       <p className="text-xs text-[#999] mb-1">Giá thuê / ngày</p>
-                      <p className="text-lg font-bold text-[#1a1a1a]">{formatPrice(selectedCostume.rentalRates?.pricePerDay)}</p>
+                      <p className="text-lg font-bold text-[#1a1a1a]">{formatPrice(selectedCostume.rentalRates?.pricePerDay || selectedCostume.pricePerDay || selectedCostume.price)}</p>
                     </div>
                     <div className="bg-[#faf9f7] rounded-lg p-3">
                       <p className="text-xs text-[#999] mb-1">Tiền cọc</p>
