@@ -72,6 +72,27 @@ export default function OrdersPage() {
     }
   };
 
+  const handleConfirmPreparation = async (id) => {
+    if (!id || !token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${id}/confirm`, {
+        method: "PUT",
+        headers: { 
+          "Authorization": `Bearer ${token}` 
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ show: true, message: data.message || "Xác nhận thành công!", type: "success" });
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi khi xác nhận", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
   const handleConfirmPayment = async () => {
     if (!paymentModal.order || !paymentModal.order._id || !token) return;
     
@@ -83,13 +104,13 @@ export default function OrdersPage() {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          status: "confirmed",
+          status: "preparing",
           paymentMethod: paymentMethod 
         })
       });
 
       if (res.ok) {
-        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng giao đồ cho khách.", type: "success" });
+        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng chuẩn bị đồ.", type: "success" });
         setPaymentModal({ isOpen: false, order: null });
         fetchOrders();
       } else {
@@ -142,11 +163,13 @@ export default function OrdersPage() {
   const getStatusColor = (status) => {
     switch(status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'renting': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'returning': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
-      case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'awaitingPayment': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
       case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
+      case 'overdue': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-white text-[#555] border-[#eaeaea]';
     }
   };
@@ -160,23 +183,23 @@ export default function OrdersPage() {
     { 
       header: "Thao tác", 
       accessor: (row) => {
-        if (row.status === 'pending') {
+        if (row.status === 'pending' || row.status === 'awaitingPayment') {
           return (
             <button 
               onClick={() => setPaymentModal({ isOpen: true, order: row })}
               className="text-[12px] font-semibold bg-[#1a1a1a] text-white px-3 py-1.5 rounded hover:bg-[#333] transition-colors"
             >
-              Thu tiền
+              Xác nhận tiền
             </button>
           );
         }
-        if (row.status === 'confirmed') {
+        if (row.status === 'preparing') {
           return (
             <button 
-              onClick={() => setHandoverModal({ isOpen: true, order: row })}
+              onClick={() => handleConfirmPreparation(row._id)}
               className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
             >
-              Giao đồ
+              Chuẩn bị xong (Tạo Đơn)
             </button>
           );
         }
@@ -195,11 +218,13 @@ export default function OrdersPage() {
             className={`border px-2 py-1.5 rounded-md text-[13px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${getStatusColor(row.status)}`}
           >
             <option value="pending">Chờ xử lý</option>
-            <option value="confirmed">Đã xác nhận</option>
-            <option value="renting">Đang thuê (Đã lấy)</option>
-            <option value="returning">Đã trả (Chờ kiểm tra)</option>
+            <option value="awaitingPayment">Chờ thanh toán</option>
+            <option value="preparing">Đang chuẩn bị đồ</option>
+            <option value="delivering">Đang giao</option>
+            <option value="renting">Đang thuê</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
+            <option value="overdue">Quá hạn</option>
           </select>
         );
       }

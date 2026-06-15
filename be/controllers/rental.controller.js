@@ -419,6 +419,62 @@ const updateOrderStatus = async (req, res, next) => {
     }
 };
 
+// Staff ấn Confirm sau khi chuẩn bị đồ xong -> Chuyển sang delivering và tạo đơn GHN
+const confirmPreparation = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        const order = await Rental.findById(id);
+        if (!order) return next(new HttpError('Không tìm thấy đơn hàng', 404));
+
+        if (order.status !== 'preparing') {
+            return next(new HttpError('Đơn hàng chưa ở trạng thái Đang chuẩn bị đồ (preparing)', 400));
+        }
+
+        if (!order.trackingCode && order.shippingAddress && order.shippingAddress.districtId) {
+            try {
+                const ghnOrderData = {
+                    payment_type_id: 1, // 1: Người bán trả phí ship
+                    note: "Cho xem hàng, không thử",
+                    required_note: "CHOXEMHANGKHONGTHU",
+                    to_name: order.shippingAddress.receiverName,
+                    to_phone: order.shippingAddress.receiverPhone,
+                    to_address: order.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
+                    to_ward_code: order.shippingAddress.wardCode,
+                    to_district_id: order.shippingAddress.districtId,
+                    weight: 500, // Tạm mặc định 500g
+                    length: 20, width: 20, height: 10,
+                    service_type_id: 2,
+                    items: [{ name: "Trang phục thuê", quantity: 1, weight: 500 }]
+                };
+                
+                const ghnRes = await ghnService.createOrder(ghnOrderData);
+                order.trackingCode = ghnRes.order_code;
+                order.status = 'delivering';
+                await order.save();
+
+                return res.status(200).json({ 
+                    message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', 
+                    order 
+                });
+            } catch (ghnError) {
+                console.error("Failed to push to GHN:", ghnError);
+                return next(new HttpError('Lỗi khi tạo đơn trên GHN. Vui lòng kiểm tra lại thông tin địa chỉ.', 500));
+            }
+        } else {
+            // Đơn pick up tại cửa hàng hoặc thiếu địa chỉ thì chỉ chuyển status
+            order.status = 'delivering';
+            await order.save();
+            return res.status(200).json({ 
+                message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', 
+                order 
+            });
+        }
+    } catch (error) {
+        next(new HttpError('Lỗi server khi xác nhận chuẩn bị đồ', 500));
+    }
+};
+
 
 // MATSL-xxx: Lấy tổng doanh thu (Total Revenue) cho Dashboard
 const getTotalRevenue = async (req, res, next) => {
@@ -506,6 +562,7 @@ module.exports = {
     createOrder, 
     getAllOrders, 
     updateOrderStatus, 
+    confirmPreparation,
     getRentalHistory, 
     orderDetail, 
     cancellOrrder,
