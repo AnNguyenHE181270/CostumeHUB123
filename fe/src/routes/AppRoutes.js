@@ -44,6 +44,7 @@ import ProfileLayout from "../layouts/ProfileLayout";
 
 import CategoryPage from "../pages/customer/CategoryPage";
 import SearchPage from "../pages/customer/SearchPage";
+import CustomerProductsPage from "../pages/customer/ProductsPage";
 
 function AppRoutes() {
   return (
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
         <Route path={ROUTES.COLLECTIONS} element={<CategoryPage />} />
+        <Route path={ROUTES.PRODUCTS} element={<CustomerProductsPage />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
         <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />

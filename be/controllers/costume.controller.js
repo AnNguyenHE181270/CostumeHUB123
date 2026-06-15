@@ -57,9 +57,9 @@ const getAllCostumes = async (req, res, next) => {
 
     // Filter by price range
     if (minPrice || maxPrice) {
-      filter["rentalRates.pricePerDay"] = {};
-      if (minPrice) filter["rentalRates.pricePerDay"].$gte = Number(minPrice);
-      if (maxPrice) filter["rentalRates.pricePerDay"].$lte = Number(maxPrice);
+      filter.pricePerDay = {};
+      if (minPrice) filter.pricePerDay.$gte = Number(minPrice);
+      if (maxPrice) filter.pricePerDay.$lte = Number(maxPrice);
     }
 
     // Filter by status (comma-separated)
@@ -86,10 +86,10 @@ const getAllCostumes = async (req, res, next) => {
     let sortOption = { createdAt: -1 };
     switch (sort) {
       case "price_asc":
-        sortOption = { "rentalRates.pricePerDay": 1 };
+        sortOption = { pricePerDay: 1 };
         break;
       case "price_desc":
-        sortOption = { "rentalRates.pricePerDay": -1 };
+        sortOption = { pricePerDay: -1 };
         break;
       case "popular":
         sortOption = { totalRentals: -1 };
