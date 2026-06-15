@@ -51,6 +51,7 @@ function AppRoutes() {
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.COLLECTIONS} element={<CategoryPage />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
         <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
