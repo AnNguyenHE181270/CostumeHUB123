@@ -5,12 +5,15 @@ import Button from "../components/ui/Button";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Toast from "../components/ui/Toast";
+import { formatPrice } from "../utils/formatters";
 
 export default function ProfilePage() {
   const { loading, user, token, login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [avatarFile, setAvatarFile] = useState(null);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [isToppingUp, setIsToppingUp] = useState(false);
   
   const [form, setForm] = useState({
       fullName: "",
@@ -102,6 +105,35 @@ export default function ProfilePage() {
       setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleTopUp = async () => {
+    if (!topUpAmount || isNaN(topUpAmount) || Number(topUpAmount) < 10000) {
+      setToast({ isVisible: true, type: "error", message: "Số tiền nạp tối thiểu là 10.000 VNĐ" });
+      return;
+    }
+    
+    try {
+      setIsToppingUp(true);
+      const res = await fetch(`http://localhost:9999/api/vnpays/create-payment-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ amount: Number(topUpAmount) })
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        setToast({ isVisible: true, type: "error", message: data.message || "Không thể tạo liên kết nạp tiền" });
+      }
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối khi nạp tiền" });
+    } finally {
+      setIsToppingUp(false);
     }
   };
 
@@ -223,6 +255,35 @@ export default function ProfilePage() {
               </div>
             </div>
           </form>
+
+          {/* Wallet Section */}
+          <div className="mt-10 pt-8 border-t border-[#eaeaea]">
+            <h4 className="text-xl font-bold text-[#1a1a1a] mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Ví Điện Tử
+            </h4>
+            <div className="bg-[#fcfaf5] border border-[#f0e6d3] p-6 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <p className="text-[12px] text-[#858585] tracking-[0.1em] uppercase mb-1">Số dư hiện tại</p>
+                <p className="text-3xl font-bold text-[#1a1a1a]">{formatPrice(user.balance || 0)}</p>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <Input 
+                  type="number" 
+                  placeholder="Nhập số tiền nạp..." 
+                  value={topUpAmount}
+                  onChange={(e) => setTopUpAmount(e.target.value)}
+                  className="max-w-[200px]"
+                />
+                <Button 
+                  onClick={handleTopUp} 
+                  disabled={isToppingUp}
+                  className="whitespace-nowrap"
+                >
+                  {isToppingUp ? "Đang xử lý..." : "Nạp tiền qua VNPay"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

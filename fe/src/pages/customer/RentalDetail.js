@@ -6,7 +6,7 @@ import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
-export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelOrder }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -195,15 +195,6 @@ export function OrderDetail({ open, onOpenChange, order, onTrackOrder, onCancelO
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 pt-4 mt-auto">
-            {["confirmed", "delivering", "renting", "returning"].includes(order.status) && (
-              <button
-                onClick={() => onTrackOrder && onTrackOrder(order)}
-                className="flex items-center gap-2 rounded-lg text-white bg-black px-4 py-2.5 text-sm font-medium transition-colors hover:bg-primary/90"
-              >
-                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                Theo dõi đơn
-              </button>
-            )}
             {order.status === "pending" && onCancelOrder && (
               <button
                 onClick={() => onCancelOrder(order)}

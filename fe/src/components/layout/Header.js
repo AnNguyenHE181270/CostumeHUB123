@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import SearchBar from "../customer/SearchBar";
+import { formatPrice } from "../../utils/formatters";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -42,8 +43,8 @@ export default function Header() {
   }, [location.pathname]);
 
   const NAV_LINKS = [
-    { label: "TRANG PHỤC", href: "/products" },
-    { label: "BỘ SƯU TẬP", href: "/collections" },
+    { label: "TRANG CHỦ", href: "/" },
+    { label: "BỘ SƯU TẬP", href: "/category" },
     { label: "VỀ CHÚNG TÔI", href: "/about" },
   ];
 
@@ -134,6 +135,9 @@ export default function Header() {
               </button>
               
               <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                <div className="px-4 py-2 text-[13px] text-gray-800 font-bold border-b border-gray-100 mb-1">
+                  Số dư: <span className="text-primary">{formatPrice(user.balance || 0)}</span>
+                </div>
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
                 </Link>
@@ -150,37 +154,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Bottom Category Bar */}
-      <div className="hidden lg:block w-full bg-[#f9f5ed] border-t border-[#e8dfc8]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <nav className="flex justify-center gap-12 items-center">
-            {categories.map(cat => (
-              <div key={cat._id} className="relative group">
-                <Link to={`/category/${cat._id}`} className="block text-[11px] font-bold tracking-[0.15em] text-[#4a453e] hover:text-black transition-colors uppercase py-4">
-                  {cat.name}
-                </Link>
-                
-                {/* Dropdown for child categories */}
-                {cat.children && cat.children.length > 0 && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 bg-white shadow-xl border border-gray-50 transition-all duration-200 z-50 min-w-[220px] opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 py-2">
-                    <div className="flex flex-col text-center">
-                      {cat.children.map(child => (
-                        <Link 
-                          key={child._id} 
-                          to={`/category/${child._id}`} 
-                          className="px-6 py-3.5 text-[11px] text-[#555] hover:bg-[#fcfaf5] hover:text-black transition-colors font-normal uppercase tracking-[0.15em]"
-                        >
-                          {child.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-      </div>
+      {/* Bottom Category Bar Removed */}
 
       {/* Mobile Drawer Overlay */}
       <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`} onClick={() => setMobileMenuOpen(false)}>

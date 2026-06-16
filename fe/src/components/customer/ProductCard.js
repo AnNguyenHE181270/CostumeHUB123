@@ -34,7 +34,7 @@ function StarRating({ rating = 0, count = 0 }) {
   );
 }
 
-export default function ProductCard({ costume, showToast }) {
+export default function ProductCard({ costume, showToast, hideRentButton = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
@@ -50,8 +50,7 @@ export default function ProductCard({ costume, showToast }) {
       : "";
 
   return (
-    <>
-      <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+      <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
         {/* Image */}
         <div
           className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
@@ -76,7 +75,7 @@ export default function ProductCard({ costume, showToast }) {
         </div>
 
         {/* Content */}
-        <div className="p-4">
+        <div className="p-4 flex flex-col flex-1">
           {/* Category */}
           {categoryName && (
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#999] font-medium mb-1">
@@ -87,23 +86,33 @@ export default function ProductCard({ costume, showToast }) {
           {/* Name */}
           <h3
             onClick={() => navigate(`/product/${costume._id}`)}
-            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-gray-600 transition-colors line-clamp-1"
+            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-gray-600 transition-colors line-clamp-2"
           >
             {costume.name || "Tên sản phẩm"}
           </h3>
 
           <StarRating rating={costume.rating || 5} count={costume.reviewsCount || 0} />
 
-          {/* Price */}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-[#1a1a1a]">
-              {formatPrice(costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0)}/ngày
+          {/* Price & Action */}
+          <div className="mt-auto pt-4 flex flex-col gap-3">
+            <span className="text-[15px] font-bold text-[#1a1a1a]">
+              {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
             </span>
+            {!hideRentButton && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/product/${costume._id}`);
+                }}
+                className="w-full py-2 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-[#333] transition-colors text-center"
+              >
+                Thuê ngay
+              </button>
+            )}
           </div>
 
 
         </div>
       </div>
-    </>
   );
 }

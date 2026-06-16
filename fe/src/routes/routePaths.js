@@ -1,7 +1,10 @@
 export const ROUTES = {
   // Public Routes
   HOME: "/",
-  CATEGORY: "/category/:categoryId",
+  ABOUT_US: "/about",
+  COLLECTIONS: "/collections",
+  PRODUCTS: "/products",
+  CATEGORY: "/category",
   SEARCH: "/search",
   LOGIN: "/login",
   REGISTER: "/register",

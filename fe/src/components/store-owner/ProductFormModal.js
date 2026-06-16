@@ -23,9 +23,9 @@ const ProductFormModal = ({
   categories,
 }) => {
   const [formData, setFormData] = useState({
-    name: "", slug: "", categoryId: "", 
-    pricePerDay: "", pricePer3Days: "", pricePerWeek: "",
-    deposit: "", minRentalDays: 1, lateFeePerDay: 0, description: "", 
+    name: "", slug: "", categoryId: "",
+    pricePerDay: "", price: "", pricePer3Days: "", pricePerWeek: "",
+    deposit: "", minRentalDays: 1, lateFeePerDay: 0, description: "",
     images: [], material: "", includedAccessories: "",
     variants: []
   });
@@ -39,13 +39,13 @@ const ProductFormModal = ({
     if (initialData) {
       const currentCatId = initialData.categoryId?._id || initialData.categoryId;
       const currentCat = categories.find(c => c._id === currentCatId);
-      
+
       let parentId = "";
       if (currentCat) {
         if (currentCat.parentId) {
           parentId = currentCat.parentId;
         } else {
-          parentId = currentCat._id; 
+          parentId = currentCat._id;
         }
       }
       setSelectedParentId(parentId);
@@ -54,9 +54,8 @@ const ProductFormModal = ({
         name: initialData.name || "",
         slug: initialData.slug || "",
         categoryId: currentCatId || "",
-        pricePerDay: initialData.rentalRates?.pricePerDay || "",
-        pricePer3Days: initialData.rentalRates?.pricePer3Days || "",
-        pricePerWeek: initialData.rentalRates?.pricePerWeek || "",
+        pricePerDay: initialData.pricePerDay || initialData.rentalRates?.pricePerDay || "",
+        price: initialData.price || "",
         deposit: initialData.deposit || "",
         minRentalDays: initialData.minRentalDays || 1,
         lateFeePerDay: initialData.lateFeePerDay || 0,
@@ -64,15 +63,15 @@ const ProductFormModal = ({
         images: initialData.images || [],
         material: initialData.specifications?.material || "",
         includedAccessories: initialData.specifications?.includedAccessories?.join(", ") || "",
-        variants: initialData.variants && initialData.variants.length > 0 
-          ? initialData.variants 
+        variants: initialData.variants && initialData.variants.length > 0
+          ? initialData.variants
           : [],
       });
     } else {
       setSelectedParentId("");
       setFormData({
         name: "", slug: "", categoryId: "",
-        pricePerDay: "", pricePer3Days: "", pricePerWeek: "",
+        pricePerDay: "", price: "",
         deposit: "", minRentalDays: 1, lateFeePerDay: 0, description: "",
         images: [], material: "", includedAccessories: "",
         variants: []
@@ -87,13 +86,13 @@ const ProductFormModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name === "name") {
-      setFormData((prev) => ({ 
-        ...prev, 
+      setFormData((prev) => ({
+        ...prev,
         name: value,
         // Chỉ tự động update slug khi đang thêm mới hoặc slug rỗng
-        slug: (!initialData || !prev.slug) ? generateSlug(value) : prev.slug 
+        slug: (!initialData || !prev.slug) ? generateSlug(value) : prev.slug
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -111,12 +110,12 @@ const ProductFormModal = ({
   const handleVariantChange = (index, field, value) => {
     const newVariants = [...formData.variants];
     newVariants[index][field] = value;
-    
+
     // Auto-generate SKU when size changes
     if (field === "size" && formData.slug) {
       newVariants[index].sku = `SCOS-${formData.slug}-${value}`.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     }
-    
+
     setFormData(prev => ({ ...prev, variants: newVariants }));
   };
 
@@ -129,7 +128,7 @@ const ProductFormModal = ({
   // Images handlers
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    
+
     if (formData.images.length + files.length > 5) {
       alert("Chỉ được tải lên tối đa 5 ảnh!");
       return;
@@ -138,9 +137,9 @@ const ProductFormModal = ({
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ 
-          ...prev, 
-          images: [...prev.images, reader.result] 
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, reader.result]
         }));
       };
       reader.readAsDataURL(file);
@@ -155,7 +154,7 @@ const ProductFormModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (formData.images.length === 0) {
       alert("Vui lòng tải lên ít nhất một ảnh cho sản phẩm!");
       return;
@@ -165,7 +164,7 @@ const ProductFormModal = ({
       alert("Vui lòng chọn danh mục cho sản phẩm!");
       return;
     }
-    
+
     if (formData.variants.length === 0) {
       alert("Vui lòng thêm ít nhất một biến thể (Size) cho sản phẩm!");
       return;
@@ -175,11 +174,8 @@ const ProductFormModal = ({
       name: formData.name,
       slug: formData.slug,
       categoryId: formData.categoryId,
-      rentalRates: {
-        pricePerDay: Number(formData.pricePerDay),
-        pricePer3Days: formData.pricePer3Days ? Number(formData.pricePer3Days) : undefined,
-        pricePerWeek: formData.pricePerWeek ? Number(formData.pricePerWeek) : undefined,
-      },
+      pricePerDay: Number(formData.pricePerDay),
+      price: formData.price ? Number(formData.price) : 0,
       deposit: Number(formData.deposit) || 0,
       minRentalDays: Number(formData.minRentalDays) || 1,
       lateFeePerDay: Number(formData.lateFeePerDay) || 0,
@@ -204,17 +200,17 @@ const ProductFormModal = ({
       <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl p-6 m-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-6 sticky top-0 bg-white pb-2 z-10 border-b flex justify-between items-center">
           <span>{initialData ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}</span>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800"><FontAwesomeIcon icon={faTimes}/></button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-800"><FontAwesomeIcon icon={faTimes} /></button>
         </h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          
+
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h3 className="text-lg font-semibold border-b pb-2 mb-4 text-[#f94a00]">Thông tin chung</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Tên sản phẩm *" name="name" value={formData.name} onChange={handleChange} required />
               <Input label="Slug (Đường dẫn)" name="slug" value={formData.slug} onChange={handleChange} />
-              
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Danh mục cha *</label>
                 <select
@@ -252,11 +248,11 @@ const ProductFormModal = ({
               </div>
 
               <Input label="Chất liệu (VD: Nhung, Tơ tằm)" name="material" value={formData.material} onChange={handleChange} />
-              
+
               <div className="md:col-span-2">
                 <Input label="Phụ kiện đi kèm (VD: Kiềng bạc, nơ)" name="includedAccessories" value={formData.includedAccessories} onChange={handleChange} />
               </div>
-              
+
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">Mô tả chi tiết</label>
                 <textarea
@@ -274,8 +270,8 @@ const ProductFormModal = ({
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
             <h3 className="text-lg font-semibold border-b border-blue-200 pb-2 mb-4 text-blue-700">Cấu hình Biểu phí & Đặt cọc</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label="Giá thuê/3 ngày (VNĐ) *" name="pricePer3Days" type="number" min="0" value={formData.pricePer3Days} onChange={handleChange} required />
-              <Input label="Giá thuê lẻ/1 ngày (VNĐ)" name="pricePerDay" type="number" min="0" value={formData.pricePerDay} onChange={handleChange} />
+              <Input label="Giá gốc sản phẩm (VNĐ)" name="price" type="number" min="0" value={formData.price} onChange={handleChange} />
+              <Input label="Giá thuê/ngày (VNĐ) *" name="pricePerDay" type="number" min="0" value={formData.pricePerDay} onChange={handleChange} required />
               <Input label="Giá cọc ký quỹ (VNĐ) *" name="deposit" type="number" min="0" value={formData.deposit} onChange={handleChange} required />
               <Input label="Phí trễ hẹn/ngày (VNĐ) *" name="lateFeePerDay" type="number" min="0" value={formData.lateFeePerDay} onChange={handleChange} required />
               <Input label="Số ngày thuê tối thiểu" name="minRentalDays" type="number" min="1" value={formData.minRentalDays} onChange={handleChange} />
@@ -289,7 +285,7 @@ const ProductFormModal = ({
                 Thêm Biến Thể
               </Button>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>

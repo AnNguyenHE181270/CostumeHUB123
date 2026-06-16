@@ -44,6 +44,8 @@ import ProfileLayout from "../layouts/ProfileLayout";
 
 import CategoryPage from "../pages/customer/CategoryPage";
 import SearchPage from "../pages/customer/SearchPage";
+import CustomerProductsPage from "../pages/customer/ProductsPage";
+import AboutUsPage from "../pages/AboutUs";
 
 function AppRoutes() {
   return (
@@ -51,6 +53,9 @@ function AppRoutes() {
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.COLLECTIONS} element={<CategoryPage />} />
+        <Route path={ROUTES.PRODUCTS} element={<CustomerProductsPage />} />
+        <Route path={ROUTES.ABOUT_US} element={<AboutUsPage />} />
         <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
         <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
@@ -59,12 +64,11 @@ function AppRoutes() {
           <Route path="/cart" element={<CartPage />} />
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/rental-history" element={<RentalHistoryPage />} />
-
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
+            <Route path="/rental-history" element={<RentalHistoryPage />} />
           </Route>
         </Route>
       </Route>

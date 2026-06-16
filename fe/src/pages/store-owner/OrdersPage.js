@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
-import DataTable from "../../components/ui/DataTable";
 import Toast from "../../components/ui/Toast";
+import Pagination from "../../components/ui/Pagination";
 // Import useAuth để lấy token chuẩn từ hệ thống
 import { useAuth } from "../../context/AuthContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function OrdersPage() {
-  // Lấy token trực tiếp từ Context thay vì localStorage
-  const { token } = useAuth(); 
+  // Lấy token và role trực tiếp từ Context thay vì localStorage
+  const { token, role } = useAuth(); 
 
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
   const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
@@ -51,7 +57,7 @@ export default function OrdersPage() {
     if (!id || !token) return;
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
@@ -72,24 +78,45 @@ export default function OrdersPage() {
     }
   };
 
+  const handleConfirmPreparation = async (id) => {
+    if (!id || !token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${id}/confirm`, {
+        method: "PUT",
+        headers: { 
+          "Authorization": `Bearer ${token}` 
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ show: true, message: data.message || "Xác nhận thành công!", type: "success" });
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi khi xác nhận", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
   const handleConfirmPayment = async () => {
     if (!paymentModal.order || !paymentModal.order._id || !token) return;
     
     try {
       const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          status: "confirmed",
+          status: "preparing",
           paymentMethod: paymentMethod 
         })
       });
 
       if (res.ok) {
-        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng giao đồ cho khách.", type: "success" });
+        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng chuẩn bị đồ.", type: "success" });
         setPaymentModal({ isOpen: false, order: null });
         fetchOrders();
       } else {
@@ -142,12 +169,28 @@ export default function OrdersPage() {
   const getStatusColor = (status) => {
     switch(status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'renting': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'returning': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
-      case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'awaitingPayment': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
       case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
+      case 'overdue': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-white text-[#555] border-[#eaeaea]';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'pending': return 'Chờ xử lý';
+      case 'awaitingPayment': return 'Chờ thanh toán';
+      case 'preparing': return 'Đang chuẩn bị đồ';
+      case 'delivering': return 'Đang giao';
+      case 'renting': return 'Đang thuê';
+      case 'completed': return 'Hoàn tất';
+      case 'cancelled': return 'Đã hủy';
+      case 'overdue': return 'Quá hạn';
+      default: return status;
     }
   };
 
@@ -160,23 +203,13 @@ export default function OrdersPage() {
     { 
       header: "Thao tác", 
       accessor: (row) => {
-        if (row.status === 'pending') {
+        if (row.status === 'pending' || row.status === 'preparing') {
           return (
             <button 
-              onClick={() => setPaymentModal({ isOpen: true, order: row })}
-              className="text-[12px] font-semibold bg-[#1a1a1a] text-white px-3 py-1.5 rounded hover:bg-[#333] transition-colors"
-            >
-              Thu tiền
-            </button>
-          );
-        }
-        if (row.status === 'confirmed') {
-          return (
-            <button 
-              onClick={() => setHandoverModal({ isOpen: true, order: row })}
+              onClick={() => handleConfirmPreparation(row._id)}
               className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
             >
-              Giao đồ
+              Xác nhận giao hàng
             </button>
           );
         }
@@ -187,6 +220,15 @@ export default function OrdersPage() {
       header: "Trạng thái", 
       accessor: (row) => {
         const isLocked = row.status === 'completed' || row.status === 'cancelled';
+
+        if (role === 'staff') {
+          return (
+            <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold ${getStatusColor(row.status)}`}>
+              {getStatusLabel(row.status)}
+            </span>
+          );
+        }
+
         return (
           <select 
             value={row.status || ""} 
@@ -195,25 +237,107 @@ export default function OrdersPage() {
             className={`border px-2 py-1.5 rounded-md text-[13px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${getStatusColor(row.status)}`}
           >
             <option value="pending">Chờ xử lý</option>
-            <option value="confirmed">Đã xác nhận</option>
-            <option value="renting">Đang thuê (Đã lấy)</option>
-            <option value="returning">Đã trả (Chờ kiểm tra)</option>
+            <option value="awaitingPayment">Chờ thanh toán</option>
+            <option value="preparing">Đang chuẩn bị đồ</option>
+            <option value="delivering">Đang giao</option>
+            <option value="renting">Đang thuê</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
+            <option value="overdue">Quá hạn</option>
           </select>
         );
       }
     }
   ];
 
+  // Đưa về trang 1 khi filter đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const filteredOrders = orders.filter((order) => {
+    const searchMatch = 
+      (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.customerId?.fullName && order.customerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+    const statusMatch = statusFilter === "all" || order.status === statusFilter;
+    
+    return searchMatch && statusMatch;
+  });
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const currentOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <input 
+          type="text" 
+          placeholder="Tìm mã đơn, tên khách hàng..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-80"
+        />
+        
+        <select 
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="pending">Chờ xử lý</option>
+          <option value="awaitingPayment">Chờ thanh toán</option>
+          <option value="preparing">Đang chuẩn bị đồ</option>
+          <option value="delivering">Đang giao</option>
+          <option value="renting">Đang thuê</option>
+          <option value="completed">Hoàn tất</option>
+          <option value="cancelled">Đã hủy</option>
+          <option value="overdue">Quá hạn</option>
+        </select>
+      </div>
       
       <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
-        <DataTable columns={columns} data={orders} />
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">
+              {columns.map((col, idx) => (
+                <th key={idx} className="p-4 font-semibold whitespace-nowrap">{col.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {currentOrders.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-8 text-gray-400 text-sm">Không có đơn hàng nào</td>
+              </tr>
+            ) : (
+              currentOrders.map((row, idx) => (
+                <tr key={idx} className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors">
+                  {columns.map((col, cIdx) => (
+                    <td key={cIdx} className="p-4 text-sm text-[#555]">
+                      {typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor]}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        
+        {filteredOrders.length > 0 && (
+          <Pagination 
+            displayCount={currentOrders.length}
+            totalCount={filteredOrders.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
+        )}
       </div>
 
       {toast.show && (

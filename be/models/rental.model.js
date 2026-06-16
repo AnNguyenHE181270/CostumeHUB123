@@ -28,7 +28,6 @@ const rentalSchema = new mongoose.Schema(
         // ===== TÀI CHÍNH =====
         totalRentalPrice: { type: Number, required: true },
         totalDeposit: { type: Number, required: true },
-        shippingFee: { type: Number, default: 0 },
         totalAmount: { type: Number, required: true },
 
         lateFee: { type: Number, default: 0 },
@@ -39,15 +38,14 @@ const rentalSchema = new mongoose.Schema(
         status: {
             type: String,
             enum: [
-                "pending",
-                "confirmed",
-                "awaitingPayment",
-                "delivering",
-                "renting",
-                "returning",
-                "completed",
-                "cancelled",
-                "overdue"
+                "pending",          // Đơn mới tạo
+                "awaitingPayment",  // Chờ khách thanh toán/chuyển tiền
+                "preparing",        // Staff xác nhận tiền (paymentStatus=paid) -> Đang chuẩn bị đồ
+                "delivering",       // Staff chuẩn bị xong ấn Confirm -> Bắn API tạo đơn GHN -> GHN đang giao
+                "renting",          // GHN báo giao thành công (Webhook) -> Khách đang thuê
+                "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc
+                "cancelled",        // Hủy đơn
+                "overdue"           // Quá hạn
             ],
             default: "pending",
         },
@@ -55,8 +53,8 @@ const rentalSchema = new mongoose.Schema(
         // ===== PAYMENT =====
         paymentMethod: {
             type: String,
-            enum: ["VNPAY", "VietQR", "Cash"],
-            default: "VNPAY",
+            enum: ["VNPAY", "Cash", "WALLET"],
+            default: "WALLET",
         },
 
         paymentStatus: {
@@ -70,7 +68,6 @@ const rentalSchema = new mongoose.Schema(
             default: "pending"
         },
 
-        // ===== VNPAY INFO =====
         vnpayInfo: {
             txnRef: {
                 type: String,

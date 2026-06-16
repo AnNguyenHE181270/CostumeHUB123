@@ -1,33 +1,21 @@
 const crypto = require("crypto");
 const qs = require("qs");
 const moment = require("moment");
-const Rental = require("../models/rental.model");
-const ghnService = require("../services/ghn.service");
+const User = require("../models/user.model");
+const TopUpTransaction = require("../models/topup.model");
 
 require("dotenv").config();
 
-// =======================
-// CREATE PAYMENT URL
-// =======================
+
 const createPaymentUrl = async (req, res) => {
     try {
-        const { rentalId } = req.body;
+        const { amount } = req.body;
+        const userId = req.userData.id;
 
-        // Tìm rental
-        const rental = await Rental.findById(rentalId);
-
-        if (!rental) {
-            return res.status(404).json({
-                success: false,
-                message: "Rental not found",
-            });
-        }
-
-        // Chỉ thanh toán đơn pending
-        if (rental.paymentStatus === "paid") {
+        if (!amount || amount <= 0) {
             return res.status(400).json({
                 success: false,
-                message: "Rental already paid",
+                message: "Số tiền không hợp lệ",
             });
         }
 
@@ -42,72 +30,46 @@ const createPaymentUrl = async (req, res) => {
         const returnUrl = process.env.VNP_RETURN_URL;
 
         const createDate = moment().format("YYYYMMDDHHmmss");
-
         const expireDate = moment()
             .add(15, "minutes")
             .format("YYYYMMDDHHmmss");
 
-        let vnp_Params = {};
+        const txnRef = `TOPUP_${userId}_${Date.now()}`;
 
+        // Lưu transaction pending
+        const newTopUp = new TopUpTransaction({
+            user: userId,
+            txnRef,
+            amount,
+            status: "pending"
+        });
+        await newTopUp.save();
+
+        let vnp_Params = {};
         vnp_Params["vnp_Version"] = "2.1.0";
         vnp_Params["vnp_Command"] = "pay";
         vnp_Params["vnp_TmnCode"] = tmnCode;
         vnp_Params["vnp_Locale"] = "vn";
         vnp_Params["vnp_CurrCode"] = "VND";
-
-        // dùng rental id làm mã giao dịch
-        vnp_Params["vnp_TxnRef"] =
-            rental._id.toString();
-
-        vnp_Params["vnp_OrderInfo"] =
-            `Thanh toan don thue ${rental._id}`;
-
+        vnp_Params["vnp_TxnRef"] = txnRef;
+        vnp_Params["vnp_OrderInfo"] = `Nap tien vao vi ${userId}`;
         vnp_Params["vnp_OrderType"] = "other";
+        vnp_Params["vnp_Amount"] = amount * 100;
+        vnp_Params["vnp_ReturnUrl"] = returnUrl;
+        vnp_Params["vnp_IpAddr"] = ipAddr;
+        vnp_Params["vnp_CreateDate"] = createDate;
+        vnp_Params["vnp_ExpireDate"] = expireDate;
 
-        // VNPAY yêu cầu *100
-        vnp_Params["vnp_Amount"] =
-            rental.totalAmount * 100;
-
-        vnp_Params["vnp_ReturnUrl"] =
-            returnUrl;
-
-        vnp_Params["vnp_IpAddr"] =
-            ipAddr;
-
-        vnp_Params["vnp_CreateDate"] =
-            createDate;
-
-        vnp_Params["vnp_ExpireDate"] =
-            expireDate;
-
-        // sort key alphabet
         vnp_Params = sortObject(vnp_Params);
 
-        const signData = qs.stringify(
-            vnp_Params,
-            { encode: false }
-        );
+        const signData = qs.stringify(vnp_Params, { encode: false });
+        const hmac = crypto.createHmac("sha512", secretKey);
+        const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
-        const hmac = crypto.createHmac(
-            "sha512",
-            secretKey
-        );
-
-        const signed = hmac
-            .update(
-                Buffer.from(signData, "utf-8")
-            )
-            .digest("hex");
-
-        vnp_Params["vnp_SecureHash"] =
-            signed;
+        vnp_Params["vnp_SecureHash"] = signed;
 
         const paymentUrl =
-            vnpUrl +
-            "?" +
-            qs.stringify(vnp_Params, {
-                encode: false,
-            });
+            vnpUrl + "?" + qs.stringify(vnp_Params, { encode: false });
 
         return res.status(200).json({
             success: true,
@@ -115,7 +77,6 @@ const createPaymentUrl = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-
         return res.status(500).json({
             success: false,
             message: error.message,
@@ -129,45 +90,17 @@ const createPaymentUrl = async (req, res) => {
 const vnpayIpn = async (req, res) => {
     try {
         let vnp_Params = req.query;
+        const secureHash = vnp_Params["vnp_SecureHash"];
 
-        const secureHash =
-            vnp_Params["vnp_SecureHash"];
+        delete vnp_Params["vnp_SecureHash"];
+        delete vnp_Params["vnp_SecureHashType"];
 
-        delete vnp_Params[
-            "vnp_SecureHash"
-        ];
+        vnp_Params = sortObject(vnp_Params);
+        const secretKey = process.env.VNP_HASHSECRET;
+        const signData = qs.stringify(vnp_Params, { encode: false });
+        const hmac = crypto.createHmac("sha512", secretKey);
+        const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
-        delete vnp_Params[
-            "vnp_SecureHashType"
-        ];
-
-        vnp_Params =
-            sortObject(vnp_Params);
-
-        const secretKey =
-            process.env.VNP_HASHSECRET;
-
-        const signData = qs.stringify(
-            vnp_Params,
-            { encode: false }
-        );
-
-        const hmac =
-            crypto.createHmac(
-                "sha512",
-                secretKey
-            );
-
-        const signed = hmac
-            .update(
-                Buffer.from(
-                    signData,
-                    "utf-8"
-                )
-            )
-            .digest("hex");
-
-        // checksum fail
         if (secureHash !== signed) {
             return res.status(200).json({
                 RspCode: "97",
@@ -175,77 +108,36 @@ const vnpayIpn = async (req, res) => {
             });
         }
 
-        const rentalId =
-            vnp_Params["vnp_TxnRef"];
+        const txnRef = vnp_Params["vnp_TxnRef"];
+        const responseCode = vnp_Params["vnp_ResponseCode"];
 
-        const responseCode =
-            vnp_Params[
-                "vnp_ResponseCode"
-            ];
+        const topUp = await TopUpTransaction.findOneAndUpdate(
+            { txnRef, status: "pending" },
+            { 
+                status: "success",
+                vnpayInfo: {
+                    transactionNo: vnp_Params["vnp_TransactionNo"],
+                    bankCode: vnp_Params["vnp_BankCode"],
+                    payDate: vnp_Params["vnp_PayDate"],
+                }
+            },
+            { new: true }
+        );
 
-        const rental =
-            await Rental.findById(
-                rentalId
-            );
-
-        if (!rental) {
-            return res.status(200).json({
-                RspCode: "01",
-                Message:
-                    "Rental not found",
-            });
-        }
-
-        // tránh update nhiều lần
-        if (
-            rental.paymentStatus ===
-            "paid"
-        ) {
+        if (!topUp) {
             return res.status(200).json({
                 RspCode: "02",
-                Message:
-                    "Order already updated",
+                Message: "Transaction already updated or not found",
             });
         }
 
-        // payment success
         if (responseCode === "00") {
-            rental.paymentStatus = "paid";
-            // Tự động giao hàng luôn
-            rental.status = "delivering";
-
-            if (!rental.trackingCode && rental.shippingAddress && rental.shippingAddress.districtId) {
-                try {
-                    const ghnOrderData = {
-                        payment_type_id: 1, 
-                        note: "Đã thanh toán VNPAY",
-                        required_note: "CHOXEMHANGKHONGTHU",
-                        to_name: rental.shippingAddress.receiverName,
-                        to_phone: rental.shippingAddress.receiverPhone,
-                        to_address: rental.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
-                        to_ward_code: rental.shippingAddress.wardCode,
-                        to_district_id: rental.shippingAddress.districtId,
-                        weight: 500,
-                        length: 20, width: 20, height: 10,
-                        service_type_id: 2,
-                        items: [{ name: "Trang phục thuê Vogue Rental", quantity: 1, weight: 500 }]
-                    };
-                    const ghnRes = await ghnService.createOrder(ghnOrderData);
-                    rental.trackingCode = ghnRes.order_code;
-                } catch (err) {
-                    console.error("Auto push GHN failed (IPN):", err);
-                }
+            // Cộng tiền vào ví user
+            const user = await User.findById(topUp.user);
+            if (user) {
+                user.balance = (user.balance || 0) + topUp.amount;
+                await user.save();
             }
-
-            rental.vnpayInfo = {
-                txnRef: vnp_Params["vnp_TxnRef"],
-                transactionNo: vnp_Params["vnp_TransactionNo"],
-                bankCode: vnp_Params["vnp_BankCode"],
-                responseCode,
-                payDate: vnp_Params["vnp_PayDate"],
-            };
-
-            await rental.save();
 
             return res.status(200).json({
                 RspCode: "00",
@@ -253,20 +145,15 @@ const vnpayIpn = async (req, res) => {
             });
         }
 
-        // payment fail
-        rental.paymentStatus =
-            "failed";
-
-        await rental.save();
+        topUp.status = "failed";
+        await topUp.save();
 
         return res.status(200).json({
             RspCode: "00",
-            Message:
-                "Payment failed handled",
+            Message: "Payment failed handled",
         });
     } catch (error) {
         console.error(error);
-
         return res.status(500).json({
             RspCode: "99",
             Message: "Unknown error",
@@ -274,18 +161,12 @@ const vnpayIpn = async (req, res) => {
     }
 };
 
-// =======================
-// RETURN URL
-// =======================
-const vnpayReturn = async (
-    req,
-    res
-) => {
+
+const vnpayReturn = async (req, res) => {
     try {
         let vnp_Params = req.query;
         const secureHash = vnp_Params["vnp_SecureHash"];
         
-        // Tạo bản copy để không mất dữ liệu query trên req
         let paramsForSign = { ...vnp_Params };
         delete paramsForSign["vnp_SecureHash"];
         delete paramsForSign["vnp_SecureHashType"];
@@ -296,70 +177,42 @@ const vnpayReturn = async (
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
-        // Dành cho môi trường Localhost (IPN không chạy được)
-        // Chúng ta mượn ReturnURL để cập nhật Database
         if (secureHash === signed) {
-            const rentalId = vnp_Params["vnp_TxnRef"];
+            const txnRef = vnp_Params["vnp_TxnRef"];
             const responseCode = vnp_Params["vnp_ResponseCode"];
             
             if (responseCode === "00") {
-                const rental = await Rental.findById(rentalId);
-                if (rental && rental.paymentStatus !== "paid") {
-                    rental.paymentStatus = "paid";
-                    // Tự động đẩy đơn qua GHN luôn khi thanh toán thành công
-                    rental.status = "delivering";
-
-                    if (!rental.trackingCode && rental.shippingAddress && rental.shippingAddress.districtId) {
-                        try {
-                            const ghnOrderData = {
-                                payment_type_id: 1, // 1: Người bán trả ship
-                                note: "Đã thanh toán VNPAY",
-                                required_note: "CHOXEMHANGKHONGTHU",
-                                to_name: rental.shippingAddress.receiverName,
-                                to_phone: rental.shippingAddress.receiverPhone,
-                                to_address: rental.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
-                                to_ward_code: rental.shippingAddress.wardCode,
-                                to_district_id: rental.shippingAddress.districtId,
-                                weight: 500,
-                                length: 20, width: 20, height: 10,
-                                service_type_id: 2,
-                                items: [{ name: "Trang phục thuê Vogue Rental", quantity: 1, weight: 500 }]
-                            };
-                            const ghnRes = await ghnService.createOrder(ghnOrderData);
-                            rental.trackingCode = ghnRes.order_code;
-                        } catch (err) {
-                            console.error("Auto push GHN failed:", err);
+                const topUp = await TopUpTransaction.findOneAndUpdate(
+                    { txnRef, status: "pending" },
+                    { 
+                        status: "success",
+                        vnpayInfo: {
+                            transactionNo: vnp_Params["vnp_TransactionNo"],
+                            bankCode: vnp_Params["vnp_BankCode"],
+                            payDate: vnp_Params["vnp_PayDate"],
                         }
+                    },
+                    { new: true }
+                );
+                
+                if (topUp) {
+                    const user = await User.findById(topUp.user);
+                    if (user) {
+                        user.balance = (user.balance || 0) + topUp.amount;
+                        await user.save();
                     }
-
-                    rental.vnpayInfo = {
-                        txnRef: vnp_Params["vnp_TxnRef"],
-                        transactionNo: vnp_Params["vnp_TransactionNo"],
-                        bankCode: vnp_Params["vnp_BankCode"],
-                        responseCode,
-                        payDate: vnp_Params["vnp_PayDate"],
-                    };
-                    await rental.save();
                 }
             }
         }
 
-        // redirect về React
-        return res.redirect(
-            `${process.env.CLIENT_URL}/rental-history`
-        );
+        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
     } catch (error) {
         console.error(error);
-
-        return res.redirect(
-            `${process.env.CLIENT_URL}/rental-history`
-        );
+        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
     }
 };
 
-// =======================
-// SORT PARAM
-// =======================
+
 function sortObject(obj) {
     let sorted = {};
     let str = [];
