@@ -50,7 +50,7 @@ export default function HomePage() {
       initial="hidden"
       animate="show"
       variants={container}
-      className="bg-white"
+      className="bg-[#f9f5ed]"
     >
       {/* HERO */}
       <motion.div variants={item}>

@@ -13,9 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../context/CartContext";
 import Toast from "../components/ui/Toast";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
-import { motion, AnimatePresence } from "framer-motion";
+import DatePickerGroup from "../components/ui/DatePickerGroup";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -51,19 +49,6 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [rentalDays, setRentalDays] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
-
-  const [activePicker, setActivePicker] = useState(null);
-  const pickerRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setActivePicker(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -239,7 +224,7 @@ export default function ProductDetailPage() {
               <div className="bg-white rounded-xl border border-[#eaeaea] p-5 mb-8 shadow-sm">
                 <div className="flex items-end gap-3 mb-2">
                   <span className="text-[32px] font-bold text-[#1a1a1a] leading-none tracking-tight">
-                    {formatPrice(costume.rentalRates?.pricePerDay || 0)}
+                    {formatPrice(costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0)}
                   </span>
                   <span className="text-[14px] text-[#666] font-medium pb-1">/ ngày thuê</span>
                 </div>
@@ -306,129 +291,16 @@ export default function ProductDetailPage() {
                   Tùy chọn Thuê
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" ref={pickerRef}>
-                  {/* Ngày Nhận */}
-                  <div className="relative">
-                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">
-                      Ngày nhận đồ
-                    </label>
-                    <button
-                      onClick={() => setActivePicker(activePicker === 'start' ? null : 'start')}
-                      className={`w-full text-left bg-white border ${
-                        activePicker === 'start' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                      } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
-                    >
-                      {new Date(startDate).toLocaleDateString('vi-VN')}
-                      <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'start' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
-                    </button>
-                    
-                    <AnimatePresence>
-                      {activePicker === 'start' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute z-20 mt-2 p-3 bg-white rounded-xl shadow-xl border border-[#eaeaea] custom-calendar-wrapper left-0 min-w-[280px]"
-                        >
-                          <Calendar
-                            onChange={(date) => {
-                              const startStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-                              setStartDate(startStr);
-                              if (startStr > endDate) setEndDate(startStr);
-                              setActivePicker('end'); // Tự động chuyển sang chọn ngày trả
-                            }}
-                            value={new Date(startDate)}
-                            minDate={new Date()}
-                            className="border-none text-[13px] font-sans w-full"
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                <DatePickerGroup
+                  startDate={startDate}
+                  setStartDate={setStartDate}
+                  endDate={endDate}
+                  setEndDate={setEndDate}
+                />
 
-                  {/* Ngày Trả */}
-                  <div className="relative">
-                    <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">
-                      Ngày trả đồ
-                    </label>
-                    <button
-                      onClick={() => setActivePicker(activePicker === 'end' ? null : 'end')}
-                      className={`w-full text-left bg-white border ${
-                        activePicker === 'end' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                      } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
-                    >
-                      {new Date(endDate).toLocaleDateString('vi-VN')}
-                      <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'end' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
-                    </button>
-                    
-                    <AnimatePresence>
-                      {activePicker === 'end' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute z-20 mt-2 p-3 bg-white rounded-xl shadow-xl border border-[#eaeaea] custom-calendar-wrapper right-0 min-w-[280px]"
-                        >
-                          <Calendar
-                            onChange={(date) => {
-                              const endStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-                              setEndDate(endStr);
-                              setActivePicker(null); // Chọn xong thì đóng lịch
-                            }}
-                            value={new Date(endDate)}
-                            minDate={new Date(startDate)}
-                            className="border-none text-[13px] font-sans w-full"
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                <style>{`
-                  .custom-calendar-wrapper .react-calendar {
-                    border: none !important;
-                    font-family: inherit;
-                    width: 100%;
-                  }
-                  .custom-calendar-wrapper .react-calendar__tile {
-                    padding: 0.6em 0.2em;
-                    border-radius: 8px;
-                    transition: background 0.2s;
-                  }
-                  .custom-calendar-wrapper .react-calendar__tile:enabled:hover {
-                    background: #f5f5f5 !important;
-                  }
-                  .custom-calendar-wrapper .react-calendar__tile--active {
-                    background: #1a1a1a !important;
-                    color: white !important;
-                    font-weight: bold;
-                    border-radius: 8px;
-                  }
-                  .custom-calendar-wrapper .react-calendar__navigation button {
-                    border-radius: 8px;
-                    min-width: 36px;
-                  }
-                  .custom-calendar-wrapper .react-calendar__navigation button:enabled:hover,
-                  .custom-calendar-wrapper .react-calendar__navigation button:enabled:focus {
-                    background-color: #f5f5f5;
-                  }
-                  .custom-calendar-wrapper .react-calendar__month-view__days__day--weekend {
-                    color: #d10000;
-                  }
-                `}</style>
-
-                {/* Quick select blocks */}
-                <div className="flex gap-2 mb-6">
-                  <button onClick={() => handleQuickSelect(1)} className="px-3 py-1.5 border border-[#eaeaea] text-[11px] rounded hover:border-[#1a1a1a] transition-colors">Thuê lẻ 1 ngày</button>
-                  <button onClick={() => handleQuickSelect(3)} className="px-3 py-1.5 border border-[#eaeaea] text-[11px] rounded hover:border-[#1a1a1a] transition-colors">Gói 3 ngày</button>
-                  <button onClick={() => handleQuickSelect(5)} className="px-3 py-1.5 border border-[#eaeaea] text-[11px] rounded hover:border-[#1a1a1a] transition-colors">Gói 5 ngày</button>
-                </div>
 
                 {/* Quantity */}
-                <div className="flex items-center justify-between bg-[#faf9f7] p-3 rounded border border-[#eaeaea]">
+                <div className="flex items-center justify-between bg-[#faf9f7] p-3 mt-6 rounded border border-[#eaeaea]">
                   <span className="text-[12px] uppercase tracking-[0.05em] text-[#666] font-medium">Số lượng thuê</span>
                   <div className="flex items-center gap-4">
                     <button onClick={handleDecreaseQty} disabled={quantity <= 1} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
@@ -443,8 +315,8 @@ export default function ProductDetailPage() {
                 <h4 className="text-[13px] font-semibold text-[#1a1a1a] mb-4">Tóm tắt chi phí tạm tính</h4>
                 <div className="space-y-3 text-[13px]">
                   <div className="flex justify-between text-[#666]">
-                    <span>Tiền thuê ({formatPrice(costume.rentalRates?.pricePerDay || 0)} x {rentalDays} ngày x {quantity} bộ)</span>
-                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.rentalRates?.pricePerDay || 0) * rentalDays * quantity)}</span>
+                    <span>Tiền thuê ({formatPrice(costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0)} x {rentalDays} ngày x {quantity} bộ)</span>
+                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0) * rentalDays * quantity)}</span>
                   </div>
                   <div className="flex justify-between text-[#666]">
                     <span>Tiền cọc ({formatPrice(costume.deposit || 0)} x {quantity} bộ)</span>
@@ -453,7 +325,7 @@ export default function ProductDetailPage() {
                   <div className="pt-3 border-t border-dashed border-[#ccc] flex justify-between items-center">
                     <span className="font-bold text-[#1a1a1a] uppercase text-[12px]">Tổng thanh toán</span>
                     <span className="font-bold text-[#f94a00] text-[18px]">
-                      {formatPrice(((costume.rentalRates?.pricePerDay || 0) * rentalDays * quantity) + ((costume.deposit || 0) * quantity))}
+                      {formatPrice(((costume.pricePerDay || costume.price || costume.rentalRates?.pricePerDay || 0) * rentalDays * quantity) + ((costume.deposit || 0) * quantity))}
                     </span>
                   </div>
                 </div>

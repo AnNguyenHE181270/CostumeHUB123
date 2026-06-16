@@ -5,6 +5,7 @@ const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
 const Cart = require('../models/cart.model');
 const sendEmail = require('../services/email.service');
+const ghnService = require('../services/ghn.service');
 
 
 //==========================================================================
@@ -21,11 +22,11 @@ const getRentalHistory = async (req, res, next) => {
             id: order._id,
             costumeName: order.items[0]?.costume?.name || "Đơn hàng thuê",
             costumeImage: order.items[0]?.costume?.images?.[0] || "",
-            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1} ngày`,
+            rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24))} ngày`,
             startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
             endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
             status: order.status,
-            totalPrice: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalAmount),
+            totalPrice: order.totalAmount,
             address: order.shippingAddress.addressDetail,
             items: order.items.map(item => ({
                 costumeName: item.costume?.name || "Sản phẩm",
@@ -94,7 +95,7 @@ const createOrder = async (req, res, next) => {
         // Tính số ngày thuê
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
         let totalRentalPrice = 0;
         let totalDeposit = 0;
@@ -135,23 +136,15 @@ const createOrder = async (req, res, next) => {
             // ===== TÍNH GIÁ TIỀN =====
 
             const depositPrice = costume.deposit || costume.price || 0;
-
-            let itemRentalPrice = (costume.rentalRates?.pricePerDay || 0) * rentalDays;
-            if (rentalDays === 3 && costume.rentalRates?.pricePer3Days) {
-                itemRentalPrice = costume.rentalRates.pricePer3Days;
-            } else if (rentalDays === 7 && costume.rentalRates?.pricePerWeek) {
-                itemRentalPrice = costume.rentalRates.pricePerWeek;
-            }
-
             // Cộng dồn vào tổng đơn
-            totalRentalPrice += itemRentalPrice * item.quantity;
+            totalRentalPrice += costume.pricePerDay * item.quantity * rentalDays;
             totalDeposit += depositPrice * item.quantity;
 
             formattedItems.push({
                 costume: costume._id,
                 size: item.size,
                 quantity: item.quantity,
-                rentalPricePerDay: itemRentalPrice / rentalDays,
+                rentalPricePerDay: costume.pricePerDay / rentalDays,
                 depositPrice: depositPrice
             });
 
@@ -177,7 +170,7 @@ const createOrder = async (req, res, next) => {
             startDate,
             endDate,
             shippingFee,
-            paymentMethod: paymentMethod || "VietQR",
+            paymentMethod: paymentMethod || "VNPAY",
             shippingAddress,
             totalRentalPrice,
             totalDeposit,
@@ -345,7 +338,7 @@ const checkAvailability = async (req, res, next) => {
         const paddedEndDate = new Date(new Date(endDate).getTime() + paddingMs);
 
         // Tìm các đơn đang giữ đồ đè lên khoảng thời gian này
-        const overlaps = await RentalOrder.find({
+        const overlaps = await Rental.find({
             costume: costumeId,
             status: { $in: ['pending', 'confirmed', 'picked_up'] }, // Không tính đơn đã trả/hủy
             startDate: { $lte: paddedEndDate },
@@ -369,7 +362,13 @@ const checkAvailability = async (req, res, next) => {
 // MATSL-04-08: Lấy danh sách đơn (Cho Staff/Owner)
 const getAllOrders = async (req, res, next) => {
     try {
-        const orders = await RentalOrder.find().populate('user', 'fullName email').populate('costume', 'name');
+        // QUAN TRỌNG: Đổi từ RentalOrder thành Rental
+        // Cập nhật đúng tên trường là 'customerId' và 'items.costume'
+        const orders = await Rental.find()
+            .populate('customerId', 'fullName email phone')
+            .populate('items.costume', 'name')
+            .sort({ createdAt: -1 }); // Sắp xếp đơn mới nhất lên đầu
+            
         res.status(200).json(orders);
     } catch (error) {
         next(new HttpError('Fetching orders failed', 500));
@@ -381,7 +380,39 @@ const updateOrderStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-        const order = await RentalOrder.findByIdAndUpdate(id, { status }, { new: true });
+        
+        const order = await Rental.findById(id);
+        if (!order) return next(new HttpError('Order not found', 404));
+
+        // Nếu chuyển sang Đang giao hàng và chưa có mã vận đơn
+        if (status === 'delivering' && !order.trackingCode && order.shippingAddress && order.shippingAddress.districtId) {
+            try {
+                const ghnOrderData = {
+                    payment_type_id: 1,
+                    note: "Cho xem hàng, không thử",
+                    required_note: "CHOXEMHANGKHONGTHU",
+                    to_name: order.shippingAddress.receiverName,
+                    to_phone: order.shippingAddress.receiverPhone,
+                    to_address: order.shippingAddress.addressDetail || "Không có địa chỉ chi tiết",
+                    to_ward_code: order.shippingAddress.wardCode,
+                    to_district_id: order.shippingAddress.districtId,
+                    weight: 500, // Tạm mặc định 500g
+                    length: 20, width: 20, height: 10,
+                    service_type_id: 2, // Giao hàng chuẩn
+                    items: [{ name: "Trang phục thuê", quantity: 1, weight: 500 }]
+                };
+                
+                const ghnRes = await ghnService.createOrder(ghnOrderData);
+                order.trackingCode = ghnRes.order_code;
+            } catch (ghnError) {
+                console.error("Failed to push to GHN:", ghnError);
+                // Vẫn cho phép cập nhật trạng thái nhưng không có trackingCode
+            }
+        }
+
+        order.status = status;
+        await order.save();
+        
         res.status(200).json({ message: 'Status updated', order });
     } catch (error) {
         next(new HttpError('Updating status failed', 500));

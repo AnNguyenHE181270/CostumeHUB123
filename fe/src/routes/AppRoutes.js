@@ -24,6 +24,10 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 
 import OrdersPage from "../pages/store-owner/OrdersPage";
 
+// Trang Staff
+import StaffDashboard from "../pages/staff/StaffDashboard";
+import StaffProductsPage from "../pages/staff/StaffProductsPage";
+
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
@@ -38,12 +42,17 @@ import MainLayout from "../layouts/MainLayout";
 import ProfileLayout from "../layouts/ProfileLayout";
 
 
+import CategoryPage from "../pages/customer/CategoryPage";
+import SearchPage from "../pages/customer/SearchPage";
+
 function AppRoutes() {
   return (
     <Routes>
 
       <Route element={<MainLayout />}>
         <Route path={ROUTES.HOME} element={<HomePage />} />
+        <Route path={ROUTES.CATEGORY} element={<CategoryPage />} />
+        <Route path={ROUTES.SEARCH} element={<SearchPage />} />
         <Route path={ROUTES.PRODUCT_DETAIL} element={<ProductDetailPage />} />
 
         <Route element={<ProtectedRoutes />}>
@@ -72,7 +81,11 @@ function AppRoutes() {
 
       <Route element={<StaffRoutes />}>
         <Route path={ROUTES.STAFF_BASE} element={<DashboardLayout />}>
+          <Route index element={<StaffDashboard />} />
+          <Route path={ROUTES.STAFF_PRODUCTS} element={<StaffProductsPage />} />
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
+          {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
+          <Route path="rentals" element={<OrdersPage />} />
         </Route>
       </Route>
 
@@ -80,11 +93,13 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_OWNER_BASE} element={<DashboardLayout />}>
           <Route index element={<StoreOwnerDashboard />} />
           <Route path={ROUTES.STOR_OWNER_ACCOUNT} element={<AccountsPage />} />
-
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
+
+          {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
+          <Route path="rentals" element={<OrdersPage />} />
         </Route>
       </Route>
 
