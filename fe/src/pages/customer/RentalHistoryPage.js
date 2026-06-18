@@ -89,6 +89,30 @@ function RentalHistory() {
         setSelectedOrder(null);
     };
 
+    const handleRequestReturn = async (order) => {
+        if (!window.confirm("Bạn có chắc muốn gửi yêu cầu trả hàng?")) return;
+        try {
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const res = await fetch(`${API_URL}/api/rentals/${order.id}/request-return`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                alert("Đã gửi yêu cầu trả hàng thành công!");
+                fetchOrders();
+                handleCloseDetail();
+            } else {
+                const errorData = await res.json();
+                alert(errorData.message || "Lỗi yêu cầu trả hàng.");
+            }
+        } catch (err) {
+            console.error("Return request error:", err);
+            alert("Lỗi hệ thống khi yêu cầu trả hàng.");
+        }
+    };
+
     return (
         <div className="bg-white border border-[#eaeaea] mx-auto my-6 max-w-[1200px] px-6 py-4 rounded-xl">
             {/* Header */}
@@ -173,6 +197,7 @@ function RentalHistory() {
                                     order={selectedOrder}
                                     onOpenChange={(val) => { if (!val) handleCloseDetail() }}
                                     onCancelOrder={handleCancelOrder}
+                                    onRequestReturn={handleRequestReturn}
                                 />
                             </div>
                         )}
@@ -195,6 +220,7 @@ function RentalHistory() {
                             order={selectedOrder}
                             onOpenChange={(val) => { if (!val) handleCloseDetail() }}
                             onCancelOrder={handleCancelOrder}
+                            onRequestReturn={handleRequestReturn}
                         />
                     </div>
                 </div>

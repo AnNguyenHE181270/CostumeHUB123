@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "../../components/customer/ProductCard";
@@ -13,6 +13,8 @@ export default function CategoryPage() {
   const [category, setCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("newest");
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get("q") || "";
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,10 +62,10 @@ export default function CategoryPage() {
     fetchCategories();
   }, [categoryId]);
 
-  // Reset page when category or sort changes
+  // Reset page when category, sort, or query changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [categoryId, sort]);
+  }, [categoryId, sort, query]);
 
   // Fetch Costumes
   useEffect(() => {
@@ -78,6 +80,9 @@ export default function CategoryPage() {
         }
         if (sort) {
           url.searchParams.append("sort", sort);
+        }
+        if (query) {
+          url.searchParams.append("search", query);
         }
 
         const costRes = await fetch(url.toString());
@@ -99,7 +104,7 @@ export default function CategoryPage() {
     };
 
     fetchCostumes();
-  }, [categoryId, sort, currentPage]);
+  }, [categoryId, sort, currentPage, query]);
 
   const handleSortChange = (e) => {
     setSort(e.target.value);
@@ -111,12 +116,12 @@ export default function CategoryPage() {
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-[#e8dfc8] pb-4">
           <h1 className="text-[28px] lg:text-[32px] font-bold text-[#1a1a1a] uppercase tracking-wide" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            {category ? category.name : "TẤT CẢ SẢN PHẨM"}
+            {query ? `Kết quả tìm kiếm: "${query}"` : (category ? category.name : "TẤT CẢ SẢN PHẨM")}
           </h1>
           <div className="text-[12px] text-[#666] mt-2 md:mt-0 uppercase tracking-widest flex items-center gap-2">
             <Link to="/" className="hover:text-black">Trang chủ</Link> 
             <span>/</span> 
-            <span className="text-black font-semibold">{category ? category.name : "Bộ sưu tập"}</span>
+            <span className="text-black font-semibold">{query ? "Tìm kiếm" : (category ? category.name : "Bộ sưu tập")}</span>
           </div>
         </div>
 
@@ -174,8 +179,8 @@ export default function CategoryPage() {
           <main className="flex-1">
             
             <div className="flex justify-between items-center mb-6 bg-white p-3 border border-[#eaeaea] shadow-sm rounded-sm">
-              <div className="text-[15px] text-[#1a1a1a] font-bold uppercase tracking-wider hidden sm:block" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                {category ? category.name : "TẤT CẢ SẢN PHẨM"}
+              <div className="text-[15px] text-[#1a1a1a] font-bold uppercase tracking-wider hidden sm:block truncate pr-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                {query ? `TÌM KIẾM: ${query}` : (category ? category.name : "TẤT CẢ SẢN PHẨM")}
               </div>
               <div className="flex items-center gap-3 ml-auto">
                 <label className="text-[13px] text-gray-600 font-medium">Sắp xếp:</label>

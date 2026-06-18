@@ -8,7 +8,7 @@ import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
@@ -208,32 +208,16 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
                 Hủy đơn hàng
               </button>
             )}
-
-            {!["pending", "cancelled"].includes(order.status) && (
-              <div className="flex w-full gap-3">
-                <button
-                  onClick={() => setIsTrackingOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                >
-                  <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                  Theo dõi
-                </button>
-
-              </div>
-            )}
-
-            {order.status !== "delivering" && (
-              <button
-                onClick={() => setIsIssuesOpen(true)}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
-              >
-                <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
-                Khiếu nại
+            {['renting', 'overdue'].includes(order.status) && onRequestReturn && (
+              <button 
+                onClick={() => onRequestReturn(order)}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                Yêu cầu trả hàng
               </button>
             )}
-
             {order.status === "renting" && (
-              <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+              <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>

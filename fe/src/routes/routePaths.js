@@ -5,7 +5,6 @@ export const ROUTES = {
   COLLECTIONS: "/collections",
   PRODUCTS: "/products",
   CATEGORY: "/category",
-  SEARCH: "/search",
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY: "/verify-otp/:email",
