@@ -29,14 +29,14 @@ export default function ProfileLayout() {
         </div>
         <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
           {(roleName === "owner" || roleName === "staff") && (
-            <Link 
-              to={roleName === "owner" ? "/owner" : "/staff"} 
+            <Link
+              to={roleName === "owner" ? "/owner" : "/staff"}
               className="bg-[#1a1a1a] text-white text-[12px] uppercase tracking-[0.1em] font-semibold px-6 py-3 hover:bg-[#333] transition-colors flex items-center justify-center border border-[#1a1a1a] w-full sm:w-auto"
             >
               Trang Quản Trị
             </Link>
           )}
-          
+
         </div>
       </div>
 

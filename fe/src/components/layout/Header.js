@@ -58,7 +58,7 @@ export default function Header() {
         if (res.ok) {
           const data = await res.json();
           const cats = data.categories || [];
-          
+
           // Build tree
           const parents = cats.filter(c => !c.parentId);
           const tree = parents.map(p => ({
@@ -77,7 +77,7 @@ export default function Header() {
   return (
     <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-4" : "bg-white pt-6"}`}>
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-6">
-        
+
         {/* Left: Mobile Menu Toggle or Desktop Links */}
         <div className="flex-1 flex items-center">
           <button className="lg:hidden text-gray-800 text-xl hover:text-black transition-colors" onClick={() => setMobileMenuOpen(true)}>
@@ -109,7 +109,7 @@ export default function Header() {
           <div className="hidden lg:flex flex-1 max-w-[300px] justify-end w-full">
             <SearchBar />
           </div>
-          
+
           <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
             <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
             {cartCount > 0 && (
@@ -121,7 +121,7 @@ export default function Header() {
 
           {user ? (
             <div className="relative hidden sm:block" ref={profileDropdownRef}>
-              <button 
+              <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="text-gray-600 hover:text-black transition-colors flex items-center gap-2 outline-none focus:outline-none"
               >
@@ -133,13 +133,16 @@ export default function Header() {
                   </div>
                 )}
               </button>
-              
+
               <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
                 <div className="px-4 py-2 text-[13px] text-gray-800 font-bold border-b border-gray-100 mb-1">
                   Số dư: <span className="text-primary">{formatPrice(user.balance || 0)}</span>
                 </div>
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
+                </Link>
+                <Link to="/rental-history" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
+                  Lịch sử thuê
                 </Link>
                 <button onClick={() => { setProfileDropdownOpen(false); handleLogout(); }} className="w-full text-left px-4 py-2 text-[13px] text-red-600 hover:bg-red-50 transition-colors">
                   Đăng xuất
@@ -175,9 +178,9 @@ export default function Header() {
                 {cat.children && cat.children.length > 0 && (
                   <div className="flex flex-col gap-3 pl-4 border-l border-gray-100">
                     {cat.children.map(child => (
-                      <Link 
-                        key={child._id} 
-                        to={`/category/${child._id}`} 
+                      <Link
+                        key={child._id}
+                        to={`/category/${child._id}`}
                         className="text-[12px] font-medium tracking-[0.05em] text-gray-500 hover:text-black uppercase transition-colors"
                       >
                         {child.name}
@@ -189,18 +192,18 @@ export default function Header() {
             ))}
             <hr className="border-gray-100 my-2" />
             <Link to={user ? "/my-profile" : "/login"} className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors">
-               {user ? (
-                 user.avatar ? (
-                   <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
-                 ) : (
-                   <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">
-                     {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
-                   </div>
-                 )
-               ) : (
-                 <FontAwesomeIcon icon={faUser} className="text-gray-500 text-[15px]" />
-               )}
-               {user ? (user.fullName || "Tài khoản") : "Đăng nhập"}
+              {user ? (
+                user.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">
+                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )
+              ) : (
+                <FontAwesomeIcon icon={faUser} className="text-gray-500 text-[15px]" />
+              )}
+              {user ? (user.fullName || "Tài khoản") : "Đăng nhập"}
             </Link>
           </nav>
         </div>
