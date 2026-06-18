@@ -90,9 +90,9 @@ function RentalHistory() {
     };
 
     return (
-        <div className="bg-white border border-[#eaeaea] p-6 md:p-8 h-full rounded-xl">
+        <div className="bg-white border border-[#eaeaea] mx-auto my-6 max-w-[1200px] px-6 py-4 rounded-xl">
             {/* Header */}
-            <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            <h3 className="text-3xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 Lịch sử đơn thuê
             </h3>
             <p className="text-[14px] text-[#858585] mb-6 pb-4 border-b border-[#eaeaea]">
@@ -102,29 +102,29 @@ function RentalHistory() {
             {/* Tabs */}
             <div className="mb-6 border-b border-[#eaeaea]">
                 <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" aria-label="Tabs">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon
-                            const count = getOrderCount(tab.id)
-                            const isActive = activeTab === tab.id
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon
+                        const count = getOrderCount(tab.id)
+                        const isActive = activeTab === tab.id
 
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => handleTabChange(tab.id)}
-                                    className={
-                                        "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all " +
-                                        (isActive
-                                            ? "bg-black text-white"
-                                            : "text-muted-foreground hover:bg-muted hover:text-foreground")
-                                    }
-                                >
-                                    <FontAwesomeIcon icon={Icon} className="h-4 w-4" />
-                                    <span >{tab.label}</span>
-                                    <span>{count}</span>
-                                </button>
-                            )
-                        })}
-                    </nav>
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => handleTabChange(tab.id)}
+                                className={
+                                    "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all " +
+                                    (isActive
+                                        ? "bg-black text-white"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground")
+                                }
+                            >
+                                <FontAwesomeIcon icon={Icon} className="h-4 w-4" />
+                                <span >{tab.label}</span>
+                                <span>{count}</span>
+                            </button>
+                        )
+                    })}
+                </nav>
             </div>
 
             {/* Main Content with Split View */}
@@ -135,33 +135,30 @@ function RentalHistory() {
                         "transition-all duration-300 ease-in-out " +
                         (isDetailOpen ? "lg:w-5/12 flex-none" : "w-full")
                     }>
-                            {isLoading ? (
-                                <div className="flex items-center justify-center py-16 text-muted-foreground">
-                                    <p>Đang tải dữ liệu đơn hàng...</p>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-16 text-muted-foreground">
+                                <p>Đang tải dữ liệu đơn hàng...</p>
+                            </div>
+                        ) : filteredOrders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                <div className="rounded-full bg-muted p-2">
+                                    <FontAwesomeIcon icon={faBox} className="h-8 w-8 text-muted-foreground" />
                                 </div>
-                            ) : filteredOrders.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 text-center">
-                                    <div className="rounded-full bg-muted p-4">
-                                        <FontAwesomeIcon icon={faBox} className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                    <h3 className="mt-4 font-medium text-foreground">Không có đơn hàng</h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Bạn chưa có đơn thuê nào trong mục này
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {filteredOrders.map((order) => (
-                                        <OrderCard
-                                            key={order.id}
-                                            order={order}
-                                            onViewDetail={handleViewDetail}
-                                            isSelected={selectedOrder?.id === order.id}
-                                            isCompact={isDetailOpen}
-                                        />
-                                    ))}
-                                </div>
-                            )}
+                                <h3 className="font-medium text-foreground">Không có đơn hàng</h3>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredOrders.map((order) => (
+                                    <OrderCard
+                                        key={order.id}
+                                        order={order}
+                                        onViewDetail={handleViewDetail}
+                                        isSelected={selectedOrder?.id === order.id}
+                                        isCompact={isDetailOpen}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Detail Panel - Desktop */}

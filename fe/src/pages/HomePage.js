@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import HeroSection from "../components/customer/HeroSection";
 import FeatureBar from "../components/customer/FeatureBar";
 import ProductCard from "../components/customer/ProductCard";
@@ -8,6 +9,7 @@ import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import 'swiper/css';
+import PoliciesModal from "./Policies";
 
 const container = {
   hidden: {},
@@ -32,6 +34,9 @@ export default function HomePage() {
   const [recentProducts, setRecentProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showPolicies, setShowPolicies] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -46,6 +51,16 @@ export default function HomePage() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.showPolicies) {
+      setShowPolicies(true);
+      // Xóa state khỏi lịch sử để tránh việc modal bật lại khi người dùng refresh trang
+      const newState = { ...location.state };
+      delete newState.showPolicies;
+      navigate(location.pathname, { replace: true, state: newState });
+    }
+  }, [location, navigate]);
 
   return (
     <motion.div
@@ -126,6 +141,8 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      <PoliciesModal isOpen={showPolicies} onClose={() => setShowPolicies(false)} />
     </motion.div>
   );
 }

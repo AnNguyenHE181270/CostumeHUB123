@@ -4,22 +4,13 @@ import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faArrowRight, faCalendarDays, faShieldHalved, faTags } from "@fortawesome/free-solid-svg-icons";
 import { formatPrice, getRentalDays } from "../utils/formatters"
-import CustomDateRangePicker from "../components/ui/CustomDateRangePicker"
-import Modal from "../components/Modal"
 import DatePickerGroup from "../components/ui/DatePickerGroup"
+import Selector from "../components/ui/Selector"
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, addToCart, clearCart, updateCartItem } = useCart();
+  const { cartItems, removeFromCart, clearCart, updateCartItem } = useCart();
   const navigate = useNavigate();
-
   const [selectedIds, setSelectedIds] = useState(() => cartItems.map(item => item._id));
-  const [editingDateItem, setEditingDateItem] = useState(null);
-  const [tempDateRange, setTempDateRange] = useState([{
-    startDate: new Date(),
-    endDate: new Date(),
-    key: 'selection'
-  }]);
-
   useEffect(() => {
     setSelectedIds(prev => {
       const currentIds = cartItems.map(item => item._id);
@@ -30,59 +21,11 @@ export default function CartPage() {
     });
   }, [cartItems]);
 
-  const openDateModal = (item) => {
-    setEditingDateItem(item);
-    setTempDateRange([{
-      startDate: new Date(item.startDate),
-      endDate: new Date(item.endDate),
-      key: 'selection'
-    }]);
-  };
-
-  const handleSelectDateRange = (ranges) => {
-    setTempDateRange([ranges.selection]);
-  };
-
-  const handleSaveDates = async () => {
-    if (editingDateItem) {
-      const start = tempDateRange[0].startDate;
-      const end = tempDateRange[0].endDate;
-      const formatLocal = (date) => {
-        const d = new Date(date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      };
-      const newStart = formatLocal(start);
-      const newEnd = formatLocal(end);
-
-      if (updateCartItem) {
-        await updateCartItem(
-          editingDateItem.costumeId || editingDateItem._id,
-          editingDateItem.size,
-          editingDateItem.startDate,
-          editingDateItem.endDate,
-          editingDateItem.size,
-          editingDateItem.quantity,
-          newStart,
-          newEnd
-        );
-      }
-      setEditingDateItem(null);
-    }
-  };
-
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedIds(cartItems.map(item => item._id));
     } else {
       setSelectedIds([]);
-    }
-  };
-
-  const handleSelectItem = (id, checked) => {
-    if (checked) {
-      setSelectedIds(prev => [...prev, id]);
-    } else {
-      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
     }
   };
 
@@ -93,8 +36,6 @@ export default function CartPage() {
   };
 
   const selectedCartItems = cartItems.filter(item => selectedIds.includes(item._id));
-
-
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce((sum, item) => {
     return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
@@ -141,236 +82,201 @@ export default function CartPage() {
   }
 
   return (
-    <div className="bg-[#fafafa] min-h-screen pb-20">
-      <div className="bg-white border-b border-[#e8e8e8]">
-        <div className="mx-auto max-w-[1200px] px-6 py-4">
-          <h1 className="text-[32px] font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Giỏ Thuê Của Bạn
-          </h1>
-          <p className="text-[#999] text-[13px] mt-1 uppercase tracking-[0.1em]">
-            {cartItems.length} sản phẩm trong giỏ
+    <div className="bg-white border border-[#eaeaea] px-6 py-4 mx-auto my-6 max-w-[1200px] rounded-xl">
+      <h3 className="text-3xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+        Giỏ Thuê Của Bạn
+      </h3>
+      <p className="text-[14px] text-[#858585] pb-4 mb-2 border-b border-[#eaeaea]">
+        Xem lại các trang phục bạn đã chọn và tiến hành đặt thuê.
+      </p>
+
+
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+
+        {/* Cart Items List */}
+        <div className="w-full py-6 lg:w-2/3 flex flex-col gap-5">
+          <div className="flex justify-between items-center">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === cartItems.length && cartItems.length > 0}
+                onChange={handleSelectAll}
+                className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
+              />
+              Tất cả ({cartItems.length})
+
+            </label>
+            <button
+              onClick={clearCart}
+              className="text-sm text-red-500 hover:text-red-700 font-medium flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors"
+            >
+              Xóa tất cả
+            </button>
+          </div>
+          {cartItems.map((item) => {
+            const itemId = item._id;
+            const isSelected = selectedIds.includes(itemId);
+            const rentalDays = getRentalDays(item.startDate, item.endDate);
+            return (
+              <div
+                key={itemId}
+                onClick={() => toggleItemSelection(itemId)}
+                className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch`}
+              >
+                {/* Checkbox */}
+                <div className="pl-2 sm:pl-3 flex items-center" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleItemSelection(itemId)}
+                    className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
+                  />
+                </div>
+
+                {/* Delete Btn */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFromCart(item.costumeId || item._id, item.size, item.startDate, item.endDate);
+                  }}
+                  className="absolute top-1/2 -translate-y-1/2 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors z-10"
+                  title="Xóa khỏi giỏ"
+                >
+                  <FontAwesomeIcon icon={faTrash} className="text-[13px]" />
+                </button>
+
+                {/* Image */}
+                <div className="w-[100px] sm:w-[130px] aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0 self-start">
+                  <img
+                    src={item.image}
+                    alt={item.costumeName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Details */}
+                <div className="flex flex-col flex-1 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-semibold mb-1">
+                    {item.category}
+                  </p>
+                  <Link to={`/product/${item.costumeId}`} onClick={(e) => e.stopPropagation()} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2 relative z-10 w-fit block">
+                    {item.costumeName}
+                  </Link>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[13px] text-[#666]">Size:</span>
+                    <Selector
+                      value={item.size}
+                      variants={item.variants}
+                      onChange={(newSize) => {
+                        if (updateCartItem && newSize !== item.size)
+                          updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, newSize, item.quantity);
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[13px] text-[#666]">Số lượng:</span>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
+                        }}
+                        disabled={item.quantity <= 1}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
+                      <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
+                        }}
+                        disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
+                    </div>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="mt-2">
+                    <DatePickerGroup
+                      startDate={item.startDate}
+                      setStartDate={(newStart) => {
+                        const newEnd = newStart > item.endDate ? newStart : item.endDate;
+                        if (updateCartItem) {
+                          updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
+                        }
+                      }}
+                      endDate={item.endDate}
+                      setEndDate={(newEnd) => {
+                        if (updateCartItem) {
+                          updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, item.startDate, newEnd);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Pricing summary for this item */}
+                <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
+                  <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
+                    {formatPrice(item.rentalPerDay * (item.quantity || 1))}
+                  </p>
+                  <p className="text-[11px] text-[#999] mb-1">
+                    {formatPrice(item.rentalPerDay)} / ngày
+                  </p>
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
+                    <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
+                    <span>{rentalDays} ngày</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+
+        </div>
+
+        {/* Order Summary Sidebar */}
+        <div className="w-full p-6 lg:w-1/3 mt-20 bg-white rounded-xl border border-[#f0ece8] shadow-sm sticky top-[100px]">
+          <h3 className="text-[18px] font-bold text-[#1a1a1a] mb-6 border-b border-[#eaeaea] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Tóm Tắt Đơn Hàng
+          </h3>
+
+          <div className="space-y-4 text-[14px]">
+            <div className="flex justify-between text-[#666]">
+              <span className="flex items-center gap-1.5">
+                <FontAwesomeIcon icon={faTags} className="text-[#1a1a1a]" /> Tổng tiền thuê
+              </span>
+              <span className="font-semibold text-[#1a1a1a]">{formatPrice(totalRental)}</span>
+            </div>
+            <div className="flex justify-between text-[#666]">
+              <span className="flex items-center gap-1.5">
+                <FontAwesomeIcon icon={faShieldHalved} className="text-emerald-500" /> Tiền cọc (Hoàn trả)
+              </span>
+              <span className="font-semibold text-[#1a1a1a]">{formatPrice(totalDeposit)}</span>
+            </div>
+          </div>
+
+          <div className="my-6 border-t border-dashed border-[#dcdcdc]" />
+
+          <div className="flex justify-between items-end mb-8">
+            <span className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-wide">Tổng Thanh Toán</span>
+            <span className="text-[24px] font-bold text-[#1a1a1a] leading-none text-right">
+              {formatPrice(total)}
+            </span>
+          </div>
+
+          <button
+            onClick={() => navigate("/checkout", { state: { selectedIds } })}
+            disabled={selectedIds.length === 0}
+            className={`w-full py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 flex items-center justify-center gap-3 ${selectedIds.length === 0 ? "bg-[#e8e8e8] text-[#999] cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg"}`}
+          >
+            Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+            <FontAwesomeIcon icon={faArrowRight} />
+          </button>
+
+          <p className="text-[11px] text-[#999] text-center mt-4">
+            Bạn có thể xem lại đơn hàng ở bước tiếp theo trước khi chốt.
           </p>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-[1200px] px-6 py-8">
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-
-          {/* Cart Items List */}
-          <div className="w-full lg:w-2/3 flex flex-col gap-5">
-            <div className="flex justify-between items-center">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.length === cartItems.length && cartItems.length > 0}
-                  onChange={handleSelectAll}
-                  className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
-                />
-                Tất cả ({cartItems.length})
-
-              </label>
-              <button
-                onClick={clearCart}
-                className="text-sm text-red-500 hover:text-red-700 font-medium flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors"
-              >
-                Xóa tất cả
-              </button>
-            </div>
-            {cartItems.map((item) => {
-              const itemId = item._id;
-              const isSelected = selectedIds.includes(itemId);
-              const rentalDays = getRentalDays(item.startDate, item.endDate);
-              const handleItemQuickSelect = async (days) => {
-                const start = new Date(item.startDate);
-                const end = new Date(start);
-                end.setDate(end.getDate() + (days - 1));
-                const formatLocal = (date) => {
-                  const d = new Date(date);
-                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                };
-                const newEndStr = formatLocal(end);
-
-                if (updateCartItem) {
-                  await updateCartItem(
-                    item.costumeId || item._id,
-                    item.size,
-                    item.startDate,
-                    item.endDate,
-                    item.size,
-                    item.quantity,
-                    item.startDate,
-                    newEndStr
-                  );
-                }
-              };
-
-              return (
-                <div
-                  key={itemId}
-                  onClick={() => toggleItemSelection(itemId)}
-                  className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch`}
-                >
-                  {/* Checkbox */}
-                  <div className="pl-2 sm:pl-3 flex items-center" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleItemSelection(itemId)}
-                      className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
-                    />
-                  </div>
-
-                  {/* Delete Btn */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFromCart(item.costumeId || item._id, item.size, item.startDate, item.endDate);
-                    }}
-                    className="absolute top-1/2 -translate-y-1/2 right-4 w-8 h-8 rounded-full bg-[#faf9f7] text-[#999] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors z-10"
-                    title="Xóa khỏi giỏ"
-                  >
-                    <FontAwesomeIcon icon={faTrash} className="text-[13px]" />
-                  </button>
-
-                  {/* Image */}
-                  <div className="w-[100px] sm:w-[130px] aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0 self-start">
-                    <img
-                      src={item.image}
-                      alt={item.costumeName}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-
-                  {/* Details */}
-                  <div className="flex flex-col flex-1 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-semibold mb-1">
-                      {item.category}
-                    </p>
-                    <Link to={`/product/${item.costumeId}`} onClick={(e) => e.stopPropagation()} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2 relative z-10 w-fit block">
-                      {item.costumeName}
-                    </Link>
-
-                    <div className="flex items-center gap-2 mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-[13px] text-[#666]">Size:</span>
-                      <select
-                        value={item.size}
-                        onChange={(e) => console.log("Cần viết thêm hàm updateSize cho: ", e.target.value)}
-                        className="text-[13px] font-bold text-[#1a1a1a] border rounded px-2 py-0.5 outline-none cursor-pointer focus:border-[#1a1a1a] transition-colors bg-white"
-                      >
-                        {item.variants?.map((v, idx) => (
-                          <option key={idx} value={v.size} disabled={v.availableStock === 0}>
-                            {v.size} {v.availableStock === 0 ? "(Hết hàng)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[13px] text-[#666]">Số lượng:</span>
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
-                          }}
-                          disabled={item.quantity <= 1}
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
-                        <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
-                          }}
-                          disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
-                      </div>
-                    </div>
-
-                    <div onClick={(e) => e.stopPropagation()} className="mt-2">
-                      <DatePickerGroup
-                        startDate={item.startDate}
-                        setStartDate={(newStart) => {
-                          const newEnd = newStart > item.endDate ? newStart : item.endDate;
-                          if (updateCartItem) {
-                            updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
-                          }
-                        }}
-                        endDate={item.endDate}
-                        setEndDate={(newEnd) => {
-                          if (updateCartItem) {
-                            updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, item.startDate, newEnd);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pricing summary for this item */}
-                  <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                    <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                      {formatPrice(item.rentalPerDay * (item.quantity || 1))}
-                    </p>
-                    <p className="text-[11px] text-[#999] mb-1">
-                      {formatPrice(item.rentalPerDay)} / ngày
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
-                      <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
-                      <span>{rentalDays} ngày</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-
-
-          </div>
-
-          {/* Order Summary Sidebar */}
-          <div className="w-full lg:w-1/3 bg-white rounded-xl border border-[#f0ece8] shadow-sm sticky top-[100px]">
-            <div className="p-6">
-              <h3 className="text-[18px] font-bold text-[#1a1a1a] mb-6 border-b border-[#eaeaea] pb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                Tóm Tắt Đơn Hàng
-              </h3>
-
-              <div className="space-y-4 text-[14px]">
-                <div className="flex justify-between text-[#666]">
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesomeIcon icon={faTags} className="text-[#1a1a1a]" /> Tổng tiền thuê
-                  </span>
-                  <span className="font-semibold text-[#1a1a1a]">{formatPrice(totalRental)}</span>
-                </div>
-                <div className="flex justify-between text-[#666]">
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesomeIcon icon={faShieldHalved} className="text-emerald-500" /> Tiền cọc (Hoàn trả)
-                  </span>
-                  <span className="font-semibold text-[#1a1a1a]">{formatPrice(totalDeposit)}</span>
-                </div>
-              </div>
-
-              <div className="my-6 border-t border-dashed border-[#dcdcdc]" />
-
-              <div className="flex justify-between items-end mb-8">
-                <span className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-wide">Tổng Thanh Toán</span>
-                <span className="text-[24px] font-bold text-[#1a1a1a] leading-none text-right">
-                  {formatPrice(total)}
-                </span>
-              </div>
-
-              <button
-                onClick={() => navigate("/checkout", { state: { selectedIds } })}
-                disabled={selectedIds.length === 0}
-                className={`w-full py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 flex items-center justify-center gap-3 ${selectedIds.length === 0 ? "bg-[#e8e8e8] text-[#999] cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg"}`}
-              >
-                Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
-                <FontAwesomeIcon icon={faArrowRight} />
-              </button>
-
-              <p className="text-[11px] text-[#999] text-center mt-4">
-                Bạn có thể xem lại đơn hàng ở bước tiếp theo trước khi chốt.
-              </p>
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
   );

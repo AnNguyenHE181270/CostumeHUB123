@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark } from "@fortawesome/free-solid-svg-icons"
+import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
+import { IssuesModal } from "./IssuesPage"
+import { OrderTrackingModal } from "./OrderTrackingModal"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
 export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false)
+  const [isIssuesOpen, setIsIssuesOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -182,7 +186,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Phí vận chuyển</span>
-                <span className="text-foreground">{formatPrice(detailedOrder.payment?.shipping)}</span>
+                <span className="text-foreground">{detailedOrder.payment?.shipping ? formatPrice(detailedOrder.payment?.shipping) : "Miễn phí"}</span>
               </div>
               <div className="flex justify-between border-t border-border pt-2">
                 <span className="font-medium text-foreground">Tổng cộng</span>
@@ -195,7 +199,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 pt-4 mt-auto">
-            {order.status === "pending" && onCancelOrder && (
+            {["pending", "awaitingPayment"].includes(order.status) && onCancelOrder && (
               <button
                 onClick={() => onCancelOrder(order)}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
@@ -204,8 +208,32 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
                 Hủy đơn hàng
               </button>
             )}
-            {order.status === "rented" && (
-              <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+
+            {!["pending", "cancelled"].includes(order.status) && (
+              <div className="flex w-full gap-3">
+                <button
+                  onClick={() => setIsTrackingOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                  Theo dõi
+                </button>
+
+              </div>
+            )}
+
+            {order.status !== "delivering" && (
+              <button
+                onClick={() => setIsIssuesOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              >
+                <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
+                Khiếu nại
+              </button>
+            )}
+
+            {order.status === "renting" && (
+              <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>
@@ -225,6 +253,18 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
       ) : (
         <div className="py-12 text-center text-red-500">Không thể tải thông tin chi tiết.</div>
       )}
+
+      <IssuesModal
+        open={isIssuesOpen}
+        onOpenChange={setIsIssuesOpen}
+        order={order}
+      />
+
+      <OrderTrackingModal
+        open={isTrackingOpen}
+        onOpenChange={setIsTrackingOpen}
+        order={order}
+      />
     </div>
   )
 }
