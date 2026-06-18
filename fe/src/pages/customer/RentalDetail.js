@@ -6,7 +6,7 @@ import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -204,7 +204,15 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder }) {
                 Hủy đơn hàng
               </button>
             )}
-            {order.status === "rented" && (
+            {['renting', 'overdue'].includes(order.status) && onRequestReturn && (
+              <button 
+                onClick={() => onRequestReturn(order)}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                Yêu cầu trả hàng
+              </button>
+            )}
+            {order.status === "renting" && (
               <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê

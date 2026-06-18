@@ -534,29 +534,30 @@ const getInventoryUtilization = async (req, res, next) => {
     }
 };
 
-// KAN-124: Nhận lại đồ từ khách (Chỉ đổi trạng thái sang chờ kiểm tra)
-const handleReturn = async (req, res) => {
+// Khách hàng yêu cầu trả hàng
+const requestReturn = async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id);
     if (!rental) {
       return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
     }
     
-    if (rental.status !== 'renting') {
-      return res.status(400).json({ message: "Đơn hàng phải ở trạng thái Đang thuê" });
+    // Khách hàng chỉ được request trả khi đang thuê hoặc quá hạn
+    if (!['renting', 'overdue'].includes(rental.status)) {
+      return res.status(400).json({ message: "Đơn hàng phải ở trạng thái Đang thuê hoặc Quá hạn" });
     }
 
-    rental.status = 'returning'; // Chuyển sang chờ kiểm tra
+    rental.status = 'returning'; // Chuyển sang đang trả hàng
     await rental.save();
 
-    return res.status(200).json({ message: "Đã nhận đồ từ khách. Vui lòng tiến hành kiểm tra hao mòn.", data: rental });
+    return res.status(200).json({ message: "Đã gửi yêu cầu trả hàng. Vui lòng chờ cửa hàng xác nhận.", data: rental });
   } catch (error) {
-    console.error("Lỗi nhận đồ:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi nhận đồ" });
+    console.error("Lỗi yêu cầu trả đồ:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi yêu cầu trả đồ" });
   }
 };
 
-// KAN-125: Kiểm tra hao mòn, khấu trừ cọc và đưa đồ đi giặt
+// Staff Kiểm tra hao mòn, tính phí phạt và hoàn cọc
 const inspectReturn = async (req, res) => {
   const { id } = req.params;
   const { damageFee, missingNotes, actualReturnDate } = req.body; 
@@ -564,7 +565,7 @@ const inspectReturn = async (req, res) => {
   try {
     const rental = await Rental.findById(id).populate('items.costume');
     if (!rental) return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
-    if (rental.status !== 'returning') return res.status(400).json({ message: "Đơn chưa được nhận lại để kiểm tra" });
+    if (rental.status !== 'returning') return res.status(400).json({ message: "Đơn chưa ở trạng thái Đang trả hàng (returning)" });
 
     // 1. Tính toán phạt quá hạn
     const scheduledReturn = new Date(rental.endDate);
@@ -578,7 +579,7 @@ const inspectReturn = async (req, res) => {
       daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
       
       rental.items.forEach(item => {
-        const feePerDay = item.costume.lateFeePerDay || 50000;
+        const feePerDay = item.costume?.lateFeePerDay || 0;
         totalLateFee += daysLate * feePerDay * item.quantity;
       });
     }
@@ -586,7 +587,7 @@ const inspectReturn = async (req, res) => {
     // 2. Tổng hợp phí phạt và khấu trừ cọc
     const finalDamageFee = Number(damageFee) || 0;
     const totalFine = totalLateFee + finalDamageFee;
-    const originalDeposit = rental.depositAmount || 0;
+    const originalDeposit = rental.totalDeposit || 0;
     
     let refundAmount = originalDeposit - totalFine;
     if (refundAmount < 0) refundAmount = 0;
@@ -594,25 +595,46 @@ const inspectReturn = async (req, res) => {
     // 3. Cập nhật đơn hàng thành Hoàn tất
     rental.status = 'completed';
     rental.actualReturnDate = actualReturn;
-    rental.fineAmount = totalFine;
+    rental.lateFee = totalLateFee;
+    rental.damageFee = finalDamageFee;
     rental.refundAmount = refundAmount;
-    rental.returnNotes = missingNotes || "Đồ nguyên vẹn";
+    if(missingNotes) rental.cancelReason = missingNotes; // Tái sử dụng field cancelReason cho note, hoặc có thể ignore nếu model ko có returnNotes
     await rental.save();
 
-    // 4. Khóa lịch đồ 48h (Dry Cleaning)
+    // Hoàn tiền vào ví cho khách
+    if (refundAmount > 0) {
+      const User = require('../models/user.model');
+      const user = await User.findById(rental.customerId);
+      if (user) {
+        user.balance = (user.balance || 0) + refundAmount;
+        await user.save();
+      }
+    }
+
+    // 4. Khóa lịch đồ 48h (Dry Cleaning) hoặc chuyển status
     const CostumeModel = mongoose.model('Costume'); 
-    const bufferTimeRelease = new Date(actualReturn.getTime() + (48 * 60 * 60 * 1000));
 
     for (const item of rental.items) {
-      await CostumeModel.findByIdAndUpdate(item.costume._id, {
-        status: 'dry_cleaning',
-        dryCleaningUntil: bufferTimeRelease
-      });
+      if (item.costume) {
+         // Chuyển status của costume thành dry_cleaning, có thể variant availableStock + 1 nếu khô
+         await CostumeModel.findByIdAndUpdate(item.costume._id, {
+           status: 'dry_cleaning'
+         });
+         
+         const costumeToUpdate = await CostumeModel.findById(item.costume._id || item.costume);
+         if(costumeToUpdate) {
+             const variant = costumeToUpdate.variants.find(v => v.size === item.size);
+             if (variant) {
+                 variant.availableStock += item.quantity;
+                 await costumeToUpdate.save();
+             }
+         }
+      }
     }
 
     return res.status(200).json({
       message: "Kiểm tra và khấu trừ cọc thành công",
-      data: { totalFine, refundAmount, dryCleaningUntil: bufferTimeRelease }
+      data: { totalFine, refundAmount }
     });
 
   } catch (error) {
@@ -633,6 +655,6 @@ module.exports = {
     getTotalRevenue,
     getActiveRentals,
     getInventoryUtilization,
-    handleReturn, 
+    requestReturn, 
     inspectReturn
 };

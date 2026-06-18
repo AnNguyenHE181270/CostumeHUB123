@@ -43,6 +43,7 @@ const rentalSchema = new mongoose.Schema(
                 "preparing",        // Staff xác nhận tiền (paymentStatus=paid) -> Đang chuẩn bị đồ
                 "delivering",       // Staff chuẩn bị xong ấn Confirm -> Bắn API tạo đơn GHN -> GHN đang giao
                 "renting",          // GHN báo giao thành công (Webhook) -> Khách đang thuê
+                "returning",        // Khách yêu cầu trả đồ, đang chờ store nhận lại
                 "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc
                 "cancelled",        // Hủy đơn
                 "overdue"           // Quá hạn

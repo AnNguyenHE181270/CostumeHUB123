@@ -26,6 +26,10 @@ export default function OrdersPage() {
   const [handoverNote, setHandoverNote] = useState("");
   const [handoverPhotos, setHandoverPhotos] = useState([]);
 
+  const [returnModal, setReturnModal] = useState({ isOpen: false, order: null });
+  const [returnDamageFee, setReturnDamageFee] = useState(0);
+  const [returnNotes, setReturnNotes] = useState("");
+
   const fetchOrders = async () => {
     // Rào chắn bảo vệ: Chỉ gọi API khi token đã thực sự sẵn sàng
     if (!token) return; 
@@ -166,6 +170,38 @@ export default function OrdersPage() {
     }
   };
 
+  const handleInspectReturn = async () => {
+    if (!returnModal.order || !returnModal.order._id || !token) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${returnModal.order._id}/inspect-return`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          damageFee: Number(returnDamageFee),
+          missingNotes: returnNotes 
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setToast({ show: true, message: "Hoàn tất kiểm tra và trả cọc thành công!", type: "success" });
+        setReturnModal({ isOpen: false, order: null });
+        setReturnDamageFee(0);
+        setReturnNotes("");
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi kiểm tra trả đồ", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
   const getStatusColor = (status) => {
     switch(status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
@@ -173,6 +209,7 @@ export default function OrdersPage() {
       case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'returning': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
       case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
       case 'overdue': return 'bg-red-50 text-red-700 border-red-200';
@@ -187,6 +224,7 @@ export default function OrdersPage() {
       case 'preparing': return 'Đang chuẩn bị đồ';
       case 'delivering': return 'Đang giao';
       case 'renting': return 'Đang thuê';
+      case 'returning': return 'Đang trả hàng';
       case 'completed': return 'Hoàn tất';
       case 'cancelled': return 'Đã hủy';
       case 'overdue': return 'Quá hạn';
@@ -210,6 +248,16 @@ export default function OrdersPage() {
               className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
             >
               Xác nhận giao hàng
+            </button>
+          );
+        }
+        if (row.status === 'returning') {
+          return (
+            <button 
+              onClick={() => setReturnModal({ isOpen: true, order: row })}
+              className="text-[12px] font-semibold bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 transition-colors"
+            >
+              Kiểm tra trả đồ
             </button>
           );
         }
@@ -241,6 +289,7 @@ export default function OrdersPage() {
             <option value="preparing">Đang chuẩn bị đồ</option>
             <option value="delivering">Đang giao</option>
             <option value="renting">Đang thuê</option>
+            <option value="returning">Đang trả hàng</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
             <option value="overdue">Quá hạn</option>
@@ -295,6 +344,7 @@ export default function OrdersPage() {
           <option value="preparing">Đang chuẩn bị đồ</option>
           <option value="delivering">Đang giao</option>
           <option value="renting">Đang thuê</option>
+          <option value="returning">Đang trả hàng</option>
           <option value="completed">Hoàn tất</option>
           <option value="cancelled">Đã hủy</option>
           <option value="overdue">Quá hạn</option>
@@ -430,6 +480,56 @@ export default function OrdersPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Giao đồ & Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Kiểm tra trả đồ */}
+      {returnModal.isOpen && returnModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Kiểm tra trả đồ</h2>
+            <p className="text-sm text-[#555] mb-6">
+              Vui lòng kiểm tra kỹ tình trạng đồ mã <span className="font-semibold text-[#1a1a1a]">{returnModal.order._id.slice(-6).toUpperCase()}</span>.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Phí phạt hư hỏng / làm bẩn (VNĐ)</label>
+              <input 
+                type="number" min="0" value={returnDamageFee} onChange={(e) => setReturnDamageFee(e.target.value)}
+                placeholder="Nhập 0 nếu đồ nguyên vẹn"
+                className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ghi chú tình trạng (Bắt buộc nếu có phạt)</label>
+              <textarea 
+                rows="3" value={returnNotes} onChange={(e) => setReturnNotes(e.target.value)}
+                placeholder="Mô tả chi tiết hư hỏng..."
+                className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <div className="bg-[#faf9f7] p-3 rounded-md mb-6 border border-[#eaeaea]">
+              <p className="text-sm font-semibold text-gray-700">Tiền cọc ban đầu: <span className="font-bold text-gray-900">{(returnModal.order.totalDeposit || 0).toLocaleString()}đ</span></p>
+              <p className="text-xs text-gray-500 mt-1">*Hệ thống sẽ tự động tính phí quá hạn và trừ vào cọc trước khi hoàn tiền cho khách.</p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => { setReturnModal({ isOpen: false, order: null }); setReturnDamageFee(0); setReturnNotes(""); }}
+                className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleInspectReturn}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Xác nhận hoàn tất
               </button>
             </div>
           </div>
