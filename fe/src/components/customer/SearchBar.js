@@ -78,7 +78,7 @@ export default function SearchBar() {
     if (!query.trim()) return;
     saveHistory(query.trim());
     setIsFocused(false);
-    navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    navigate(`/collections?q=${encodeURIComponent(query.trim())}`);
   };
 
   const handleItemClick = (termOrProduct) => {
@@ -87,7 +87,7 @@ export default function SearchBar() {
     saveHistory(term);
     setIsFocused(false);
     if (typeof termOrProduct === 'string') {
-      navigate(`/search?q=${encodeURIComponent(term)}`);
+      navigate(`/collections?q=${encodeURIComponent(term)}`);
     } else {
       navigate(`/product/${termOrProduct._id}`);
     }
