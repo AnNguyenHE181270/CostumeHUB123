@@ -63,16 +63,16 @@ export default function LoginPage() {
         data.token,
         remember
       );
-      const role = profile?.user?.role 
+      const role = profile?.user?.role
 
       if (role == "owner") {
         navigate("/owner");
       } else if (
-        role=="staff"
+        role == "staff"
       ) {
         navigate("/staff");
       } else {
-        navigate("/");
+        navigate("/", { state: { showPolicies: true } });
       }
     } catch (error) {
       setError(
@@ -134,8 +134,8 @@ export default function LoginPage() {
                 aria-checked={remember}
                 onClick={() => setRemember((prev) => !prev)}
                 className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${remember
-                    ? "bg-primary-600 border-primary-600"
-                    : "bg-surface border-borderorder hover:border-primary-500"
+                  ? "bg-primary-600 border-primary-600"
+                  : "bg-surface border-borderorder hover:border-primary-500"
                   }`}
               >
                 {remember && (

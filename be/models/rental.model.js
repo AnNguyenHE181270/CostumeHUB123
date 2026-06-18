@@ -69,33 +69,6 @@ const rentalSchema = new mongoose.Schema(
             default: "pending"
         },
 
-        vnpayInfo: {
-            txnRef: {
-                type: String,
-                default: ""
-            }, // mã đơn gửi sang VNPAY
-
-            transactionNo: {
-                type: String,
-                default: ""
-            }, // vnp_TransactionNo
-
-            bankCode: {
-                type: String,
-                default: ""
-            }, // NCB, VCB,...
-
-            responseCode: {
-                type: String,
-                default: ""
-            }, // 00 success
-
-            payDate: {
-                type: String,
-                default: ""
-            }
-        },
-
         // ===== SHIPPING =====
         shippingAddress: {
             receiverName: { type: String, required: true },
