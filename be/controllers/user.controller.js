@@ -93,7 +93,7 @@ const register = async (req, res, next) => {
 
       await sendEmailVerification(email, otp, fullName);
 
-      return res.status(200).json({
+      return res.status(201).json({
         message:
           "Registration successful. Please check your email for the OTP.",
         type: "new",
@@ -288,7 +288,7 @@ const login = async (req, res, next) => {
     }
 
     if (existUser.status === "blocked") {
-      return next(new HttpError("User is blocked", 400));
+      return next(new HttpError("User is blocked.", 403));
     }
 
     const checkPassword = await bcrypt.compare(password, existUser.password);
@@ -693,7 +693,7 @@ const createAddress = async (req, res, next) => {
 const getAllAddresses = async (req, res, next) => {
   try {
     const email = req.userData.email;
-    const user = await User.findOne({"email": email})
+    const user = await User.findOne({ "email": email })
     if (!user) {
       return next(new HttpError("User not found", 404));
     }

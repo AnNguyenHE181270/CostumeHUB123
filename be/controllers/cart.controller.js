@@ -5,25 +5,42 @@ const HttpError = require("../models/http-error.model");
 const getAllCarts = async (req, res, next) => {
     try {
         const userId = req.userData.id;
-        const carts = await Cart.find({ customerId: userId })
-            .populate({
-                path: "items.costume",
-                populate: {
-                    path: "categoryId",
-                    select: "name"
-                }
-            }).lean();
 
-        if (carts.length === 0) {
+        // Lấy cart dạng document (không dùng .lean()) để có thể gọi .save()
+        const cartDocs = await Cart.find({ customerId: userId }).populate({
+            path: "items.costume",
+            populate: { path: "categoryId", select: "name" }
+        });
+
+        if (cartDocs.length === 0) {
             return next(new HttpError("Cart is empty.", 404));
         }
 
-        const result = carts.flatMap(cart => cart.items.map(item => ({
+        // Auto-cleanup: xóa các item có costume bị xóa (null) hoặc bị ẩn (hidden)
+        let cleaned = false;
+        for (const cart of cartDocs) {
+            const before = cart.items.length;
+            cart.items = cart.items.filter(
+                item => item.costume && item.costume.status !== "hidden"
+            );
+            if (cart.items.length !== before) {
+                await cart.save();
+                cleaned = true;
+            }
+        }
+
+        // Sau cleanup, kiểm tra lại còn item nào không
+        const allItems = cartDocs.flatMap(cart => cart.items);
+        if (allItems.length === 0) {
+            return next(new HttpError("Cart is empty.", 404));
+        }
+
+        const result = allItems.map(item => ({
             _id: item._id,
             costumeId: item.costume?._id,
             costumeName: item.costume.name,
             image: item.costume?.images?.[0] || null,
-            category: item.costume.categoryId.name,
+            category: item.costume.categoryId?.name,
             size: item.size,
             quantity: item.quantity,
             status: item.status,
@@ -34,12 +51,11 @@ const getAllCarts = async (req, res, next) => {
             rentalPerDay: item.costume.pricePerDay,
             variants: item.costume?.variants || [],
             variant: item.costume?.variants?.find(v => v.size === item.size) || { size: item.size }
-        })));
+        }));
 
-        return res.status(200).json(result)
+        return res.status(200).json(result);
     } catch (error) {
         next(new HttpError(error.message || 'Get cart failed', 500));
-
     }
 }
 

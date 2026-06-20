@@ -5,7 +5,7 @@ const cleanupPendingUsers = async () => {
   console.log(" Đang chạy dọn dẹp tài khoản rác...");
   try {
     // Tìm các tài khoản đã tạo hơn 24 giờ trước
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000); 
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Xóa các user đang pending, chưa xác thực email và quá hạn 24h
     const result = await User.deleteMany({

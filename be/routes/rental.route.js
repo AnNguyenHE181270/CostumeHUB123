@@ -1,5 +1,5 @@
 const express = require('express');
-const { 
+const {
     checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
     getRentalHistory, orderDetail, cancellOrrder,
     getTotalRevenue, getActiveRentals, getInventoryUtilization,
