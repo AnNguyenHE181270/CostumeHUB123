@@ -339,7 +339,7 @@ const getAllOrders = async (req, res, next) => {
             .populate('customerId', 'fullName email phone')
             .populate('items.costume', 'name')
             .sort({ createdAt: -1 });
-            
+
         res.status(200).json(orders);
     } catch (error) {
         next(new HttpError('Fetching orders failed', 500));
@@ -351,7 +351,7 @@ const updateOrderStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-        
+
         const order = await Rental.findById(id);
         if (!order) return next(new HttpError('Order not found', 404));
 
@@ -372,7 +372,7 @@ const updateOrderStatus = async (req, res, next) => {
                     service_type_id: 2, // Giao hàng chuẩn
                     items: [{ name: "Trang phục thuê", quantity: 1, weight: 500 }]
                 };
-                
+
                 const ghnRes = await ghnService.createOrder(ghnOrderData);
                 order.trackingCode = ghnRes.order_code;
             } catch (ghnError) {
@@ -383,7 +383,7 @@ const updateOrderStatus = async (req, res, next) => {
 
         order.status = status;
         await order.save();
-        
+
         res.status(200).json({ message: 'Status updated', order });
     } catch (error) {
         next(new HttpError('Updating status failed', 500));
@@ -394,7 +394,7 @@ const updateOrderStatus = async (req, res, next) => {
 const confirmPreparation = async (req, res, next) => {
     try {
         const { id } = req.params;
-        
+
         const order = await Rental.findById(id);
         if (!order) return next(new HttpError('Không tìm thấy đơn hàng', 404));
 
@@ -418,33 +418,33 @@ const confirmPreparation = async (req, res, next) => {
                     service_type_id: 2,
                     items: [{ name: "Trang phục thuê", quantity: 1, weight: 500 }]
                 };
-                
+
                 const ghnRes = await ghnService.createOrder(ghnOrderData);
                 order.trackingCode = ghnRes.order_code;
                 order.status = 'delivering';
                 await order.save();
 
-                return res.status(200).json({ 
-                    message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', 
-                    order 
+                return res.status(200).json({
+                    message: 'Xác nhận thành công. Đã tạo đơn trên GHN.',
+                    order
                 });
             } catch (ghnError) {
                 console.error("Failed to push to GHN:", ghnError);
                 // Vẫn cho phép cập nhật trạng thái nhưng không có trackingCode
                 order.status = 'delivering';
                 await order.save();
-                return res.status(200).json({ 
-                    message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', 
-                    order 
+                return res.status(200).json({
+                    message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).',
+                    order
                 });
             }
         } else {
             // Đơn pick up tại cửa hàng hoặc thiếu địa chỉ thì chỉ chuyển status
             order.status = 'delivering';
             await order.save();
-            return res.status(200).json({ 
-                message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', 
-                order 
+            return res.status(200).json({
+                message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).',
+                order
             });
         }
     } catch (error) {
@@ -458,11 +458,11 @@ const getTotalRevenue = async (req, res, next) => {
     try {
         // Thường doanh thu sẽ tính trên các đơn không bị hủy
         const validStatuses = ["confirmed", "delivering", "renting", "returning", "completed", "overdue"];
-        
+
         const orders = await Rental.find({ status: { $in: validStatuses } });
-        
+
         const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-        
+
         res.status(200).json({ totalRevenue });
     } catch (error) {
         next(new HttpError('Fetching total revenue failed', 500));
@@ -474,9 +474,9 @@ const getActiveRentals = async (req, res, next) => {
     try {
         // Trạng thái "đang ở ngoài" thường là: delivering, renting, overdue
         const activeStatuses = ["delivering", "renting", "overdue"];
-        
+
         const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
-        
+
         // Đếm tổng số lượng trang phục đang ở ngoài
         let totalActiveCostumes = 0;
         activeOrders.forEach(order => {
@@ -485,9 +485,9 @@ const getActiveRentals = async (req, res, next) => {
             });
         });
 
-        res.status(200).json({ 
+        res.status(200).json({
             activeOrdersCount: activeOrders.length,
-            totalActiveCostumes 
+            totalActiveCostumes
         });
     } catch (error) {
         next(new HttpError('Fetching active rentals failed', 500));
@@ -513,7 +513,7 @@ const getInventoryUtilization = async (req, res, next) => {
         // 2. Tính tổng số trang phục đang được thuê (đang ở ngoài)
         const activeStatuses = ["delivering", "renting", "overdue"];
         const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
-        
+
         let currentlyRented = 0;
         activeOrders.forEach(order => {
             order.items.forEach(item => {
@@ -524,10 +524,10 @@ const getInventoryUtilization = async (req, res, next) => {
         // 3. Tính tỷ lệ %
         const utilizationPercentage = ((currentlyRented / totalStock) * 100).toFixed(2);
 
-        res.status(200).json({ 
-            utilizationPercentage: parseFloat(utilizationPercentage), 
-            totalStock, 
-            currentlyRented 
+        res.status(200).json({
+            utilizationPercentage: parseFloat(utilizationPercentage),
+            totalStock,
+            currentlyRented
         });
     } catch (error) {
         next(new HttpError('Fetching inventory utilization failed', 500));
@@ -536,125 +536,125 @@ const getInventoryUtilization = async (req, res, next) => {
 
 // Khách hàng yêu cầu trả hàng
 const requestReturn = async (req, res) => {
-  try {
-    const rental = await Rental.findById(req.params.id);
-    if (!rental) {
-      return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
-    }
-    
-    // Khách hàng chỉ được request trả khi đang thuê hoặc quá hạn
-    if (!['renting', 'overdue'].includes(rental.status)) {
-      return res.status(400).json({ message: "Đơn hàng phải ở trạng thái Đang thuê hoặc Quá hạn" });
-    }
+    try {
+        const rental = await Rental.findById(req.params.id);
+        if (!rental) {
+            return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
+        }
 
-    rental.status = 'returning'; // Chuyển sang đang trả hàng
-    await rental.save();
+        // Khách hàng chỉ được request trả khi đang thuê hoặc quá hạn
+        if (!['renting', 'overdue'].includes(rental.status)) {
+            return res.status(400).json({ message: "Đơn hàng phải ở trạng thái Đang thuê hoặc Quá hạn" });
+        }
 
-    return res.status(200).json({ message: "Đã gửi yêu cầu trả hàng. Vui lòng chờ cửa hàng xác nhận.", data: rental });
-  } catch (error) {
-    console.error("Lỗi yêu cầu trả đồ:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi yêu cầu trả đồ" });
-  }
+        rental.status = 'returning'; // Chuyển sang đang trả hàng
+        await rental.save();
+
+        return res.status(200).json({ message: "Đã gửi yêu cầu trả hàng. Vui lòng chờ cửa hàng xác nhận.", data: rental });
+    } catch (error) {
+        console.error("Lỗi yêu cầu trả đồ:", error);
+        return res.status(500).json({ message: "Lỗi hệ thống khi yêu cầu trả đồ" });
+    }
 };
 
 // Staff Kiểm tra hao mòn, tính phí phạt và hoàn cọc
 const inspectReturn = async (req, res) => {
-  const { id } = req.params;
-  const { damageFee, missingNotes, actualReturnDate } = req.body; 
+    const { id } = req.params;
+    const { damageFee, missingNotes, actualReturnDate } = req.body;
 
-  try {
-    const rental = await Rental.findById(id).populate('items.costume');
-    if (!rental) return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
-    if (rental.status !== 'returning') return res.status(400).json({ message: "Đơn chưa ở trạng thái Đang trả hàng (returning)" });
+    try {
+        const rental = await Rental.findById(id).populate('items.costume');
+        if (!rental) return res.status(404).json({ message: "Không tìm thấy đơn thuê" });
+        if (rental.status !== 'returning') return res.status(400).json({ message: "Đơn chưa ở trạng thái Đang trả hàng (returning)" });
 
-    // 1. Tính toán phạt quá hạn
-    const scheduledReturn = new Date(rental.endDate);
-    const actualReturn = actualReturnDate ? new Date(actualReturnDate) : new Date();
-    
-    let daysLate = 0;
-    let totalLateFee = 0;
+        // 1. Tính toán phạt quá hạn
+        const scheduledReturn = new Date(rental.endDate);
+        const actualReturn = actualReturnDate ? new Date(actualReturnDate) : new Date();
 
-    if (actualReturn > scheduledReturn) {
-      const timeDiff = actualReturn.getTime() - scheduledReturn.getTime();
-      daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      
-      rental.items.forEach(item => {
-        const feePerDay = item.costume?.lateFeePerDay || 0;
-        totalLateFee += daysLate * feePerDay * item.quantity;
-      });
+        let daysLate = 0;
+        let totalLateFee = 0;
+
+        if (actualReturn > scheduledReturn) {
+            const timeDiff = actualReturn.getTime() - scheduledReturn.getTime();
+            daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            rental.items.forEach(item => {
+                const feePerDay = item.costume?.lateFeePerDay || 0;
+                totalLateFee += daysLate * feePerDay * item.quantity;
+            });
+        }
+
+        // 2. Tổng hợp phí phạt và khấu trừ cọc
+        const finalDamageFee = Number(damageFee) || 0;
+        const totalFine = totalLateFee + finalDamageFee;
+        const originalDeposit = rental.totalDeposit || 0;
+
+        let refundAmount = originalDeposit - totalFine;
+        if (refundAmount < 0) refundAmount = 0;
+
+        // 3. Cập nhật đơn hàng thành Hoàn tất
+        rental.status = 'completed';
+        rental.actualReturnDate = actualReturn;
+        rental.lateFee = totalLateFee;
+        rental.damageFee = finalDamageFee;
+        rental.refundAmount = refundAmount;
+        if (missingNotes) rental.cancelReason = missingNotes; // Tái sử dụng field cancelReason cho note, hoặc có thể ignore nếu model ko có returnNotes
+        await rental.save();
+
+        // Hoàn tiền vào ví cho khách
+        if (refundAmount > 0) {
+            const User = require('../models/user.model');
+            const user = await User.findById(rental.customerId);
+            if (user) {
+                user.balance = (user.balance || 0) + refundAmount;
+                await user.save();
+            }
+        }
+
+        // 4. Khóa lịch đồ 48h (Dry Cleaning) hoặc chuyển status
+        const CostumeModel = mongoose.model('Costume');
+
+        for (const item of rental.items) {
+            if (item.costume) {
+                // Chuyển status của costume thành dry_cleaning, có thể variant availableStock + 1 nếu khô
+                await CostumeModel.findByIdAndUpdate(item.costume._id, {
+                    status: 'dry_cleaning'
+                });
+
+                const costumeToUpdate = await CostumeModel.findById(item.costume._id || item.costume);
+                if (costumeToUpdate) {
+                    const variant = costumeToUpdate.variants.find(v => v.size === item.size);
+                    if (variant) {
+                        variant.availableStock += item.quantity;
+                        await costumeToUpdate.save();
+                    }
+                }
+            }
+        }
+
+        return res.status(200).json({
+            message: "Kiểm tra và khấu trừ cọc thành công",
+            data: { totalFine, refundAmount }
+        });
+
+    } catch (error) {
+        console.error("Lỗi kiểm tra đồ:", error);
+        return res.status(500).json({ message: "Lỗi hệ thống khi kiểm tra đồ" });
     }
-
-    // 2. Tổng hợp phí phạt và khấu trừ cọc
-    const finalDamageFee = Number(damageFee) || 0;
-    const totalFine = totalLateFee + finalDamageFee;
-    const originalDeposit = rental.totalDeposit || 0;
-    
-    let refundAmount = originalDeposit - totalFine;
-    if (refundAmount < 0) refundAmount = 0;
-
-    // 3. Cập nhật đơn hàng thành Hoàn tất
-    rental.status = 'completed';
-    rental.actualReturnDate = actualReturn;
-    rental.lateFee = totalLateFee;
-    rental.damageFee = finalDamageFee;
-    rental.refundAmount = refundAmount;
-    if(missingNotes) rental.cancelReason = missingNotes; // Tái sử dụng field cancelReason cho note, hoặc có thể ignore nếu model ko có returnNotes
-    await rental.save();
-
-    // Hoàn tiền vào ví cho khách
-    if (refundAmount > 0) {
-      const User = require('../models/user.model');
-      const user = await User.findById(rental.customerId);
-      if (user) {
-        user.balance = (user.balance || 0) + refundAmount;
-        await user.save();
-      }
-    }
-
-    // 4. Khóa lịch đồ 48h (Dry Cleaning) hoặc chuyển status
-    const CostumeModel = mongoose.model('Costume'); 
-
-    for (const item of rental.items) {
-      if (item.costume) {
-         // Chuyển status của costume thành dry_cleaning, có thể variant availableStock + 1 nếu khô
-         await CostumeModel.findByIdAndUpdate(item.costume._id, {
-           status: 'dry_cleaning'
-         });
-         
-         const costumeToUpdate = await CostumeModel.findById(item.costume._id || item.costume);
-         if(costumeToUpdate) {
-             const variant = costumeToUpdate.variants.find(v => v.size === item.size);
-             if (variant) {
-                 variant.availableStock += item.quantity;
-                 await costumeToUpdate.save();
-             }
-         }
-      }
-    }
-
-    return res.status(200).json({
-      message: "Kiểm tra và khấu trừ cọc thành công",
-      data: { totalFine, refundAmount }
-    });
-
-  } catch (error) {
-    console.error("Lỗi kiểm tra đồ:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi kiểm tra đồ" });
-  }
 };
 
-module.exports = { 
-    checkAvailability, 
-    createOrder, 
-    getAllOrders, 
-    updateOrderStatus, 
+module.exports = {
+    checkAvailability,
+    createOrder,
+    getAllOrders,
+    updateOrderStatus,
     confirmPreparation,
-    getRentalHistory, 
-    orderDetail, 
+    getRentalHistory,
+    orderDetail,
     cancellOrrder,
     getTotalRevenue,
     getActiveRentals,
     getInventoryUtilization,
-    requestReturn, 
+    requestReturn,
     inspectReturn
 };

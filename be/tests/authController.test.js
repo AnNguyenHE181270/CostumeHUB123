@@ -13,11 +13,15 @@ describe('Login customer', () => {
 
     test('Login success', async () => {
         jest.spyOn(User, 'findOne').mockImplementation(() => ({
-            select: jest.fn().mockResolvedValue({
-                _id: 'user123',
-                email: 'mai@gmail.com',
-                password: 'hashedPassword',
-                roles: ['customer']
+            select: jest.fn().mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    _id: 'user123',
+                    email: 'mai@gmail.com',
+                    password: 'hashedPassword',
+                    status: 'active',
+                    isEmailVerified: true,
+                    role: { name: 'customer' }
+                })
             })
         }));
         bcrypt.genSalt = jest.fn().mockResolvedValue('salt123');
@@ -51,8 +55,14 @@ describe('Login customer', () => {
 
     test('Login failed - Wrong password', async () => {
         User.findOne = jest.fn().mockReturnValue({
-            select: jest.fn().mockResolvedValue({
-                email: 'mai@gmail.com', password: 'hash'
+            select: jest.fn().mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    email: 'mai@gmail.com',
+                    password: 'hash',
+                    status: 'active',
+                    isEmailVerified: true,
+                    role: { name: 'customer' }
+                })
             })
         });
         bcrypt.compare.mockResolvedValue(false);
@@ -111,17 +121,17 @@ describe('Login customer', () => {
             status: 'blocked',
             isEmailVerified: true
         };
-        User.findOne = jest.fn().mockReturnThis();
-        User.select = jest.fn().mockResolvedValue(mockUser);
+        User.findOne = jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockUser)
+            })
+        });
         bcrypt.compare = jest.fn().mockResolvedValue(true); // Giả lập pass đúng nhưng tài khoản vẫn bị chặn
 
         await login(req, res, next);
 
         expect(next).toHaveBeenCalledTimes(1);
         const errorPassed = next.mock.calls[0][0];
-        // Thêm dòng này ngay dưới hàm await login(...) trong file test của bạn
-        console.log("Lỗi thực tế từ controller:", errorPassed);
-
         expect(errorPassed.statusCode).toBe(403);
         expect(errorPassed.message).toBe("User is blocked.");
 
