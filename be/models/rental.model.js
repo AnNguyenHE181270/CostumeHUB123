@@ -20,12 +20,11 @@ const rentalSchema = new mongoose.Schema(
             depositPrice: { type: Number, required: true },
         }, { _id: false }],
 
-        // ===== THỜI GIAN THUÊ =====
         startDate: { type: Date, required: true },
         endDate: { type: Date, required: true },
         actualReturnDate: { type: Date },
+        deliveredAt: { type: Date },
 
-        // ===== TÀI CHÍNH =====
         totalRentalPrice: { type: Number, required: true },
         totalDeposit: { type: Number, required: true },
         totalAmount: { type: Number, required: true },
@@ -34,7 +33,6 @@ const rentalSchema = new mongoose.Schema(
         damageFee: { type: Number, default: 0 },
         refundAmount: { type: Number, default: 0 },
 
-        // ===== ORDER STATUS =====
         status: {
             type: String,
             enum: [
@@ -42,6 +40,7 @@ const rentalSchema = new mongoose.Schema(
                 "awaitingPayment",  // Chờ khách thanh toán/chuyển tiền
                 "preparing",        // Staff xác nhận tiền (paymentStatus=paid) -> Đang chuẩn bị đồ
                 "delivering",       // Staff chuẩn bị xong ấn Confirm -> Bắn API tạo đơn GHN -> GHN đang giao
+                "delivered",        // Shipper đã giao hàng tới cho khách
                 "renting",          // GHN báo giao thành công (Webhook) -> Khách đang thuê
                 "returning",        // Khách yêu cầu trả đồ, đang chờ store nhận lại
                 "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc
@@ -51,7 +50,6 @@ const rentalSchema = new mongoose.Schema(
             default: "pending",
         },
 
-        // ===== PAYMENT =====
         paymentMethod: {
             type: String,
             enum: ["VNPAY", "Cash", "WALLET"],
@@ -69,7 +67,6 @@ const rentalSchema = new mongoose.Schema(
             default: "pending"
         },
 
-        // ===== SHIPPING =====
         shippingAddress: {
             receiverName: { type: String, required: true },
             receiverPhone: { type: String, required: true },

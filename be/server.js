@@ -50,9 +50,10 @@ app.use((error, req, res, next) => {
     message: error.message || "Internal Server Error",
   });
 });
-
-mongoose
-  .connect(process.env.MONGO_URI)
+console.log(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  family: 4
+})
   .then(() => {
     console.log("MongoDB Atlas Connected");
 
@@ -61,7 +62,7 @@ mongoose
     app.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
       console.log(`Swagger Docs: http://localhost:${PORT}/api-docs`);
-      
+
       require("./services/cron.service")();
     });
   })

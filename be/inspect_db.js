@@ -20,7 +20,7 @@ async function inspect() {
   } else {
     console.log("No costumes found.");
   }
-  
+
   mongoose.disconnect();
 }
 

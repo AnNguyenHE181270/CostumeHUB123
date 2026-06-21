@@ -8,11 +8,11 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function OrdersPage() {
   // Lấy token và role trực tiếp từ Context thay vì localStorage
-  const { token, role } = useAuth(); 
+  const { token, role } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -32,7 +32,7 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     // Rào chắn bảo vệ: Chỉ gọi API khi token đã thực sự sẵn sàng
-    if (!token) return; 
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/api/rentals`, {
@@ -51,9 +51,9 @@ export default function OrdersPage() {
   };
 
   // Lắng nghe sự thay đổi của token. Chỉ khi có token mới bắt đầu gọi dữ liệu
-  useEffect(() => { 
+  useEffect(() => {
     if (token) {
-      fetchOrders(); 
+      fetchOrders();
     }
   }, [token]);
 
@@ -62,13 +62,13 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/status`, {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}` 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ status: newStatus })
       });
-      
+
       const data = await res.json();
 
       if (res.ok) {
@@ -87,8 +87,8 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API_URL}/api/rentals/${id}/confirm`, {
         method: "PUT",
-        headers: { 
-          "Authorization": `Bearer ${token}` 
+        headers: {
+          "Authorization": `Bearer ${token}`
         }
       });
       const data = await res.json();
@@ -105,7 +105,7 @@ export default function OrdersPage() {
 
   const handleConfirmPayment = async () => {
     if (!paymentModal.order || !paymentModal.order._id || !token) return;
-    
+
     try {
       const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
         method: "PUT",
@@ -113,9 +113,9 @@ export default function OrdersPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: "preparing",
-          paymentMethod: paymentMethod 
+          paymentMethod: paymentMethod
         })
       });
 
@@ -138,7 +138,7 @@ export default function OrdersPage() {
 
   const handleConfirmHandover = async () => {
     if (!handoverModal.order || !handoverModal.order._id || !token) return;
-    
+
     const formData = new FormData();
     formData.append("status", "renting"); // Đổi trạng thái khớp với DB
     formData.append("note", handoverNote);
@@ -152,7 +152,7 @@ export default function OrdersPage() {
         headers: {
           "Authorization": `Bearer ${token}`
         },
-        body: formData 
+        body: formData
       });
 
       if (res.ok) {
@@ -172,7 +172,7 @@ export default function OrdersPage() {
 
   const handleInspectReturn = async () => {
     if (!returnModal.order || !returnModal.order._id || !token) return;
-    
+
     try {
       const res = await fetch(`${API_URL}/api/rentals/${returnModal.order._id}/inspect-return`, {
         method: "PUT",
@@ -180,9 +180,9 @@ export default function OrdersPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           damageFee: Number(returnDamageFee),
-          missingNotes: returnNotes 
+          missingNotes: returnNotes
         })
       });
 
@@ -203,11 +203,12 @@ export default function OrdersPage() {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'awaitingPayment': return 'bg-orange-50 text-orange-700 border-orange-200';
       case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'delivered': return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'returning': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -218,11 +219,12 @@ export default function OrdersPage() {
   };
 
   const getStatusLabel = (status) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'Chờ xử lý';
       case 'awaitingPayment': return 'Chờ thanh toán';
       case 'preparing': return 'Đang chuẩn bị đồ';
       case 'delivering': return 'Đang giao';
+      case 'delivered': return 'Đã giao hàng';
       case 'renting': return 'Đang thuê';
       case 'returning': return 'Đang trả hàng';
       case 'completed': return 'Hoàn tất';
@@ -238,12 +240,12 @@ export default function OrdersPage() {
     { header: "Trang phục", accessor: (row) => row.items && row.items.length > 0 ? row.items.map(i => i.costume?.name).join(', ') : "N/A" },
     { header: "Ngày lấy", accessor: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : "N/A" },
     { header: "Ngày trả", accessor: (row) => row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : "N/A" },
-    { 
-      header: "Thao tác", 
+    {
+      header: "Thao tác",
       accessor: (row) => {
         if (row.status === 'pending' || row.status === 'preparing') {
           return (
-            <button 
+            <button
               onClick={() => handleConfirmPreparation(row._id)}
               className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
             >
@@ -253,7 +255,7 @@ export default function OrdersPage() {
         }
         if (row.status === 'returning') {
           return (
-            <button 
+            <button
               onClick={() => setReturnModal({ isOpen: true, order: row })}
               className="text-[12px] font-semibold bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 transition-colors"
             >
@@ -264,8 +266,8 @@ export default function OrdersPage() {
         return <span className="text-[12px] font-medium text-[#858585]">Không có</span>;
       }
     },
-    { 
-      header: "Trạng thái", 
+    {
+      header: "Trạng thái",
       accessor: (row) => {
         const isLocked = row.status === 'completed' || row.status === 'cancelled';
 
@@ -278,8 +280,8 @@ export default function OrdersPage() {
         }
 
         return (
-          <select 
-            value={row.status || ""} 
+          <select
+            value={row.status || ""}
             onChange={(e) => updateStatus(row._id, e.target.value)}
             disabled={isLocked}
             className={`border px-2 py-1.5 rounded-md text-[13px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${getStatusColor(row.status)}`}
@@ -288,7 +290,8 @@ export default function OrdersPage() {
             <option value="awaitingPayment">Chờ thanh toán</option>
             <option value="preparing">Đang chuẩn bị đồ</option>
             <option value="delivering">Đang giao</option>
-            <option value="renting">Đang thuê</option>
+            <option value="delivered">Đã giao hàng</option>
+            <option value="renting">Đang thuê </option>
             <option value="returning">Đang trả hàng</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
@@ -305,12 +308,12 @@ export default function OrdersPage() {
   }, [searchTerm, statusFilter]);
 
   const filteredOrders = orders.filter((order) => {
-    const searchMatch = 
+    const searchMatch =
       (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (order.customerId?.fullName && order.customerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
-    
+
     return searchMatch && statusMatch;
   });
 
@@ -325,15 +328,15 @@ export default function OrdersPage() {
 
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <input 
-          type="text" 
-          placeholder="Tìm mã đơn, tên khách hàng..." 
+        <input
+          type="text"
+          placeholder="Tìm mã đơn, tên khách hàng..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-80"
         />
-        
-        <select 
+
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
@@ -343,6 +346,7 @@ export default function OrdersPage() {
           <option value="awaitingPayment">Chờ thanh toán</option>
           <option value="preparing">Đang chuẩn bị đồ</option>
           <option value="delivering">Đang giao</option>
+          <option value="delivered">Đã giao hàng</option>
           <option value="renting">Đang thuê</option>
           <option value="returning">Đang trả hàng</option>
           <option value="completed">Hoàn tất</option>
@@ -350,7 +354,7 @@ export default function OrdersPage() {
           <option value="overdue">Quá hạn</option>
         </select>
       </div>
-      
+
       <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
         <table className="w-full text-left">
           <thead>
@@ -378,9 +382,9 @@ export default function OrdersPage() {
             )}
           </tbody>
         </table>
-        
+
         {filteredOrders.length > 0 && (
-          <Pagination 
+          <Pagination
             displayCount={currentOrders.length}
             totalCount={filteredOrders.length}
             currentPage={currentPage}
@@ -405,8 +409,8 @@ export default function OrdersPage() {
 
             <div className="mb-6 space-y-3">
               <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
-                <input 
-                  type="radio" name="paymentMethod" value="cash" 
+                <input
+                  type="radio" name="paymentMethod" value="cash"
                   checked={paymentMethod === "cash"}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
@@ -414,8 +418,8 @@ export default function OrdersPage() {
                 <span className="text-sm font-medium text-[#1a1a1a]">Tiền mặt</span>
               </label>
               <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
-                <input 
-                  type="radio" name="paymentMethod" value="vnpay_qr" 
+                <input
+                  type="radio" name="paymentMethod" value="vnpay_qr"
                   checked={paymentMethod === "vnpay_qr"}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
@@ -425,13 +429,13 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => setPaymentModal({ isOpen: false, order: null })}
                 className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
               >
                 Hủy bỏ
               </button>
-              <button 
+              <button
                 onClick={handleConfirmPayment}
                 className="px-4 py-2 text-sm font-medium text-white bg-[#1a1a1a] rounded-md hover:bg-[#333] transition-colors"
               >
@@ -453,7 +457,7 @@ export default function OrdersPage() {
 
             <div className="mb-4">
               <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ảnh tình trạng hiện tại</label>
-              <input 
+              <input
                 type="file" multiple accept="image/*" onChange={handlePhotoChange}
                 className="w-full text-sm text-[#555] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#f5f5f5] file:text-[#1a1a1a] hover:file:bg-[#eaeaea] cursor-pointer"
               />
@@ -461,7 +465,7 @@ export default function OrdersPage() {
 
             <div className="mb-6">
               <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ghi chú thêm (Tùy chọn)</label>
-              <textarea 
+              <textarea
                 rows="3" value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)}
                 placeholder="Ghi nhận lỗi nhỏ, vết bẩn (nếu có)..."
                 className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors resize-none"
@@ -469,13 +473,13 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => { setHandoverModal({ isOpen: false, order: null }); setHandoverPhotos([]); }}
                 className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
               >
                 Đóng
               </button>
-              <button 
+              <button
                 onClick={handleConfirmHandover}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
               >
@@ -497,7 +501,7 @@ export default function OrdersPage() {
 
             <div className="mb-4">
               <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Phí phạt hư hỏng / làm bẩn (VNĐ)</label>
-              <input 
+              <input
                 type="number" min="0" value={returnDamageFee} onChange={(e) => setReturnDamageFee(e.target.value)}
                 placeholder="Nhập 0 nếu đồ nguyên vẹn"
                 className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors"
@@ -506,7 +510,7 @@ export default function OrdersPage() {
 
             <div className="mb-6">
               <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ghi chú tình trạng (Bắt buộc nếu có phạt)</label>
-              <textarea 
+              <textarea
                 rows="3" value={returnNotes} onChange={(e) => setReturnNotes(e.target.value)}
                 placeholder="Mô tả chi tiết hư hỏng..."
                 className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors resize-none"
@@ -519,13 +523,13 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => { setReturnModal({ isOpen: false, order: null }); setReturnDamageFee(0); setReturnNotes(""); }}
                 className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
               >
                 Hủy bỏ
               </button>
-              <button 
+              <button
                 onClick={handleInspectReturn}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
               >

@@ -30,6 +30,7 @@ function RentalHistory() {
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setSearchParams({ status: tabId });
+        handleCloseDetail();
     };
 
     const fetchOrders = async () => {
@@ -78,6 +79,7 @@ function RentalHistory() {
 
     const handleConfirmCancel = () => {
         fetchOrders(); // Tải lại danh sách đơn
+        handleCloseDetail(); // Đóng detail panel để hiển thị status mới
         setIsCancelOpen(false);
     };
 
@@ -110,6 +112,29 @@ function RentalHistory() {
         } catch (err) {
             console.error("Return request error:", err);
             alert("Lỗi hệ thống khi yêu cầu trả hàng.");
+        }
+    };
+
+    const handleConfirmReceipt = async (order) => {
+        if (!window.confirm("Bạn có chắc chắn đã nhận được hàng?")) return;
+        try {
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const res = await fetch(`${API_URL}/api/rentals/${order.id}/confirm-receipt`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                alert("Xác nhận đã nhận hàng thành công!");
+                fetchOrders();
+            } else {
+                const errorData = await res.json();
+                alert(errorData.message || "Lỗi xác nhận nhận hàng.");
+            }
+        } catch (err) {
+            console.error("Confirm receipt error:", err);
+            alert("Lỗi hệ thống khi xác nhận nhận hàng.");
         }
     };
 
@@ -198,6 +223,7 @@ function RentalHistory() {
                                     onOpenChange={(val) => { if (!val) handleCloseDetail() }}
                                     onCancelOrder={handleCancelOrder}
                                     onRequestReturn={handleRequestReturn}
+                                    onConfirmReceipt={handleConfirmReceipt}
                                 />
                             </div>
                         )}
@@ -221,6 +247,7 @@ function RentalHistory() {
                             onOpenChange={(val) => { if (!val) handleCloseDetail() }}
                             onCancelOrder={handleCancelOrder}
                             onRequestReturn={handleRequestReturn}
+                            onConfirmReceipt={handleConfirmReceipt}
                         />
                     </div>
                 </div>

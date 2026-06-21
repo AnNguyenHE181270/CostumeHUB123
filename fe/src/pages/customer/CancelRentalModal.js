@@ -1,8 +1,4 @@
-"use client"
-
 import { useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faXmark, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 import Modal from "../../components/Modal"
 import Radio from "../../components/ui/Radio"
 import { formatOrderId } from "../../utils/formatters"

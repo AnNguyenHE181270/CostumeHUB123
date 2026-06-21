@@ -10,6 +10,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import PoliciesModal from "./Policies";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 const container = {
   hidden: {},
@@ -40,15 +41,27 @@ export default function HomePage() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch("http://localhost:9999/api/costumes?sort=popular&limit=15");
-      const data = await res.json();
-      setRecentProducts(data.costumes || []);
+      try {
+        const res = await fetch(`${API_URL}/api/costumes?sort=popular&limit=15`);
+        if (res.ok) {
+          const data = await res.json();
+          setRecentProducts(data.costumes || []);
+        } else {
+          console.warn("Yêu cầu lấy sản phẩm phổ biến thất bại:", res.status);
+        }
 
-      const res2 = await fetch("http://localhost:9999/api/costumes?sort=newest&limit=5");
-      const data2 = await res2.json();
-      setNewArrivals(data2.costumes || []);
-
-      setLoading(false);
+        const res2 = await fetch(`${API_URL}/api/costumes?sort=newest&limit=5`);
+        if (res2.ok) {
+          const data2 = await res2.json();
+          setNewArrivals(data2.costumes || []);
+        } else {
+          console.warn("Yêu cầu lấy sản phẩm mới nhất thất bại:", res2.status);
+        }
+      } catch (err) {
+        console.error("Lỗi mạng khi kết nối với server backend:", err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

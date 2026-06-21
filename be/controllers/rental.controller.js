@@ -8,10 +8,10 @@ const sendEmail = require('../services/email.service');
 const ghnService = require('../services/ghn.service');
 const mongoose = require('mongoose');
 
-//==========================================================================
 // danh sách đơn thuê (customer)
 const getRentalHistory = async (req, res, next) => {
     try {
+        await autoUpdateDeliveredStatus();
         const userId = req.userData.id;
 
         const orders = await Rental.find({ customerId: userId })
@@ -45,6 +45,7 @@ const getRentalHistory = async (req, res, next) => {
 
 const orderDetail = async (req, res, next) => {
     try {
+        await autoUpdateDeliveredStatus();
         const orderId = req.params.orderId;
         const customerId = req.userData.id;
         const order = await Rental.findOne({ _id: orderId, customerId: customerId })
@@ -55,6 +56,10 @@ const orderDetail = async (req, res, next) => {
         }
         res.status(200).json({
             orderId,
+            status: order.status,
+            deliveredAt: order.deliveredAt,
+            startDate: order.startDate,
+            endDate: order.endDate,
             customer: {
                 name: order.customerId.fullName,
                 phone: order.customerId.phone,
@@ -68,7 +73,7 @@ const orderDetail = async (req, res, next) => {
                 shipping: order.shippingFee,
                 total: order.totalAmount
             },
-            notes: order.shippingAddress.note,
+            shippingAddress: order.shippingAddress,
             orderDate: order.createdAt,
             rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
             items: order.items.map(item => ({
@@ -114,7 +119,7 @@ const createOrder = async (req, res, next) => {
             const existingOrder = await Rental.findOne({
                 "items.costume": item.costume,
                 "items.size": item.size,
-                status: { $in: ['pending', 'confirmed', 'delivering', 'renting'] },
+                status: { $in: ['pending', 'confirmed', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
                 startDate: { $lte: new Date(endDate) },
                 endDate: { $gte: new Date(startDate) },
             })
@@ -293,6 +298,48 @@ const cancellOrrder = async (req, res, next) => {
     }
 }
 
+// Khách hàng xác nhận đã nhận hàng
+const confirmReceipt = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const customerId = req.userData.id;
+
+        const order = await Rental.findOne({ _id: id, customerId });
+        if (!order) {
+            return next(new HttpError("Không tìm thấy đơn hàng.", 404));
+        }
+
+        if (order.status !== "delivered") {
+            return next(new HttpError("Đơn hàng không ở trạng thái đang giao tới.", 400));
+        }
+
+        order.status = "renting";
+        await order.save();
+
+        res.status(200).json({ message: "Xác nhận nhận hàng thành công", order });
+    } catch (error) {
+        next(new HttpError(error.message || "Xác nhận nhận hàng thất bại", 500));
+    }
+};
+
+
+// auto update status order -> renting sau 5h
+const autoUpdateDeliveredStatus = async () => {
+    try {
+        const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+        const expiredRentals = await Rental.find({
+            status: "delivered",
+            deliveredAt: { $lte: fiveHoursAgo }
+        });
+
+        for (const rental of expiredRentals) {
+            rental.status = "renting";
+            await rental.save();
+        }
+    } catch (error) {
+        next(new HttpError(error.message || 'Fetching auto update orders failed', 500));
+    }
+};
 //==========================================================================
 
 
@@ -643,7 +690,10 @@ const inspectReturn = async (req, res) => {
     }
 };
 
+
+
 module.exports = {
+    confirmReceipt,
     checkAvailability,
     createOrder,
     getAllOrders,

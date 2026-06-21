@@ -3,53 +3,36 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTruck, faBox, faCheckCircle, faMapMarkerAlt, faPhone } from '@fortawesome/free-solid-svg-icons'
 import Modal from "../../components/Modal"
 
-const trackingSteps = [
+const STEP_DEFINITIONS = [
     {
         id: 1,
-        title: "Đơn hàng đã được xác nhận",
-        description: "Đơn hàng của bạn đã được xác nhận và đang chuẩn bị",
-        time: "09:30",
-        date: "28/05/2026",
-        completed: true,
-        current: false,
+        status: "pending",
+        title: "Đang chuẩn bị hàng",
+        description: "Trang phục đang được kiểm tra và đóng gói cẩn thận",
     },
     {
         id: 2,
-        title: "Đang chuẩn bị hàng",
-        description: "Trang phục đang được kiểm tra và đóng gói cẩn thận",
-        time: "11:45",
-        date: "28/05/2026",
-        completed: true,
-        current: false,
+        status: "delivering",
+        title: "Đang vận chuyển",
+        description: "Đơn hàng đang trên đường giao đến bạn",
     },
     {
         id: 3,
-        title: "Đã giao cho đơn vị vận chuyển",
-        description: "Đơn hàng đã được bàn giao cho Giao Hàng Nhanh",
-        time: "14:20",
-        date: "28/05/2026",
-        completed: true,
-        current: false,
-    },
-    {
-        id: 4,
-        title: "Đang vận chuyển",
-        description: "Đơn hàng đang trên đường giao đến bạn",
-        time: "08:15",
-        date: "29/05/2026",
-        completed: false,
-        current: true,
-    },
-    {
-        id: 5,
+        status: "delivered",
         title: "Giao hàng thành công",
         description: "Đơn hàng đã được giao đến địa chỉ của bạn",
-        time: "",
-        date: "",
-        completed: false,
-        current: false,
     },
 ]
+
+function getTrackingSteps(status) {
+    const currentStep = STEP_DEFINITIONS.find(s => s.status === status)?.id ?? 0
+    return STEP_DEFINITIONS.map((step) => ({
+        ...step,
+        completed: step.id < currentStep,
+        current: step.id === currentStep,
+    }))
+}
+
 
 const shipperInfo = {
     name: "Nguyễn Văn Minh",
@@ -60,6 +43,10 @@ const shipperInfo = {
 export function OrderTrackingModal({ open, onOpenChange, order }) {
     const [showAllItems, setShowAllItems] = useState(false)
     if (!order) return null
+
+    const status = order.status
+    const trackingSteps = getTrackingSteps(status)
+    const currentStepTitle = STEP_DEFINITIONS.find(s => s.status === status)?.title ?? "Đang xử lý"
 
     const items = Array.isArray(order.items)
         ? order.items
@@ -114,13 +101,13 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                     </button>
                 )}
             </div>
-            <div className="rounded-lg bg-[oklch(0.92_0.03_130)] p-3 ">
+            <div className="rounded-lg bg-[oklch(0.92_0.03_130)] p-3 mt-2">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[oklch(0.78_0.06_130)]">
                         <FontAwesomeIcon icon={faTruck} className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                        <p className="font-medium text-foreground">Đang vận chuyển</p>
+                        <p className="font-medium text-foreground">{currentStepTitle}</p>
                         <p className="text-sm text-muted-foreground">Dự kiến giao: Hôm nay, 14:00 - 18:00</p>
                     </div>
                 </div>
@@ -162,7 +149,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
             </div>
 
             {/* Tracking Timeline */}
-            <div className="mt-3">
+            <div className="mt-6">
                 <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Hành trình đơn hàng
                 </p>

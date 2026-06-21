@@ -20,8 +20,8 @@ const createCategory = async (req, res, next) => {
       return next(new HttpError("Category already exists.", 422));
     }
 
-    const createdCategory = new Category({ 
-      name, 
+    const createdCategory = new Category({
+      name,
       description,
       parentId: parentId || null
     });
@@ -37,7 +37,7 @@ const updateCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, description, parentId } = req.body;
-    
+
     const category = await Category.findById(id);
     if (!category) {
       return next(new HttpError("Category not found.", 404));
@@ -50,7 +50,7 @@ const updateCategory = async (req, res, next) => {
       }
       category.name = name;
     }
-    
+
     if (description !== undefined) category.description = description;
     if (parentId !== undefined) category.parentId = parentId || null;
 
@@ -65,7 +65,7 @@ const toggleCategoryStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
-    
+
     const category = await Category.findById(id);
     if (!category) {
       return next(new HttpError("Category not found.", 404));

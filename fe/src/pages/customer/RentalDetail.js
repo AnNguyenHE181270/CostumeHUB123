@@ -1,40 +1,18 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faCheckCircle } from "@fortawesome/free-solid-svg-icons"
+import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faLocationDot } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
-// Kiểm tra xem deliveredAt có còn trong 5h window không
-const isWithin5h = (deliveredAt) => {
-  if (!deliveredAt) return false
-  const WINDOW_MS = 5 * 60 * 60 * 1000 // 5 giờ
-  const elapsed = Date.now() - new Date(deliveredAt).getTime()
-  return elapsed < WINDOW_MS
-}
-
-// Tính thời gian còn lại (dạng chuỗi hh:mm:ss)
-const getRemainingTime = (deliveredAt) => {
-  if (!deliveredAt) return ""
-  const WINDOW_MS = 5 * 60 * 60 * 1000
-  const elapsed = Date.now() - new Date(deliveredAt).getTime()
-  const remaining = Math.max(0, WINDOW_MS - elapsed)
-  const h = Math.floor(remaining / (1000 * 60 * 60))
-  const m = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
-  const s = Math.floor((remaining % (1000 * 60)) / 1000)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [confirmLoading, setConfirmLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
   const [isIssuesOpen, setIsIssuesOpen] = useState(false)
-  const [countdown, setCountdown] = useState("")
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -64,69 +42,19 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
     }
   }, [open, order?.id])
 
-  // Countdown timer cập nhật mỗi giây khi đơn đang delivering trong 5h
-  useEffect(() => {
-    if (!detailedOrder?.deliveredAt) return
-    if (order?.status !== 'delivering') return
-    if (!isWithin5h(detailedOrder.deliveredAt)) return
-
-    const timer = setInterval(() => {
-      const remaining = getRemainingTime(detailedOrder.deliveredAt)
-      setCountdown(remaining)
-      if (!isWithin5h(detailedOrder.deliveredAt)) {
-        clearInterval(timer)
-        setCountdown("")
-      }
-    }, 1000)
-
-    setCountdown(getRemainingTime(detailedOrder.deliveredAt))
-    return () => clearInterval(timer)
-  }, [detailedOrder?.deliveredAt, order?.status])
-
-  // Khách confirm đã nhận hàng
-  const handleConfirmReceived = async () => {
-    if (confirmLoading) return
-    setConfirmLoading(true)
-    try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-      const res = await fetch(`${API_URL}/api/rentals/${order.id}/confirm-received`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      })
-      const data = await res.json()
-      if (res.ok) {
-        alert("✅ Xác nhận nhận hàng thành công! Đơn đã chuyển sang trạng thái Đang thuê.")
-        onOpenChange(false)
-        // Refresh trang nếu cần
-        window.location.reload()
-      } else {
-        alert(`❌ Lỗi: ${data.message}`)
-      }
-    } catch (err) {
-      console.error("Lỗi xác nhận nhận hàng:", err)
-      alert("❌ Có lỗi xảy ra. Vui lòng thử lại.")
-    } finally {
-      setConfirmLoading(false)
-    }
-  }
-
   if (!order || !open) return null
 
-  const status = statusOrder[order.status]
-
-  // Logic hiển thị nút dựa trên 5h window
+  const currentStatus = detailedOrder?.status || order.status
   const deliveredAt = detailedOrder?.deliveredAt
-  const within5h = isWithin5h(deliveredAt)
+  const status = statusOrder[currentStatus] || statusOrder[order.status]
 
-  // Hiển thị "Đã nhận đơn": khi đang delivering VÀ còn trong 5h
-  const showConfirmBtn = order.status === 'delivering' && within5h
-
-  // Ẩn button "Trả hàng": khi status = renting VÀ deliveredAt vẫn trong 5h
-  // (nghĩa là vừa chuyển xong, cần đợi hết 5h window mới cho trả)
-  const hideReturnBtn = order.status === 'renting' && within5h
+  let isWithin5Hours = true
+  if (deliveredAt) {
+    const deliveredTime = new Date(deliveredAt).getTime()
+    const now = Date.now()
+    const hoursDiff = (now - deliveredTime) / (1000 * 60 * 60)
+    isWithin5Hours = hoursDiff < 5
+  }
 
   return (
     <div className="flex flex-col w-full h-full rounded-xl border bg-white p-6 mt-2 shadow-sm relative">
@@ -185,21 +113,6 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
             ))}
           </div>
 
-          {/* Banner nhắc nhở khi đang delivering trong 5h */}
-          {showConfirmBtn && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-3">
-              <FontAwesomeIcon icon={faClock} className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-amber-800">Hàng đã được giao đến bạn</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Vui lòng xác nhận đã nhận trong{" "}
-                  <span className="font-bold font-mono">{countdown || "05:00:00"}</span>.
-                  Sau thời gian này hệ thống sẽ tự động xác nhận.
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Rental Period */}
           <div className="rounded-lg border border-border p-4">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -209,18 +122,18 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
             <div className="flex items-center justify-between mt-2">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Ngày nhận</p>
-                <p className="mt-1 font-medium text-foreground">{formatDate(order.startDate)}</p>
+                <p className="mt-1 font-medium text-foreground">{formatDate(detailedOrder.startDate || order.startDate)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-px w-8 bg-border" />
                 <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
-                  {order.rentalPeriod}
+                  {detailedOrder.rentalPeriod || order.rentalPeriod} ngày
                 </span>
                 <div className="h-px w-8 bg-border" />
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Ngày trả</p>
-                <p className="font-medium text-foreground">{formatDate(order.endDate)}</p>
+                <p className="font-medium text-foreground">{formatDate(detailedOrder.endDate || order.endDate)}</p>
               </div>
             </div>
           </div>
@@ -295,56 +208,82 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 pt-4 mt-auto">
-            {["pending", "awaitingPayment"].includes(order.status) && onCancelOrder && (
+          <div className="flex flex-wrap gap-3 pt-4 mt-auto items-center justify-evenly">
+
+            {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store) */}
+            {!['renting'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
+              <button
+                onClick={() => setIsTrackingOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              >
+                <FontAwesomeIcon icon={faLocationDot} className="h-4 w-4" />
+                Theo dõi
+              </button>
+            )}
+
+            {/* Hủy đơn hàng */}
+            {["pending", "awaitingPayment"].includes(currentStatus) && onCancelOrder && (
               <button
                 onClick={() => onCancelOrder(order)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
               >
                 <FontAwesomeIcon icon={faCircleXmark} className="h-4 w-4" />
                 Hủy đơn hàng
               </button>
             )}
 
-            {/* Button "Đã nhận đơn": chỉ hiện khi đang delivering và còn trong 5h */}
-            {showConfirmBtn && (
+            {/* Nếu đơn ở trạng thái delivered và trong vòng 5 tiếng */}
+            {currentStatus === "delivered" && isWithin5Hours && (
+              <>
+                <button
+                  onClick={() => onRequestReturn && onRequestReturn(order)}
+                  className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                >
+                  <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                  Hoàn trả hàng
+                </button>
+                <button
+                  onClick={() => onConfirmReceipt && onConfirmReceipt(order)}
+                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                >
+                  <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
+                  Đã nhận hàng
+                </button>
+              </>
+            )}
+
+            {/* Trả hàng sau khi sử dụng (renting, overdue) hoặc sau 5 tiếng từ lúc delivered */}
+            {(['renting', 'overdue'].includes(currentStatus) || (currentStatus === 'delivered' && !isWithin5Hours)) && onRequestReturn && (
               <button
-                onClick={handleConfirmReceived}
-                disabled={confirmLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => onRequestReturn(order)}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
               >
-                <FontAwesomeIcon icon={faCheckCircle} className="h-4 w-4" />
-                {confirmLoading ? "Đang xác nhận..." : "Đã nhận đơn hàng"}
+                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                Trả hàng
               </button>
             )}
 
-            {/* Button "Trả hàng": ẩn khi đang trong 5h window (vừa chuyển renting) */}
-            {['renting', 'overdue'].includes(order.status) && onRequestReturn && !hideReturnBtn && (
-              <button
-                onClick={() => onRequestReturn(order)}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700">
-                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                Yêu cầu trả hàng
-              </button>
-            )}
-            {order.status === "renting" && (
-              <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            {['renting'].includes(currentStatus) && (
+              <button className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600">
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>
             )}
-            {!['delivering'].includes(order.status) && (
+
+            {['renting', 'delivered'].includes(currentStatus) && (
               <button
                 onClick={() => setIsIssuesOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                className="flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              >
                 <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
                 Khiếu nại
               </button>
             )}
-            {["completed", "cancelled"].includes(order.status) && (
+
+            {["completed", "cancelled"].includes(currentStatus) && (
               <button
                 onClick={() => navigate('/checkout')}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
+                className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
               >
                 <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
                 Thuê lại

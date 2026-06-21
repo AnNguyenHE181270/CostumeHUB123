@@ -91,6 +91,11 @@ export function Checkout() {
             return;
         }
 
+        if (deliveryOption === "pickup" && (!address.name || !address.phone)) {
+            showToast("Vui lòng nhập họ tên và số điện thoại người nhận!");
+            return;
+        }
+
         const isSameDates = checkoutItems.every(item => item.startDate === orderStartDate && item.endDate === orderEndDate);
         if (!isSameDates) {
             showToast("Các sản phẩm trong đơn hàng phải có CÙNG ngày nhận và ngày trả. Vui lòng quay lại giỏ hàng để tách đơn.");
@@ -113,9 +118,9 @@ export function Checkout() {
                 shippingFee: deliveryFee,
                 paymentMethod: paymentMethod,
                 shippingAddress: {
-                    receiverName: deliveryOption === "delivery" ? address.name : "Khách nhận tại cửa hàng",
-                    receiverPhone: deliveryOption === "delivery" ? address.phone : "Tại cửa hàng",
-                    addressDetail: deliveryOption === "delivery" ? address.detail : "Nhận tại cửa hàng",
+                    receiverName: address.name,
+                    receiverPhone: address.phone,
+                    addressDetail: deliveryOption === "delivery" && address.detail ? address.detail : "Nhận tại cửa hàng",
                     provinceId: deliveryOption === "delivery" && selectedAddress ? selectedAddress.provinceId : null,
                     districtId: deliveryOption === "delivery" && selectedAddress ? selectedAddress.districtId : null,
                     wardCode: deliveryOption === "delivery" && selectedAddress ? selectedAddress.wardCode : null,
@@ -332,6 +337,29 @@ export function Checkout() {
                                     </label>
                                 </div>
 
+                                {deliveryOption === "pickup" && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center gap-2 text-sm mb-2">
+                                            <FontAwesomeIcon icon={faMapMarkerAlt} className="h-4 w-4 text-primary" />
+                                            <span className="font-semibold text-foreground">Thông tin người nhận tại cửa hàng</span>
+                                        </div>
+                                        <Input
+                                            id="pickup-name"
+                                            label="Họ và tên người nhận"
+                                            placeholder="Nhập họ và tên"
+                                            value={address.name}
+                                            onChange={(e) => setAddress(prev => ({ ...prev, name: e.target.value }))}
+                                        />
+                                        <Input
+                                            id="pickup-phone"
+                                            label="Số điện thoại"
+                                            placeholder="Nhập số điện thoại"
+                                            value={address.phone}
+                                            onChange={(e) => setAddress(prev => ({ ...prev, phone: e.target.value }))}
+                                        />
+                                    </div>
+                                )}
+
                                 {deliveryOption === "delivery" && (
                                     <div className="mt-4">
                                         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
@@ -339,8 +367,8 @@ export function Checkout() {
                                                 <FontAwesomeIcon icon={faMapMarkerAlt} className="h-4 w-4 text-primary" />
                                                 <span className="font-semibold text-foreground">Địa chỉ giao hàng</span>
                                             </div>
-                                            <button 
-                                                onClick={() => navigate("/user/addresses")} 
+                                            <button
+                                                onClick={() => navigate("/user/addresses")}
                                                 className="text-[12px] uppercase tracking-[0.1em] font-semibold text-primary hover:underline transition-colors"
                                             >
                                                 Thay đổi

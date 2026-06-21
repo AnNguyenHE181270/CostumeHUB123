@@ -16,14 +16,15 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 // Màu + label cho từng trạng thái đơn hàng
 const STATUS_MAP = {
-  pending:         { label: "Chờ duyệt",     bg: "bg-yellow-100", text: "text-yellow-800", color: "#eab308" },
+  pending: { label: "Chờ duyệt", bg: "bg-yellow-100", text: "text-yellow-800", color: "#eab308" },
   awaitingPayment: { label: "Chờ thanh toán", bg: "bg-orange-100", text: "text-orange-800", color: "#f97316" },
-  preparing:       { label: "Đang xử lý",    bg: "bg-blue-100",   text: "text-blue-800",   color: "#3b82f6" },
-  delivering:      { label: "Đang giao",      bg: "bg-indigo-100", text: "text-indigo-800", color: "#6366f1" },
-  renting:         { label: "Đang thuê",      bg: "bg-emerald-100",text: "text-emerald-800",color: "#10b981" },
-  completed:       { label: "Hoàn tất",       bg: "bg-gray-100",   text: "text-gray-800",   color: "#6b7280" },
-  cancelled:       { label: "Đã hủy",         bg: "bg-red-100",    text: "text-red-800",    color: "#ef4444" },
-  overdue:         { label: "Quá hạn",         bg: "bg-red-100",    text: "text-red-800",    color: "#dc2626" },
+  preparing: { label: "Đang xử lý", bg: "bg-blue-100", text: "text-blue-800", color: "#3b82f6" },
+  delivering: { label: "Đang giao", bg: "bg-indigo-100", text: "text-indigo-800", color: "#6366f1" },
+  delivered: { label: "Đã giao", bg: "bg-teal-100", text: "text-teal-800", color: "#0d9488" },
+  renting: { label: "Đang thuê", bg: "bg-emerald-100", text: "text-emerald-800", color: "#10b981" },
+  completed: { label: "Hoàn tất", bg: "bg-gray-100", text: "text-gray-800", color: "#6b7280" },
+  cancelled: { label: "Đã hủy", bg: "bg-red-100", text: "text-red-800", color: "#ef4444" },
+  overdue: { label: "Quá hạn", bg: "bg-red-100", text: "text-red-800", color: "#dc2626" },
 };
 
 // Format tiền VNĐ
@@ -112,10 +113,10 @@ export default function StaffDashboard() {
 
   // KPI cards config
   const kpiCards = [
-    { title: "Đơn hôm nay",  value: kpi.todayOrders,     icon: faCalendarAlt,        iconBg: "bg-blue-50",    iconColor: "text-blue-600" },
-    { title: "Chờ duyệt",    value: kpi.pendingCount,     icon: faClock,              iconBg: "bg-yellow-50",  iconColor: "text-yellow-600" },
-    { title: "Đang giao",    value: kpi.deliveringCount,  icon: faTruck,              iconBg: "bg-indigo-50",  iconColor: "text-indigo-600" },
-    { title: "Đang thuê",    value: kpi.rentingCount,     icon: faKey,                iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+    { title: "Đơn hôm nay", value: kpi.todayOrders, icon: faCalendarAlt, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
+    { title: "Chờ duyệt", value: kpi.pendingCount, icon: faClock, iconBg: "bg-yellow-50", iconColor: "text-yellow-600" },
+    { title: "Đang giao", value: kpi.deliveringCount, icon: faTruck, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
+    { title: "Đang thuê", value: kpi.rentingCount, icon: faKey, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
   ];
 
   return (
@@ -240,9 +241,8 @@ export default function StaffDashboard() {
                           </td>
                           <td className="py-3 pr-4 text-sm">{formatDate(order.endDate)}</td>
                           <td className="py-3 pr-4 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              days <= 0 ? "bg-red-100 text-red-700" : days <= 1 ? "bg-orange-100 text-orange-700" : "bg-yellow-100 text-yellow-700"
-                            }`}>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${days <= 0 ? "bg-red-100 text-red-700" : days <= 1 ? "bg-orange-100 text-orange-700" : "bg-yellow-100 text-yellow-700"
+                              }`}>
                               {days <= 0 ? "Quá hạn" : `${days} ngày`}
                             </span>
                           </td>
