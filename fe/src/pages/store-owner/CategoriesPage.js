@@ -126,6 +126,14 @@ const CategoriesPage = () => {
   };
 
   const handleToggleStatusClick = (cat) => {
+    if (!cat.isActive && cat.parentId) {
+      const parent = categories.find(c => c._id === cat.parentId);
+      if (parent && !parent.isActive) {
+        showToast("Không thể khôi phục danh mục con khi danh mục cha đang bị ẩn!", "error");
+        return;
+      }
+    }
+
     setPendingData(cat);
     setConfirmAction('toggleStatus');
     setIsConfirmOpen(true);
@@ -394,7 +402,7 @@ const CategoriesPage = () => {
       {/* Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmOpen}
-        onClose={handleCancelConfirm}
+        onCancel={handleCancelConfirm}
         onConfirm={handleConfirm}
         title="Xác nhận"
         message={

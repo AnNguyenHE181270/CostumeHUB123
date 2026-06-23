@@ -71,7 +71,16 @@ const toggleCategoryStatus = async (req, res, next) => {
       return next(new HttpError("Category not found.", 404));
     }
 
-    category.isActive = isActive !== undefined ? isActive : !category.isActive;
+    const newStatus = isActive !== undefined ? isActive : !category.isActive;
+
+    if (newStatus && category.parentId) {
+      const parent = await Category.findById(category.parentId);
+      if (parent && !parent.isActive) {
+        return next(new HttpError("Không thể khôi phục danh mục con khi danh mục cha đang bị ẩn.", 400));
+      }
+    }
+
+    category.isActive = newStatus;
     await category.save();
 
     // Nếu ẩn danh mục cha, tự động ẩn các danh mục con
