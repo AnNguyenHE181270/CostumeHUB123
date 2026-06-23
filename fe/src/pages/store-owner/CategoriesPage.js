@@ -372,21 +372,23 @@ const CategoriesPage = () => {
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
-                <select
-                  name="parentId"
-                  value={formData.parentId}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none"
-                  disabled={editingCategory} // Tạm khóa đổi cha để tránh vòng lặp đệ quy lỗi
-                >
-                  <option value="">-- Không có (Danh mục gốc) --</option>
-                  {categories.filter(c => c._id !== editingCategory?._id).map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+              {(editingCategory || formData.parentId) && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
+                  <select
+                    name="parentId"
+                    value={formData.parentId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none disabled:bg-[#f5f5f5] disabled:cursor-not-allowed"
+                    disabled={true}
+                  >
+                    <option value="">-- Không có (Danh mục gốc) --</option>
+                    {categories.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <Input label="Mô tả" name="description" value={formData.description} onChange={handleChange} />
 
