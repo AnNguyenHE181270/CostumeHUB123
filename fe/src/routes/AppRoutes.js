@@ -21,6 +21,7 @@ import AccountsPage from "../pages/store-owner/AccountsPage";
 import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
+import InventoryPage from "../pages/store-owner/InventoryPage";
 
 import OrdersPage from "../pages/store-owner/OrdersPage";
 
@@ -99,6 +100,7 @@ function AppRoutes() {
           <Route path={ROUTES.STOR_OWNER_DETAIL_ACCOUNT} element={<AccountDetailPage />} />
           <Route path={ROUTES.STORE_OWNER_CATEGORIES} element={<CategoriesPage />} />
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
+          <Route path={ROUTES.STORE_OWNER_INVENTORY} element={<InventoryPage />} />
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}

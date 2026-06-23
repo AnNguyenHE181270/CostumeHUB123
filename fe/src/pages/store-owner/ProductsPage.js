@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faEdit, faEyeSlash, faEye, faSearch } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ProductFormModal from "../../components/store-owner/ProductFormModal";
+import ProductDetailModal from "../../components/store-owner/ProductDetailModal";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
@@ -25,10 +26,13 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCatagory, setFilterCatagory] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'add', 'edit', 'delete', 'restore', 'change_status'
   const [pendingData, setPendingData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [detailProduct, setDetailProduct] = useState(null);
 
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -38,7 +42,7 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/costumes`);
+      const response = await fetch(`${API_URL}/api/costumes?limit=1000&status=available,out_of_stock,maintenance,dry_cleaning,rented,hidden`);
       const data = await response.json();
       if (response.ok) {
         setProducts(data.costumes || []);
@@ -71,20 +75,49 @@ export default function ProductsPage() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((pro) => {
+    const result = products.filter((pro) => {
       const matchSearch =
         pro.name?.toLowerCase().includes(search.toLowerCase());
-      const matchRole =
-        !filterCatagory || filterCatagory === "all" ||
-        (pro.categoryId?._id === filterCatagory || pro.categoryId === filterCatagory);
-      const matchStatus =
-        !filterStatus || filterStatus === "all" ||
-        pro.status?.toLowerCase() === filterStatus.toLowerCase();
+      
+      let matchRole = true;
+      if (filterCatagory && filterCatagory !== "all") {
+        const proCatId = pro.categoryId?._id || pro.categoryId;
+        if (proCatId === filterCatagory) {
+           matchRole = true;
+        } else {
+           const proCat = categories.find(c => c._id === proCatId);
+           if (proCat && proCat.parentId === filterCatagory) {
+               matchRole = true;
+           } else {
+               matchRole = false;
+           }
+        }
+      }
+
+      let matchStatus = false;
+      if (!filterStatus || filterStatus === "all") {
+        matchStatus = true;
+      } else if (filterStatus === "out_of_stock") {
+        const totalAvail = pro.variants ? pro.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
+        matchStatus = pro.status === "out_of_stock" || totalAvail === 0;
+      } else {
+        matchStatus = pro.status?.toLowerCase() === filterStatus.toLowerCase();
+      }
       return matchSearch && matchRole && matchStatus;
     });
-  }, [products, search, filterCatagory, filterStatus]);
 
-  useEffect(() => { setCurrentPage(1); }, [search, filterCatagory, filterStatus]);
+    if (sortOrder === "price_asc") {
+      result.sort((a, b) => (a.pricePerDay || a.price || 0) - (b.pricePerDay || b.price || 0));
+    } else if (sortOrder === "price_desc") {
+      result.sort((a, b) => (b.pricePerDay || b.price || 0) - (a.pricePerDay || a.price || 0));
+    } else {
+      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    return result;
+  }, [products, search, filterCatagory, filterStatus, sortOrder, categories]);
+
+  useEffect(() => { setCurrentPage(1); }, [search, filterCatagory, filterStatus, sortOrder]);
 
   const paginatedProduct = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -304,12 +337,13 @@ export default function ProductsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'available': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'maintenance': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
+      case 'available':    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'maintenance':  return 'bg-[#faf9f7] text-orange-700 border-orange-200';
       case 'dry_cleaning': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'rented': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'hidden': return 'bg-red-50 text-red-700 border-red-200';
-      default: return 'bg-[#faf9f7] text-[#555] border-[#eaeaea]';
+      case 'rented':       return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'out_of_stock': return 'bg-gray-100 text-gray-500 border-gray-300';
+      case 'hidden':       return 'bg-red-50 text-red-700 border-red-200';
+      default:             return 'bg-[#faf9f7] text-[#555] border-[#eaeaea]';
     }
   };
 
@@ -328,8 +362,8 @@ export default function ProductsPage() {
           <Button icon={faPlus} label="Thêm sản phẩm" variant="primary" onClick={handleOpenAddForm} />
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
+      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="relative w-full md:col-span-1">
           <FontAwesomeIcon
             icon={faSearch}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
@@ -339,11 +373,11 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm sản phẩm..."
-            className="!pl-10"
+            className="!pl-10 w-full"
           />
         </div>
 
-        <div className="relative z-20">
+        <div className="relative z-20 w-full">
           <CategoryDropdown
             categories={categories}
             value={filterCatagory}
@@ -351,19 +385,33 @@ export default function ProductsPage() {
           />
         </div>
 
+        <div className="w-full">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="available">Sẵn sàng</option>
+            <option value="out_of_stock">Hết hàng</option>
+            <option value="maintenance">Bảo trì</option>
+            <option value="dry_cleaning">Đang giặt</option>
+            <option value="rented">Đang thuê</option>
+            <option value="hidden">Đã ẩn</option>
+          </select>
+        </div>
 
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
-        >
-          <option value="all">All Statuses</option>
-          <option value="available">Available</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="Dry_cleaning">Dry cleaning</option>
-          <option value="rented">Rented</option>
-
-        </select>
+        <div className="w-full">
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="price_asc">Giá thuê: Thấp đến Cao</option>
+            <option value="price_desc">Giá thuê: Cao đến Thấp</option>
+          </select>
+        </div>
       </div>
 
       <DataTable
@@ -386,43 +434,79 @@ export default function ProductsPage() {
           <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
             <th className="w-[30%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Sản phẩm</th>
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Danh mục</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá thuê</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá cọc</th>
+            <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Tồn kho</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá & Cọc</th>
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Trạng thái</th>
-            <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Thao tác</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Thao tác</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#f0f0f0]">
           {paginatedProduct.map((product) => {
             const isLocked = product.status === "hidden" || product.status === "rented";
             return (
-              <tr key={product._id} className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors">
+              <tr
+                key={product._id}
+                className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors cursor-pointer"
+                onClick={() => setDetailProduct(product)}
+              >
                 <td className="py-4 px-6">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <img
-                      src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/40x40"}
+                      src={product.images && product.images.length > 0 ? product.images[0] : "https://placehold.co/56x56"}
                       alt={product.name}
-                      className="w-10 h-10 rounded object-cover bg-[#f5f5f5] border border-[#eaeaea]"
+                      className="w-14 h-14 rounded-lg object-cover bg-[#f5f5f5] border border-[#eaeaea]"
                     />
                     <div>
-                      <p className="font-semibold text-[14px] text-[#1a1a1a]">{product.name}</p>
-                      <p className="text-[12px] text-[#999] w-48 truncate">{product.description}</p>
+                      <p className="font-semibold text-[15px] text-[#1a1a1a]">{product.name}</p>
+                      <p className="text-[13px] text-[#999] w-48 truncate mt-0.5">{product.description}</p>
                     </div>
                   </div>
                 </td>
-                <td className="py-4 px-6 text-[13px] text-[#555]">
-                  {product.categoryId?.name || "N/A"}
+                <td className="py-4 px-6 text-[14px] text-[#555]">
+                  <span className="bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
+                    {product.categoryId?.name || "N/A"}
+                  </span>
                 </td>
-                <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
-                  {(product.pricePerDay || product.price || 0).toLocaleString("vi-VN")}đ
+                <td className="py-4 px-6 text-[14px] text-[#555]">
+                  {product.variants && product.variants.length > 0 ? (
+                    (() => {
+                      const totalAvail = product.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0);
+                      return totalAvail === 0 ? (
+                        <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md border border-red-200 font-medium text-[13px]">
+                          Hết hàng
+                        </span>
+                      ) : (
+                        <span className="font-medium text-[#1a1a1a]">
+                          {totalAvail}
+                          <span className="text-[#999] font-normal text-[12px] ml-1">cái</span>
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <span className="text-[#999]">-</span>
+                  )}
                 </td>
-                <td className="py-4 px-6 text-[13px] font-medium text-[#1a1a1a]">
-                  {product.deposit ? product.deposit.toLocaleString("vi-VN") : "0"}đ
+                <td className="py-4 px-6 text-[14px]">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[#f94a00]">
+                      {(product.pricePerDay || product.price || 0).toLocaleString("vi-VN")}<span className="text-xs font-medium ml-0.5">đ</span>
+                    </span>
+                    <span className="text-[12px] text-[#999]">
+                      Cọc: {(product.deposit || 0).toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
                 </td>
-                <td className="py-4 px-6">
+                <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                   {product.status === "hidden" ? (
                     <span className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-red-50 text-red-700 border border-red-200">
                       Đã ẩn
+                    </span>
+                  ) : product.status === "out_of_stock" ? (
+                    <span
+                      className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-gray-100 text-gray-500 border border-gray-300 cursor-default"
+                      title="Tự động đặt khi tồn kho = 0. Vào Quản lý Kho để bổ sung hàng."
+                    >
+                      Hết hàng
                     </span>
                   ) : (
                     <select
@@ -438,7 +522,7 @@ export default function ProductsPage() {
                     </select>
                   )}
                 </td>
-                <td className="py-4 px-6 text-right">
+                <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
                     {product.status === "hidden" ? (
                       <button
@@ -473,6 +557,15 @@ export default function ProductsPage() {
           })}
         </tbody>
       </DataTable>
+
+      <ProductDetailModal
+        product={detailProduct}
+        onClose={() => setDetailProduct(null)}
+        onEdit={() => {
+          handleOpenEditForm(detailProduct);
+          setDetailProduct(null);
+        }}
+      />
 
       <ProductFormModal
         isOpen={isFormOpen}

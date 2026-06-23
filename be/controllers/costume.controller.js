@@ -218,23 +218,48 @@ const updateCostume = async (req, res, next) => {
     
     if (variants && Array.isArray(variants)) {
       const newVariants = variants.map(incoming => {
-        const existing = costume.variants.find(v => v.sku === incoming.sku || (v._id && incoming._id && v._id.toString() === incoming._id));
+        const incomingId = incoming._id ? incoming._id.toString() : null;
+        const existing = costume.variants.find(v =>
+          (incoming.sku && v.sku && v.sku === incoming.sku) ||
+          (incomingId && v._id && v._id.toString() === incomingId)
+        );
+
         if (existing) {
-          const oldTotal = existing.totalStock || 0;
-          const oldAvailable = existing.availableStock || 0;
-          const diff = (incoming.totalStock || 0) - oldTotal;
+          const existingData  = existing.toObject(); // preserve ALL existing fields
+          const oldTotal      = existingData.totalStock || 0;
+          const oldAvailable  = existingData.availableStock || 0;
+          // Items currently rented cannot be removed from inventory
+          const rentedCount   = Math.max(0, oldTotal - oldAvailable);
+          // Clamp new total: cannot go below rented count
+          const safeNewTotal  = Math.max(rentedCount, incoming.totalStock ?? oldTotal);
+          const diff          = safeNewTotal - oldTotal;
+
           return {
-            ...incoming,
-            availableStock: Math.max(0, oldAvailable + diff)
+            ...existingData,             // keep sku, bustSize, waistSize, status, etc.
+            totalStock:     safeNewTotal,
+            availableStock: Math.max(0, oldAvailable + diff),
           };
         } else {
+          // New variant being added
           return {
             ...incoming,
-            availableStock: incoming.totalStock || 0
+            availableStock: incoming.totalStock || 0,
           };
         }
       });
       costume.variants = newVariants;
+
+      // Auto-sync product status based on total availableStock
+      // Only when status was NOT explicitly set in this request
+      if (status === undefined) {
+        const totalAvailable  = newVariants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
+        const lockedStatuses  = ["hidden", "maintenance", "dry_cleaning", "rented"];
+        if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
+          costume.status = "out_of_stock";
+        } else if (totalAvailable > 0 && costume.status === "out_of_stock") {
+          costume.status = "available";
+        }
+      }
     }
 
     await costume.save();
