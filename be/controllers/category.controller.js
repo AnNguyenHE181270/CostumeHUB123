@@ -17,7 +17,7 @@ const createCategory = async (req, res, next) => {
     const existingCategory = await Category.findOne({ name });
 
     if (existingCategory) {
-      return next(new HttpError("Category already exists.", 422));
+      return next(new HttpError("Tên danh mục đã tồn tại!", 422));
     }
 
     const createdCategory = new Category({
