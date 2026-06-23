@@ -22,7 +22,7 @@ export default function ProductsPage() {
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-   const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCatagory, setFilterCatagory] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -71,28 +71,28 @@ export default function ProductsPage() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-      return products.filter((pro) => {
-        const matchSearch =
-          pro.name?.toLowerCase().includes(search.toLowerCase());
-        const matchRole =
-          !filterCatagory || filterCatagory === "all" ||
-          (pro.categoryId?._id === filterCatagory || pro.categoryId === filterCatagory);
-        const matchStatus =
-          !filterStatus || filterStatus === "all" ||
-          pro.status?.toLowerCase() === filterStatus.toLowerCase();
-        return matchSearch && matchRole && matchStatus;
-      });
+    return products.filter((pro) => {
+      const matchSearch =
+        pro.name?.toLowerCase().includes(search.toLowerCase());
+      const matchRole =
+        !filterCatagory || filterCatagory === "all" ||
+        (pro.categoryId?._id === filterCatagory || pro.categoryId === filterCatagory);
+      const matchStatus =
+        !filterStatus || filterStatus === "all" ||
+        pro.status?.toLowerCase() === filterStatus.toLowerCase();
+      return matchSearch && matchRole && matchStatus;
+    });
   }, [products, search, filterCatagory, filterStatus]);
 
   useEffect(() => { setCurrentPage(1); }, [search, filterCatagory, filterStatus]);
 
-    const paginatedProduct = useMemo(() => {
-      const start = (currentPage - 1) * PAGE_SIZE;
-      return filteredProducts.slice(start, start + PAGE_SIZE);
-    }, [filteredProducts, currentPage]);
-  
-    const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
-  
+  const paginatedProduct = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, currentPage]);
+
+  const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+
 
 
   const handleOpenAddForm = () => {
@@ -108,7 +108,7 @@ export default function ProductsPage() {
   const handleFormSubmit = (data) => {
     setPendingData(data);
     setConfirmAction(editingProduct ? 'edit' : 'add');
-    setIsFormOpen(false); 
+    setIsFormOpen(false);
     setIsConfirmOpen(true);
   };
 
@@ -303,7 +303,7 @@ export default function ProductsPage() {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'available': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'maintenance': return 'bg-[#faf9f7] text-orange-700 border-orange-200';
       case 'dry_cleaning': return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -329,50 +329,50 @@ export default function ProductsPage() {
         </div>
       </div>
       <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
-              <div className="relative flex-1 w-full">
-                <FontAwesomeIcon
-                  icon={faSearch}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
-                />
-                <Input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name or email..."
-                  className="!pl-10"
-                />
-              </div>
+        <div className="relative flex-1 w-full">
+          <FontAwesomeIcon
+            icon={faSearch}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
+          />
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm sản phẩm..."
+            className="!pl-10"
+          />
+        </div>
 
-              <div className="relative z-20">
-                <CategoryDropdown 
-                  categories={categories} 
-                  value={filterCatagory} 
-                  onChange={setFilterCatagory} 
-                />
-              </div>
-      
-      
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
-              >
-                <option value="all">All Statuses</option>
-                <option value="available">Available</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="Dry_cleaning">Dry cleaning</option>
-                <option value="rented">Rented</option>
-                
-              </select>
-            </div>
+        <div className="relative z-20">
+          <CategoryDropdown
+            categories={categories}
+            value={filterCatagory}
+            onChange={setFilterCatagory}
+          />
+        </div>
 
-      <DataTable 
-        isLoading={loading} 
-        isEmpty={filteredProducts.length === 0} 
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="w-full md:w-48 px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
+        >
+          <option value="all">All Statuses</option>
+          <option value="available">Available</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="Dry_cleaning">Dry cleaning</option>
+          <option value="rented">Rented</option>
+
+        </select>
+      </div>
+
+      <DataTable
+        isLoading={loading}
+        isEmpty={filteredProducts.length === 0}
         emptyMessage="Chưa có sản phẩm nào"
         footer={
           <div className="p-4 border-t border-[#f0f0f0]">
-            <Pagination 
+            <Pagination
               displayCount={paginatedProduct.length}
               totalCount={filteredProducts.length}
               currentPage={currentPage}
@@ -490,11 +490,11 @@ export default function ProductsPage() {
         onCancel={handleCancelConfirm}
       />
 
-      <Toast 
-        isVisible={toast.isVisible} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
