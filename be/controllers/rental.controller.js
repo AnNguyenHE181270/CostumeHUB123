@@ -3,6 +3,7 @@ const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
 const User = require('../models/user.model')
 const HttpError = require('../models/http-error.model');
+const Issue = require('../models/issue.model');
 const Cart = require('../models/cart.model');
 const sendEmail = require('../services/email.service');
 const ghnService = require('../services/ghn.service');
@@ -54,9 +55,14 @@ const orderDetail = async (req, res, next) => {
         if (!order) {
             return res.status(404).json({ message: "Orders not found." })
         }
+
+        const issue = await Issue.findOne({ rentalId: orderId });
+
         res.status(200).json({
             orderId,
             status: order.status,
+            hasIssue: !!issue,
+            issueStatus: issue?.status || null,
             deliveredAt: order.deliveredAt,
             startDate: order.startDate,
             endDate: order.endDate,
