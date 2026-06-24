@@ -269,14 +269,13 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
               </button>
             )}
 
-            {['renting', 'delivered'].includes(currentStatus) && (
+            {['renting', 'delivered', 'completed'].includes(currentStatus) && (
               <button
                 onClick={() => onRequestIssue?.()}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${
-                  detailedOrder?.hasIssue
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
                     ? "bg-slate-700 hover:bg-slate-800"
                     : "bg-red-500 hover:bg-red-600"
-                }`}
+                  }`}
               >
                 <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
                 {detailedOrder?.hasIssue ? "Xem khiếu nại" : "Khiếu nại"}
