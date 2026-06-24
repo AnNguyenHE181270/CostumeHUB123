@@ -8,11 +8,10 @@ import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
-  const [isIssuesOpen, setIsIssuesOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -40,7 +39,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
     } else {
       setDetailedOrder(null)
     }
-  }, [open, order?.id])
+  }, [open, order])
 
   if (!order || !open) return null
 
@@ -272,11 +271,15 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
             {['renting', 'delivered'].includes(currentStatus) && (
               <button
-                onClick={() => setIsIssuesOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
+                onClick={() => onRequestIssue?.()}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${
+                  detailedOrder?.hasIssue
+                    ? "bg-slate-700 hover:bg-slate-800"
+                    : "bg-red-500 hover:bg-red-600"
+                }`}
               >
                 <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
-                Khiếu nại
+                {detailedOrder?.hasIssue ? "Xem khiếu nại" : "Khiếu nại"}
               </button>
             )}
 
@@ -295,12 +298,6 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
       ) : (
         <div className="py-12 text-center text-red-500">Không thể tải thông tin chi tiết.</div>
       )}
-
-      <IssuesModal
-        open={isIssuesOpen}
-        onOpenChange={setIsIssuesOpen}
-        order={order}
-      />
 
       <OrderTrackingModal
         open={isTrackingOpen}

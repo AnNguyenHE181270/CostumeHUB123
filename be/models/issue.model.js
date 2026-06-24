@@ -12,13 +12,23 @@ const issueSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    evidence: {
+    resolution: {
       type: String,
-      default: "",
+      enum: ["return_refund", "exchange"],
+      required: true,
+    },
+    evidence: {
+      type: [String],
+      default: [],
     },
     note: {
       type: String,
       default: "",
+    },
+    status: {
+      type: String,
+      enum: ["pending", "resolved", "rejected", "cancelled"],
+      default: "pending",
     },
   },
   {

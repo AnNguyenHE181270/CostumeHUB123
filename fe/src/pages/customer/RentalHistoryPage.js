@@ -7,6 +7,7 @@ import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
+import { IssuesModal } from "./IssuesPage"
 import { faBox } from '@fortawesome/free-solid-svg-icons'
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
@@ -18,6 +19,7 @@ function RentalHistory() {
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
+    const [isIssuesOpen, setIsIssuesOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -224,6 +226,7 @@ function RentalHistory() {
                                     onCancelOrder={handleCancelOrder}
                                     onRequestReturn={handleRequestReturn}
                                     onConfirmReceipt={handleConfirmReceipt}
+                                    onRequestIssue={() => setIsIssuesOpen(true)}
                                 />
                             </div>
                         )}
@@ -248,6 +251,7 @@ function RentalHistory() {
                             onCancelOrder={handleCancelOrder}
                             onRequestReturn={handleRequestReturn}
                             onConfirmReceipt={handleConfirmReceipt}
+                            onRequestIssue={() => setIsIssuesOpen(true)}
                         />
                     </div>
                 </div>
@@ -259,6 +263,13 @@ function RentalHistory() {
                 onOpenChange={setIsCancelOpen}
                 orderId={selectedOrder?.id}
                 onConfirm={handleConfirmCancel}
+            />
+
+            <IssuesModal
+                open={isIssuesOpen}
+                onOpenChange={setIsIssuesOpen}
+                order={selectedOrder}
+                onSuccess={fetchOrders}
             />
         </div>
     )
