@@ -253,7 +253,7 @@ export default function OrdersPage() {
             </button>
           );
         }
-        if (row.status === 'returning') {
+        if (row.status === 'returning' || row.status === 'overdue' || row.status === 'renting') {
           return (
             <button
               onClick={() => setReturnModal({ isOpen: true, order: row })}

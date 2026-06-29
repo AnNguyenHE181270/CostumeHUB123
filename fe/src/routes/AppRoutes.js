@@ -27,6 +27,7 @@ import OrdersPage from "../pages/store-owner/OrdersPage";
 // Trang Staff
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffProductsPage from "../pages/staff/StaffProductsPage";
+import StaffChatPage from "../pages/staff/StaffChatPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
@@ -89,6 +90,7 @@ function AppRoutes() {
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />
+          <Route path="chat" element={<StaffChatPage />} />
         </Route>
       </Route>
 
@@ -103,6 +105,7 @@ function AppRoutes() {
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />
+          <Route path="chat" element={<StaffChatPage />} />
         </Route>
       </Route>
 

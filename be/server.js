@@ -1,8 +1,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http")
 const morgan = require("morgan");
+const {Server} = require("socket.io")
 const swaggerUi = require("swagger-ui-express");
+const chatSocket = require("./sockets/chat.socket");
 const YAML = require("yamljs");
 require("dotenv").config();
 
@@ -21,7 +24,16 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan("dev"));
 
 const swaggerDocument = YAML.load("./docs/swagger.yaml");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    credentials: true,
+  },
+});
 
+// inject io vào socket module
+chatSocket(io);
 app.use(
   "/api-docs",
   swaggerUi.serve,
@@ -59,7 +71,7 @@ mongoose.connect(process.env.MONGO_URI, {
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
       console.log(`Swagger Docs: http://localhost:${PORT}/api-docs`);
 
@@ -70,4 +82,4 @@ mongoose.connect(process.env.MONGO_URI, {
     console.error("MongoDB connection failed");
     console.error(err.message);
   });
-module.exports = app;
+module.exports = server;
