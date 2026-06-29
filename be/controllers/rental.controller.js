@@ -696,7 +696,106 @@ const inspectReturn = async (req, res) => {
     }
 };
 
+// Gia hạn thuê và thanh toán tự động qua ví
+const extendRental = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { newEndDate } = req.body;
+        const customerId = req.userData.id;
 
+        if (!newEndDate) {
+            return next(new HttpError("Vui lòng cung cấp ngày gia hạn mới.", 400));
+        }
+
+        const rental = await Rental.findOne({ _id: id, customerId }).populate("items.costume");
+        if (!rental) {
+            return next(new HttpError("Không tìm thấy đơn hàng.", 404));
+        }
+
+        if (rental.status !== "renting") {
+            return next(new HttpError("Đơn hàng phải ở trạng thái Đang thuê mới có thể gia hạn.", 400));
+        }
+
+        const oldEnd = new Date(rental.endDate);
+        const newEnd = new Date(newEndDate);
+
+        // Normalize to starting of the day
+        const oldEndDay = new Date(oldEnd.getFullYear(), oldEnd.getMonth(), oldEnd.getDate());
+        const newEndDay = new Date(newEnd.getFullYear(), newEnd.getMonth(), newEnd.getDate());
+
+        const diffTime = newEndDay.getTime() - oldEndDay.getTime();
+        const extendDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (extendDays <= 0) {
+            return next(new HttpError("Ngày gia hạn mới phải sau ngày trả hiện tại.", 400));
+        }
+
+        // Check availability for all items in the extension period
+        for (const item of rental.items) {
+            const costume = item.costume;
+            if (!costume) {
+                return next(new HttpError("Sản phẩm trong đơn hàng không tồn tại.", 404));
+            }
+
+            // Find overlapping active orders during the extended range
+            // (from current endDate to newEndDate)
+            const overlap = await Rental.findOne({
+                _id: { $ne: rental._id },
+                "items.costume": costume._id,
+                "items.size": item.size,
+                status: { $in: ['pending', 'preparing', 'awaitingPayment', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+                startDate: { $lte: newEnd },
+                endDate: { $gte: oldEnd },
+            });
+
+            if (overlap) {
+                return next(new HttpError(`Sản phẩm ${costume.name} (Size ${item.size}) đã được khách hàng khác đặt trước trong khoảng thời gian gia hạn.`, 400));
+            }
+        }
+
+        // Calculate additional cost
+        let totalExtendCost = 0;
+        for (const item of rental.items) {
+            const costume = item.costume;
+            const pricePerDay = item.rentalPricePerDay || (costume ? (costume.pricePerDay || costume.price) : 0) || 0;
+            totalExtendCost += pricePerDay * item.quantity * extendDays;
+        }
+
+        // Check wallet balance
+        const user = await User.findById(customerId);
+        if (!user) {
+            return next(new HttpError("Không tìm thấy thông tin khách hàng.", 404));
+        }
+
+        if (user.balance < totalExtendCost) {
+            return res.status(200).json({
+                success: false,
+                insufficientBalance: true,
+                requiredAmount: totalExtendCost,
+                currentBalance: user.balance,
+                message: "Số dư ví không đủ. Vui lòng nạp thêm tiền."
+            });
+        }
+
+        // Deduct wallet
+        user.balance -= totalExtendCost;
+        await user.save();
+
+        // Update rental order
+        rental.endDate = newEnd;
+        rental.totalRentalPrice += totalExtendCost;
+        rental.totalAmount += totalExtendCost;
+        await rental.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Gia hạn thuê và thanh toán thành công.",
+            order: rental
+        });
+    } catch (error) {
+        next(new HttpError(error.message || "Gia hạn đơn hàng thất bại.", 500));
+    }
+};
 
 module.exports = {
     confirmReceipt,
@@ -712,5 +811,6 @@ module.exports = {
     getActiveRentals,
     getInventoryUtilization,
     requestReturn,
-    inspectReturn
+    inspectReturn,
+    extendRental
 };

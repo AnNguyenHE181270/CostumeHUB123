@@ -3,7 +3,7 @@ const {
     checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
     getRentalHistory, orderDetail, cancellOrrder,
     getTotalRevenue, getActiveRentals, getInventoryUtilization,
-    requestReturn, inspectReturn, confirmReceipt
+    requestReturn, inspectReturn, confirmReceipt, extendRental
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
 
@@ -20,6 +20,7 @@ router.put('/:id/cancel', checkAuth, cancellOrrder);
 router.put('/:id/request-return', checkAuth, requestReturn); // KAN-124: Khách yêu cầu trả đồ
 router.put('/:id/inspect-return', checkAuth, inspectReturn); // KAN-125: Staff kiểm tra đồ trả và chốt đơn
 router.put('/:id/confirm-receipt', checkAuth, confirmReceipt); // Khách hàng xác nhận nhận hàng
+router.put('/:id/extend', checkAuth, extendRental); // Khách hàng yêu cầu gia hạn thuê và thanh toán ví
 
 // Dashboard APIs
 router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);

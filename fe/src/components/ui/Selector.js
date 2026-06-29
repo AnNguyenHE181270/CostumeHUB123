@@ -22,7 +22,7 @@ export default function Selector({
             className={`flex items-center gap-2 ${className}`}
             onClick={(e) => e.stopPropagation()}
         >
-            <div className={`relative ${className.includes("w-full") ? "w-full" : ""}`}>
+            <div className="relative">
                 <select
                     value={value}
                     disabled={disabled}

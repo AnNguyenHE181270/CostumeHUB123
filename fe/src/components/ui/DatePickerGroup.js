@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate }) {
+export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false }) {
     const [activePicker, setActivePicker] = useState(null);
     const pickerRef = useRef(null);
 
@@ -28,16 +28,17 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                         Ngày nhận đồ
                     </label>
                     <button
-                        onClick={() => setActivePicker(activePicker === 'start' ? null : 'start')}
+                        onClick={() => !disabled && setActivePicker(activePicker === 'start' ? null : 'start')}
+                        disabled={disabled}
                         className={`w-full text-left bg-white border ${activePicker === 'start' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
+                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
                     >
                         {new Date(startDate).toLocaleDateString('vi-VN')}
                         <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'start' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
                     </button>
 
                     <AnimatePresence>
-                        {activePicker === 'start' && (
+                        {activePicker === 'start' && !disabled && (
                             <motion.div
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -67,9 +68,10 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                         Ngày trả đồ
                     </label>
                     <button
-                        onClick={() => setActivePicker(activePicker === 'end' ? null : 'end')}
+                        onClick={() => !disabled && setActivePicker(activePicker === 'end' ? null : 'end')}
+                        disabled={disabled}
                         className={`w-full text-left bg-white border ${activePicker === 'end' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a]`}
+                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
                     >
                         {new Date(endDate).toLocaleDateString('vi-VN')}
                         <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'end' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
