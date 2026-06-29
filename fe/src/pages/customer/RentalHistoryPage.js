@@ -227,6 +227,7 @@ function RentalHistory() {
                                     onRequestReturn={handleRequestReturn}
                                     onConfirmReceipt={handleConfirmReceipt}
                                     onRequestIssue={() => setIsIssuesOpen(true)}
+                                    onExtendSuccess={fetchOrders}
                                 />
                             </div>
                         )}
@@ -252,6 +253,7 @@ function RentalHistory() {
                             onRequestReturn={handleRequestReturn}
                             onConfirmReceipt={handleConfirmReceipt}
                             onRequestIssue={() => setIsIssuesOpen(true)}
+                            onExtendSuccess={fetchOrders}
                         />
                     </div>
                 </div>
