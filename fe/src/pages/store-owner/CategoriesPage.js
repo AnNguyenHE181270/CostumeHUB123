@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import CategoryDetailModal from "../../components/store-owner/CategoryDetailModal";
 import Input from "../../components/ui/Input";
 
 import Toast from "../../components/ui/Toast";
@@ -19,6 +20,7 @@ const CategoriesPage = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
   const [pendingData, setPendingData] = useState(null);
+  const [viewingCategory, setViewingCategory] = useState(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const showToast = (message, type = "success") => {
@@ -126,6 +128,14 @@ const CategoriesPage = () => {
   };
 
   const handleToggleStatusClick = (cat) => {
+    if (!cat.isActive && cat.parentId) {
+      const parent = categories.find(c => c._id === cat.parentId);
+      if (parent && !parent.isActive) {
+        showToast("Không thể khôi phục danh mục con khi danh mục cha đang bị ẩn!", "error");
+        return;
+      }
+    }
+
     setPendingData(cat);
     setConfirmAction('toggleStatus');
     setIsConfirmOpen(true);
@@ -265,15 +275,17 @@ const CategoriesPage = () => {
                 {node.name}
               </span>
 
-              {node.description && (
-                <span className="text-sm text-[#999] hidden md:inline-block ml-2 italic">
-                  - {node.description}
-                </span>
-              )}
             </div>
                   
 
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => { e.stopPropagation(); setViewingCategory(node); }}
+                className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                title="Xem chi tiết"
+              >
+                <FontAwesomeIcon icon={faInfoCircle} />
+              </button>
               {node.isActive && (
                 <>
                   <button
@@ -364,21 +376,23 @@ const CategoriesPage = () => {
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
-                <select
-                  name="parentId"
-                  value={formData.parentId}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none"
-                  disabled={editingCategory} // Tạm khóa đổi cha để tránh vòng lặp đệ quy lỗi
-                >
-                  <option value="">-- Không có (Danh mục gốc) --</option>
-                  {categories.filter(c => c._id !== editingCategory?._id).map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+              {(editingCategory || formData.parentId) && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
+                  <select
+                    name="parentId"
+                    value={formData.parentId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none disabled:bg-[#f5f5f5] disabled:cursor-not-allowed"
+                    disabled={true}
+                  >
+                    <option value="">-- Không có (Danh mục gốc) --</option>
+                    {categories.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <Input label="Mô tả" name="description" value={formData.description} onChange={handleChange} />
 
@@ -394,7 +408,7 @@ const CategoriesPage = () => {
       {/* Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmOpen}
-        onClose={handleCancelConfirm}
+        onCancel={handleCancelConfirm}
         onConfirm={handleConfirm}
         title="Xác nhận"
         message={
@@ -409,6 +423,13 @@ const CategoriesPage = () => {
         message={toast.message}
         type={toast.type}
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
+
+      <CategoryDetailModal
+        isOpen={!!viewingCategory}
+        onClose={() => setViewingCategory(null)}
+        category={viewingCategory}
+        categories={categories}
       />
     </div>
   );

@@ -17,4 +17,16 @@ const uploadImage = async (filePath) => {
   return result.secure_url;
 };
 
-module.exports = { uploadImage };
+const uploadIssueMedia = async (filePath) => {
+  const result = await cloudinary.uploader.upload(
+    filePath,
+    {
+      folder: "issues",
+      resource_type: "auto",
+    }
+  );
+
+  return result.secure_url;
+};
+
+module.exports = { uploadImage, uploadIssueMedia };

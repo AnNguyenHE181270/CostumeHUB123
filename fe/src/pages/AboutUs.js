@@ -42,7 +42,7 @@ export default function AboutUs() {
                     </div>
                     <div className="rounded-2xl overflow-hidden shadow-lg border border-[#eaeaea] h-[400px]">
                         <img
-                            src="https://images.unsplash.com/photo-1588622143431-7290c0b11bf9?q=80&w=800&auto=format&fit=crop"
+                            src="/about-us.jpg"
                             alt="Cửa hàng CostumeHUB"
                             className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                         />

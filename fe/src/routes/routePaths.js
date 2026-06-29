@@ -25,6 +25,7 @@ export const ROUTES = {
   // Sau này bạn có thể thêm các path khác của Owner ở đây
   STORE_OWNER_PRODUCTS: "products",
   STORE_OWNER_CATEGORIES: "categories",
+  STORE_OWNER_INVENTORY: "inventory",
   STORE_OWNER_ORDERS: "orders",
 
   // Staff Routes

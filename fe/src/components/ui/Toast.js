@@ -16,7 +16,7 @@ const Toast = ({ message, type = "success", isVisible, onClose }) => {
 
   return (
     <div 
-      className={`fixed top-20 right-6 z-[100] flex items-center p-4 rounded-lg shadow-xl border animate-bounce-in ${
+      className={`fixed top-20 right-6 z-[9999] flex items-center p-4 rounded-lg shadow-xl border animate-bounce-in ${
         type === "success" ? "text-green-800 border-green-300 bg-green-50" : "text-red-800 border-red-300 bg-red-50"
       }`} 
       role="alert"
