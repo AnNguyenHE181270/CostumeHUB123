@@ -1,27 +1,37 @@
 import { useState, useEffect } from "react";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
+// Import useAuth để lấy token chuẩn từ hệ thống
 import { useAuth } from "../../context/AuthContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 export default function OrdersPage() {
-  const { token } = useAuth();
+  // Lấy token và role trực tiếp từ Context thay vì localStorage
+  const { token, role } = useAuth();
+
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Toolbar States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortPrice, setSortPrice] = useState("default");
 
-  // View Modal State
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+
+  const [handoverModal, setHandoverModal] = useState({ isOpen: false, order: null });
+  const [handoverNote, setHandoverNote] = useState("");
+  const [handoverPhotos, setHandoverPhotos] = useState([]);
+
+  const [returnModal, setReturnModal] = useState({ isOpen: false, order: null });
+  const [returnDamageFee, setReturnDamageFee] = useState(0);
+  const [returnNotes, setReturnNotes] = useState("");
 
   const fetchOrders = async () => {
+    // Rào chắn bảo vệ: Chỉ gọi API khi token đã thực sự sẵn sàng
     if (!token) return;
 
     try {
@@ -40,16 +50,157 @@ export default function OrdersPage() {
     }
   };
 
+  // Lắng nghe sự thay đổi của token. Chỉ khi có token mới bắt đầu gọi dữ liệu
   useEffect(() => {
     if (token) {
       fetchOrders();
     }
   }, [token]);
 
-  // Đưa về trang 1 khi bất kỳ filter/search/sort nào thay đổi
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, sortPrice]);
+  const updateStatus = async (id, newStatus) => {
+    if (!id || !token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setToast({ show: true, message: "Cập nhật trạng thái thành công!", type: "success" });
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi cập nhật", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
+  const handleConfirmPreparation = async (id) => {
+    if (!id || !token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${id}/confirm`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ show: true, message: data.message || "Xác nhận thành công!", type: "success" });
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi khi xác nhận", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!paymentModal.order || !paymentModal.order._id || !token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${paymentModal.order._id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: "preparing",
+          paymentMethod: paymentMethod
+        })
+      });
+
+      if (res.ok) {
+        setToast({ show: true, message: "Ghi nhận thu tiền thành công! Vui lòng chuẩn bị đồ.", type: "success" });
+        setPaymentModal({ isOpen: false, order: null });
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        setToast({ show: true, message: data.message || "Lỗi ghi nhận thanh toán", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    setHandoverPhotos([...e.target.files]);
+  };
+
+  const handleConfirmHandover = async () => {
+    if (!handoverModal.order || !handoverModal.order._id || !token) return;
+
+    const formData = new FormData();
+    formData.append("status", "renting"); // Đổi trạng thái khớp với DB
+    formData.append("note", handoverNote);
+    handoverPhotos.forEach((file) => {
+      formData.append("photos", file);
+    });
+
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${handoverModal.order._id}/handover`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        setToast({ show: true, message: "Đã giao đồ và lưu ảnh tình trạng thành công!", type: "success" });
+        setHandoverModal({ isOpen: false, order: null });
+        setHandoverNote("");
+        setHandoverPhotos([]);
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        setToast({ show: true, message: data.message || "Lỗi khi xác nhận giao đồ", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
+
+  const handleInspectReturn = async () => {
+    if (!returnModal.order || !returnModal.order._id || !token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/rentals/${returnModal.order._id}/inspect-return`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          damageFee: Number(returnDamageFee),
+          missingNotes: returnNotes
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setToast({ show: true, message: "Hoàn tất kiểm tra và trả cọc thành công!", type: "success" });
+        setReturnModal({ isOpen: false, order: null });
+        setReturnDamageFee(0);
+        setReturnNotes("");
+        fetchOrders();
+      } else {
+        setToast({ show: true, message: data.message || "Lỗi kiểm tra trả đồ", type: "error" });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Mất kết nối đến máy chủ", type: "error" });
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -85,37 +236,89 @@ export default function OrdersPage() {
 
   const columns = [
     { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id ? row._id.slice(-6).toUpperCase() : "N/A"}</span> },
-    { header: "Khách hàng", accessor: (row) => row.shippingAddress?.receiverName || row.customerId?.fullName || "Khách vãng lai" },
+    { header: "Khách hàng", accessor: (row) => row.customerId?.fullName || "Khách vãng lai" },
     { header: "Trang phục", accessor: (row) => row.items && row.items.length > 0 ? row.items.map(i => i.costume?.name).join(', ') : "N/A" },
     { header: "Ngày lấy", accessor: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : "N/A" },
     { header: "Ngày trả", accessor: (row) => row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : "N/A" },
-    { header: "Tổng tiền", accessor: (row) => <span className="font-semibold text-[#555]">{row.totalAmount?.toLocaleString('vi-VN') || 0} đ</span> },
-    { 
-      header: "Trạng thái", 
-      accessor: (row) => (
-        <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-block text-center min-w-[110px] ${getStatusColor(row.status)}`}>
-          {getStatusLabel(row.status)}
-        </span>
-      )
+    {
+      header: "Thao tác",
+      accessor: (row) => {
+        if (row.status === 'pending' || row.status === 'preparing') {
+          return (
+            <button
+              onClick={() => handleConfirmPreparation(row._id)}
+              className="text-[12px] font-semibold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
+            >
+              Xác nhận giao hàng
+            </button>
+          );
+        }
+        if (row.status === 'returning' || row.status === 'overdue' || row.status === 'renting') {
+          return (
+            <button
+              onClick={() => setReturnModal({ isOpen: true, order: row })}
+              className="text-[12px] font-semibold bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 transition-colors"
+            >
+              Kiểm tra trả đồ
+            </button>
+          );
+        }
+        return <span className="text-[12px] font-medium text-[#858585]">Không có</span>;
+      }
+    },
+    {
+      header: "Trạng thái",
+      accessor: (row) => {
+        const isLocked = row.status === 'completed' || row.status === 'cancelled';
+
+        if (role === 'staff') {
+          return (
+            <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold ${getStatusColor(row.status)}`}>
+              {getStatusLabel(row.status)}
+            </span>
+          );
+        }
+
+        return (
+          <select
+            value={row.status || ""}
+            onChange={(e) => updateStatus(row._id, e.target.value)}
+            disabled={isLocked}
+            className={`border px-2 py-1.5 rounded-md text-[13px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${getStatusColor(row.status)}`}
+          >
+            <option value="pending">Chờ xử lý</option>
+            <option value="awaitingPayment">Chờ thanh toán</option>
+            <option value="preparing">Đang chuẩn bị đồ</option>
+            <option value="delivering">Đang giao</option>
+            <option value="delivered">Đã giao hàng</option>
+            <option value="renting">Đang thuê </option>
+            <option value="returning">Đang trả hàng</option>
+            <option value="completed">Hoàn tất</option>
+            <option value="cancelled">Đã hủy</option>
+            <option value="overdue">Quá hạn</option>
+          </select>
+        );
+      }
     }
   ];
 
-  // Logic Xử lý Lọc, Tìm kiếm và Sắp xếp
-  let processedOrders = orders.filter((order) => {
-    const nameStr = (order.shippingAddress?.receiverName || order.customerId?.fullName || "").toLowerCase();
-    const searchMatch = (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) || nameStr.includes(searchTerm.toLowerCase());
+  // Đưa về trang 1 khi filter đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const filteredOrders = orders.filter((order) => {
+    const searchMatch =
+      (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.customerId?.fullName && order.customerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
+
     return searchMatch && statusMatch;
   });
 
-  if (sortPrice === "asc") {
-    processedOrders.sort((a, b) => (a.totalAmount || 0) - (b.totalAmount || 0));
-  } else if (sortPrice === "desc") {
-    processedOrders.sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0));
-  }
-
-  const totalPages = Math.ceil(processedOrders.length / itemsPerPage);
-  const currentOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const currentOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
@@ -123,14 +326,14 @@ export default function OrdersPage() {
         <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
       </div>
 
-      {/* Toolbar: Filter & Search & Sort */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6">
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"
           placeholder="Tìm mã đơn, tên khách hàng..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-72"
+          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-80"
         />
 
         <select
@@ -150,19 +353,8 @@ export default function OrdersPage() {
           <option value="cancelled">Đã hủy</option>
           <option value="overdue">Quá hạn</option>
         </select>
-
-        <select 
-          value={sortPrice}
-          onChange={(e) => setSortPrice(e.target.value)}
-          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
-        >
-          <option value="default">Sắp xếp giá: Mặc định</option>
-          <option value="asc">Giá: Thấp đến Cao</option>
-          <option value="desc">Giá: Cao đến Thấp</option>
-        </select>
       </div>
 
-      {/* Table Data */}
       <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
         <table className="w-full text-left">
           <thead>
@@ -179,11 +371,7 @@ export default function OrdersPage() {
               </tr>
             ) : (
               currentOrders.map((row, idx) => (
-                <tr 
-                  key={row._id} 
-                  onClick={() => setSelectedOrder(row)}
-                  className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
-                >
+                <tr key={idx} className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors">
                   {columns.map((col, cIdx) => (
                     <td key={cIdx} className="p-4 text-sm text-[#555]">
                       {typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor]}
@@ -195,68 +383,161 @@ export default function OrdersPage() {
           </tbody>
         </table>
 
-        {processedOrders.length > 0 && (
-          <div className="p-4 border-t border-[#eaeaea]">
-            <Pagination
-              displayCount={currentOrders.length}
-              totalCount={processedOrders.length}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(page) => setCurrentPage(page)}
-            />
-          </div>
+        {filteredOrders.length > 0 && (
+          <Pagination
+            displayCount={currentOrders.length}
+            totalCount={filteredOrders.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
         )}
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG (View-only) */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
-            <h2 className="text-xl font-bold text-[#1a1a1a] mb-4 border-b pb-2">Chi tiết đơn #{selectedOrder._id?.slice(-6).toUpperCase()}</h2>
+      {toast.show && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+      )}
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-sm text-gray-500">Khách hàng</p>
-                <p className="font-semibold">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
-                <p className="text-sm">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Thời gian thuê</p>
-                <p className="font-semibold">{selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"} {" -> "} {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}</p>
-              </div>
+      {/* Modal Thu tiền */}
+      {paymentModal.isOpen && paymentModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in">
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Ghi nhận thanh toán</h2>
+            <p className="text-sm text-[#555] mb-6">
+              Xác nhận thu đủ tiền cọc và tiền thuê cho đơn hàng mã <span className="font-semibold text-[#1a1a1a]">{paymentModal.order._id ? paymentModal.order._id.slice(-6).toUpperCase() : ""}</span>.
+            </p>
+
+            <div className="mb-6 space-y-3">
+              <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
+                <input
+                  type="radio" name="paymentMethod" value="cash"
+                  checked={paymentMethod === "cash"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                />
+                <span className="text-sm font-medium text-[#1a1a1a]">Tiền mặt</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#f9f9f9] transition-colors">
+                <input
+                  type="radio" name="paymentMethod" value="vnpay_qr"
+                  checked={paymentMethod === "vnpay_qr"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                />
+                <span className="text-sm font-medium text-[#1a1a1a]">Mã QR VNPay (Tĩnh)</span>
+              </label>
             </div>
 
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2">Sản phẩm thuê</h3>
-              <ul className="bg-gray-50 p-4 rounded-lg space-y-2">
-                {selectedOrder.items?.map((item, idx) => (
-                  <li key={idx} className="flex justify-between text-sm border-b border-gray-200 pb-2">
-                    <span>{item.costume?.name} (Size: {item.size}) x{item.quantity}</span>
-                    <span className="font-medium">{Math.round(item.rentalPricePerDay || 0).toLocaleString('vi-VN')} đ/ngày</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 flex justify-between font-bold text-[#1a1a1a] px-4">
-                <span>Tổng cộng:</span>
-                <span>{selectedOrder.totalAmount?.toLocaleString('vi-VN')} đ</span>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg border flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Trạng thái hiện tại:</p>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
-                  {getStatusLabel(selectedOrder.status)}
-                </span>
-              </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPaymentModal({ isOpen: false, order: null })}
+                className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleConfirmPayment}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#1a1a1a] rounded-md hover:bg-[#333] transition-colors"
+              >
+                Xác nhận đã thu
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {toast.show && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+      {/* Modal Giao đồ */}
+      {handoverModal.isOpen && handoverModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Xác nhận giao đồ</h2>
+            <p className="text-sm text-[#555] mb-6">
+              Lưu lại tình trạng của <span className="font-semibold text-[#1a1a1a]">{handoverModal.order.items?.[0]?.costume?.name || "sản phẩm"}</span> trước khi giao cho khách.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ảnh tình trạng hiện tại</label>
+              <input
+                type="file" multiple accept="image/*" onChange={handlePhotoChange}
+                className="w-full text-sm text-[#555] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#f5f5f5] file:text-[#1a1a1a] hover:file:bg-[#eaeaea] cursor-pointer"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ghi chú thêm (Tùy chọn)</label>
+              <textarea
+                rows="3" value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)}
+                placeholder="Ghi nhận lỗi nhỏ, vết bẩn (nếu có)..."
+                className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setHandoverModal({ isOpen: false, order: null }); setHandoverPhotos([]); }}
+                className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={handleConfirmHandover}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Giao đồ & Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Kiểm tra trả đồ */}
+      {returnModal.isOpen && returnModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Kiểm tra trả đồ</h2>
+            <p className="text-sm text-[#555] mb-6">
+              Vui lòng kiểm tra kỹ tình trạng đồ mã <span className="font-semibold text-[#1a1a1a]">{returnModal.order._id.slice(-6).toUpperCase()}</span>.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Phí phạt hư hỏng / làm bẩn (VNĐ)</label>
+              <input
+                type="number" min="0" value={returnDamageFee} onChange={(e) => setReturnDamageFee(e.target.value)}
+                placeholder="Nhập 0 nếu đồ nguyên vẹn"
+                className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[13px] font-semibold text-[#1a1a1a] mb-2">Ghi chú tình trạng (Bắt buộc nếu có phạt)</label>
+              <textarea
+                rows="3" value={returnNotes} onChange={(e) => setReturnNotes(e.target.value)}
+                placeholder="Mô tả chi tiết hư hỏng..."
+                className="w-full px-3 py-2 border border-[#eaeaea] rounded-md text-sm outline-none focus:border-[#1a1a1a] transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <div className="bg-[#faf9f7] p-3 rounded-md mb-6 border border-[#eaeaea]">
+              <p className="text-sm font-semibold text-gray-700">Tiền cọc ban đầu: <span className="font-bold text-gray-900">{(returnModal.order.totalDeposit || 0).toLocaleString()}đ</span></p>
+              <p className="text-xs text-gray-500 mt-1">*Hệ thống sẽ tự động tính phí quá hạn và trừ vào cọc trước khi hoàn tiền cho khách.</p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setReturnModal({ isOpen: false, order: null }); setReturnDamageFee(0); setReturnNotes(""); }}
+                className="px-4 py-2 text-sm font-medium text-[#555] bg-[#f5f5f5] rounded-md hover:bg-[#eaeaea] transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleInspectReturn}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Xác nhận hoàn tất
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

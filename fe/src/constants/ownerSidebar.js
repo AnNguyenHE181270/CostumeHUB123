@@ -4,8 +4,9 @@ import {
   faFolder,
   faBox,
   faShirt,
-  faBoxes,
+  faChartLine,
   faFileExport, // <- ĐÃ ĐỔI TỪ faFileDown SANG faFileExport
+  faMessage,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ownerSidebar = [
@@ -14,7 +15,8 @@ const ownerSidebar = [
   { path: "/owner/categories", label: "Danh mục", icon: faFolder },
   { path: "/owner/products", label: "Sản phẩm", icon: faBox },
   { path: "/owner/rentals", label: "Quần áo cho thuê", icon: faShirt },
-  { path: "/owner/inventory", label: "Quản lý Kho", icon: faBoxes },
+  { path: "/owner/chat", label: "Tin nhắn hỗ trợ", icon: faMessage },
+  { path: "/owner/revenue", label: "Thống kê Doanh thu", icon: faChartLine },
   { path: "/owner/export", label: "Xuất file", icon: faFileExport }, // <- ĐÃ ĐỔI Ở ĐÂY
 ];
 

@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const User = require('../models/user.model');
+const Rental = require('../models/rental.model');
 
 const cleanupPendingUsers = async () => {
   console.log(" Đang chạy dọn dẹp tài khoản rác...");
@@ -24,10 +25,37 @@ const cleanupPendingUsers = async () => {
   }
 };
 
+const checkOverdueRentals = async () => {
+  console.log(" Đang quét kiểm tra các đơn hàng quá hạn trả đồ...");
+  try {
+    const now = new Date();
+    
+    const result = await Rental.updateMany(
+      {
+        status: "renting",
+        endDate: { $lt: now }
+      },
+      {
+        $set: { status: "overdue" } // Chuyển sang trạng thái quá hạn
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      console.log(`Đã tự động cập nhật ${result.modifiedCount} đơn hàng thành trạng thái 'overdue' (quá hạn).`);
+    } else {
+      console.log(`Không có đơn hàng nào bị quá hạn mới.`);
+    }
+  } catch (error) {
+    console.error("Lỗi khi kiểm tra đơn hàng quá hạn:", error);
+  }
+};
+
 const startCronJobs = () => {
   cleanupPendingUsers();
+  checkOverdueRentals(); 
 
   cron.schedule('0 0 * * *', cleanupPendingUsers);
+  cron.schedule('0 0 * * *', checkOverdueRentals);
 
   console.log("Cron jobs initialized.");
 };
