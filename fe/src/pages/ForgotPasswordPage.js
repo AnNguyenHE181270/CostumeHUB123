@@ -7,6 +7,7 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
+import userService from "../services/user.service";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -25,22 +26,10 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       setError("");
-      const response = await fetch(
-        "http://localhost:9999/api/users/forgot-password",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.errors?.[0]?.msg || data.message || "Failed to process request.");
-        return;
-      }
+      await userService.forgotPassword(email);
       setSuccessMessage(`We've sent a password reset link to ${email}`);
-    } catch (error) {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(err.message || "Failed to process request.");
     } finally {
       setLoading(false);
     }

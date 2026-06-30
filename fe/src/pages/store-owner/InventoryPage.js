@@ -11,8 +11,7 @@ import Pagination from "../../components/ui/Pagination";
 import Toast from "../../components/ui/Toast";
 import DataTable from "../../components/ui/DataTable";
 import InventoryDetailDrawer from "../../components/store-owner/InventoryDetailDrawer";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import costumeService from "../../services/costume.service";
 const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
@@ -30,10 +29,8 @@ export default function InventoryPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      // Pass all non-hidden statuses so owner sees every product including out_of_stock
-      const res = await fetch(`${API_URL}/api/costumes?limit=1000&status=available,out_of_stock,maintenance,dry_cleaning,rented`);
-      const data = await res.json();
-      if (res.ok) setProducts(data.costumes || []);
+      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented" });
+      setProducts(data.costumes || []);
     } catch {
       showToast("Không thể tải dữ liệu kho", "error");
     } finally {

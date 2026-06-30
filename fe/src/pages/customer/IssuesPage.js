@@ -8,8 +8,7 @@ import { faBox, faCamera, faTimes } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder";
 import Toast from "../../components/ui/Toast";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import issueService from "../../services/issue.service";
 
 export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
     const [resolution, setResolution] = useState("return_refund");
@@ -35,20 +34,15 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
             const fetchExistingIssue = async () => {
                 setIsLoadingIssue(true);
                 try {
-                    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-                    const response = await fetch(`${API_URL}/api/issues/rental/${order.id || order._id}`, {
-                        headers: {
-                            "Authorization": `Bearer ${token}`
-                        }
-                    });
-                    const data = await response.json();
-                    if (response.ok && data.success && data.issue) {
+                    const data = await issueService.getByRentalId(order.id || order._id);
+                    if (data.success && data.issue) {
                         setExistingIssue(data.issue);
                     } else {
                         setExistingIssue(null);
                     }
                 } catch (err) {
                     console.error("Lỗi khi tải thông tin khiếu nại:", err);
+                    setExistingIssue(null);
                 } finally {
                     setIsLoadingIssue(false);
                 }
@@ -91,28 +85,16 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
         setIsConfirmOpen(false);
         setIsCancelling(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-            const response = await fetch(`${API_URL}/api/issues/${existingIssue._id}/cancel`, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                setToast({
-                    isVisible: true,
-                    message: "Hủy khiếu nại thành công.",
-                    type: "success"
-                });
+            const data = await issueService.cancel(existingIssue._id);
+            if (data.success) {
+                setToast({ isVisible: true, message: "Hủy khiếu nại thành công.", type: "success" });
                 if (onSuccess) onSuccess();
                 if (onOpenChange) onOpenChange(false);
             } else {
                 setErrors(prev => ({ ...prev, submit: data.message || "Đã xảy ra lỗi khi hủy khiếu nại." }));
             }
         } catch (err) {
-            console.error("Lỗi khi hủy khiếu nại:", err);
-            setErrors(prev => ({ ...prev, submit: "Đã xảy ra lỗi kết nối đến máy chủ." }));
+            setErrors(prev => ({ ...prev, submit: err.message || "Đã xảy ra lỗi kết nối đến máy chủ." }));
         } finally {
             setIsCancelling(false);
         }
@@ -219,7 +201,6 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
         setErrors(newErrors);
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
             const formData = new FormData();
             formData.append("rentalId", order._id || order.id);
 
@@ -235,30 +216,17 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                 formData.append("evidence", f.file);
             });
 
-            const response = await fetch(`${API_URL}/api/issues/create`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
-                body: formData
-            });
+            const data = await issueService.create(formData);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                setToast({
-                    isVisible: true,
-                    message: "Khiếu nại của bạn đã được gửi thành công.",
-                    type: "success"
-                });
+            if (data.success) {
+                setToast({ isVisible: true, message: "Khiếu nại của bạn đã được gửi thành công.", type: "success" });
                 if (onSuccess) onSuccess();
                 if (onOpenChange) onOpenChange(false);
             } else {
                 setErrors(prev => ({ ...prev, submit: data.message || "Đã xảy ra lỗi khi gửi khiếu nại." }));
             }
         } catch (err) {
-            console.error("Lỗi khi gửi khiếu nại:", err);
-            setErrors(prev => ({ ...prev, submit: "Đã xảy ra lỗi kết nối đến máy chủ." }));
+            setErrors(prev => ({ ...prev, submit: err.message || "Đã xảy ra lỗi kết nối đến máy chủ." }));
         } finally {
             setIsSubmitting(false);
         }

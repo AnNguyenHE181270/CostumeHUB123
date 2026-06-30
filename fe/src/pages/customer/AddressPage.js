@@ -7,9 +7,10 @@ import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
 import { useNavigate } from 'react-router-dom';
 import GHNAddressSelect from "../../components/GHNAddressSelect";
+import userService from "../../services/user.service";
 
 export default function AddressPage() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
   const [phoneType, setPhoneType] = useState("my"); 
   const [loadingPage, setLoadingPage] = useState(true);
@@ -50,31 +51,7 @@ const handleSubmit = async (e) => {
 
     try {
       setToast({ isVisible: false, message: "", type: "success" });
-
-      const response = await fetch(
-        "http://localhost:9999/api/users/create-address",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setToast({
-          isVisible: true,
-          type: "error",
-          message: data.errors?.[0]?.msg || data.message || "Lỗi tạo địa chỉ."
-        });
-        return;
-      }
-      
-      // Thành công
+      const data = await userService.createAddress(form);
       if (data.isDefault) {
         setAddresses(prev => [...prev.map(addr => ({ ...addr, isDefault: false })), data]);
       } else {
@@ -82,36 +59,18 @@ const handleSubmit = async (e) => {
       }
       setShowAddForm(false);
       setToast({ isVisible: true, type: "success", message: "Tạo địa chỉ thành công!" });
-
-    } catch (error) {
-      setToast({ isVisible: true, type: "error", message: "Network error. Please try again." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi tạo địa chỉ." });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getAllAddresses = async (e) =>{
+  const getAllAddresses = async () => {
     try {
       setLoadingPage(true);
       setToast({ isVisible: false, message: "", type: "success" });
-      const response = await fetch(
-        `http://localhost:9999/api/users/addresses`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setToast({ isVisible: true, type: "error", message: data.message || "Failed to load user data." });
-        return;
-      }
-      
-      // Đảm bảo chỉ có tối đa 1 địa chỉ mặc định hiển thị (phòng trường hợp DB bị lỗi cũ)
+      const data = await userService.getAddresses();
       let fetchedAddresses = data.addresses || [];
       let defaultCount = 0;
       fetchedAddresses = fetchedAddresses.reverse().map(addr => {
@@ -121,58 +80,25 @@ const handleSubmit = async (e) => {
         }
         return addr;
       }).reverse();
-
       setAddresses(fetchedAddresses);
-      
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });
     } finally {
       setLoadingPage(false);
     }
-  }  
+  };
 
   const handleDelete = async (id) => {
-  try {
-    const response = await fetch(
-      `http://localhost:9999/api/users/delete-address/${id}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setToast({
-        isVisible: true,
-        type: "error",
-        message: data.message || "Failed to delete address.",
-      });
-      return;
+    try {
+      const data = await userService.deleteAddress(id);
+      setToast({ isVisible: true, type: "success", message: data.message || "Delete address successfully!" });
+      await getAllAddresses();
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while deleting data." });
+    } finally {
+      setLoadingPage(false);
     }
-
-
-    setToast({
-      isVisible: true,
-      type: "success",
-      message: data.message || "Delete address successfully!",
-    });
-
-    await getAllAddresses()
-  } catch {
-    setToast({
-      isVisible: true,
-      type: "error",
-      message: "Network error while deleting data.",
-    });
-  } finally {
-    setLoadingPage(false);
-  }
-};
+  };
   useEffect(() => { getAllAddresses(); }, []);
   const handleClick = (id) =>{
     navigate(`/user/address/${id}`)

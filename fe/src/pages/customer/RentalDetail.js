@@ -7,7 +7,7 @@ import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 import { ExtendRentalModal } from "./ExtendRentalModal"
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
+import rentalService from "../../services/rental.service"
 
 export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
@@ -19,16 +19,8 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
   const fetchDetail = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-      const res = await fetch(`${API_URL}/api/rentals/order-detail/${order.id}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setDetailedOrder(data)
-      }
+      const data = await rentalService.getDetail(order.id)
+      setDetailedOrder(data)
     } catch (err) {
       console.error("Lỗi khi lấy chi tiết đơn hàng:", err)
     } finally {

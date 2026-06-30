@@ -4,8 +4,8 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
+import userService from "../../services/user.service";
 
 export default function AccountDetailPage() {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ export default function AccountDetailPage() {
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [availableRoles, setAvailableRoles] = useState([]);
   const [avatarFile, setAvatarFile] = useState(null);
-  
+
   const [form, setForm] = useState({
       phone: "",
       email: "",
@@ -26,56 +26,24 @@ export default function AccountDetailPage() {
       role: "",
   });
   const { id } = useParams();
-  const { token } = useAuth();
 
   const getDetailAccount = async () => {
     try {
       setLoadingPage(true);
       setToast({ isVisible: false, message: "", type: "success" });
-  
-      const currentToken = token || localStorage.getItem("token") || sessionStorage.getItem("token");
-  
-      const response = await fetch(
-        `http://localhost:9999/api/users/user/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setToast({ isVisible: true, type: "error", message: data.message || "Failed to load user data." });
-        return;
-      }
-      
+      const data = await userService.getUserById(id);
       setForm({
-        phone: data.user.phone ,
-        email: data.user.email ,
-        fullName: data.user.fullName ,
-        gender: data.user.gender ,
+        phone: data.user.phone,
+        email: data.user.email,
+        fullName: data.user.fullName,
+        gender: data.user.gender,
         dateOfBirth: data.user.dateOfBirth ? new Date(data.user.dateOfBirth).toISOString().split('T')[0] : "",
-        status: data.user.status ,
-        avatar: data.user.avatar ,
-        role: data.user.role?.name ,
+        status: data.user.status,
+        avatar: data.user.avatar,
+        role: data.user.role?.name,
       });
-
-      try {
-        const roleRes = await fetch("http://localhost:9999/api/roles/get-roles", {
-          headers: { Authorization: `Bearer ${currentToken}` }
-        });
-        const roleData = await roleRes.json();
-        if (roleData.success && roleData.roles) {
-          setAvailableRoles(roleData.roles);
-        }
-      } catch (err) {
-        console.error("Failed to load roles", err);
-      }
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });
     } finally {
       setLoadingPage(false);
     }
@@ -126,35 +94,14 @@ export default function AccountDetailPage() {
         formData.append("avatar", form.avatar);
       }
 
-      const response = await fetch(
-        `http://localhost:9999/api/users/update-user/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setToast({
-          isVisible: true,
-          type: "error",
-          message: data.errors?.[0]?.msg || data.message || "Update failed."
-        });
-        return;
-      }
-
+      await userService.updateUser(id, formData);
       setToast({ isVisible: true, type: "success", message: "Cập nhật tài khoản thành công!" });
       setTimeout(() => {
         setToast(prev => ({ ...prev, isVisible: false }));
         navigate(-1);
       }, 1500);
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {
       setSubmitting(false);
     }

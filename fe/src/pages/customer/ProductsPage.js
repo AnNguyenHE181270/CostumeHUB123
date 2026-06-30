@@ -5,6 +5,8 @@ import { faFilter, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import Pagination from "../../components/ui/Pagination";
 import Toast from "../../components/ui/Toast";
 import ProductCard from "../../components/customer/ProductCard";
+import costumeService from "../../services/costume.service";
+import categoryService from "../../services/category.service";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -22,16 +24,13 @@ export default function ProductsPage() {
   // Fetch danh mục cho bộ lọc
 
   const fetchCategories = async () => {
-      try {
-        const res = await fetch("http://localhost:9999/api/categories?all=true");
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
-      }
-    };
+    try {
+      const data = await categoryService.getAll({ all: true });
+      setCategories(data.categories || []);
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });
+    }
+  };
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -39,27 +38,19 @@ export default function ProductsPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:9999/api/costumes?page=${currentPage}&limit=9`;
-      if (selectedCategories.length > 0) {
-        url += `&subCategoryIds=${selectedCategories.join(',')}`;
-      }
-      if (priceRange === "under200") url += `&maxPrice=200000`;
-      if (priceRange === "200to500") url += `&minPrice=200000&maxPrice=500000`;
-      if (priceRange === "over500") url += `&minPrice=500000`;
-      if (sort) url += `&sort=${sort}`;
+      const params = { page: currentPage, limit: 9 };
+      if (selectedCategories.length > 0) params.subCategoryIds = selectedCategories.join(',');
+      if (priceRange === "under200") params.maxPrice = 200000;
+      if (priceRange === "200to500") { params.minPrice = 200000; params.maxPrice = 500000; }
+      if (priceRange === "over500") params.minPrice = 500000;
+      if (sort) params.sort = sort;
 
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setProducts(data.costumes || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalCount(data.pagination?.totalItems || 0);
-      } else {
-        setToast({ isVisible: true, type: "error", message: data.message || "Failed to load products." });
-      }
-    } catch (error) {
-      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
+      const data = await costumeService.getAll(params);
+      setProducts(data.costumes || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setTotalCount(data.pagination?.totalItems || 0);
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });
     } finally {
       setLoading(false);
     }

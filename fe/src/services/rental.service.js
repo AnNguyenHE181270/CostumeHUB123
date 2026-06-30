@@ -1,0 +1,42 @@
+import axiosClient from '../api/axiosClient';
+
+const rentalService = {
+  getHistory: () => axiosClient.get('/api/rentals/rental-history'),
+
+  getDetail: (orderId) => axiosClient.get(`/api/rentals/order-detail/${orderId}`),
+
+  createOrder: (orderData) => axiosClient.post('/api/rentals/create', orderData),
+
+  cancelOrder: (orderId, cancelReason) =>
+    axiosClient.put(`/api/rentals/${orderId}/cancel`, { cancelReason }),
+
+  confirmReceipt: (orderId) => axiosClient.put(`/api/rentals/${orderId}/confirm-receipt`),
+
+  requestReturn: (orderId) => axiosClient.put(`/api/rentals/${orderId}/request-return`),
+
+  extendRental: (orderId, newEndDate) =>
+    axiosClient.put(`/api/rentals/${orderId}/extend`, { newEndDate }),
+
+  checkAvailability: (data) => axiosClient.post('/api/rentals/check', data),
+
+  // Staff / Owner
+  getAllOrders: () => axiosClient.get('/api/rentals'),
+
+  updateStatus: (orderId, status) =>
+    axiosClient.put(`/api/rentals/${orderId}/status`, { status }),
+
+  confirmPreparation: (orderId) =>
+    axiosClient.put(`/api/rentals/${orderId}/confirm`),
+
+  inspectReturn: (orderId, data) =>
+    axiosClient.put(`/api/rentals/${orderId}/inspect-return`, data),
+
+  // Dashboard
+  getTotalRevenue: () => axiosClient.get('/api/rentals/dashboard/revenue'),
+
+  getActiveRentals: () => axiosClient.get('/api/rentals/dashboard/active-rentals'),
+
+  getInventoryUtilization: () => axiosClient.get('/api/rentals/dashboard/inventory-utilization'),
+};
+
+export default rentalService;

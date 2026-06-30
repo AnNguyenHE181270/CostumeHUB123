@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder";
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import rentalService from "../../services/rental.service";
 
 export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
     const navigate = useNavigate();
@@ -53,73 +53,26 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
 
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const orderId = order.orderId || order.id || order._id;
+            const data = await rentalService.extendRental(orderId, newEndDate);
 
-            const res = await fetch(`${API_URL}/api/rentals/${order.orderId || order.id || order._id}/extend`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ newEndDate })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                if (data.success) {
-                    setToast({
-                        isVisible: true,
-                        message: "Gia hạn thời gian thuê thành công!",
-                        type: "success"
-                    });
-                    setTimeout(() => {
-                        if (onConfirm) onConfirm();
-                        handleClose();
-                    }, 1500);
-                } else if (data.insufficientBalance) {
-                    setToast({
-                        isVisible: true,
-                        message: "Số dư trong ví không đủ. Đang chuyển sang trang nạp tiền...",
-                        type: "error"
-                    });
-                    setTimeout(() => {
-                        navigate("/user/my-profile");
-                        handleClose();
-                    }, 2500);
-                } else {
-                    setToast({
-                        isVisible: true,
-                        message: data.message || "Gia hạn thuê thất bại.",
-                        type: "error"
-                    });
-                }
+            if (data.success) {
+                setToast({ isVisible: true, message: "Gia hạn thời gian thuê thành công!", type: "success" });
+                setTimeout(() => { if (onConfirm) onConfirm(); handleClose(); }, 1500);
+            } else if (data.insufficientBalance) {
+                setToast({ isVisible: true, message: "Số dư trong ví không đủ. Đang chuyển sang trang nạp tiền...", type: "error" });
+                setTimeout(() => { navigate("/user/my-profile"); handleClose(); }, 2500);
             } else {
-                if (data.message && (data.message.includes("Số dư") || data.message.includes("không đủ"))) {
-                    setToast({
-                        isVisible: true,
-                        message: "Số dư trong ví không đủ. Đang chuyển sang trang nạp tiền...",
-                        type: "error"
-                    });
-                    setTimeout(() => {
-                        navigate("/user/my-profile");
-                        handleClose();
-                    }, 2500);
-                } else {
-                    setToast({
-                        isVisible: true,
-                        message: data.message || "Có lỗi xảy ra khi gia hạn.",
-                        type: "error"
-                    });
-                }
+                setToast({ isVisible: true, message: data.message || "Gia hạn thuê thất bại.", type: "error" });
             }
         } catch (err) {
-            console.error(err);
-            setToast({
-                isVisible: true,
-                message: "Lỗi kết nối đến máy chủ.",
-                type: "error"
-            });
+            const msg = err.message || "";
+            if (msg.includes("Số dư") || msg.includes("không đủ")) {
+                setToast({ isVisible: true, message: "Số dư trong ví không đủ. Đang chuyển sang trang nạp tiền...", type: "error" });
+                setTimeout(() => { navigate("/user/my-profile"); handleClose(); }, 2500);
+            } else {
+                setToast({ isVisible: true, message: msg || "Lỗi kết nối đến máy chủ.", type: "error" });
+            }
         } finally {
             setIsSubmitting(false);
         }

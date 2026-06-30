@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
+import rentalService from "../../services/rental.service";
 
 export default function RentCostumePage() {
   const { costumeId } = useParams();
@@ -11,36 +12,24 @@ export default function RentCostumePage() {
 
   const handleCheck = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/rentals/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ costumeId, ...form })
-      });
-      const data = await res.json();
-      setStatus({ 
-        isChecked: true, 
-        isAvailable: data.isAvailable, 
-        msg: data.isAvailable ? `Còn trống ${data.availableQty} bộ. Bạn có thể đặt!` : "Hết hàng thời gian này." 
+      const data = await rentalService.checkAvailability({ costumeId, ...form });
+      setStatus({
+        isChecked: true,
+        isAvailable: data.isAvailable,
+        msg: data.isAvailable ? `Còn trống ${data.availableQty} bộ. Bạn có thể đặt!` : "Hết hàng thời gian này."
       });
     } catch (err) {
-      setStatus({ isChecked: true, isAvailable: false, msg: "Lỗi kết nối!" });
+      setStatus({ isChecked: true, isAvailable: false, msg: err.message || "Lỗi kết nối!" });
     }
   };
 
   const handleCreate = async () => {
-    const token = localStorage.getItem("token"); // Hoặc lấy từ AuthContext
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/rentals/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ costumeId, ...form })
-      });
-      if (res.ok) {
-        alert("Đặt thuê thành công!");
-        navigate("/");
-      }
+      await rentalService.createOrder({ costumeId, ...form });
+      alert("Đặt thuê thành công!");
+      navigate("/");
     } catch (err) {
-      alert("Lỗi khi tạo đơn.");
+      alert(err.message || "Lỗi khi tạo đơn.");
     }
   };
 

@@ -7,6 +7,7 @@ import CategoryDetailModal from "../../components/store-owner/CategoryDetailModa
 import Input from "../../components/ui/Input";
 
 import Toast from "../../components/ui/Toast";
+import categoryService from "../../services/category.service";
 
 const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
@@ -34,11 +35,8 @@ const CategoriesPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`http://localhost:9999/api/categories?all=true`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories);
-      }
+      const data = await categoryService.getAll({ all: true });
+      setCategories(data.categories || []);
     } catch (error) {
       console.error("Failed to fetch categories:", error);
     }
@@ -144,81 +142,31 @@ const CategoriesPage = () => {
   // ---- API Executors ----
   const executeAdd = async (data) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const res = await fetch(`http://localhost:9999/api/categories`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          parentId: data.parentId || null
-        })
-      });
-      if (res.ok) {
-        fetchCategories();
-        showToast("Thêm danh mục thành công!");
-      } else {
-        const err = await res.json();
-        showToast(err.message || "Failed to add category", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await categoryService.create({ name: data.name, description: data.description, parentId: data.parentId || null });
+      fetchCategories();
+      showToast("Thêm danh mục thành công!");
+    } catch (err) {
+      showToast(err.message || "Failed to add category", "error");
     }
   };
 
   const executeEdit = async (data) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const res = await fetch(`http://localhost:9999/api/categories/${editingCategory._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          parentId: data.parentId || null
-        })
-      });
-      if (res.ok) {
-        fetchCategories();
-        showToast("Cập nhật danh mục thành công!");
-      } else {
-        const err = await res.json();
-        showToast(err.message || "Failed to edit category", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await categoryService.update(editingCategory._id, { name: data.name, description: data.description, parentId: data.parentId || null });
+      fetchCategories();
+      showToast("Cập nhật danh mục thành công!");
+    } catch (err) {
+      showToast(err.message || "Failed to edit category", "error");
     }
   };
 
   const executeToggleStatus = async (cat) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const res = await fetch(`http://localhost:9999/api/categories/${cat._id}/toggle`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ isActive: !cat.isActive })
-      });
-      if (res.ok) {
-        fetchCategories();
-        showToast("Thay đổi trạng thái thành công!");
-      } else {
-        const err = await res.json();
-        showToast(err.message || "Failed to toggle status", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await categoryService.toggle(cat._id, !cat.isActive);
+      fetchCategories();
+      showToast("Thay đổi trạng thái thành công!");
+    } catch (err) {
+      showToast(err.message || "Failed to toggle status", "error");
     }
   };
 

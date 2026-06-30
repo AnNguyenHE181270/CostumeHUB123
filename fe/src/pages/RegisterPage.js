@@ -7,6 +7,7 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
+import userService from "../services/user.service";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -47,19 +48,10 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       setError("");
-      const response = await fetch("http://localhost:9999/api/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.errors?.[0]?.msg || data.message || "Register failed.");
-        return;
-      }
+      await userService.register(form);
       navigate(`/verify-otp/${encodeURIComponent(form.email)}`, { state: { fromRegister: true } });
-    } catch (error) {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(err.message || "Register failed.");
     } finally {
       setLoading(false);
     }

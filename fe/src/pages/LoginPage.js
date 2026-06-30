@@ -8,6 +8,7 @@ import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
 import { useAuth } from "../context/AuthContext";
+import userService from "../services/user.service";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -32,37 +33,20 @@ export default function LoginPage() {
     try {
       setError("");
 
-      const response = await fetch(
-        "http://localhost:9999/api/users/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.isPending) {
-          navigate(`/verify-otp/${encodeURIComponent(data.email)}`, { state: { fromRegister: true } });
-          return;
-        }
-
-        setError(
-          data.errors?.[0]?.msg ||
-          data.message ||
-          "Login failed."
-        );
+      let data;
+      try {
+        data = await userService.login(form.email, form.password);
+      } catch (err) {
+        setError(err.message || "Login failed.");
         return;
       }
 
-      const profile = await login(
-        data.token,
-        remember
-      );
+      if (data.isPending) {
+        navigate(`/verify-otp/${encodeURIComponent(data.email)}`, { state: { fromRegister: true } });
+        return;
+      }
+
+      const profile = await login(data.token, remember);
       const role = profile?.user?.role
 
       if (role == "owner") {
@@ -75,9 +59,7 @@ export default function LoginPage() {
         navigate("/", { state: { showPolicies: true } });
       }
     } catch (error) {
-      setError(
-        "Network error. Please try again."
-      );
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
