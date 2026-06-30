@@ -11,8 +11,8 @@ import Pagination from "../../components/ui/Pagination";
 import Input from "../../components/ui/Input";
 import DataTable from "../../components/ui/DataTable";
 import CategoryDropdown from "../../components/ui/CategoryDropdown";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import costumeService from "../../services/costume.service";
+import categoryService from "../../services/category.service";
 
 const PAGE_SIZE = 10;
 export default function ProductsPage() {
@@ -42,11 +42,8 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/costumes?limit=1000&status=available,out_of_stock,maintenance,dry_cleaning,rented,hidden`);
-      const data = await response.json();
-      if (response.ok) {
-        setProducts(data.costumes || []);
-      }
+      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden" });
+      setProducts(data.costumes || []);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -56,14 +53,8 @@ export default function ProductsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/categories?all=true`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories || []);
-        console.log(data.categories)
-      } else {
-        console.error("Failed to fetch categories");
-      }
+      const data = await categoryService.getAll({ all: true });
+      setCategories(data.categories || []);
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
@@ -165,136 +156,59 @@ export default function ProductsPage() {
 
   const executeAdd = async (data) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/costumes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (response.ok) {
-        fetchProducts();
-        showToast("Thêm sản phẩm thành công!");
-      } else {
-        const err = await response.json();
-        showToast(err.message || "Thêm sản phẩm thất bại", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await costumeService.create(data);
+      fetchProducts();
+      showToast("Thêm sản phẩm thành công!");
+    } catch (err) {
+      showToast(err.message || "Thêm sản phẩm thất bại", "error");
     }
   };
 
   const executeEdit = async (data) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/costumes/${editingProduct._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (response.ok) {
-        fetchProducts();
-        showToast("Cập nhật sản phẩm thành công!");
-      } else {
-        const err = await response.json();
-        showToast(err.message || "Cập nhật sản phẩm thất bại", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await costumeService.update(editingProduct._id, data);
+      fetchProducts();
+      showToast("Cập nhật sản phẩm thành công!");
+    } catch (err) {
+      showToast(err.message || "Cập nhật sản phẩm thất bại", "error");
     }
   };
 
   const executeDelete = async (product) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        fetchProducts();
-        showToast("Đã ẩn sản phẩm thành công!");
-      } else {
-        const err = await response.json();
-        showToast(err.message || "Ẩn sản phẩm thất bại", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      await costumeService.delete(product._id);
+      fetchProducts();
+      showToast("Đã ẩn sản phẩm thành công!");
+    } catch (err) {
+      showToast(err.message || "Ẩn sản phẩm thất bại", "error");
     }
   };
 
   const executeRestore = async (product) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const restoreData = {
+      await costumeService.update(product._id, {
         ...product,
         categoryId: product.categoryId?._id || product.categoryId,
         status: "available"
-      };
-
-      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(restoreData),
       });
-
-      if (response.ok) {
-        fetchProducts();
-        showToast("Khôi phục sản phẩm thành công!");
-      } else {
-        const err = await response.json();
-        showToast(err.message || "Khôi phục sản phẩm thất bại", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      fetchProducts();
+      showToast("Khôi phục sản phẩm thành công!");
+    } catch (err) {
+      showToast(err.message || "Khôi phục sản phẩm thất bại", "error");
     }
   };
 
   const executeChangeStatus = async ({ product, newStatus }) => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const updateData = {
+      await costumeService.update(product._id, {
         ...product,
         categoryId: product.categoryId?._id || product.categoryId,
         status: newStatus
-      };
-
-      const response = await fetch(`${API_URL}/api/costumes/${product._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
       });
-
-      if (response.ok) {
-        fetchProducts();
-        showToast("Cập nhật trạng thái thành công!");
-      } else {
-        const err = await response.json();
-        showToast(err.message || "Cập nhật thất bại", "error");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Lỗi hệ thống", "error");
+      fetchProducts();
+      showToast("Cập nhật trạng thái thành công!");
+    } catch (err) {
+      showToast(err.message || "Cập nhật thất bại", "error");
     }
   };
 

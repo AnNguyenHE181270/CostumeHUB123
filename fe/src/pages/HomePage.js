@@ -1,34 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import HeroSection from "../components/customer/HeroSection";
 import FeatureBar from "../components/customer/FeatureBar";
 import ProductCard from "../components/customer/ProductCard";
-import Toast from "../components/ui/Toast";
 import { motion } from "framer-motion";
-
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import PoliciesModal from "./Policies";
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import costumeService from "../services/costume.service";
 
 const container = {
   hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.15,
-    },
-  },
+  show: { transition: { staggerChildren: 0.15 } },
 };
 
 const item = {
   hidden: { opacity: 0, y: 30, scale: 0.98 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
 };
 
 export default function HomePage() {
@@ -42,23 +31,14 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/costumes?sort=popular&limit=15`);
-        if (res.ok) {
-          const data = await res.json();
-          setRecentProducts(data.costumes || []);
-        } else {
-          console.warn("Yêu cầu lấy sản phẩm phổ biến thất bại:", res.status);
-        }
-
-        const res2 = await fetch(`${API_URL}/api/costumes?sort=newest&limit=5`);
-        if (res2.ok) {
-          const data2 = await res2.json();
-          setNewArrivals(data2.costumes || []);
-        } else {
-          console.warn("Yêu cầu lấy sản phẩm mới nhất thất bại:", res2.status);
-        }
+        const [popularRes, newestRes] = await Promise.all([
+          costumeService.getAll({ sort: 'popular', limit: 15 }),
+          costumeService.getAll({ sort: 'newest', limit: 5 }),
+        ]);
+        setRecentProducts(popularRes.costumes || []);
+        setNewArrivals(newestRes.costumes || []);
       } catch (err) {
-        console.error("Lỗi mạng khi kết nối với server backend:", err);
+        console.error("Lỗi khi tải sản phẩm:", err.message);
       } finally {
         setLoading(false);
       }
@@ -68,7 +48,6 @@ export default function HomePage() {
   useEffect(() => {
     if (location.state?.showPolicies) {
       setShowPolicies(true);
-      // Xóa state khỏi lịch sử để tránh việc modal bật lại khi người dùng refresh trang
       const newState = { ...location.state };
       delete newState.showPolicies;
       navigate(location.pathname, { replace: true, state: newState });
@@ -76,12 +55,7 @@ export default function HomePage() {
   }, [location, navigate]);
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="show"
-      variants={container}
-      className="bg-[#f9f5ed]"
-    >
+    <motion.div initial="hidden" animate="show" variants={container} className="bg-[#f9f5ed]">
       {/* HERO */}
       <motion.div variants={item}>
         <HeroSection products={recentProducts.slice(0, 5)} />
@@ -92,12 +66,8 @@ export default function HomePage() {
       {/* HOT PRODUCTS */}
       <section className="py-20">
         <motion.div variants={item} className="text-center mb-10">
-          <h2 className="text-4xl font-semibold tracking-tight">
-            Sản Phẩm Hot
-          </h2>
-          <p className="text-gray-400 mt-2">
-            Luxury selection curated for you
-          </p>
+          <h2 className="text-4xl font-semibold tracking-tight">Sản Phẩm Hot</h2>
+          <p className="text-gray-400 mt-2">Luxury selection curated for you</p>
         </motion.div>
 
         <motion.div variants={container} className="px-6 pb-6">
@@ -106,18 +76,12 @@ export default function HomePage() {
             spaceBetween={24}
             slidesPerView="auto"
             speed={800}
-            autoplay={{
-              delay: 2500,
-              disableOnInteraction: false,
-            }}
+            autoplay={{ delay: 2500, disableOnInteraction: false }}
             className="w-full px-2"
           >
             {recentProducts.map((p) => (
               <SwiperSlide key={p._id} style={{ width: "240px" }} className="!h-auto pb-4 pt-4 flex">
-                <motion.div
-                  variants={item}
-                  className="w-full h-full transition-all duration-300"
-                >
+                <motion.div variants={item} className="w-full h-full transition-all duration-300">
                   <ProductCard costume={p} />
                 </motion.div>
               </SwiperSlide>
@@ -130,18 +94,11 @@ export default function HomePage() {
       <section className="bg-[#faf9f7] py-24 px-6">
         <div className="max-w-[1200px] mx-auto">
           <motion.div variants={item} className="mb-10">
-            <h2 className="text-4xl font-semibold">
-              New Arrivals
-            </h2>
-            <p className="text-gray-400">
-              Fresh drops of the season
-            </p>
+            <h2 className="text-4xl font-semibold">New Arrivals</h2>
+            <p className="text-gray-400">Fresh drops of the season</p>
           </motion.div>
 
-          <motion.div
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6"
-            variants={container}
-          >
+          <motion.div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6" variants={container}>
             {newArrivals.map((p) => (
               <motion.div
                 key={p._id}

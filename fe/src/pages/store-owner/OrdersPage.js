@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
-import { useAuth } from "../../context/AuthContext";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import rentalService from "../../services/rental.service";
 
 export default function OrdersPage() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -22,29 +19,18 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const fetchOrders = async () => {
-    if (!token) return;
-
     try {
-      const res = await fetch(`${API_URL}/api/rentals`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const validOrders = Array.isArray(data) ? data : (data.rentals || data.data || []);
-        setOrders(validOrders);
-      } else {
-        console.error("Không thể tải danh sách đơn hàng - HTTP Error");
-      }
+      const data = await rentalService.getAllOrders();
+      const validOrders = Array.isArray(data) ? data : (data.rentals || data.data || []);
+      setOrders(validOrders);
     } catch (error) {
       console.error("Lỗi fetch đơn hàng", error);
     }
   };
 
   useEffect(() => {
-    if (token) {
-      fetchOrders();
-    }
-  }, [token]);
+    fetchOrders();
+  }, []);
 
   // Đưa về trang 1 khi bất kỳ filter/search/sort nào thay đổi
   useEffect(() => {

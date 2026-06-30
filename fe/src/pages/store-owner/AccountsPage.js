@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import DataTable from "../../components/ui/DataTable";
 import Pagination from "../../components/ui/Pagination";
 import { useNavigate } from "react-router-dom";
+import userService from "../../services/user.service";
 
 const getRoleInfo = (roleName) => {
   const name = roleName?.toLowerCase();
@@ -41,18 +42,10 @@ export default function AccountsPage() {
     try {
       setLoading(true);
       setError("");
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch("http://localhost:9999/api/users/get-users", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (!response.ok) { setError(data.message); return; }
-      setAccounts(data.users);
-    } catch {
-      setError("Network error. Please try again.");
+      const data = await userService.getAllUsers();
+      setAccounts(data.users || []);
+    } catch (err) {
+      setError(err.message || "Network error. Please try again.");
     } finally {
       setLoading(false);
     }

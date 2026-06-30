@@ -5,12 +5,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Toast from "../../components/ui/Toast";
 import GHNAddressSelect from "../../components/GHNAddressSelect";
-import { useAuth } from "../../context/AuthContext";
+import userService from "../../services/user.service";
 
 export default function DetailAddressPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -46,26 +45,7 @@ export default function DetailAddressPage() {
     try {
       setLoadingPage(true);
       setToast({ isVisible: false, message: "", type: "success" });
-
-
-
-      const response = await fetch(
-        `http://localhost:9999/api/users/address/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setToast({ isVisible: true, type: "error", message: data.message || "Failed to load user data." });
-        return;
-      }
-
+      const data = await userService.getAddressById(id);
       setForm({
         receiverName: data.address.receiverName,
         receiverPhone: data.address.receiverPhone,
@@ -79,9 +59,8 @@ export default function DetailAddressPage() {
         note: data.address.note,
         isDefault: data.address.isDefault,
       });
-
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });
     } finally {
       setLoadingPage(false);
     }
@@ -98,37 +77,14 @@ export default function DetailAddressPage() {
     try {
       setSubmitting(true);
       setToast({ isVisible: false, message: "", type: "success" });
-
-      const response = await fetch(
-        `http://localhost:9999/api/users/update-address/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setToast({
-          isVisible: true,
-          type: "error",
-          message: data.errors?.[0]?.msg || data.message || "Update failed."
-        });
-        return;
-      }
-
+      await userService.updateAddress(id, form);
       setToast({ isVisible: true, type: "success", message: "Cập nhật tài khoản thành công!" });
       setTimeout(() => {
         setToast(prev => ({ ...prev, isVisible: false }));
         navigate(-1);
       }, 1500);
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {
       setSubmitting(false);
     }
