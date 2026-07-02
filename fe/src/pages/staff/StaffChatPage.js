@@ -10,19 +10,27 @@ export default function StaffChatPage() {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [messageInput, setMessageInput] = useState("");
+  const chatContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll to bottom
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+    if (activeRoom && user) {
+       socket.emit("seen_message", { roomId: activeRoom._id, userId: user.id || user._id });
+    }
+  }, [messages, activeRoom, user]);
 
-  // Load list of chat rooms
   useEffect(() => {
+    if (!user || user.role !== "staff") return;
+    
+    socket.emit("register", { userId: user.id || user._id, role: user.role });
+    
     const fetchRooms = async () => {
       try {
         setLoadingRooms(true);
@@ -39,13 +47,27 @@ export default function StaffChatPage() {
         setLoadingRooms(false);
       }
     };
+    fetchRooms();
 
-    if (user && token) {
-      fetchRooms();
+    const onChatAssigned = async (newRoom) => {
+       try {
+         const res = await fetch(`http://localhost:9999/api/chat-rooms/staff/${user.id || user._id}`, {
+           headers: { Authorization: `Bearer ${token}` }
+         });
+         const data = await res.json();
+         if (res.ok && data.data) {
+           setRooms(data.data.filter(r => r.status === "active"));
+         }
+       } catch(e) {}
+    };
+
+    socket.on("chat_assigned", onChatAssigned);
+
+    return () => {
+       socket.off("chat_assigned", onChatAssigned);
     }
   }, [user, token]);
 
-  // Load messages and join socket room when activeRoom changes
   useEffect(() => {
     if (!activeRoom || !token) return;
 
@@ -60,6 +82,7 @@ export default function StaffChatPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setMessages(data.data);
+          socket.emit("seen_message", { roomId, userId: user.id || user._id });
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -74,9 +97,9 @@ export default function StaffChatPage() {
     const handleReceive = (data) => {
       if (data.roomId === roomId) {
         setMessages((prev) => [...prev, data]);
+        socket.emit("seen_message", { roomId, userId: user.id || user._id });
       }
       
-      // Update the room's last message in the sidebar
       setRooms((prevRooms) => 
         prevRooms.map((r) => 
           r._id === data.roomId ? { ...r, lastMessage: data.message, lastMessageAt: data.createdAt || new Date() } : r
@@ -84,12 +107,35 @@ export default function StaffChatPage() {
       );
     };
 
+    const handleSeen = (data) => {
+      if (data.roomId === roomId) {
+        setMessages((prev) => prev.map(m => {
+          if (m.senderId !== data.byUserId) {
+             return { ...m, status: "seen" };
+          }
+          return m;
+        }));
+      }
+    };
+
+    const handleChatClosed = (data) => {
+       if (data.roomId === roomId) {
+         setActiveRoom(null);
+         setMessages([]);
+       }
+       setRooms(prev => prev.filter(r => r._id !== data.roomId));
+    };
+
     socket.on("receive_message", handleReceive);
+    socket.on("message_seen", handleSeen);
+    socket.on("chat_closed", handleChatClosed);
 
     return () => {
       socket.off("receive_message", handleReceive);
+      socket.off("message_seen", handleSeen);
+      socket.off("chat_closed", handleChatClosed);
     };
-  }, [activeRoom, token]);
+  }, [activeRoom, token, user]);
 
   const sendMessage = () => {
     if (!messageInput.trim() || !activeRoom) return;
@@ -109,57 +155,134 @@ export default function StaffChatPage() {
     }
   };
 
+  const closeChat = () => {
+    if (!activeRoom) return;
+    if (window.confirm("Kết thúc phiên trò chuyện với khách hàng này?")) {
+      socket.emit("close_chat", { roomId: activeRoom._id });
+    }
+  };
+
   const formatTime = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  if (!user || user.role !== "staff") {
+     return <div className="p-8 text-center text-red-500 font-semibold text-lg">Bạn không có quyền truy cập trang hỗ trợ này.</div>;
+  }
+
+  const myUserId = user.id || user._id;
+  let lastSeenIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].senderId === myUserId && messages[i].status === "seen") {
+      lastSeenIndex = i;
+      break;
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-120px)] bg-white rounded-lg shadow-md overflow-hidden">
       {/* Cột trái: Danh sách khách hàng */}
       <div className="w-1/3 border-r border-gray-200 flex flex-col bg-gray-50">
         <div className="p-4 border-b border-gray-200 bg-white">
-          <h2 className="text-lg font-semibold text-gray-800">Tin nhắn hỗ trợ</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Khách hàng chờ hỗ trợ</h2>
         </div>
         
         <div className="flex-1 overflow-y-auto">
           {loadingRooms ? (
             <div className="p-4 text-center text-gray-500">Đang tải...</div>
           ) : rooms.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">Chưa có khách hàng nào</div>
+            <div className="p-4 text-center text-gray-500">Đang không có phiên chat nào</div>
           ) : (
-            rooms.map((room) => {
-              const customer = room.userId;
-              const isActive = activeRoom?._id === room._id;
-              
-              return (
-                <div 
-                  key={room._id} 
-                  onClick={() => setActiveRoom(room)}
-                  className={`flex items-center p-4 border-b border-gray-100 cursor-pointer transition-colors ${isActive ? 'bg-blue-50' : 'hover:bg-gray-100 bg-white'}`}
-                >
-                  <img 
-                    src={customer?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
-                    alt={customer?.fullName} 
-                    className="w-12 h-12 rounded-full object-cover mr-3 border border-gray-200"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {customer?.fullName || "Khách hàng"}
-                      </h3>
-                      <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                        {formatTime(room.lastMessageAt)}
-                      </span>
-                    </div>
-                    <p className={`text-sm truncate ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-                      {room.lastMessage || "Bắt đầu trò chuyện"}
-                    </p>
+            <>
+              {/* Active Rooms */}
+              {rooms.filter(r => r.status === "active").length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-gray-200 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Đang hoạt động
                   </div>
-                </div>
-              );
-            })
+                  {rooms.filter(r => r.status === "active").map((room) => {
+                    const customer = room.userId;
+                    const isActive = activeRoom?._id === room._id;
+                    
+                    return (
+                      <div 
+                        key={room._id} 
+                        onClick={() => setActiveRoom(room)}
+                        className={`flex items-center p-4 border-b border-gray-100 cursor-pointer transition-colors ${isActive ? 'bg-blue-50' : 'hover:bg-gray-100 bg-white'}`}
+                      >
+                        <div className="relative">
+                          <img 
+                            src={customer?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                            alt={customer?.fullName} 
+                            className="w-12 h-12 rounded-full object-cover mr-3 border border-gray-200"
+                          />
+                          <div className="absolute bottom-0 right-3 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <h3 className="text-sm font-medium text-gray-900 truncate">
+                              {customer?.fullName || "Khách hàng"}
+                            </h3>
+                            <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
+                              {formatTime(room.lastMessageAt)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <p className={`text-sm truncate ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                              {room.lastMessage || "Chưa có tin nhắn"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Closed Rooms */}
+              {rooms.filter(r => r.status === "closed").length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider mt-2 border-t border-gray-200">
+                    Lịch sử chat
+                  </div>
+                  {rooms.filter(r => r.status === "closed").map((room) => {
+                    const customer = room.userId;
+                    const isActive = activeRoom?._id === room._id;
+                    
+                    return (
+                      <div 
+                        key={room._id} 
+                        onClick={() => setActiveRoom(room)}
+                        className={`flex items-center p-4 border-b border-gray-100 cursor-pointer transition-colors ${isActive ? 'bg-gray-200' : 'hover:bg-gray-100 bg-white opacity-60 hover:opacity-100'}`}
+                      >
+                        <div className="relative">
+                          <img 
+                            src={customer?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                            alt={customer?.fullName} 
+                            className="w-12 h-12 rounded-full object-cover mr-3 border border-gray-200 grayscale"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <h3 className="text-sm font-medium text-gray-600 truncate">
+                              {customer?.fullName || "Khách hàng"}
+                            </h3>
+                            <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
+                              {formatTime(room.lastMessageAt)}
+                            </span>
+                          </div>
+                          <p className={`text-sm truncate text-gray-400`}>
+                            {room.lastMessage || "Chưa có tin nhắn"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -169,36 +292,52 @@ export default function StaffChatPage() {
         {activeRoom ? (
           <>
             {/* Header phòng chat */}
-            <div className="p-4 border-b border-gray-200 flex items-center shadow-sm z-10">
-              <img 
-                src={activeRoom.userId?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
-                alt="Avatar" 
-                className="w-10 h-10 rounded-full mr-3 object-cover"
-              />
-              <h2 className="text-lg font-semibold text-gray-800">
-                {activeRoom.userId?.fullName || "Khách hàng"}
-              </h2>
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
+              <div className="flex items-center">
+                <img 
+                  src={activeRoom.userId?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                  alt="Avatar" 
+                  className="w-10 h-10 rounded-full mr-3 object-cover"
+                />
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {activeRoom.userId?.fullName || "Khách hàng"}
+                </h2>
+              </div>
+              <button
+                 onClick={closeChat}
+                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition"
+              >
+                 Kết thúc Chat
+              </button>
             </div>
 
             {/* Nội dung chat */}
-            <div className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col gap-4">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 flex flex-col gap-4">
               {loadingMessages ? (
                 <div className="text-center text-gray-500 mt-4">Đang tải tin nhắn...</div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-4">Hãy gửi tin nhắn đầu tiên để hỗ trợ khách hàng</div>
               ) : (
                 messages.map((msg, idx) => {
-                  const isMe = msg.senderId === (user.id || user._id);
+                  const isMe = msg.senderId === myUserId;
+                  const isLastSeen = idx === lastSeenIndex;
                   return (
-                    <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                       <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'}`}>
                         <p className="text-sm">{msg.message}</p>
                       </div>
+                      {isLastSeen && activeRoom.userId && activeRoom.userId.avatar && (
+                        <img 
+                          src={activeRoom.userId.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                          alt="seen" 
+                          className="w-4 h-4 rounded-full mt-1 opacity-70 border border-gray-300"
+                          title="Đã xem"
+                        />
+                      )}
                     </div>
                   );
                 })
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Input chat */}

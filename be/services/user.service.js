@@ -19,36 +19,95 @@ const generateOTP = () => {
 const sendEmailVerification = async (email, otp, fullName) => {
   await sendEmail({
     to: email,
-    subject: 'Vogue Rental — Xác thực tài khoản của bạn',
+    subject: 'CostumeHUB — Xác thực tài khoản của bạn',
     text: `Mã xác thực của bạn là: ${otp}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <h2>Xin chào ${fullName || 'bạn'},</h2>
-        <p>Cảm ơn bạn đã đăng ký tài khoản tại Vogue Rental.</p>
+        <p>Cảm ơn bạn đã đăng ký tài khoản tại CostumeHUB.</p>
         <p>Mã xác thực (OTP) của bạn là:</p>
         <div style="background:#f4f4f4;padding:15px;text-align:center;font-size:24px;font-weight:bold;letter-spacing:5px;margin:20px 0">${otp}</div>
         <p>Mã này sẽ hết hạn sau 10 phút.</p>
-        <p>Trân trọng,<br/>Đội ngũ Vogue Rental</p>
+        <p>Trân trọng,<br/>Đội ngũ CostumeHUB</p>
       </div>`,
   });
 };
 
 const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="background-color: #f5f5f5; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333333; margin: 0; padding: 0; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px;">
+          
+          <!-- Header (Logo/Brand Name) -->
+          <tr>
+            <td align="center" style="padding: 40px 0; background-color: #111111;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase;">CostumeHUB</h1>
+            </td>
+          </tr>
+          
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 40px 40px;">
+              <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #111111;">Xin chào ${fullName || 'bạn'},</h2>
+              <p style="font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 24px;">
+                Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản CostumeHUB của bạn.
+              </p>
+              <p style="font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 32px;">
+                Vui lòng nhấn vào nút bên dưới để thiết lập lại mật khẩu mới. Xin lưu ý rằng đường dẫn này chỉ có hiệu lực trong vòng <strong style="color: #111111;">15 phút</strong>.
+              </p>
+              
+              <!-- Call To Action Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}" style="display: inline-block; padding: 14px 40px; background-color: #111111; color: #ffffff; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Đặt Lại Mật Khẩu</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Additional Information -->
+              <p style="font-size: 14px; line-height: 1.6; color: #888888; margin-top: 40px; border-top: 1px solid #eeeeee; padding-top: 24px;">
+                Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này. Mật khẩu và tài khoản của bạn vẫn an toàn.
+              </p>
+              
+              <!-- Fallback Link -->
+              <p style="font-size: 14px; line-height: 1.6; color: #888888; margin-top: 20px; word-break: break-all;">
+                Hoặc bạn có thể sao chép và dán đường dẫn sau vào trình duyệt:<br>
+                <a href="${resetUrl}" style="color: #666666; text-decoration: underline;">${resetUrl}</a>
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding: 30px 40px; background-color: #fafafa; border-top: 1px solid #eaeaea;">
+              <p style="font-size: 14px; color: #888888; margin: 0; margin-bottom: 8px;">Trân trọng,</p>
+              <p style="font-size: 16px; font-weight: 600; color: #111111; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Đội ngũ CostumeHUB</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
   await sendEmail({
     to: email,
-    subject: 'Vogue Rental — Đặt lại mật khẩu',
-    text: `Bạn yêu cầu đặt lại mật khẩu. Nhấn vào link sau (hiệu lực 15 phút): ${resetUrl}`,
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <h2>Xin chào ${fullName || 'bạn'},</h2>
-        <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản Vogue Rental của bạn.</p>
-        <p>Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu mới. Link này chỉ có hiệu lực trong 15 phút.</p>
-        <div style="margin:30px 0">
-          <a href="${resetUrl}" style="background:#1a1a1a;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold">Đặt Lại Mật Khẩu</a>
-        </div>
-        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-        <p>Trân trọng,<br/>Đội ngũ Vogue Rental</p>
-      </div>`,
+    subject: 'CostumeHUB — Đặt lại mật khẩu',
+    text: `Xin chào ${fullName || 'bạn'},\n\nBạn yêu cầu đặt lại mật khẩu cho tài khoản CostumeHUB. Nhấn vào link sau (hiệu lực 15 phút): ${resetUrl}\n\nNếu bạn không yêu cầu, vui lòng bỏ qua email này.\n\nTrân trọng,\nĐội ngũ CostumeHUB`,
+    html: htmlContent,
   });
 };
 
@@ -57,20 +116,20 @@ const register = async ({ fullName, email, phone, password, gender, dateOfBirth 
   const existUser = await User.findOne({ email });
 
   if (existUser && existUser.status === 'active') {
-    throw new HttpError('An account with this email already exists. Please log in instead.', 422);
+    throw new HttpError('Tài khoản với email này đã tồn tại. Vui lòng đăng nhập.', 422);
   }
   if (phone) {
     const existPhone = await User.findOne({ phone });
     if (existPhone && existPhone.status === 'active' && (!existUser || existPhone._id.toString() !== existUser._id.toString())) {
-      throw new HttpError('An account with this phone number already exists.', 422);
+      throw new HttpError('Tài khoản với số điện thoại này đã tồn tại.', 422);
     }
   }
   if (existUser && existUser.status === 'blocked' && existUser.isEmailVerified) {
-    throw new HttpError('This account cannot be registered again.', 403);
+    throw new HttpError('Tài khoản này không thể đăng ký lại.', 403);
   }
 
   const roleUser = await Role.findOne({ name: 'online-customer' });
-  if (!roleUser) throw new HttpError('Online customer role not found', 404);
+  if (!roleUser) throw new HttpError('Không tìm thấy vai trò khách hàng trực tuyến', 404);
 
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
@@ -111,14 +170,14 @@ const register = async ({ fullName, email, phone, password, gender, dateOfBirth 
 
 const verifyOtp = async (email, otp) => {
   const existUser = await User.findOne({ email }).select('+otpCode +otpExpires +otpCooldownUntil');
-  if (!existUser) throw new HttpError('User not found.', 404);
-  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('User is already verified.', 400);
-  if (existUser.status === 'blocked') throw new HttpError('This account is blocked.', 403);
-  if (!existUser.otpCode || !existUser.otpExpires) throw new HttpError('OTP not found. Please register again.', 400);
-  if (existUser.otpExpires < new Date()) throw new HttpError('OTP has expired. Please register again.', 400);
+  if (!existUser) throw new HttpError('Không tìm thấy người dùng.', 404);
+  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('Người dùng đã được xác thực.', 400);
+  if (existUser.status === 'blocked') throw new HttpError('Tài khoản này đã bị khóa.', 403);
+  if (!existUser.otpCode || !existUser.otpExpires) throw new HttpError('Không tìm thấy OTP. Vui lòng đăng ký lại.', 400);
+  if (existUser.otpExpires < new Date()) throw new HttpError('OTP đã hết hạn. Vui lòng đăng ký lại.', 400);
 
   const isValidOtp = await bcrypt.compare(otp, existUser.otpCode);
-  if (!isValidOtp) throw new HttpError('Invalid OTP.', 400);
+  if (!isValidOtp) throw new HttpError('OTP không hợp lệ.', 400);
 
   existUser.status = 'active';
   existUser.isEmailVerified = true;
@@ -132,13 +191,13 @@ const verifyOtp = async (email, otp) => {
 
 const resendOtp = async (email) => {
   const existUser = await User.findOne({ email }).select('+otpCooldownUntil');
-  if (!existUser) throw new HttpError('User not found.', 404);
-  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('User is already verified.', 400);
-  if (existUser.status === 'blocked') throw new HttpError('This account is blocked.', 403);
+  if (!existUser) throw new HttpError('Không tìm thấy người dùng.', 404);
+  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('Người dùng đã được xác thực.', 400);
+  if (existUser.status === 'blocked') throw new HttpError('Tài khoản này đã bị khóa.', 403);
 
   const now = new Date();
   if (existUser.otpCooldownUntil && existUser.otpCooldownUntil > now) {
-    throw new HttpError('Please wait before requesting a new OTP.', 429);
+    throw new HttpError('Vui lòng chờ trước khi yêu cầu OTP mới.', 429);
   }
 
   const otp = generateOTP();
@@ -153,11 +212,11 @@ const resendOtp = async (email) => {
 
 const login = async (email, password) => {
   const existUser = await User.findOne({ email }).select('+password').populate('role');
-  if (!existUser) throw new HttpError('User not found.', 404);
-  if (existUser.status === 'blocked') throw new HttpError('User is blocked.', 403);
+  if (!existUser) throw new HttpError('Không tìm thấy người dùng.', 404);
+  if (existUser.status === 'blocked') throw new HttpError('Người dùng đã bị khóa.', 403);
 
   const checkPassword = await bcrypt.compare(password, existUser.password);
-  if (!checkPassword) throw new HttpError('Incorrect password.', 401);
+  if (!checkPassword) throw new HttpError('Mật khẩu không chính xác.', 401);
 
   if (existUser.status === 'pending' && !existUser.isEmailVerified) {
     const otp = generateOTP();
@@ -181,7 +240,7 @@ const login = async (email, password) => {
 
 const getMyProfile = async (email) => {
   const user = await User.findOne({ email }).populate('role');
-  if (!user) throw new HttpError('User not found.', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng.', 404);
   return {
     id: user._id, fullName: user.fullName, email: user.email, phone: user.phone,
     gender: user.gender, dateOfBirth: user.dateOfBirth, provider: user.provider,
@@ -191,9 +250,9 @@ const getMyProfile = async (email) => {
 
 const forgotPassword = async (email) => {
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('If an account with this email exists, password reset instructions have been sent.', 200);
-  if (!user.isEmailVerified) throw new HttpError('Email is not verified. Please verify your email before resetting your password.', 403);
-  if (user.status === 'blocked') throw new HttpError('Your account has been blocked. Please contact support for assistance.', 403);
+  if (!user) throw new HttpError('Nếu tài khoản với email này tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.', 200);
+  if (!user.isEmailVerified) throw new HttpError('Email chưa được xác thực. Vui lòng xác thực email trước khi đặt lại mật khẩu.', 403);
+  if (user.status === 'blocked') throw new HttpError('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được trợ giúp.', 403);
 
   const resetToken = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -207,7 +266,7 @@ const forgotPassword = async (email) => {
 const resetPassword = async (token, password) => {
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
   const user = await User.findOne({ resetPasswordToken: hashedToken, resetPasswordExpire: { $gt: Date.now() } });
-  if (!user) throw new HttpError('Invalid or expired token.', 400);
+  if (!user) throw new HttpError('Token không hợp lệ hoặc đã hết hạn.', 400);
 
   const salt = await bcrypt.genSalt(10);
   user.password = await bcrypt.hash(password, salt);
@@ -225,29 +284,29 @@ const getAllUsers = async () => {
 };
 
 const findUserById = async (id) => {
-  if (!ObjectId.isValid(id)) throw new HttpError('Invalid id', 400);
+  if (!ObjectId.isValid(id)) throw new HttpError('ID không hợp lệ', 400);
   const user = await User.findById(id).populate('role');
-  if (!user) throw new HttpError('Not found user', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
   return user;
 };
 
 const updateUsers = async (id, data, currentUserId) => {
   const { email, phone, fullName, gender, dateOfBirth, avatar, role, status } = data;
 
-  if (!ObjectId.isValid(id)) throw new HttpError('Invalid id', 400);
-  if (currentUserId && id === currentUserId) throw new HttpError('You cannot change your own role or status', 403);
+  if (!ObjectId.isValid(id)) throw new HttpError('ID không hợp lệ', 400);
+  if (currentUserId && id === currentUserId) throw new HttpError('Bạn không thể thay đổi vai trò hoặc trạng thái của chính mình', 403);
 
   const findRole = await Role.findOne({ name: role });
-  if (!findRole) throw new HttpError('Not found role', 404);
-  if (findRole.name === 'owner') throw new HttpError('You cannot assign the owner role to a user.', 403);
+  if (!findRole) throw new HttpError('Không tìm thấy vai trò', 404);
+  if (findRole.name === 'owner') throw new HttpError('Bạn không thể gán vai trò chủ sở hữu cho người dùng.', 403);
 
   if (email) {
     const emailExists = await User.findOne({ email, _id: { $ne: id } });
-    if (emailExists) throw new HttpError('Email already in use', 400);
+    if (emailExists) throw new HttpError('Email đã được sử dụng', 400);
   }
   if (phone) {
     const phoneExists = await User.findOne({ phone, _id: { $ne: id } });
-    if (phoneExists) throw new HttpError('Phone number already in use', 400);
+    if (phoneExists) throw new HttpError('Số điện thoại đã được sử dụng', 400);
   }
 
   let newAvatar = avatar;
@@ -261,14 +320,14 @@ const updateUsers = async (id, data, currentUserId) => {
     { email, phone, fullName, gender, dateOfBirth, status, avatar: newAvatar, role: findRole._id },
     { new: true }
   );
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
   return user;
 };
 
 const updateMyProfile = async (email, data) => {
   const { fullName, gender, dateOfBirth, avatar } = data;
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
 
   let newAvatar = avatar;
   if (data.file) {
@@ -282,7 +341,7 @@ const updateMyProfile = async (email, data) => {
 const createAddress = async (email, addressData) => {
   const { receiverName, receiverPhone, province, provinceId, district, districtId, ward, wardCode, addressDetail, note, isDefault } = addressData;
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
 
   if (isDefault) user.addresses.forEach((addr) => { addr.isDefault = false; });
 
@@ -296,16 +355,16 @@ const createAddress = async (email, addressData) => {
 
 const getAllAddresses = async (email) => {
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
   return user.addresses;
 };
 
 const updateAddress = async (email, id, addressData) => {
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
 
   const address = user.addresses.find((ua) => ua._id.toString() === id);
-  if (!address) throw new HttpError('Address not found', 404);
+  if (!address) throw new HttpError('Không tìm thấy địa chỉ', 404);
 
   if (addressData.isDefault) user.addresses.forEach((addr) => { addr.isDefault = false; });
 
@@ -322,11 +381,11 @@ const updateAddress = async (email, id, addressData) => {
 
 const deleteAddress = async (email, id) => {
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
 
   const address = user.addresses.find((addr) => addr._id.toString() === id);
-  if (!address) throw new HttpError('Address not found', 404);
-  if (user.addresses.length === 1) throw new HttpError('Cannot delete the last address', 400);
+  if (!address) throw new HttpError('Không tìm thấy địa chỉ', 404);
+  if (user.addresses.length === 1) throw new HttpError('Không thể xóa địa chỉ cuối cùng', 400);
 
   user.addresses = user.addresses.filter((addr) => addr._id.toString() !== id);
   if (!user.addresses.some((addr) => addr.isDefault) && user.addresses.length > 0) {
@@ -337,9 +396,9 @@ const deleteAddress = async (email, id) => {
 
 const findAddressById = async (email, id) => {
   const user = await User.findOne({ email });
-  if (!user) throw new HttpError('User not found', 404);
+  if (!user) throw new HttpError('Không tìm thấy người dùng', 404);
   const address = user.addresses.find((ua) => ua._id.toString() === id);
-  if (!address) throw new HttpError('Address not found', 404);
+  if (!address) throw new HttpError('Không tìm thấy địa chỉ', 404);
   return address;
 };
 
