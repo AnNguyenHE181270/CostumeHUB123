@@ -41,6 +41,4 @@ const chatRoomSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-chatRoomSchema.index({ userId: 1, staffId: 1 }, { unique: true });
-
 module.exports = mongoose.model("ChatRoom", chatRoomSchema);

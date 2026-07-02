@@ -1,6 +1,7 @@
 import './App.css';
 import AppRoutes from './routes/AppRoutes';
-import ChatBox from "./components/ui/ChatBox";
+import CustomerChatPage from "./pages/customer/CustomerChatPage";
+
 function App() {
   return (
     <>
@@ -10,4 +11,3 @@ function App() {
 }
 
 export default App;
-

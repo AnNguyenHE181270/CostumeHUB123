@@ -1,9 +1,9 @@
 openapi: 3.0.0
 
 info:
-  title: Vogue Rental API
+  title: CostumeHUB API
   version: 1.0.0
-  description: API documentation for Vogue Rental backend
+  description: API documentation for CostumeHUB backend
 
 servers:
   - url: http://localhost:9999/api
