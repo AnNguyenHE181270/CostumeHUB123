@@ -276,7 +276,7 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity }) =>
 const getAllOrders = async () => {
   return Rental.find()
     .populate('customerId', 'fullName email phone')
-    .populate('items.costume', 'name')
+    .populate('items.costume', 'name images')
     .sort({ createdAt: -1 });
 };
 
