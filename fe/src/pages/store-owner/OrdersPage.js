@@ -3,8 +3,10 @@ import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
+import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
 
 export default function OrdersPage() {
+  const { role } = useAuth(); // Lấy role (owner hoặc staff) từ Context
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -207,7 +209,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG (View-only) */}
+      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
       {selectedOrder && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
@@ -262,37 +264,42 @@ export default function OrdersPage() {
                 </span>
               </div>
               
-              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                <button 
-                  className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
-                  onClick={() => setIsTrackingOpen(true)}
-                >
-                  Theo dõi
-                </button>
-                <button 
-                  className="flex-1 sm:flex-none px-4 py-2 bg-emerald-100 text-emerald-700 font-medium rounded hover:bg-emerald-200 transition-colors text-sm"
-                  onClick={() => handleUpdateStatus(selectedOrder._id, 'preparing')}
-                >
-                  Xác Nhận
-                </button>
-                <button 
-                  className="flex-1 sm:flex-none px-4 py-2 bg-red-100 text-red-700 font-medium rounded hover:bg-red-200 transition-colors text-sm"
-                  onClick={() => handleUpdateStatus(selectedOrder._id, 'cancelled')}
-                >
-                  Hủy đơn
-                </button>
-              </div>
+              {/* CHỈ STAFF MỚI THẤY CÁC NÚT THAO TÁC NÀY */}
+              {role === 'staff' && (
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <button 
+                    className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
+                    onClick={() => setIsTrackingOpen(true)}
+                  >
+                    Theo dõi
+                  </button>
+                  <button 
+                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-100 text-emerald-700 font-medium rounded hover:bg-emerald-200 transition-colors text-sm"
+                    onClick={() => handleUpdateStatus(selectedOrder._id, 'preparing')}
+                  >
+                    Xác Nhận
+                  </button>
+                  <button 
+                    className="flex-1 sm:flex-none px-4 py-2 bg-red-100 text-red-700 font-medium rounded hover:bg-red-200 transition-colors text-sm"
+                    onClick={() => handleUpdateStatus(selectedOrder._id, 'cancelled')}
+                  >
+                    Hủy đơn
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL THEO DÕI ĐƠN HÀNG */}
-      <OrderTrackingModal
-        open={isTrackingOpen}
-        onOpenChange={setIsTrackingOpen}
-        order={selectedOrder}
-      />
+      {/* CHỈ STAFF MỚI THẤY MODAL THEO DÕI ĐƠN HÀNG */}
+      {role === 'staff' && (
+        <OrderTrackingModal
+          open={isTrackingOpen}
+          onOpenChange={setIsTrackingOpen}
+          order={selectedOrder}
+        />
+      )}
 
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
