@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 import rentalService from "../../services/rental.service";
+import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -17,6 +18,7 @@ export default function OrdersPage() {
 
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -102,6 +104,17 @@ export default function OrdersPage() {
 
   const totalPages = Math.ceil(processedOrders.length / itemsPerPage);
   const currentOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      await rentalService.updateStatus(orderId, newStatus);
+      setToast({ show: true, message: "Cập nhật trạng thái thành công!", type: "success" });
+      fetchOrders();
+      setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+    } catch (error) {
+      setToast({ show: true, message: error.response?.data?.message || "Cập nhật thất bại", type: "error" });
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
@@ -201,18 +214,6 @@ export default function OrdersPage() {
             <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
             <h2 className="text-xl font-bold text-[#1a1a1a] mb-4 border-b pb-2">Chi tiết đơn #{selectedOrder._id?.slice(-6).toUpperCase()}</h2>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-sm text-gray-500">Khách hàng</p>
-                <p className="font-semibold">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
-                <p className="text-sm">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Thời gian thuê</p>
-                <p className="font-semibold">{selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"} {" -> "} {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}</p>
-              </div>
-            </div>
-
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Sản phẩm thuê</h3>
               <ul className="bg-gray-50 p-4 rounded-lg space-y-2">
@@ -229,17 +230,57 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg border flex items-center justify-between">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <p className="text-sm text-gray-500">Khách hàng</p>
+                <p className="font-semibold">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
+                <p className="text-sm">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Thời gian thuê</p>
+                <p className="font-semibold">{selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"} {" -> "} {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Trạng thái hiện tại:</p>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
                   {getStatusLabel(selectedOrder.status)}
                 </span>
               </div>
+              
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <button 
+                  className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
+                  onClick={() => setIsTrackingOpen(true)}
+                >
+                  Theo dõi
+                </button>
+                <button 
+                  className="flex-1 sm:flex-none px-4 py-2 bg-emerald-100 text-emerald-700 font-medium rounded hover:bg-emerald-200 transition-colors text-sm"
+                  onClick={() => handleUpdateStatus(selectedOrder._id, 'preparing')}
+                >
+                  Xác Nhận
+                </button>
+                <button 
+                  className="flex-1 sm:flex-none px-4 py-2 bg-red-100 text-red-700 font-medium rounded hover:bg-red-200 transition-colors text-sm"
+                  onClick={() => handleUpdateStatus(selectedOrder._id, 'cancelled')}
+                >
+                  Hủy đơn
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL THEO DÕI ĐƠN HÀNG */}
+      <OrderTrackingModal
+        open={isTrackingOpen}
+        onOpenChange={setIsTrackingOpen}
+        order={selectedOrder}
+      />
 
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />

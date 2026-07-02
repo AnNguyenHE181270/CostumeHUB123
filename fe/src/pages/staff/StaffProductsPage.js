@@ -168,7 +168,7 @@ export default function StaffProductsPage() {
       <div className="flex-1 p-6 overflow-y-auto">
 
         {/* --- Filters Bar --- */}
-        <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 mb-6">
+        <div className="mb-6">
           <div className="flex flex-wrap items-center gap-4">
 
             {/* Search */}
