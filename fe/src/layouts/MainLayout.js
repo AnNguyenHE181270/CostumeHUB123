@@ -2,7 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
-
+import ChatBox from "../components/ui/ChatBox";
 /**
  * MainLayout — Master layout wrapper.
  * Wraps pages with Header + Footer.
@@ -15,8 +15,9 @@ export default function MainLayout() {
 
       <main className="flex-1 pt-[104px] bg-[#f9f5ed]">
         <Outlet />
+        <ChatBox />
       </main>
-
+      
       <Footer />
     </div>
   );
