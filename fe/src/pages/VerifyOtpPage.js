@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
 import { ROUTES } from "../routes/routePaths";
+import userService from "../services/user.service";
 
 const OTP_LENGTH = 6;
 const TIMER_SECONDS = 60;
@@ -71,11 +72,9 @@ export default function VerifyOtpPage() {
         if (timeLeft > 0 || isResending) return;
         setIsResending(true); setError("");
         try {
-            const response = await fetch(`http://localhost:9999/api/users/resend-otp/${decodedEmail}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: decodedEmail }) });
-            const data = await response.json();
-            if (!response.ok) { setError(data.message || "Failed to resend code."); return; }
+                    await userService.resendOtp(decodedEmail);
             setTimeLeft(TIMER_SECONDS); setOtp(new Array(OTP_LENGTH).fill("")); inputRefs.current[0]?.focus();
-        } catch (err) { setError("Network error. Please try again."); } finally { setIsResending(false); }
+        } catch (err) { setError(err.message || "Failed to resend code."); } finally { setIsResending(false); }
     };
 
     const handleSubmit = async (e) => {
@@ -85,11 +84,9 @@ export default function VerifyOtpPage() {
         if (otpCode.length !== OTP_LENGTH) { setError("Please enter all 6 characters."); return; }
         setLoading(true); setError("");
         try {
-            const response = await fetch(`http://localhost:9999/api/users/verify-otp/${decodedEmail}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: decodedEmail, otp: otpCode }) });
-            const data = await response.json();
-            if (!response.ok) { setError(data.message || "Verification failed. Incorrect OTP."); return; }
+                await userService.verifyOtp(decodedEmail, otpCode);
             navigate(ROUTES.LOGIN);
-        } catch (err) { setError("Network error. Please try again."); } finally { setLoading(false); }
+        } catch (err) { setError(err.message || "Verification failed. Incorrect OTP."); } finally { setLoading(false); }
     };
 
     const formatTime = (seconds) => { const m = Math.floor(seconds / 60).toString().padStart(1, "0"); const s = (seconds % 60).toString().padStart(2, "0"); return `${m}:${s}`; };

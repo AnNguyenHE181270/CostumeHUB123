@@ -11,8 +11,7 @@ import {
   faCalendarAlt,
   faChartPie,
 } from "@fortawesome/free-solid-svg-icons";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import staffService from "../../services/staff.service";
 
 // Màu + label cho từng trạng thái đơn hàng
 const STATUS_MAP = {
@@ -53,18 +52,14 @@ export default function StaffDashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const res = await fetch(`${API_URL}/api/staff/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const json = await res.json();
+        const json = await staffService.getDashboard();
         if (json.success) {
           setData(json.data);
         } else {
           setError(json.message || "Không thể tải dữ liệu");
         }
       } catch (err) {
-        setError("Lỗi kết nối máy chủ");
+        setError(err.message || "Lỗi kết nối máy chủ");
       } finally {
         setLoading(false);
       }

@@ -24,6 +24,7 @@ import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
 
 import OrdersPage from "../pages/store-owner/OrdersPage";
+import ExportPage from "../pages/store-owner/ExportPage";
 
 // Trang Staff
 import StaffDashboard from "../pages/staff/StaffDashboard";
@@ -104,6 +105,7 @@ function AppRoutes() {
           <Route path={ROUTES.STORE_OWNER_PRODUCTS} element={<ProductsPage />} />
           <Route path={ROUTES.STORE_OWNER_INVENTORY} element={<InventoryPage />} />
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
+          <Route path={ROUTES.STORE_OWNER_EXPORT} element={<ExportPage />} />
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />

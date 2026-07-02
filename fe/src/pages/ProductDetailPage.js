@@ -14,8 +14,7 @@ import {
 import { useCart } from "../context/CartContext";
 import Toast from "../components/ui/Toast";
 import DatePickerGroup from "../components/ui/DatePickerGroup";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import costumeService from "../services/costume.service";
 
 const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500", dot: "bg-emerald-400" },
@@ -105,8 +104,7 @@ export default function ProductDetailPage() {
     const fetchCostume = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_URL}/api/costumes/${id}`);
-        const data = await res.json();
+        const data = await costumeService.getById(id);
         setCostume(data.costume);
 
         if (data.costume && data.costume.variants && data.costume.variants.length > 0) {

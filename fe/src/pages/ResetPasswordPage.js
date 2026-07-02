@@ -4,6 +4,7 @@ import { faEye, faEyeSlash, faArrowRight } from "@fortawesome/free-solid-svg-ico
 import Input from "../components/ui/Input";
 import { useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "../routes/routePaths";
+import userService from "../services/user.service";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
@@ -31,22 +32,10 @@ export default function ResetPasswordPage() {
     try {
       setError("");
       if (loading) return;
-      const response = await fetch(
-        `http://localhost:9999/api/users/reset-password/${token}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.errors?.[0]?.msg || data.message || "Register failed.");
-        return;
-      }
+      await userService.resetPassword(token, form.password);
       navigate(`/login`);
-    } catch (error) {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(err.message || "Reset failed.");
     } finally {
       setLoading(false);
     }

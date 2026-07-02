@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "../../components/customer/ProductCard";
+import costumeService from "../../services/costume.service";
+import categoryService from "../../services/category.service";
 import Pagination from "../../components/ui/Pagination";
 
 export default function CategoryPage() {
@@ -36,24 +38,19 @@ export default function CategoryPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:9999"}/api/categories?all=true`);
-        if (res.ok) {
-          const data = await res.json();
-          const cats = data.categories || [];
-          
-          const parents = cats.filter(c => !c.parentId);
-          const tree = parents.map(p => ({
-            ...p,
-            children: cats.filter(c => c.parentId === p._id || (c.parentId && c.parentId.$oid === p._id))
-          }));
-          setCategories(tree);
-          
-          if (categoryId) {
-            const current = cats.find(c => c._id === categoryId);
-            setCategory(current);
-          } else {
-            setCategory(null);
-          }
+        const data = await categoryService.getAll({ all: true });
+        const cats = data.categories || [];
+        const parents = cats.filter(c => !c.parentId);
+        const tree = parents.map(p => ({
+          ...p,
+          children: cats.filter(c => c.parentId === p._id || (c.parentId && c.parentId.$oid === p._id))
+        }));
+        setCategories(tree);
+        if (categoryId) {
+          const current = cats.find(c => c._id === categoryId);
+          setCategory(current);
+        } else {
+          setCategory(null);
         }
       } catch (err) {
         console.error("Failed to fetch categories:", err);
@@ -72,29 +69,18 @@ export default function CategoryPage() {
     const fetchCostumes = async () => {
       setLoading(true);
       try {
-        const url = new URL(`${process.env.REACT_APP_API_URL || "http://localhost:9999"}/api/costumes`);
-        url.searchParams.append("limit", LIMIT);
-        url.searchParams.append("page", currentPage);
-        if (categoryId) {
-          url.searchParams.append("categoryId", categoryId);
-        }
-        if (sort) {
-          url.searchParams.append("sort", sort);
-        }
-        if (query) {
-          url.searchParams.append("search", query);
-        }
+        const params = { limit: LIMIT, page: currentPage };
+        if (categoryId) params.categoryId = categoryId;
+        if (sort) params.sort = sort;
+        if (query) params.search = query;
 
-        const costRes = await fetch(url.toString());
-        if (costRes.ok) {
-          const costData = await costRes.json();
-          setCostumes(costData.costumes || []);
-          if (costData.pagination) {
-            setPaginationData({
-              totalPages: costData.pagination.totalPages,
-              totalItems: costData.pagination.totalItems,
-            });
-          }
+        const costData = await costumeService.getAll(params);
+        setCostumes(costData.costumes || []);
+        if (costData.pagination) {
+          setPaginationData({
+            totalPages: costData.pagination.totalPages,
+            totalItems: costData.pagination.totalItems,
+          });
         }
       } catch (err) {
         console.error("Failed to fetch costumes:", err);

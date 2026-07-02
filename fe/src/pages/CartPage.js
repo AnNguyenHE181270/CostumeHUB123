@@ -10,10 +10,15 @@ import Selector from "../components/ui/Selector"
 export default function CartPage() {
   const { cartItems, removeFromCart, clearCart, updateCartItem } = useCart();
   const navigate = useNavigate();
-  const [selectedIds, setSelectedIds] = useState(() => cartItems.map(item => item._id));
+  const [selectedIds, setSelectedIds] = useState(() =>
+    cartItems.filter(item => (item.variant?.availableStock || 0) > 0).map(item => item._id)
+  );
+
   useEffect(() => {
     setSelectedIds(prev => {
-      const currentIds = cartItems.map(item => item._id);
+      const currentIds = cartItems
+        .filter(item => (item.variant?.availableStock || 0) > 0)
+        .map(item => item._id);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
       }
@@ -23,13 +28,15 @@ export default function CartPage() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(cartItems.map(item => item._id));
+      setSelectedIds(cartItems.filter(item => (item.variant?.availableStock || 0) > 0).map(item => item._id));
     } else {
       setSelectedIds([]);
     }
   };
 
   const toggleItemSelection = (id) => {
+    const item = cartItems.find(item => item._id === id);
+    if (item && (item.variant?.availableStock || 0) <= 0) return; // Không cho phép chọn sản phẩm hết hàng
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
     );
@@ -99,7 +106,10 @@ export default function CartPage() {
             <label className="flex items-center gap-3 cursor-pointer group">
               <input
                 type="checkbox"
-                checked={selectedIds.length === cartItems.length && cartItems.length > 0}
+                checked={
+                  cartItems.filter(item => (item.variant?.availableStock || 0) > 0).length > 0 &&
+                  cartItems.filter(item => (item.variant?.availableStock || 0) > 0).every(item => selectedIds.includes(item._id))
+                }
                 onChange={handleSelectAll}
                 className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
               />
@@ -117,19 +127,21 @@ export default function CartPage() {
             const itemId = item._id;
             const isSelected = selectedIds.includes(itemId);
             const rentalDays = getRentalDays(item.startDate, item.endDate);
+            const itemOutOfStock = (item.variant?.availableStock || 0) <= 0;
             return (
               <div
                 key={itemId}
-                onClick={() => toggleItemSelection(itemId)}
-                className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch`}
+                onClick={() => !itemOutOfStock && toggleItemSelection(itemId)}
+                className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch ${itemOutOfStock ? "bg-[#fafafa] border-red-100 opacity-80" : ""}`}
               >
                 {/* Checkbox */}
                 <div className="pl-2 sm:pl-3 flex items-center" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => toggleItemSelection(itemId)}
-                    className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all"
+                    disabled={itemOutOfStock}
+                    onChange={() => !itemOutOfStock && toggleItemSelection(itemId)}
+                    className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -146,12 +158,19 @@ export default function CartPage() {
                 </button>
 
                 {/* Image */}
-                <div className="w-[100px] sm:w-[130px] aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0 self-start">
+                <div className="w-[100px] sm:w-[130px] aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-[#f5f5f5] flex-shrink-0 self-start relative">
                   <img
                     src={item.image}
                     alt={item.costumeName}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${itemOutOfStock ? "grayscale" : ""}`}
                   />
+                  {itemOutOfStock && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span className="text-white text-[11px] font-bold uppercase tracking-wider px-2 py-1 bg-red-600 rounded">
+                        Hết hàng
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Details */}
@@ -162,11 +181,13 @@ export default function CartPage() {
                   <Link to={`/product/${item.costumeId}`} onClick={(e) => e.stopPropagation()} className="text-[16px] font-bold text-[#1a1a1a] hover:text-[#707070] transition-colors line-clamp-1 mb-2 relative z-10 w-fit block">
                     {item.costumeName}
                   </Link>
+
                   <div className="flex items-center gap-3">
                     <span className="text-[13px] text-[#666]">Size:</span>
                     <Selector
                       value={item.size}
                       variants={item.variants}
+                      disabled={itemOutOfStock}
                       onChange={(newSize) => {
                         if (updateCartItem && newSize !== item.size)
                           updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, newSize, item.quantity);
@@ -181,7 +202,7 @@ export default function CartPage() {
                           e.stopPropagation();
                           if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
                         }}
-                        disabled={item.quantity <= 1}
+                        disabled={itemOutOfStock || item.quantity <= 1}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">-</button>
                       <span className="text-[14px] font-bold min-w-[20px] text-center">{item.quantity}</span>
                       <button
@@ -189,7 +210,7 @@ export default function CartPage() {
                           e.stopPropagation();
                           if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
                         }}
-                        disabled={item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false}
+                        disabled={itemOutOfStock || (item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false)}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#ddd] hover:bg-gray-50 disabled:opacity-50 transition-colors">+</button>
                     </div>
                   </div>
@@ -197,6 +218,7 @@ export default function CartPage() {
                   <div onClick={(e) => e.stopPropagation()} className="mt-2">
                     <DatePickerGroup
                       startDate={item.startDate}
+                      disabled={itemOutOfStock}
                       setStartDate={(newStart) => {
                         const newEnd = newStart > item.endDate ? newStart : item.endDate;
                         if (updateCartItem) {
@@ -266,7 +288,10 @@ export default function CartPage() {
           <button
             onClick={() => navigate("/checkout", { state: { selectedIds } })}
             disabled={selectedIds.length === 0}
-            className={`w-full py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 flex items-center justify-center gap-3 ${selectedIds.length === 0 ? "bg-[#e8e8e8] text-[#999] cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg"}`}
+            className={`w-full py-4 rounded-lg text-[13px] uppercase tracking-[0.1em] font-bold transition-all duration-300 flex items-center justify-center gap-3 ${selectedIds.length === 0
+              ? "bg-[#e8e8e8] text-[#999] cursor-not-allowed"
+              : "bg-[#1a1a1a] text-white hover:bg-[#333] hover:shadow-lg"
+              }`}
           >
             Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
             <FontAwesomeIcon icon={faArrowRight} />

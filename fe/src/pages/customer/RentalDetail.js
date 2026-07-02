@@ -6,35 +6,30 @@ import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999"
+import { ExtendRentalModal } from "./ExtendRentalModal"
+import rentalService from "../../services/rental.service"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
+  const [isExtendOpen, setIsExtendOpen] = useState(false)
   const navigate = useNavigate()
+
+  const fetchDetail = async () => {
+    setLoading(true)
+    try {
+      const data = await rentalService.getDetail(order.id)
+      setDetailedOrder(data)
+    } catch (err) {
+      console.error("Lỗi khi lấy chi tiết đơn hàng:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (open && order?.id) {
-      const fetchDetail = async () => {
-        setLoading(true)
-        try {
-          const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-          const res = await fetch(`${API_URL}/api/rentals/order-detail/${order.id}`, {
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
-          })
-          if (res.ok) {
-            const data = await res.json()
-            setDetailedOrder(data)
-          }
-        } catch (err) {
-          console.error("Lỗi khi lấy chi tiết đơn hàng:", err)
-        } finally {
-          setLoading(false)
-        }
-      }
       fetchDetail()
     } else {
       setDetailedOrder(null)
@@ -210,7 +205,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
           <div className="flex flex-wrap gap-3 pt-4 mt-auto items-center justify-evenly">
 
             {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store) */}
-            {!['renting'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
+            {!['renting', 'overdue'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
               <button
                 onClick={() => setIsTrackingOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
@@ -263,20 +258,22 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
             )}
 
             {['renting'].includes(currentStatus) && (
-              <button className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600">
+              <button
+                onClick={() => setIsExtendOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600"
+              >
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>
             )}
 
-            {['renting', 'delivered'].includes(currentStatus) && (
+            {['renting', 'delivered', 'completed'].includes(currentStatus) && (
               <button
                 onClick={() => onRequestIssue?.()}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${
-                  detailedOrder?.hasIssue
-                    ? "bg-slate-700 hover:bg-slate-800"
-                    : "bg-red-500 hover:bg-red-600"
-                }`}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
+                  ? "bg-slate-700 hover:bg-slate-800"
+                  : "bg-red-500 hover:bg-red-600"
+                  }`}
               >
                 <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
                 {detailedOrder?.hasIssue ? "Xem khiếu nại" : "Khiếu nại"}
@@ -303,6 +300,16 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
         open={isTrackingOpen}
         onOpenChange={setIsTrackingOpen}
         order={order}
+      />
+
+      <ExtendRentalModal
+        open={isExtendOpen}
+        onOpenChange={setIsExtendOpen}
+        order={detailedOrder}
+        onConfirm={() => {
+          onExtendSuccess?.();
+          fetchDetail();
+        }}
       />
     </div>
   )

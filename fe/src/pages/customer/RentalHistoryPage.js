@@ -9,8 +9,7 @@ import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
 import { IssuesModal } from "./IssuesPage"
 import { faBox } from '@fortawesome/free-solid-svg-icons'
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import rentalService from '../../services/rental.service'
 
 function RentalHistory() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -38,22 +37,14 @@ function RentalHistory() {
     const fetchOrders = async () => {
         setIsLoading(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-            const res = await fetch(`${API_URL}/api/rentals/rental-history`, {
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            const data = await res.json();
+            const data = await rentalService.getHistory();
             setRentalOrders(data);
             setSelectedOrder((prev) => {
-                if (prev) {
-                    return data.find(o => o.id === prev.id) || prev;
-                }
+                if (prev) return data.find(o => o.id === prev.id) || prev;
                 return null;
             });
         } catch (err) {
-            console.error("Failed to fetch rental orders:", err);
+            console.error("Failed to fetch rental orders:", err.message);
         } finally {
             setIsLoading(false);
         }
@@ -96,47 +87,23 @@ function RentalHistory() {
     const handleRequestReturn = async (order) => {
         if (!window.confirm("Bạn có chắc muốn gửi yêu cầu trả hàng?")) return;
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-            const res = await fetch(`${API_URL}/api/rentals/${order.id}/request-return`, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            if (res.ok) {
-                alert("Đã gửi yêu cầu trả hàng thành công!");
-                fetchOrders();
-                handleCloseDetail();
-            } else {
-                const errorData = await res.json();
-                alert(errorData.message || "Lỗi yêu cầu trả hàng.");
-            }
+            await rentalService.requestReturn(order.id);
+            alert("Đã gửi yêu cầu trả hàng thành công!");
+            fetchOrders();
+            handleCloseDetail();
         } catch (err) {
-            console.error("Return request error:", err);
-            alert("Lỗi hệ thống khi yêu cầu trả hàng.");
+            alert(err.message || "Lỗi yêu cầu trả hàng.");
         }
     };
 
     const handleConfirmReceipt = async (order) => {
         if (!window.confirm("Bạn có chắc chắn đã nhận được hàng?")) return;
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-            const res = await fetch(`${API_URL}/api/rentals/${order.id}/confirm-receipt`, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            if (res.ok) {
-                alert("Xác nhận đã nhận hàng thành công!");
-                fetchOrders();
-            } else {
-                const errorData = await res.json();
-                alert(errorData.message || "Lỗi xác nhận nhận hàng.");
-            }
+            await rentalService.confirmReceipt(order.id);
+            alert("Xác nhận đã nhận hàng thành công!");
+            fetchOrders();
         } catch (err) {
-            console.error("Confirm receipt error:", err);
-            alert("Lỗi hệ thống khi xác nhận nhận hàng.");
+            alert(err.message || "Lỗi xác nhận nhận hàng.");
         }
     };
 
@@ -227,6 +194,7 @@ function RentalHistory() {
                                     onRequestReturn={handleRequestReturn}
                                     onConfirmReceipt={handleConfirmReceipt}
                                     onRequestIssue={() => setIsIssuesOpen(true)}
+                                    onExtendSuccess={fetchOrders}
                                 />
                             </div>
                         )}
@@ -252,6 +220,7 @@ function RentalHistory() {
                             onRequestReturn={handleRequestReturn}
                             onConfirmReceipt={handleConfirmReceipt}
                             onRequestIssue={() => setIsIssuesOpen(true)}
+                            onExtendSuccess={fetchOrders}
                         />
                     </div>
                 </div>

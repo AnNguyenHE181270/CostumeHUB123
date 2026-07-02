@@ -11,8 +11,8 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import CategoryDropdown from "../../components/ui/CategoryDropdown";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import costumeService from "../../services/costume.service";
+import categoryService from "../../services/category.service";
 
 // Trạng thái sản phẩm
 const COSTUME_STATUSES = [
@@ -61,9 +61,8 @@ export default function StaffProductsPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/categories?all=true`);
-        const data = await res.json();
-        setCategories(data.categories || data || []);
+        const data = await categoryService.getAll({ all: true });
+        setCategories(data.categories || []);
       } catch (err) {
         console.error("Lỗi tải danh mục:", err);
       }
@@ -75,16 +74,12 @@ export default function StaffProductsPage() {
   const fetchCostumes = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set("page", page);
-      params.set("limit", "12");
-      params.set("status", selectedStatus || "all");
-      if (search) params.set("search", search);
-      if (selectedCategory) params.set("categoryId", selectedCategory);
-      if (sort) params.set("sort", sort);
+      const params = { page, limit: 12, status: selectedStatus || "all" };
+      if (search) params.search = search;
+      if (selectedCategory) params.categoryId = selectedCategory;
+      if (sort) params.sort = sort;
 
-      const res = await fetch(`${API_URL}/api/costumes?${params.toString()}`);
-      const data = await res.json();
+      const data = await costumeService.getAll(params);
       setCostumes(data.costumes || []);
       setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
     } catch (err) {
@@ -124,11 +119,8 @@ export default function StaffProductsPage() {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`${API_URL}/api/costumes?search=${encodeURIComponent(searchInput)}&limit=5`);
-        if (res.ok) {
-          const data = await res.json();
-          setSuggestions(data.costumes || []);
-        }
+        const data = await costumeService.getAll({ search: encodeURIComponent(searchInput), limit: 5 });
+        setSuggestions(data.costumes || []);
       } catch (err) {
         console.error("Lỗi lấy gợi ý:", err);
       } finally {
@@ -176,7 +168,7 @@ export default function StaffProductsPage() {
       <div className="flex-1 p-6 overflow-y-auto">
 
         {/* --- Filters Bar --- */}
-        <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 mb-6">
+        <div className="mb-6">
           <div className="flex flex-wrap items-center gap-4">
 
             {/* Search */}

@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Toast from "../components/ui/Toast";
 import { formatPrice } from "../utils/formatters";
+import userService from "../services/user.service";
+import paymentService from "../services/payment.service";
 
 export default function ProfilePage() {
   const { loading, user, token, login } = useAuth();
@@ -75,27 +77,7 @@ export default function ProfilePage() {
         formData.append("avatar", form.avatar);
       }
 
-      const response = await fetch(
-        `http://localhost:9999/api/users/update-my-profile`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        setToast({
-          isVisible: true,
-          type: "error",
-          message: data.errors?.[0]?.msg || data.message || "Cập nhật thất bại."
-        });
-        return;
-      }
+      await userService.updateMyProfile(formData);
 
       // Refetch profile to update Header/Sidebar globally
       await login(token, true);
@@ -116,22 +98,14 @@ export default function ProfilePage() {
     
     try {
       setIsToppingUp(true);
-      const res = await fetch(`http://localhost:9999/api/vnpays/create-payment-url`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ amount: Number(topUpAmount) })
-      });
-      const data = await res.json();
+      const data = await paymentService.createPaymentUrl(Number(topUpAmount));
       if (data.success && data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
         setToast({ isVisible: true, type: "error", message: data.message || "Không thể tạo liên kết nạp tiền" });
       }
     } catch (err) {
-      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối khi nạp tiền" });
+      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối khi nạp tiền" });
     } finally {
       setIsToppingUp(false);
     }

@@ -9,7 +9,7 @@ import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
 import Toast from "../../components/ui/Toast"
 import { formatPrice, formatDateNoHours, getRentalDays } from "../../utils/formatters"
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import rentalService from "../../services/rental.service";
 
 export function Checkout() {
     const navigate = useNavigate()
@@ -103,7 +103,6 @@ export function Checkout() {
         }
         setIsLoading(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
             const payload = {
                 startDate: new Date(orderStartDate).toISOString(),
                 endDate: new Date(orderEndDate).toISOString(),
@@ -130,39 +129,24 @@ export function Checkout() {
                 }
             };
 
-            const res = await fetch(`${API_URL}/api/rentals/create`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                // Fallback: Xóa khỏi giỏ thủ công phía Frontend để đảm bảo 100% dọn dẹp
-                if (checkoutItems.length === cartItems.length) {
-                    await clearCart();
-                } else {
-                    for (const item of checkoutItems) {
-                        await removeFromCart(
-                            item.costumeId || item._id || item.costume?._id,
-                            item.size || item.variant?.size,
-                            item.startDate,
-                            item.endDate
-                        );
-                    }
-                }
-                await refreshProfile();
-                navigate("/rental-history");
+            await rentalService.createOrder(payload);
+            // Fallback: Xóa khỏi giỏ thủ công phía Frontend để đảm bảo 100% dọn dẹp
+            if (checkoutItems.length === cartItems.length) {
+                await clearCart();
             } else {
-                const data = await res.json();
-                showToast(data.message || "Lỗi khi đặt hàng");
+                for (const item of checkoutItems) {
+                    await removeFromCart(
+                        item.costumeId || item._id || item.costume?._id,
+                        item.size || item.variant?.size,
+                        item.startDate,
+                        item.endDate
+                    );
+                }
             }
+            await refreshProfile();
+            navigate("/rental-history");
         } catch (err) {
-            console.error("Lỗi đặt hàng:", err);
-            showToast("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
+            showToast(err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
         } finally {
             setIsLoading(false);
         }

@@ -8,18 +8,19 @@ import { faBox, faCamera, faTimes } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder";
 import Toast from "../../components/ui/Toast";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
+import issueService from "../../services/issue.service";
 
 export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
     const [resolution, setResolution] = useState("return_refund");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [reason, setReason] = useState("");
     const [customReason, setCustomReason] = useState("");
-    const [customReasonError, setCustomReasonError] = useState("");
-    const [reasonError, setReasonError] = useState("");
-    const [evidenceError, setEvidenceError] = useState("");
-    const [submitError, setSubmitError] = useState("");
+    const [errors, setErrors] = useState({
+        reason: "",
+        customReason: "",
+        evidence: "",
+        submit: ""
+    });
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
     const [files, setFiles] = useState([]);
     const [note, setNote] = useState("");
@@ -33,20 +34,15 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
             const fetchExistingIssue = async () => {
                 setIsLoadingIssue(true);
                 try {
-                    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-                    const response = await fetch(`${API_URL}/api/issues/rental/${order.id || order._id}`, {
-                        headers: {
-                            "Authorization": `Bearer ${token}`
-                        }
-                    });
-                    const data = await response.json();
-                    if (response.ok && data.success && data.issue) {
+                    const data = await issueService.getByRentalId(order.id || order._id);
+                    if (data.success && data.issue) {
                         setExistingIssue(data.issue);
                     } else {
                         setExistingIssue(null);
                     }
                 } catch (err) {
                     console.error("Lỗi khi tải thông tin khiếu nại:", err);
+                    setExistingIssue(null);
                 } finally {
                     setIsLoadingIssue(false);
                 }
@@ -62,10 +58,12 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
             setReason("");
             setCustomReason("");
             setResolution("return_refund");
-            setCustomReasonError("");
-            setReasonError("");
-            setEvidenceError("");
-            setSubmitError("");
+            setErrors({
+                reason: "",
+                customReason: "",
+                evidence: "",
+                submit: ""
+            });
             setNote("");
             files.forEach((f) => URL.revokeObjectURL(f.preview));
             setFiles([]);
@@ -87,35 +85,23 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
         setIsConfirmOpen(false);
         setIsCancelling(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-            const response = await fetch(`${API_URL}/api/issues/${existingIssue._id}/cancel`, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                setToast({
-                    isVisible: true,
-                    message: "Hủy khiếu nại thành công.",
-                    type: "success"
-                });
+            const data = await issueService.cancel(existingIssue._id);
+            if (data.success) {
+                setToast({ isVisible: true, message: "Hủy khiếu nại thành công.", type: "success" });
                 if (onSuccess) onSuccess();
                 if (onOpenChange) onOpenChange(false);
             } else {
-                setSubmitError(data.message || "Đã xảy ra lỗi khi hủy khiếu nại.");
+                setErrors(prev => ({ ...prev, submit: data.message || "Đã xảy ra lỗi khi hủy khiếu nại." }));
             }
         } catch (err) {
-            console.error("Lỗi khi hủy khiếu nại:", err);
-            setSubmitError("Đã xảy ra lỗi kết nối đến máy chủ.");
+            setErrors(prev => ({ ...prev, submit: err.message || "Đã xảy ra lỗi kết nối đến máy chủ." }));
         } finally {
             setIsCancelling(false);
         }
     };
 
     const handleFileChange = (e) => {
-        setEvidenceError("");
+        setErrors(prev => ({ ...prev, evidence: "" }));
         const selectedFiles = Array.from(e.target.files);
         if (selectedFiles.length === 0) return;
 
@@ -128,13 +114,13 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
             const isVideo = file.type.startsWith("video/");
 
             if (!isImage && !isVideo) {
-                setEvidenceError(`Tệp "${file.name}" không hợp lệ. Chỉ chấp nhận tệp ảnh hoặc video.`);
+                setErrors(prev => ({ ...prev, evidence: `Tệp "${file.name}" không hợp lệ. Chỉ chấp nhận tệp ảnh hoặc video.` }));
                 continue;
             }
 
             if (isImage) {
                 if (imageCount >= 4) {
-                    setEvidenceError("Chỉ được tải lên tối đa 4 ảnh.");
+                    setErrors(prev => ({ ...prev, evidence: "Chỉ được tải lên tối đa 4 ảnh." }));
                     continue;
                 }
                 imageCount++;
@@ -145,7 +131,7 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                 });
             } else if (isVideo) {
                 if (videoCount >= 1) {
-                    setEvidenceError("Chỉ được tải lên tối đa 1 video.");
+                    setErrors(prev => ({ ...prev, evidence: "Chỉ được tải lên tối đa 1 video." }));
                     continue;
                 }
                 videoCount++;
@@ -185,30 +171,36 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setCustomReasonError("");
-        setReasonError("");
-        setEvidenceError("");
-        setSubmitError("");
+        
+        const newErrors = {
+            reason: "",
+            customReason: "",
+            evidence: "",
+            submit: ""
+        };
 
         let hasError = false;
         if (!reason) {
-            setReasonError("Vui lòng chọn lý do khiếu nại.");
+            newErrors.reason = "Vui lòng chọn lý do khiếu nại.";
             hasError = true;
         }
         if (reason === "other" && !customReason.trim()) {
-            setCustomReasonError("Vui lòng nhập lý do cụ thể.");
+            newErrors.customReason = "Vui lòng nhập lý do cụ thể.";
             hasError = true;
         }
         if (files.length === 0) {
-            setEvidenceError("Vui lòng tải lên bằng chứng (ảnh hoặc video).");
+            newErrors.evidence = "Vui lòng tải lên bằng chứng (ảnh hoặc video).";
             hasError = true;
         }
 
-        if (hasError) return;
+        if (hasError) {
+            setErrors(newErrors);
+            return;
+        }
 
+        setErrors(newErrors);
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
             const formData = new FormData();
             formData.append("rentalId", order._id || order.id);
 
@@ -224,30 +216,17 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                 formData.append("evidence", f.file);
             });
 
-            const response = await fetch(`${API_URL}/api/issues/create`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
-                body: formData
-            });
+            const data = await issueService.create(formData);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                setToast({
-                    isVisible: true,
-                    message: "Khiếu nại của bạn đã được gửi thành công.",
-                    type: "success"
-                });
+            if (data.success) {
+                setToast({ isVisible: true, message: "Khiếu nại của bạn đã được gửi thành công.", type: "success" });
                 if (onSuccess) onSuccess();
                 if (onOpenChange) onOpenChange(false);
             } else {
-                setSubmitError(data.message || "Đã xảy ra lỗi khi gửi khiếu nại.");
+                setErrors(prev => ({ ...prev, submit: data.message || "Đã xảy ra lỗi khi gửi khiếu nại." }));
             }
         } catch (err) {
-            console.error("Lỗi khi gửi khiếu nại:", err);
-            setSubmitError("Đã xảy ra lỗi kết nối đến máy chủ.");
+            setErrors(prev => ({ ...prev, submit: err.message || "Đã xảy ra lỗi kết nối đến máy chủ." }));
         } finally {
             setIsSubmitting(false);
         }
@@ -338,11 +317,11 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                         {existingIssue.evidence && existingIssue.evidence.length > 0 && (
                             <div>
                                 <p className="text-sm font-medium text-[#858585] pb-2">Bằng chứng đã cung cấp</p>
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                <div className="flex flex-wrap gap-3">
                                     {existingIssue.evidence.map((url, idx) => {
                                         const isVideo = url.toLowerCase().endsWith('.mp4') || url.includes('/video/');
                                         return (
-                                            <div key={idx} className="aspect-square bg-[#faf9f7] rounded-lg overflow-hidden relative border border-[#eaeaea]">
+                                            <div key={idx} className="w-20 h-20 bg-[#faf9f7] rounded-lg overflow-hidden relative border border-[#eaeaea] shrink-0">
                                                 {isVideo ? (
                                                     <video
                                                         src={url}
@@ -364,8 +343,8 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                             </div>
                         )}
 
-                        {submitError && (
-                            <p className="text-xs text-red-500 mt-2 mb-1">{submitError}</p>
+                        {errors.submit && (
+                            <p className="text-xs text-red-500 mt-2 mb-1">{errors.submit}</p>
                         )}
 
                         <div className="flex gap-3 pt-4 border-t border-[#eaeaea]">
@@ -388,30 +367,33 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="mt-6 space-y-6">
+                    <div className="space-y-6">
                         <div>
                             <p className="text-sm font-medium pb-2">Lý do<span className="text-red-500 pl-1">*</span></p>
-                            <Selector
-                                options={REASON_OPTIONS}
-                                value={reason}
-                                onChange={(val) => {
-                                    setReason(val);
-                                    setReasonError("");
-                                    if (val !== "other") {
-                                        setCustomReason("");
-                                        setCustomReasonError("");
-                                    }
-                                }}
-                            />
-                            {reasonError && (
-                                <p className="text-xs text-red-500 mt-1">{reasonError}</p>
+                            <div className="w-full [&>div]:w-full [&_select]:w-full">
+                                <Selector
+                                    options={REASON_OPTIONS}
+                                    value={reason}
+                                    onChange={(val) => {
+                                        setReason(val);
+                                        setErrors(prev => ({ ...prev, reason: "" }));
+                                        if (val !== "other") {
+                                            setCustomReason("");
+                                            setErrors(prev => ({ ...prev, customReason: "" }));
+                                        }
+                                    }}
+                                    className="w-full"
+                                />
+                            </div>
+                            {errors.reason && (
+                                <p className="text-xs text-red-500 mt-1">{errors.reason}</p>
                             )}
                         </div>
 
                         {reason === "other" && (
                             <div>
                                 <textarea
-                                    className={`w-full bg-white border rounded-lg focus:outline-none p-2.5 text-sm placeholder:text-gray-400 ${customReasonError
+                                    className={`w-full bg-white border rounded-lg focus:outline-none p-2.5 text-sm placeholder:text-gray-400 ${errors.customReason
                                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                                         : "border-gray-200 focus:border-black focus:ring-1 focus:ring-black"
                                         }`}
@@ -421,22 +403,22 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                                     onChange={(e) => {
                                         setCustomReason(e.target.value);
                                         if (e.target.value.trim()) {
-                                            setCustomReasonError("");
+                                            setErrors(prev => ({ ...prev, customReason: "" }));
                                         }
                                     }}
                                 />
-                                {customReasonError && (
-                                    <p className="text-xs text-red-500 mt-1">{customReasonError}</p>
+                                {errors.customReason && (
+                                    <p className="text-xs text-red-500 mt-1">{errors.customReason}</p>
                                 )}
                             </div>
                         )}
 
                         <div>
-                            <p className="text-sm font-medium pb-2 pt-4">Bằng chứng<span className="text-red-500 pl-1">*</span></p>
+                            <p className="text-sm font-medium pb-2">Bằng chứng<span className="text-red-500 pl-1">*</span></p>
                             <p className="text-xs text-gray-500 mb-2">(Định dạng JPG, PNG, MP4. Tối đa 4 ảnh và 1 video)</p>
 
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                <label className="aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors rounded-lg group border border-gray-200 border-dashed">
+                            <div className="flex flex-wrap gap-3">
+                                <label className="w-20 h-20 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors rounded-lg group border border-gray-200 border-dashed shrink-0">
                                     <input
                                         type="file"
                                         multiple
@@ -449,7 +431,7 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                                 </label>
 
                                 {files.map((file, idx) => (
-                                    <div key={idx} className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative group border border-gray-200">
+                                    <div key={idx} className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden relative group border border-gray-200 shrink-0">
                                         {file.type === "image" ? (
                                             <img src={file.preview} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
                                         ) : (
@@ -465,13 +447,13 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                                     </div>
                                 ))}
                             </div>
-                            {evidenceError && (
-                                <p className="text-xs text-red-500 mt-2">{evidenceError}</p>
+                            {errors.evidence && (
+                                <p className="text-xs text-red-500 mt-2">{errors.evidence}</p>
                             )}
                         </div>
 
                         <div>
-                            <p className="text-sm font-medium pb-2 pt-4">Phương thức giải quyết<span className="text-red-500 pl-1">*</span></p>
+                            <p className="text-sm font-medium pb-2">Phương thức giải quyết<span className="text-red-500 pl-1">*</span></p>
                             {RESOLUTION_OPTIONS.map((opt) => (
                                 <label
                                     key={opt.value}
@@ -496,7 +478,7 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                         </div>
 
                         <div>
-                            <p className="text-sm font-medium pb-2 pt-4">Ghi chú thêm (Tùy chọn)</p>
+                            <p className="text-sm font-medium pb-2">Ghi chú thêm (Tùy chọn)</p>
                             <textarea
                                 className="w-full bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black p-3 resize-none text-sm placeholder:text-gray-400"
                                 placeholder="Mô tả chi tiết tình trạng sản phẩm và yêu cầu của bạn..."
@@ -506,8 +488,8 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                             />
                         </div>
 
-                        {submitError && (
-                            <p className="text-xs text-red-500 mt-2 mb-1">{submitError}</p>
+                        {errors.submit && (
+                            <p className="text-xs text-red-500 mt-2 mb-1">{errors.submit}</p>
                         )}
 
                         <div className="flex gap-3 pt-1">

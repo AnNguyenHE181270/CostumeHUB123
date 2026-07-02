@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -15,17 +15,7 @@ export default function Header() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const profileDropdownRef = useRef(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
-        setProfileDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -120,9 +110,12 @@ export default function Header() {
           </Link>
 
           {user ? (
-            <div className="relative hidden sm:block" ref={profileDropdownRef}>
+            <div
+              className="relative hidden sm:block"
+              onMouseEnter={() => setProfileDropdownOpen(true)}
+              onMouseLeave={() => setProfileDropdownOpen(false)}
+            >
               <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="text-gray-600 hover:text-black transition-colors flex items-center gap-2 outline-none focus:outline-none"
               >
                 {user.avatar ? (
@@ -134,6 +127,8 @@ export default function Header() {
                 )}
               </button>
 
+              {/* Invisible bridge prevents onMouseLeave firing in the gap between icon and panel */}
+              <div className="absolute top-full left-0 right-0 h-4" />
               <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
                 <div className="px-4 py-2 text-[13px] text-gray-800 font-bold border-b border-gray-100 mb-1">
                   Số dư: <span className="text-primary">{formatPrice(user.balance || 0)}</span>

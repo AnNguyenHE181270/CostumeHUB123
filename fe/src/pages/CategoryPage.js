@@ -3,9 +3,9 @@ import { useParams, useSearchParams } from "react-router-dom";
 import ProductCard from "../components/customer/ProductCard";
 import FilterSidebar from "../components/customer/FilterSidebar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import costumeService from "../services/costume.service";
+import categoryService from "../services/category.service";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Mới Nhất" },
@@ -47,8 +47,7 @@ export default function CategoryPage() {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/categories`);
-        const data = await res.json();
+        const data = await categoryService.getAll();
         const allCats = data.categories || [];
         setAllCategories(allCats);
 
@@ -86,8 +85,7 @@ export default function CategoryPage() {
       params.set("page", page.toString());
       params.set("limit", "9");
 
-      const res = await fetch(`${API_URL}/api/costumes?${params}`);
-      const data = await res.json();
+      const data = await costumeService.getAll(Object.fromEntries(params));
 
       let filteredCostumes = data.costumes || [];
 
