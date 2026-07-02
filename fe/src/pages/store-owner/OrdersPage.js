@@ -216,11 +216,23 @@ export default function OrdersPage() {
 
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Sản phẩm thuê</h3>
-              <ul className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <ul className="bg-gray-50 p-4 rounded-lg space-y-3">
                 {selectedOrder.items?.map((item, idx) => (
-                  <li key={idx} className="flex justify-between text-sm border-b border-gray-200 pb-2">
-                    <span>{item.costume?.name} (Size: {item.size}) x{item.quantity}</span>
-                    <span className="font-medium">{Math.round(item.rentalPricePerDay || 0).toLocaleString('vi-VN')} đ/ngày</span>
+                  <li key={idx} className="flex justify-between items-center text-sm border-b border-gray-200 pb-3 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
+                        <img 
+                          src={item.costume?.images?.[0] || item.image || "https://placehold.co/40x48"} 
+                          alt={item.costume?.name || item.costumeName} 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-[#1a1a1a]">{item.costume?.name || item.costumeName}</span>
+                        <span className="text-xs text-gray-500">Size: {item.size} <span className="mx-1">•</span> SL: {item.quantity}</span>
+                      </div>
+                    </div>
+                    <span className="font-medium text-[#1a1a1a] shrink-0">{Math.round(item.rentalPricePerDay || 0).toLocaleString('vi-VN')} đ/ngày</span>
                   </li>
                 ))}
               </ul>
