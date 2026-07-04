@@ -36,7 +36,8 @@ import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
-import DetailAddressPage from "../pages/customer/DetailAddressPage"
+import DetailAddressPage from "../pages/customer/DetailAddressPage";
+import CustomerChatPage from "../pages/customer/CustomerChatPage";
 import { ROUTES } from "./routePaths";
 
 
@@ -67,6 +68,7 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
+          <Route path="/customer/chat" element={<CustomerChatPage />} />
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />

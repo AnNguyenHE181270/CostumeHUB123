@@ -26,3 +26,13 @@ export function getRentalDays(start, end) {
     const days = Math.ceil((endObj - startObj) / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 1;
 };
+
+export function formatTime(dateString) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+}
