@@ -210,14 +210,15 @@ export function CartProvider({ children }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.message || "Cập nhật giỏ hàng thất bại. Vui lòng kiểm tra lại!");
+        await fetchCart();
+        return { error: data.message || "Cập nhật giỏ hàng thất bại." };
       }
 
-      // Fetch lại giỏ hàng để đồng bộ data variants chuẩn từ backend
-      await fetchCart();
+      return null;
     } catch (error) {
       console.error("Lỗi kết nối khi cập nhật giỏ hàng:", error);
       fetchCart();
+      return { error: "Lỗi kết nối. Vui lòng thử lại." };
     }
   };
 

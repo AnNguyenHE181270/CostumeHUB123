@@ -98,7 +98,18 @@ const createOrder = async (customerId, body) => {
 
   const start = new Date(startDate);
   const end = new Date(endDate);
+
+  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (start < today) {
+    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
   const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (rentalDays <= 0) {
+    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
+  }
 
   let totalRentalPrice = 0;
   let totalDeposit = 0;
@@ -108,6 +119,14 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
+
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays > minDays) {
+      throw new HttpError(
+        `Số ngày thuê không vượt quá  (${minDays} ngày).`,
+        400
+      );
+    }
 
     const existingOrder = await Rental.findOne({
       'items.costume': item.costume,

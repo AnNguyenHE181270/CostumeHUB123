@@ -388,16 +388,31 @@ describe('Costume Service - Unit Tests', () => {
       expect(result.variants[0].totalStock).toBe(4); // Tự động giới hạn ở 4
       expect(result.variants[0].availableStock).toBe(0); // 1 + (4 - 5)
     });
-    test('Add new variant', async () => {
+    test('Add new variant with size not exist', async () => {
       Costume.findById.mockResolvedValue(mockCostumeInstance);
       const result = await costumeService.updateCostume('costume_id_123', {
         variants: [
-          { sku: 'AD-01', totalStock: 5 }, // Giữ nguyên biến thể cũ
-          { sku: 'AD-02', totalStock: 3 }  // Thêm biến thể mới
+          { sku: 'AD-01', totalStock: 5 }, // Giữ nguyên biến thể cũ (size 'L')
+          { sku: 'AD-02', size: 'M', totalStock: 3 }  // Thêm biến thể mới (size 'M' chưa tồn tại)
         ]
       });
       expect(result.variants).toHaveLength(2);
       expect(result.variants[1].sku).toBe('AD-02');
+      expect(result.variants[1].size).toBe('M');
+      expect(result.variants[1].availableStock).toBe(3); // Khởi tạo bằng totalStock
+    });
+
+    test('Add new variant with size existed', async () => {
+      Costume.findById.mockResolvedValue(mockCostumeInstance);
+      const result = await costumeService.updateCostume('costume_id_123', {
+        variants: [
+          { sku: 'AD-01', totalStock: 5 }, // Giữ nguyên biến thể cũ (size 'L')
+          { sku: 'AD-02', size: 'L', totalStock: 3 }  // Thêm biến thể mới có cùng size 'L' đã tồn tại
+        ]
+      });
+      expect(result.variants).toHaveLength(2);
+      expect(result.variants[1].sku).toBe('AD-02');
+      expect(result.variants[1].size).toBe('L'); // Size 'L' đã tồn tại ở biến thể thứ nhất
       expect(result.variants[1].availableStock).toBe(3); // Khởi tạo bằng totalStock
     });
     test('Automatically change status to out of stock when stock is zero', async () => {
