@@ -61,7 +61,7 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
   if (startNorm < tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
-  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ', 400);
+  if (endNorm < startNorm) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
   const newItem = { costume: costumeId, size, quantity: numQuantity, startDate: start, endDate: end, rentalDays };
@@ -71,6 +71,20 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   if (!cart) {
     cart = await Cart.create({ customerId: userId, items: [newItem] });
   } else {
+    const overlappingItem = cart.items.find(
+      (item) =>
+        item.costume.toString() === costumeId &&
+        item.size === size &&
+        !(new Date(item.startDate).getTime() === start.getTime() && new Date(item.endDate).getTime() === end.getTime()) &&
+        // Điều kiện trùng lấn ngày: Start1 <= End2 và End1 >= Start2
+        new Date(item.startDate).getTime() <= end.getTime() &&
+        new Date(item.endDate).getTime() >= start.getTime()
+    );
+
+    if (overlappingItem) {
+      throw new HttpError('Trùng ngày thuê. Vui lòng kiểm tra lại giỏ hàng.', 400);
+    }
+
     const itemIndex = cart.items.findIndex(
       (item) =>
         item.costume.toString() === costumeId &&
@@ -80,7 +94,8 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
     );
 
     if (itemIndex > -1) {
-      const newQuantity = cart.items[itemIndex].quantity + numQuantity;
+      const existingQty = cart.items[itemIndex].quantity;
+      const newQuantity = existingQty + numQuantity;
       if (newQuantity > variant.availableStock) {
         throw new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
       }
@@ -132,7 +147,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
   if (startNorm <= tomorrow) throw new HttpError('Ngày nhận đồ phải sau ngày mai', 400);
-  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ', 400);
+  if (endNorm < startNorm) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
   const rentalPrice = costume.pricePerDay || costume.price || 0;

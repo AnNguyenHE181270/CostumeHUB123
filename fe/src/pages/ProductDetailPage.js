@@ -8,7 +8,6 @@ import {
   faTruckFast,
   faRotateLeft,
   faStar,
-  faCheck,
   faCalendarDays,
 } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../context/CartContext";
@@ -54,14 +53,7 @@ export default function ProductDetailPage() {
     setToast({ isVisible: true, message, type });
   };
 
-  const isInCart = costume && selectedVariant
-    ? cartItems.some(item =>
-      (item.costumeId === costume._id || item.costume?._id === costume._id) &&
-      (item.size === selectedVariant.size || item.variant?.size === selectedVariant.size) &&
-      (item.startDate || "").substring(0, 10) === startDate &&
-      (item.endDate || "").substring(0, 10) === endDate
-    )
-    : false;
+
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -334,14 +326,12 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (!isInCart) {
-                        setIsBuying(true);
-                        const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
-                        setIsBuying(false);
-                        if (res && !res.success) {
-                          showToast(res.message || "Có lỗi xảy ra", "error");
-                          return;
-                        }
+                      setIsBuying(true);
+                      const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
+                      setIsBuying(false);
+                      if (res && !res.success) {
+                        showToast(res.message || "Có lỗi xảy ra", "error");
+                        return;
                       }
                       navigate("/checkout", {
                         state: {
@@ -366,7 +356,7 @@ export default function ProductDetailPage() {
 
                 <button
                   onClick={async () => {
-                    if (!isInCart && costume.status === "available") {
+                    if (costume.status === "available") {
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       if (res && !res.success) {
                         showToast(res.message || "Có lỗi xảy ra", "error");
@@ -374,21 +364,15 @@ export default function ProductDetailPage() {
                         showToast("Đã thêm vào giỏ hàng");
                       }
                     }
-                    else if (isInCart) {
-                      await removeFromCart(costume._id, selectedVariant?.size, startDate, endDate);
-                      showToast("Đã bỏ khỏi giỏ hàng");
-                    }
                   }}
-                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${isInCart
-                    ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
-                    : costume.status === "available"
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${costume.status === "available"
                       ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
                       : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
                     }`}
-                  disabled={costume.status !== "available" && !isInCart}
+                  disabled={costume.status !== "available"}
                 >
-                  <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[14px]" />
-                  {isInCart ? "Đã Thêm" : "Thêm Vào Giỏ"}
+                  <FontAwesomeIcon icon={faCartPlus} className="text-[14px]" />
+                  Thêm Vào Giỏ
                 </button>
               </div>
 
