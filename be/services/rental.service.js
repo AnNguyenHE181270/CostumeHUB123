@@ -149,14 +149,15 @@ const createOrder = async (customerId, body) => {
     }
 
     const depositPrice = costume.deposit || costume.price || 0;
-    totalRentalPrice += costume.pricePerDay * item.quantity * rentalDays;
+    const priceFactor = rentalDays >= 3 ? 1.1 : 1.0;
+    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity * rentalDays;
     totalDeposit += depositPrice * item.quantity;
 
     formattedItems.push({
       costume: costume._id,
       size: item.size,
       quantity: item.quantity,
-      rentalPricePerDay: costume.pricePerDay / rentalDays,
+      rentalPricePerDay: costume.pricePerDay,
       depositPrice,
     });
     costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });

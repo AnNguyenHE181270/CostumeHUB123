@@ -145,6 +145,7 @@ export function CartProvider({ children }) {
             startDate: startDateStr,
             endDate: endDateStr,
             rentalDays: diffDays,
+            dateError: null,
           };
         }
         return item;
@@ -186,7 +187,7 @@ export function CartProvider({ children }) {
             item.size === currentSize &&
             item.startDate === oldStartDate &&
             item.endDate === oldEndDate)
-            ? { ...item, size: newSize, quantity: newQuantity, startDate: finalStartDate, endDate: finalEndDate }
+            ? { ...item, size: newSize, quantity: newQuantity, startDate: finalStartDate, endDate: finalEndDate, dateError: null }
             : item
         )
       );

@@ -113,13 +113,13 @@ describe('Rental Service', () => {
       expect(mockCostume.variants[0].availableStock).toBe(4);
       expect(mockCostume.save).toHaveBeenCalled();
 
-      expect(mockUser.balance).toBe(150000);
+      expect(mockUser.balance).toBe(120000);
       expect(mockUser.save).toHaveBeenCalled();
 
       expect(result.customerId).toBe('user_123');
-      expect(result.totalRentalPrice).toBe(300000);
+      expect(result.totalRentalPrice).toBe(330000);
       expect(result.totalDeposit).toBe(500000);
-      expect(result.totalAmount).toBe(850000);
+      expect(result.totalAmount).toBe(880000);
       expect(result.status).toBe('pending');
 
       expect(Cart.findOneAndDelete).toHaveBeenCalledWith({ customerId: 'user_123' });

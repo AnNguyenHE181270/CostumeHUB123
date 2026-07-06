@@ -305,8 +305,8 @@ export default function ProductDetailPage() {
                 <h4 className="text-[13px] font-semibold text-[#1a1a1a] mb-4">Tóm tắt chi phí tạm tính</h4>
                 <div className="space-y-3 text-[13px]">
                   <div className="flex justify-between text-[#666]">
-                    <span>Tiền thuê ({formatPrice(costume.pricePerDay || costume.price || 0)} x {rentalDays} ngày x {quantity} bộ)</span>
-                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.pricePerDay || costume.price || 0) * rentalDays * quantity)}</span>
+                    <span>Tiền thuê ({formatPrice(costume.pricePerDay || costume.price || 0)} x {rentalDays} ngày x {quantity} bộ{rentalDays >= 3 ? " x 110%" : ""})</span>
+                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.pricePerDay || costume.price || 0) * rentalDays * quantity * (rentalDays >= 3 ? 1.1 : 1.0))}</span>
                   </div>
                   <div className="flex justify-between text-[#666]">
                     <span>Tiền cọc ({formatPrice(costume.deposit || 0)} x {quantity} bộ)</span>
@@ -315,7 +315,7 @@ export default function ProductDetailPage() {
                   <div className="pt-3 border-t border-dashed border-[#ccc] flex justify-between items-center">
                     <span className="font-bold text-[#1a1a1a] uppercase text-[12px]">Tổng thanh toán</span>
                     <span className="font-bold text-[#f94a00] text-[18px]">
-                      {formatPrice(((costume.pricePerDay || costume.price || 0) * rentalDays * quantity) + ((costume.deposit || 0) * quantity))}
+                      {formatPrice(((costume.pricePerDay || costume.price || 0) * rentalDays * quantity * (rentalDays >= 3 ? 1.1 : 1.0)) + ((costume.deposit || 0) * quantity))}
                     </span>
                   </div>
                 </div>

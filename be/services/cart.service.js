@@ -12,24 +12,60 @@ const getAllCarts = async (userId) => {
 
   if (carts.length === 0) throw new HttpError('Cart is empty.', 404);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
   return carts.flatMap((cart) =>
-    cart.items.map((item) => ({
-      _id: item._id,
-      costumeId: item.costume?._id,
-      costumeName: item.costume.name,
-      image: item.costume?.images?.[0] || null,
-      category: item.costume.categoryId.name,
-      size: item.size,
-      quantity: item.quantity,
-      status: item.status,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      deposit: item.costume.deposit,
-      rentalDays: item.rentalDays,
-      rentalPerDay: item.costume.pricePerDay,
-      variants: item.costume?.variants || [],
-      variant: item.costume?.variants?.find((v) => v.size === item.size) || { size: item.size },
-    }))
+    cart.items.map((item) => {
+      let dateError = null;
+      if (item.startDate) {
+        const start = new Date(item.startDate);
+        start.setHours(0, 0, 0, 0);
+        if (isNaN(start.getTime())) {
+          dateError = "Ngày nhận đồ không hợp lệ";
+        } else if (start < tomorrow) {
+          dateError = "Ngày đặt thuê đồ trước ít nhất 1 ngày";
+        } else if (item.endDate) {
+          const end = new Date(item.endDate);
+          end.setHours(0, 0, 0, 0);
+          if (isNaN(end.getTime())) {
+            dateError = "Ngày trả đồ không hợp lệ";
+          } else if (end < tomorrow) {
+            dateError = "Ngày đặt thuê đồ trước ít nhất 1 ngày";
+          } else if (end < start) {
+            dateError = "Ngày trả đồ không được trước ngày nhận đồ";
+          } else {
+            const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const minDays = item.costume?.minRentalDays || 1;
+            if (rentalDays > minDays) {
+              dateError = `Số ngày thuê không vượt quá (${minDays} ngày).`;
+            }
+          }
+        }
+      }
+
+      return {
+        _id: item._id,
+        costumeId: item.costume?._id,
+        costumeName: item.costume.name,
+        image: item.costume?.images?.[0] || null,
+        category: item.costume.categoryId.name,
+        size: item.size,
+        quantity: item.quantity,
+        status: item.status,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        deposit: item.costume.deposit,
+        rentalDays: item.rentalDays,
+        rentalPerDay: item.costume.pricePerDay,
+        minRentalDays: item.costume?.minRentalDays || 1,
+        variants: item.costume?.variants || [],
+        variant: item.costume?.variants?.find((v) => v.size === item.size) || { size: item.size },
+        dateError,
+      };
+    })
   );
 };
 
@@ -146,8 +182,8 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   const startNorm = new Date(start); startNorm.setHours(0, 0, 0, 0);
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
-  if (startNorm <= tomorrow) throw new HttpError('Ngày nhận đồ phải sau ngày mai', 400);
-  if (endNorm < startNorm) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
+  if (startNorm <= tomorrow || endNorm <= tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
+  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải sau ngày nhận đồ', 400);
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
   const rentalPrice = costume.pricePerDay || costume.price || 0;

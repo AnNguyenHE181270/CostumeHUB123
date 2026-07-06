@@ -7,10 +7,39 @@ import { formatPrice, getRentalDays } from "../utils/formatters"
 import DatePickerGroup from "../components/ui/DatePickerGroup"
 import Selector from "../components/ui/Selector"
 
-function isDateInvalid(startDate) {
-  if (!startDate) return false;
-  const today = new Date().toISOString().split('T')[0];
-  return startDate < today;
+function getDateInvalidMessage(startDate, endDate, minRentalDays) {
+  if (!startDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "Ngày nhận đồ không hợp lệ";
+
+  if (start < tomorrow || end < tomorrow) {
+    return "Ngày đặt thuê đồ trước ít nhất 1 ngày";
+  }
+
+  if (start > end) {
+    return "Ngày nhận đồ phải trước ngày trả đồ";
+  }
+
+  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (minRentalDays && rentalDays > minRentalDays) {
+    return `Số ngày thuê không vượt quá (${minRentalDays} ngày).`;
+  }
+
+  return null;
+}
+
+function isDateInvalid(item) {
+  if (!item) return false;
+  return !!item.dateError || getDateInvalidMessage(item.startDate, item.endDate, item.minRentalDays) !== null;
 }
 
 export default function CartPage() {
@@ -28,7 +57,7 @@ export default function CartPage() {
   useEffect(() => {
     setSelectedIds(prev => {
       const currentIds = cartItems
-        .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item.startDate))
+        .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item))
         .map(item => item._id);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
@@ -41,7 +70,7 @@ export default function CartPage() {
     if (e.target.checked) {
       setSelectedIds(
         cartItems
-          .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item.startDate))
+          .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item))
           .map(item => item._id)
       );
     } else {
@@ -53,7 +82,7 @@ export default function CartPage() {
     const item = cartItems.find(item => item._id === id);
     if (!item) return;
     if ((item.variant?.availableStock || 0) <= 0) return; // Không cho phép chọn sản phẩm hết hàng
-    if (isDateInvalid(item.startDate) || cartErrors[id]) return; // Không cho phép chọn sản phẩm ngày không hợp lệ
+    if (isDateInvalid(item) || cartErrors[id]) return; // Không cho phép chọn sản phẩm ngày không hợp lệ
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
     );
@@ -62,7 +91,9 @@ export default function CartPage() {
   const selectedCartItems = cartItems.filter(item => selectedIds.includes(item._id));
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce((sum, item) => {
-    return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
+    const days = getRentalDays(item.startDate, item.endDate);
+    const factor = days >= 3 ? 1.1 : 1.0;
+    return sum + item.rentalPerDay * factor * item.quantity;
   }, 0);
 
   const totalDeposit = selectedCartItems.reduce(
@@ -145,9 +176,8 @@ export default function CartPage() {
             const isSelected = selectedIds.includes(itemId);
             const rentalDays = getRentalDays(item.startDate, item.endDate);
             const itemOutOfStock = (item.variant?.availableStock || 0) <= 0;
-            const itemDateInvalid = !itemOutOfStock && (isDateInvalid(item.startDate) || !!cartErrors[itemId]);
-            // itemCheckboxDisabled: block selection khi hết hàng hoặc ngày invalid
-            // (không ảnh hưởng visual card để DatePicker vẫn có thể update)
+            const itemDateInvalidMessage = item.dateError || getDateInvalidMessage(item.startDate, item.endDate, item.minRentalDays);
+            const itemDateInvalid = !itemOutOfStock && (!!itemDateInvalidMessage || !!cartErrors[itemId]);
             const itemCheckboxDisabled = itemOutOfStock || itemDateInvalid;
             return (
               <div
@@ -262,13 +292,13 @@ export default function CartPage() {
                       }}
                     />
                   </div>
-                  {(cartErrors[itemId] || itemDateInvalid) && (
+                  {(cartErrors[itemId] || itemDateInvalidMessage) && (
                     <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg">
                       <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                       <span className="text-[12px] font-semibold text-amber-700">
-                        {cartErrors[itemId] || "Vui lòng chọn lại ngày thuê"}
+                        {cartErrors[itemId] || itemDateInvalidMessage}
                       </span>
                     </div>
                   )}
@@ -276,12 +306,20 @@ export default function CartPage() {
 
                 {/* Pricing summary for this item */}
                 <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                  <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                    {formatPrice(item.rentalPerDay * (item.quantity || 1))}
-                  </p>
-                  <p className="text-[11px] text-[#999] mb-1">
-                    {formatPrice(item.rentalPerDay)} / ngày
-                  </p>
+                  {(() => {
+                    const factor = rentalDays >= 3 ? 1.1 : 1.0;
+                    const adjustedRentalPerDay = item.rentalPerDay * factor;
+                    return (
+                      <>
+                        <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
+                          {formatPrice(adjustedRentalPerDay * (item.quantity || 1))}
+                        </p>
+                        <p className="text-[11px] text-[#999] mb-1">
+                          {formatPrice(adjustedRentalPerDay)} / ngày {factor > 1 ? "(+10%)" : ""}
+                        </p>
+                      </>
+                    );
+                  })()}
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
                     <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
                     <span>{rentalDays} ngày</span>

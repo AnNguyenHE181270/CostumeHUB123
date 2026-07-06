@@ -72,7 +72,9 @@ export function Checkout() {
 
     // tính tiền thuê
     const totalRental = checkoutItems.reduce((sum, item) => {
-        return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
+        const days = getRentalDays(item.startDate, item.endDate);
+        const factor = days >= 3 ? 1.1 : 1.0;
+        return sum + item.rentalPerDay * factor * item.quantity;
     }, 0);
 
     // tính tiền cọc
@@ -432,15 +434,20 @@ export function Checkout() {
                                     <span className="block text-center italic text-sm mb-6">Giá đã bao gồm tất cả phí</span>
 
                                     <div className="space-y-3 text-sm">
-                                        {checkoutItems.map((item, idx) => (
-                                            <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
-                                                <span className="text-muted-foreground line-clamp-1 mr-4">
-                                                    {item.costumeName}
-                                                </span>
-                                                <span className="font-medium text-foreground shrink-0">{formatPrice(item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate))}</span>
-                                            </div>
-                                        )
-                                        )}
+                                        {checkoutItems.map((item, idx) => {
+                                            const days = getRentalDays(item.startDate, item.endDate);
+                                            const factor = days >= 3 ? 1.1 : 1.0;
+                                            return (
+                                                <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
+                                                    <span className="text-muted-foreground line-clamp-1 mr-4">
+                                                        {item.costumeName}
+                                                    </span>
+                                                    <span className="font-medium text-foreground shrink-0">
+                                                        {formatPrice(item.rentalPerDay * factor * item.quantity)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
 
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground font-semibold border-t pt-2 w-full flex justify-between">Tạm tính: <span>{formatPrice(totalRental)}</span></span>
