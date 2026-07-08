@@ -7,39 +7,9 @@ import { formatPrice, getRentalDays } from "../utils/formatters"
 import DatePickerGroup from "../components/ui/DatePickerGroup"
 import Selector from "../components/ui/Selector"
 
-function getDateInvalidMessage(startDate, endDate, minRentalDays) {
-  if (!startDate) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime());
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "Ngày nhận đồ không hợp lệ";
-
-  if (start < tomorrow || end < tomorrow) {
-    return "Ngày đặt thuê đồ trước ít nhất 1 ngày";
-  }
-
-  if (start > end) {
-    return "Ngày nhận đồ phải trước ngày trả đồ";
-  }
-
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (minRentalDays && rentalDays > minRentalDays) {
-    return `Số ngày thuê không vượt quá (${minRentalDays} ngày).`;
-  }
-
-  return null;
-}
-
-function isDateInvalid(item) {
+function invalidMessage(item, cartErrors = {}) {
   if (!item) return false;
-  return !!item.dateError || getDateInvalidMessage(item.startDate, item.endDate, item.minRentalDays) !== null;
+  return !!item.dateError || !!cartErrors[item._id];
 }
 
 export default function CartPage() {
@@ -57,20 +27,20 @@ export default function CartPage() {
   useEffect(() => {
     setSelectedIds(prev => {
       const currentIds = cartItems
-        .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item))
+        .filter(item => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors))
         .map(item => item._id);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
       }
       return prev.filter(id => currentIds.includes(id));
     });
-  }, [cartItems]);
+  }, [cartItems, cartErrors]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedIds(
         cartItems
-          .filter(item => (item.variant?.availableStock || 0) > 0 && !isDateInvalid(item))
+          .filter(item => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors))
           .map(item => item._id)
       );
     } else {
@@ -82,7 +52,7 @@ export default function CartPage() {
     const item = cartItems.find(item => item._id === id);
     if (!item) return;
     if ((item.variant?.availableStock || 0) <= 0) return; // Không cho phép chọn sản phẩm hết hàng
-    if (isDateInvalid(item) || cartErrors[id]) return; // Không cho phép chọn sản phẩm ngày không hợp lệ
+    if (invalidMessage(item, cartErrors)) return; // Không cho phép chọn sản phẩm ngày không hợp lệ
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
     );
@@ -176,8 +146,8 @@ export default function CartPage() {
             const isSelected = selectedIds.includes(itemId);
             const rentalDays = getRentalDays(item.startDate, item.endDate);
             const itemOutOfStock = (item.variant?.availableStock || 0) <= 0;
-            const itemDateInvalidMessage = item.dateError || getDateInvalidMessage(item.startDate, item.endDate, item.minRentalDays);
-            const itemDateInvalid = !itemOutOfStock && (!!itemDateInvalidMessage || !!cartErrors[itemId]);
+            const itemDateInvalidMessage = item.dateError || cartErrors[itemId];
+            const itemDateInvalid = !itemOutOfStock && !!itemDateInvalidMessage;
             const itemCheckboxDisabled = itemOutOfStock || itemDateInvalid;
             return (
               <div
@@ -271,6 +241,7 @@ export default function CartPage() {
                     <DatePickerGroup
                       startDate={item.startDate}
                       disabled={itemOutOfStock}
+                      minRentalDays={item.minRentalDays}
                       setStartDate={async (newStart) => {
                         const newEnd = newStart > item.endDate ? newStart : item.endDate;
                         pendingStartRef.current[itemId] = newStart;
@@ -292,13 +263,13 @@ export default function CartPage() {
                       }}
                     />
                   </div>
-                  {(cartErrors[itemId] || itemDateInvalidMessage) && (
+                  {itemDateInvalidMessage && (
                     <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg">
                       <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                       <span className="text-[12px] font-semibold text-amber-700">
-                        {cartErrors[itemId] || itemDateInvalidMessage}
+                        {itemDateInvalidMessage}
                       </span>
                     </div>
                   )}
@@ -375,7 +346,7 @@ export default function CartPage() {
           </button>
 
           <p className="text-[11px] text-[#999] text-center mt-4">
-            Bạn có thể xem lại đơn hàng ở bước tiếp theo trước khi chốt.
+            Bạn có thể kiểm tra kỹ thông tin sản phẩm trước khi chốt.
           </p>
         </div>
 

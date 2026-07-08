@@ -25,6 +25,7 @@ export function Checkout() {
     const [selectedAddress, setSelectedAddress] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" })
+    const [currentStep, setCurrentStep] = useState(1)
 
 
 
@@ -104,6 +105,7 @@ export function Checkout() {
             return;
         }
         setIsLoading(true);
+        setCurrentStep(2);
         try {
             const payload = {
                 startDate: new Date(orderStartDate).toISOString(),
@@ -146,8 +148,13 @@ export function Checkout() {
                 }
             }
             await refreshProfile();
-            navigate("/rental-history");
+            setCurrentStep(3);
+            showToast("Thanh toán thành công! Đơn hàng đã được tạo.", "success");
+            setTimeout(() => {
+                navigate("/rental-history");
+            }, 2000);
         } catch (err) {
+            setCurrentStep(1);
             showToast(err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
         } finally {
             setIsLoading(false);
@@ -188,35 +195,59 @@ export function Checkout() {
                         {/* Step 1 */}
                         <div className="relative flex flex-col items-center z-10 shrink-0">
                             <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a] text-white">
-                                <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                                {currentStep > 1 ? (
+                                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                                ) : (
+                                    <span className="text-sm font-semibold">1</span>
+                                )}
                             </div>
-                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-medium text-[#1a1a1a]">
+                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-bold text-[#1a1a1a]">
                                 Thông tin thuê
                             </p>
                         </div>
 
                         {/* Line 1 */}
-                        <div className="flex-1 h-[2px] bg-border mx-2 sm:mx-4"></div>
+                        <div className={`flex-1 h-[2px] mx-2 sm:mx-4 ${currentStep >= 2 ? 'bg-[#1a1a1a]' : 'bg-border'}`}></div>
 
                         {/* Step 2 */}
                         <div className="relative flex flex-col items-center z-10 shrink-0">
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-border text-muted-foreground">
-                                <span className="text-sm font-semibold">2</span>
+                            <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
+                                currentStep >= 2
+                                    ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white'
+                                    : 'bg-white border-border text-muted-foreground'
+                            }`}>
+                                {currentStep > 2 ? (
+                                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                                ) : (
+                                    <span className="text-sm font-semibold">2</span>
+                                )}
                             </div>
-                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-bold text-[#1a1a1a]">
+                            <p className={`absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm ${
+                                currentStep >= 2
+                                    ? 'font-bold text-[#1a1a1a]'
+                                    : 'font-medium text-muted-foreground'
+                            }`}>
                                 Thanh toán
                             </p>
                         </div>
 
                         {/* Line 2 */}
-                        <div className="flex-1 h-[2px] bg-border mx-2 sm:mx-4"></div>
+                        <div className={`flex-1 h-[2px] mx-2 sm:mx-4 ${currentStep >= 3 ? 'bg-[#1a1a1a]' : 'bg-border'}`}></div>
 
                         {/* Step 3 */}
                         <div className="relative flex flex-col items-center z-10 shrink-0">
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-border text-muted-foreground">
+                            <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
+                                currentStep >= 3
+                                    ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white'
+                                    : 'bg-white border-border text-muted-foreground'
+                            }`}>
                                 <span className="text-sm font-semibold">3</span>
                             </div>
-                            <p className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm font-medium text-muted-foreground">
+                            <p className={`absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs sm:text-sm ${
+                                currentStep >= 3
+                                    ? 'font-bold text-[#1a1a1a]'
+                                    : 'font-medium text-muted-foreground'
+                            }`}>
                                 Tạo đơn thành công
                             </p>
                         </div>
@@ -234,7 +265,7 @@ export function Checkout() {
                                         {/* Image Gallery */}
                                         <div className="relative w-24 md:w-32 shrink-0 rounded-lg overflow-hidden bg-surface">
                                             <img
-                                                src={cartItem.image || cartItem.costume?.images?.[0] || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=400&h=500&fit=crop"}
+                                                src={cartItem.image}
                                                 alt={cartItem.costumeName || cartItem.costume?.name}
                                                 className="absolute inset-0 w-full h-full object-cover"
                                             />
@@ -440,7 +471,7 @@ export function Checkout() {
                                             return (
                                                 <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">
-                                                        {item.costumeName}
+                                                        {item.costumeName} ({item.size})
                                                     </span>
                                                     <span className="font-medium text-foreground shrink-0">
                                                         {formatPrice(item.rentalPerDay * factor * item.quantity)}

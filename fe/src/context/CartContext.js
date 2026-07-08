@@ -215,6 +215,7 @@ export function CartProvider({ children }) {
         return { error: data.message || "Cập nhật giỏ hàng thất bại." };
       }
 
+      await fetchCart();
       return null;
     } catch (error) {
       console.error("Lỗi kết nối khi cập nhật giỏ hàng:", error);

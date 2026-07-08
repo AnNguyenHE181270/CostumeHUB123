@@ -359,7 +359,6 @@ const confirmPreparation = async (id) => {
       await order.save();
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
-      console.error('Failed to push to GHN:', ghnError);
       order.status = 'delivering';
       await order.save();
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
@@ -405,8 +404,8 @@ const getInventoryUtilization = async () => {
 const requestReturn = async (id) => {
   const rental = await Rental.findById(id);
   if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
-  if (!['renting', 'overdue'].includes(rental.status)) {
-    throw new HttpError('Đơn hàng phải ở trạng thái Đang thuê hoặc Quá hạn', 400);
+  if (!['delivering', 'renting', 'overdue'].includes(rental.status)) {
+    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đang thuê hoặc Quá hạn', 400);
   }
   rental.status = 'returning';
   await rental.save();

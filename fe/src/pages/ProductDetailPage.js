@@ -277,16 +277,23 @@ export default function ProductDetailPage() {
 
               {/* Date & Quantity Picker */}
               <div className="mb-8">
-                <h4 className="text-[13px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-4 border-b border-[#eaeaea] pb-2">
-                  Tùy chọn Thuê
-                </h4>
+                <div className="mb-4 border-b border-[#eaeaea] pb-2 flex items-center justify-baseline">
+                  <h4 className="text-[13px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a]">
+                    Tùy chọn Thuê
+                  </h4>
+                  <p className={`text-xs font-medium`}>
+                    (Số ngày thuê không vượt quá {costume.minRentalDays || 1} ngày.)
+                  </p>
+                </div>
 
                 <DatePickerGroup
                   startDate={startDate}
                   setStartDate={setStartDate}
                   endDate={endDate}
                   setEndDate={setEndDate}
+                  minRentalDays={costume.minRentalDays}
                 />
+
 
 
                 {/* Quantity */}
@@ -326,6 +333,10 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Số ngày thuê không vượt quá (${costume.minRentalDays || 1} ngày).`, "error");
+                        return;
+                      }
                       setIsBuying(true);
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       setIsBuying(false);
@@ -357,6 +368,10 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Số ngày thuê không vượt quá (${costume.minRentalDays || 1} ngày).`, "error");
+                        return;
+                      }
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       if (res && !res.success) {
                         showToast(res.message || "Có lỗi xảy ra", "error");
@@ -366,8 +381,8 @@ export default function ProductDetailPage() {
                     }
                   }}
                   className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${costume.status === "available"
-                      ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
-                      : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
+                    ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
+                    : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
                     }`}
                   disabled={costume.status !== "available"}
                 >
