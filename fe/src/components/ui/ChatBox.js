@@ -48,6 +48,7 @@ export default function ChatBox() {
     };
 
     socket.on("unread_count", onUnread);
+    
     socket.on("new_message_notification", onNewMsgNotif);
 
     return () => {

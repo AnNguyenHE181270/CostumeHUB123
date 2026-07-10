@@ -27,6 +27,7 @@ const sendEmailVerification = async (email, otp, fullName) => {
         <p>Cảm ơn bạn đã đăng ký tài khoản tại CostumeHUB.</p>
         <p>Mã xác thực (OTP) của bạn là:</p>
         <div style="background:#f4f4f4;padding:15px;text-align:center;font-size:24px;font-weight:bold;letter-spacing:5px;margin:20px 0">${otp}</div>
+        <p>Hoặc bạn có thể <a href="http://localhost:3000/verify-otp/${encodeURIComponent(email)}?otp=${otp}" style="color: #007bff; font-weight: bold; text-decoration: none;">nhấn vào đây để xác thực tự động</a>.</p>
         <p>Mã này sẽ hết hạn sau 10 phút.</p>
         <p>Trân trọng,<br/>Đội ngũ CostumeHUB</p>
       </div>`,
@@ -218,15 +219,17 @@ const login = async (email, password) => {
   const checkPassword = await bcrypt.compare(password, existUser.password);
   if (!checkPassword) throw new HttpError('Mật khẩu không chính xác.', 401);
 
-  if (existUser.status === 'pending' && !existUser.isEmailVerified) {
-    const otp = generateOTP();
-    const salt = await bcrypt.genSalt(10);
+  if (existUser.status === 'pending') {
     const now = new Date();
-    existUser.otpCode = await bcrypt.hash(otp, salt);
-    existUser.otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
-    existUser.otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
-    await existUser.save();
-    await sendEmailVerification(email, otp, existUser.fullName);
+    if (!existUser.otpCooldownUntil || existUser.otpCooldownUntil <= now) {
+      const otp = generateOTP();
+      const salt = await bcrypt.genSalt(10);
+      existUser.otpCode = await bcrypt.hash(otp, salt);
+      existUser.otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
+      existUser.otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
+      await existUser.save();
+      await sendEmailVerification(email, otp, existUser.fullName);
+    }
     return { isPending: true, email: existUser.email };
   }
 
@@ -295,6 +298,13 @@ const updateUsers = async (id, data, currentUserId) => {
 
   if (!ObjectId.isValid(id)) throw new HttpError('ID không hợp lệ', 400);
   if (currentUserId && id === currentUserId) throw new HttpError('Bạn không thể thay đổi vai trò hoặc trạng thái của chính mình', 403);
+
+  const targetUser = await User.findById(id);
+  if (!targetUser) throw new HttpError('Không tìm thấy người dùng', 404);
+
+  if (targetUser.status !== 'pending' && status === 'pending') {
+    throw new HttpError('Không thể chuyển trạng thái người dùng về pending.', 400);
+  }
 
   const findRole = await Role.findOne({ name: role });
   if (!findRole) throw new HttpError('Không tìm thấy vai trò', 404);

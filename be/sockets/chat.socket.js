@@ -3,54 +3,77 @@ const ChatRoom = require("../models/chat-room.model");
 const User = require("../models/user.model");
 
 const onlineUsers = new Map(); // socket.id -> { userId, role, isChatting }
-const customerQueue = []; // [ { socketId, userId } ]
+const customerQueue = []; // Hàng đợi khách hàng [{ socketId, userId }]
 
 const checkQueueAndAssign = async (io) => {
   if (customerQueue.length === 0) return;
-  
-  // Find available staff
+
+  // Tìm một nhân viên đang online và chưa hỗ trợ cuộc chat nào (roomCount === 0)
   let assignedStaffSocket = null;
+
   for (const [sId, data] of onlineUsers.entries()) {
-    const isSupportRole = data.role === "staff" || data.role === "admin" || data.role === "owner";
+    const isSupportRole =
+      data.role === "staff" ||
+      data.role === "admin" ||
+      data.role === "owner";
+
     if (isSupportRole) {
-      assignedStaffSocket = sId;
-      break;
+      const roomCount = await ChatRoom.countDocuments({
+        staffId: data.userId,
+        status: "active",
+      });
+
+      if (roomCount === 0) {
+        assignedStaffSocket = sId;
+        break; // Đã tìm được nhân viên rảnh
+      }
     }
   }
 
-  if (assignedStaffSocket) {
-    const customer = customerQueue.shift();
-    const staffData = onlineUsers.get(assignedStaffSocket);
+  // Nếu tất cả nhân viên đều bận thì giữ khách trong hàng đợi
+  if (!assignedStaffSocket) {
+    return;
+  }
 
-    try {
-      const newRoom = await ChatRoom.create({
-        userId: customer.userId,
-        staffId: staffData.userId,
-        status: "active",
-        isActive: true,
+  const customer = customerQueue.shift();
+  const staffData = onlineUsers.get(assignedStaffSocket);
+
+  try {
+    // Tạo phòng chat mới
+    const newRoom = await ChatRoom.create({
+      userId: customer.userId,
+      staffId: staffData.userId,
+      status: "active",
+      isActive: true,
+    });
+
+    // Lấy đầy đủ thông tin staff (tên, avatar)
+    const populatedRoom = await ChatRoom.findById(newRoom._id).populate(
+      "staffId",
+      "fullName avatar"
+    );
+
+    const roomIdStr = newRoom._id.toString();
+
+    // Cho khách hàng tham gia phòng chat
+    const customerSocket = io.sockets.sockets.get(customer.socketId);
+    if (customerSocket) customerSocket.join(roomIdStr);
+
+    // Cho nhân viên tham gia phòng chat
+    const staffSocket = io.sockets.sockets.get(assignedStaffSocket);
+    if (staffSocket) staffSocket.join(roomIdStr);
+
+    // Thông báo cho cả hai biết đã được ghép phòng chat
+    io.to(roomIdStr).emit("chat_assigned", populatedRoom);
+
+    // Cập nhật lại vị trí hàng đợi của các khách còn lại
+    customerQueue.forEach((q, index) => {
+      io.to(q.socketId).emit("queue_update", {
+        position: index + 1,
       });
-
-      const populatedRoom = await ChatRoom.findById(newRoom._id).populate("staffId", "fullName avatar");
-
-      const roomIdStr = newRoom._id.toString();
-
-      // Ensure customer socket joins
-      const customerSocket = io.sockets.sockets.get(customer.socketId);
-      if (customerSocket) customerSocket.join(roomIdStr);
-      
-      // Ensure staff socket joins
-      const staffSocket = io.sockets.sockets.get(assignedStaffSocket);
-      if (staffSocket) staffSocket.join(roomIdStr);
-
-      io.to(roomIdStr).emit("chat_assigned", populatedRoom);
-      
-      // Update queue for remaining customers
-      customerQueue.forEach((q, index) => {
-        io.to(q.socketId).emit("queue_update", { position: index + 1 });
-      });
-    } catch (err) {
-      console.error("Queue assignment error:", err);
-    }
+    });
+  } catch (err) {
+    console.error("Queue assignment error:", err);
   }
 };
 
@@ -58,51 +81,76 @@ const chatSocket = (io) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    // 1. Register user online
+    // 1. Đăng ký người dùng đang online
     socket.on("register", async ({ userId, role }) => {
       let isChatting = false;
-      const isSupportRole = role === "staff" || role === "admin" || role === "owner";
-      
-      // If support role, check if they already have an active room
+
+      const isSupportRole =
+        role === "staff" ||
+        role === "admin" ||
+        role === "owner";
+
+      // Nếu là nhân viên thì kiểm tra xem đang hỗ trợ cuộc chat nào không
       if (isSupportRole) {
-        const activeRoomsCount = await ChatRoom.countDocuments({ staffId: userId, status: "active" });
+        const activeRoomsCount = await ChatRoom.countDocuments({
+          staffId: userId,
+          status: "active",
+        });
+
         if (activeRoomsCount > 0) {
           isChatting = true;
         }
       }
 
-      onlineUsers.set(socket.id, { userId, role, isChatting });
-      
-      // Fetch unread count to init badge
+      // Lưu thông tin người dùng online
+      onlineUsers.set(socket.id, {
+        userId,
+        role,
+        isChatting,
+      });
+
+      // Đếm số tin nhắn chưa đọc để hiển thị badge
       const unreadCount = await Message.countDocuments({
         senderId: { $ne: userId },
-        status: { $ne: "seen" }
+        status: { $ne: "seen" },
       });
-      socket.emit("unread_count", { count: unreadCount });
 
-      // If support connects and is free, try to take from queue
+      socket.emit("unread_count", {
+        count: unreadCount,
+      });
+
+      // Nếu nhân viên vừa online và đang rảnh thì lấy khách từ hàng đợi
       if (isSupportRole && !isChatting) {
         checkQueueAndAssign(io);
       }
     });
 
-    // 1b. Check Active Room (for background notifications without queuing)
+    // 1b. Kiểm tra xem khách có phòng chat đang hoạt động hay không
     socket.on("check_active_room", async (userId) => {
-      let room = await ChatRoom.findOne({ userId, status: "active" }).populate("staffId", "fullName avatar");
+      let room = await ChatRoom.findOne({
+        userId,
+        status: "active",
+      }).populate("staffId", "fullName avatar");
+
       if (room) {
         socket.join(room._id.toString());
+
         io.to(socket.id).emit("chat_assigned", room);
       }
     });
 
-    // 2. Request Chat
+    // 2. Khách yêu cầu bắt đầu chat
     socket.on("request_chat", async (userId) => {
-      // Find active room for this user
-      let room = await ChatRoom.findOne({ userId, status: "active" }).populate("staffId", "fullName avatar");
+      // Tìm xem khách đã có phòng chat đang hoạt động chưa
+      let room = await ChatRoom.findOne({
+        userId,
+        status: "active",
+      }).populate("staffId", "fullName avatar");
 
       if (room) {
-        // Check if staff is online
+        // Kiểm tra nhân viên của phòng đó còn online không
         let isStaffOnline = false;
+
         if (room.staffId) {
           for (const [sId, data] of onlineUsers.entries()) {
             if (data.userId === room.staffId._id.toString()) {
@@ -113,50 +161,74 @@ const chatSocket = (io) => {
         }
 
         if (isStaffOnline) {
+          // Nếu nhân viên còn online thì cho khách vào lại phòng cũ
           socket.join(room._id.toString());
+
           io.to(socket.id).emit("chat_assigned", room);
+
           return;
         } else {
-          // Staff went offline. Close old room so they get a new one.
-          await ChatRoom.findByIdAndUpdate(room._id, { status: "closed", isActive: false });
+          // Nếu nhân viên đã offline thì đóng phòng cũ
+          await ChatRoom.findByIdAndUpdate(room._id, {
+            status: "closed",
+            isActive: false,
+          });
         }
       }
-      
-      // Check queue limit
-      if (customerQueue.length >= 5 && customerQueue.findIndex(q => q.userId === userId) === -1) {
-        io.to(socket.id).emit("queue_full", { message: "Hiện tại các tư vấn viên đều bận. Vui lòng thử lại sau ít phút." });
+
+      // Giới hạn tối đa 5 khách trong hàng đợi
+      if (
+        customerQueue.length >= 5 &&
+        customerQueue.findIndex((q) => q.userId === userId) === -1
+      ) {
+        io.to(socket.id).emit("queue_full", {
+          message:
+            "Hiện tại các tư vấn viên đều bận. Vui lòng thử lại sau ít phút.",
+        });
+
         return;
       }
-      
-      // If no active room, add to queue
-      // Prevent duplicates in queue
-      const existingQueueIndex = customerQueue.findIndex(q => q.userId === userId);
+
+      // Nếu khách chưa có trong hàng đợi thì thêm vào
+      const existingQueueIndex = customerQueue.findIndex(
+        (q) => q.userId === userId
+      );
+
       if (existingQueueIndex === -1) {
-        customerQueue.push({ userId, socketId: socket.id });
+        customerQueue.push({
+          userId,
+          socketId: socket.id,
+        });
       } else {
+        // Nếu đã có thì cập nhật socket.id mới
         customerQueue[existingQueueIndex].socketId = socket.id;
       }
-      
-      // Try to assign immediately
+
+      // Thử ghép ngay với nhân viên nếu có người rảnh
       checkQueueAndAssign(io);
-      
-      // Send queue update
-      const position = customerQueue.findIndex(q => q.userId === userId) + 1;
+
+      // Gửi vị trí hiện tại trong hàng đợi cho khách
+      const position =
+        customerQueue.findIndex((q) => q.userId === userId) + 1;
+
       if (position > 0) {
-        io.to(socket.id).emit("queue_update", { position });
+        io.to(socket.id).emit("queue_update", {
+          position,
+        });
       }
     });
 
-    // 3. Join Room explicitly
+    // 3. Tham gia một phòng chat theo roomId
     socket.on("join_room", (roomId) => {
       socket.join(roomId);
     });
 
-    // 4. Send Message
+    // 4. Gửi tin nhắn
     socket.on("send_message", async (data) => {
       try {
         const { roomId, message, senderId } = data;
 
+        // Lưu tin nhắn vào database
         const msg = await Message.create({
           roomId,
           senderId,
@@ -164,21 +236,29 @@ const chatSocket = (io) => {
           status: "sent",
         });
 
+        // Cập nhật tin nhắn cuối cùng của phòng chat
         await ChatRoom.findByIdAndUpdate(roomId, {
           lastMessage: message,
           lastMessageAt: new Date(),
         });
 
-        // Broadcast to room
+        // Gửi tin nhắn đến tất cả thành viên trong phòng
         io.to(roomId).emit("receive_message", msg);
 
-        // Find receiver to send notification badge
+        // Xác định người nhận để hiển thị thông báo
         const room = await ChatRoom.findById(roomId);
+
         if (room) {
-          const receiverId = room.userId.toString() === senderId.toString() ? room.staffId.toString() : room.userId.toString();
+          const receiverId =
+            room.userId.toString() === senderId.toString()
+              ? room.staffId.toString()
+              : room.userId.toString();
+
           for (const [sId, uData] of onlineUsers.entries()) {
             if (uData.userId === receiverId) {
-              io.to(sId).emit("new_message_notification", { roomId });
+              io.to(sId).emit("new_message_notification", {
+                roomId,
+              });
             }
           }
         }
@@ -187,28 +267,52 @@ const chatSocket = (io) => {
       }
     });
 
-    // 5. Seen Message
+    // 5. Đánh dấu tin nhắn đã xem
     socket.on("seen_message", async ({ roomId, userId }) => {
       try {
         await Message.updateMany(
-          { roomId, senderId: { $ne: userId }, status: { $ne: "seen" } },
-          { $set: { status: "seen" } }
+          {
+            roomId,
+            senderId: { $ne: userId },
+            status: { $ne: "seen" },
+          },
+          {
+            $set: {
+              status: "seen",
+            },
+          }
         );
-        io.to(roomId).emit("message_seen", { roomId, byUserId: userId });
+
+        // Thông báo cho phòng biết tin nhắn đã được xem
+        io.to(roomId).emit("message_seen", {
+          roomId,
+          byUserId: userId,
+        });
       } catch (err) {
         console.error("Seen msg error:", err);
       }
     });
 
-    // 6. Close Chat (Staff or Customer)
+    // 6. Đóng cuộc chat
     socket.on("close_chat", async ({ roomId }) => {
       try {
-        const room = await ChatRoom.findByIdAndUpdate(roomId, { status: "closed", isActive: false });
-        io.to(roomId).emit("chat_closed", { roomId });
-        
-        // Mark staff as free if they have no other active rooms
+        const room = await ChatRoom.findByIdAndUpdate(roomId, {
+          status: "closed",
+          isActive: false,
+        });
+
+        // Thông báo cho mọi người trong phòng biết cuộc chat đã kết thúc
+        io.to(roomId).emit("chat_closed", {
+          roomId,
+        });
+
+        // Nếu nhân viên không còn phòng chat nào thì đánh dấu là rảnh
         if (room && room.staffId) {
-          const activeRoomsCount = await ChatRoom.countDocuments({ staffId: room.staffId, status: "active" });
+          const activeRoomsCount = await ChatRoom.countDocuments({
+            staffId: room.staffId,
+            status: "active",
+          });
+
           if (activeRoomsCount === 0) {
             for (const [sId, data] of onlineUsers.entries()) {
               if (data.userId === room.staffId.toString()) {
@@ -218,24 +322,36 @@ const chatSocket = (io) => {
           }
         }
 
+        // Tiếp tục ghép khách tiếp theo trong hàng đợi
         checkQueueAndAssign(io);
       } catch (err) {
         console.error("Close chat error:", err);
       }
     });
 
-    // Disconnect
+    // Người dùng ngắt kết nối
     socket.on("disconnect", () => {
       const user = onlineUsers.get(socket.id);
+
+      // Xóa khỏi danh sách online
       onlineUsers.delete(socket.id);
-      
-      const qIndex = customerQueue.findIndex(q => q.socketId === socket.id);
+
+      // Nếu khách đang ở hàng đợi thì xóa khỏi hàng đợi
+      const qIndex = customerQueue.findIndex(
+        (q) => q.socketId === socket.id
+      );
+
       if (qIndex !== -1) {
         customerQueue.splice(qIndex, 1);
+
+        // Cập nhật lại vị trí của các khách còn lại
         customerQueue.forEach((q, index) => {
-          io.to(q.socketId).emit("queue_update", { position: index + 1 });
+          io.to(q.socketId).emit("queue_update", {
+            position: index + 1,
+          });
         });
       }
+
       console.log("User disconnected:", socket.id);
     });
   });

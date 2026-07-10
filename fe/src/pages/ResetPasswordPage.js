@@ -26,7 +26,7 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu không khớp");
       return;
     }
     try {
@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
       await userService.resetPassword(token, form.password);
       navigate(`/login`);
     } catch (err) {
-      setError(err.message || "Reset failed.");
+      setError(err.message || "Đặt lại mật khẩu thất bại.");
     } finally {
       setLoading(false);
     }
@@ -52,25 +52,24 @@ export default function ResetPasswordPage() {
 
         <div className="mb-10">
           <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
-            Account Security
+            Bảo mật tài khoản
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-            Reset Password
+            Đặt lại mật khẩu
           </h2>
           <p className="mt-4 text-text-secondary text-sm leading-relaxed">
-            Please enter a new password for your account. This link is only
-            valid for 15 minutes.
+            Vui lòng nhập mật khẩu mới cho tài khoản của bạn. Liên kết này chỉ có hiệu lực trong 15 phút.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="New Password"
+            label="Mật khẩu mới"
             name="password"
             type={showPw ? "text" : "password"}
             value={form.password}
             onChange={handleChange}
-            placeholder="6+ characters"
+            placeholder="Từ 6 ký tự trở lên"
             required
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
@@ -79,12 +78,12 @@ export default function ResetPasswordPage() {
           />
 
           <Input
-            label="Confirm New Password"
+            label="Xác nhận mật khẩu mới"
             name="confirmPassword"
             type={showConfirmPw ? "text" : "password"}
             value={form.confirmPassword}
             onChange={handleChange}
-            placeholder="Confirm Password"
+            placeholder="Xác nhận mật khẩu"
             required
             rightIcon={
               <FontAwesomeIcon
@@ -102,19 +101,19 @@ export default function ResetPasswordPage() {
               type="submit"
               variant="primary"
               icon={faArrowRight}
-              label="Update Password"
+              label="Cập nhật mật khẩu"
               loading={loading}
             />
           </div>
 
           <p className="text-center text-sm text-text-secondary">
-            Remembered your password?{" "}
+            Đã nhớ mật khẩu?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
               className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
-              Back to Login
+              Quay lại Đăng nhập
             </button>
           </p>
         </form>

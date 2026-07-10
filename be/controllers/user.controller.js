@@ -4,27 +4,27 @@ const HttpError = require('../models/http-error.model');
 const register = async (req, res, next) => {
   try {
     const result = await userService.register(req.body);
-    res.status(201).json({ message: 'Register successfully. Check your email for OTP.', ...result });
+    res.status(201).json({ message: 'Đăng ký thành công. Vui lòng kiểm tra email để nhận mã OTP.', ...result });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Register failed.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Đăng ký thất bại.', 500));
   }
 };
 
 const verifyOtp = async (req, res, next) => {
   try {
     const user = await userService.verifyOtp(req.params.email, req.body.otp);
-    res.status(200).json({ message: 'Email verified successfully.', user });
+    res.status(200).json({ message: 'Xác thực email thành công.', user });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Email verification failed.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Xác thực email thất bại.', 500));
   }
 };
 
 const resendOtp = async (req, res, next) => {
   try {
     await userService.resendOtp(req.params.email);
-    res.status(200).json({ message: 'OTP resent successfully.' });
+    res.status(200).json({ message: 'Đã gửi lại mã OTP thành công.' });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Failed to resend OTP.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Gửi lại mã OTP thất bại.', 500));
   }
 };
 
@@ -32,16 +32,16 @@ const login = async (req, res, next) => {
   try {
     const result = await userService.login(req.body.email, req.body.password);
     if (result.isPending) {
-      return res.status(403).json({
+      return res.status(200).json({
         success: false,
-        message: 'Tài khoản của bạn chưa được xác thực email. Một mã OTP mới đã được gửi.',
+        message: 'Tài khoản của bạn chưa được xác thực email. Vui lòng xác thực để tiếp tục.',
         isPending: true,
         email: result.email,
       });
     }
-    res.status(200).json({ message: 'Login successful.', token: result.token });
+    res.status(200).json({ message: 'Đăng nhập thành công.', token: result.token });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Login failed.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Đăng nhập thất bại.', 500));
   }
 };
 
@@ -50,25 +50,25 @@ const getMyProfile = async (req, res, next) => {
     const user = await userService.getMyProfile(req.userData.email);
     res.status(200).json({ user });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Fetch profile failed.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lấy thông tin tài khoản thất bại.', 500));
   }
 };
 
 const forgotPassword = async (req, res, next) => {
   try {
     await userService.forgotPassword(req.body.email);
-    res.status(200).json({ message: 'If an account with this email exists, password reset instructions have been sent.' });
+    res.status(200).json({ message: 'Nếu tài khoản với email này tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.' });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Error system.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lỗi hệ thống.', 500));
   }
 };
 
 const resetPassword = async (req, res, next) => {
   try {
     await userService.resetPassword(req.params.token, req.body.password);
-    res.status(200).json({ message: 'Password reset successful.' });
+    res.status(200).json({ message: 'Đặt lại mật khẩu thành công.' });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Password reset failed.', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Đặt lại mật khẩu thất bại.', 500));
   }
 };
 
@@ -104,7 +104,7 @@ const updateMyProfile = async (req, res, next) => {
     const user = await userService.updateMyProfile(req.userData.email, { ...req.body, file: req.file });
     res.status(200).json({ user });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError(err.message || 'Update profile failed', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Cập nhật thông tin thất bại.', 500));
   }
 };
 
@@ -138,7 +138,7 @@ const updateAddress = async (req, res, next) => {
 const deleteAddress = async (req, res, next) => {
   try {
     await userService.deleteAddress(req.userData.email, req.params.id);
-    res.status(200).json({ message: 'Address deleted successfully' });
+    res.status(200).json({ message: 'Xóa địa chỉ thành công.' });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message, 500));
   }
