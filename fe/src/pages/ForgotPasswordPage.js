@@ -27,9 +27,9 @@ export default function ForgotPasswordPage() {
     try {
       setError("");
       await userService.forgotPassword(email);
-      setSuccessMessage(`We've sent a password reset link to ${email}`);
+      setSuccessMessage(`Chúng tôi đã gửi liên kết đặt lại mật khẩu đến ${email}`);
     } catch (err) {
-      setError(err.message || "Failed to process request.");
+      setError(err.message || "Yêu cầu thất bại.");
     } finally {
       setLoading(false);
     }
@@ -46,13 +46,13 @@ export default function ForgotPasswordPage() {
 
         <div className="mb-8">
           <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
-            Recover Account
+            Khôi phục tài khoản
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-            Forgot Password
+            Quên mật khẩu
           </h2>
           <p className="text-text-secondary text-sm mt-3 leading-relaxed">
-            Enter your registered email address. We will send you instructions to reset your password.
+            Nhập địa chỉ email đã đăng ký của bạn. Chúng tôi sẽ gửi hướng dẫn để đặt lại mật khẩu.
           </p>
         </div>
 
@@ -64,14 +64,14 @@ export default function ForgotPasswordPage() {
             <Button
               type="button"
               variant="outline"
-              label="Back to Login"
+              label="Quay lại Đăng nhập"
               onClick={() => navigate(ROUTES.LOGIN)}
             />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="Email Address"
+              label="Địa chỉ Email"
               name="email"
               type="email"
               value={email}
@@ -87,19 +87,19 @@ export default function ForgotPasswordPage() {
                 type="submit"
                 variant="primary"
                 icon={faArrowRight}
-                label="Send Reset Link"
+                label="Gửi liên kết đặt lại"
                 loading={loading}
               />
             </div>
 
             <p className="text-center text-sm text-text-secondary">
-              Remembered your password?{" "}
+              Đã nhớ mật khẩu?{" "}
               <button
                 type="button"
                 onClick={() => navigate(ROUTES.LOGIN)}
                 className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
               >
-                Back to Login
+                Quay lại Đăng nhập
               </button>
             </p>
           </form>
