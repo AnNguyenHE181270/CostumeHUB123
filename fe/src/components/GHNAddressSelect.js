@@ -19,11 +19,14 @@ export default function GHNAddressSelect({
             try {
                 const res = await fetch('http://localhost:9999/api/ghn/provinces');
                 const data = await res.json();
-                if (res.ok) {
+                if (res.ok && Array.isArray(data)) {
                     setProvinces(data);
+                } else {
+                    setProvinces([]);
                 }
             } catch (error) {
                 console.error("Failed to fetch GHN provinces", error);
+                setProvinces([]);
             } finally {
                 setLoadingP(false);
             }
@@ -42,11 +45,14 @@ export default function GHNAddressSelect({
             try {
                 const res = await fetch(`http://localhost:9999/api/ghn/districts?provinceId=${provinceId}`);
                 const data = await res.json();
-                if (res.ok) {
+                if (res.ok && Array.isArray(data)) {
                     setDistricts(data);
+                } else {
+                    setDistricts([]);
                 }
             } catch (error) {
                 console.error("Failed to fetch GHN districts", error);
+                setDistricts([]);
             } finally {
                 setLoadingD(false);
             }
@@ -65,11 +71,14 @@ export default function GHNAddressSelect({
             try {
                 const res = await fetch(`http://localhost:9999/api/ghn/wards?districtId=${districtId}`);
                 const data = await res.json();
-                if (res.ok) {
+                if (res.ok && Array.isArray(data)) {
                     setWards(data);
+                } else {
+                    setWards([]);
                 }
             } catch (error) {
                 console.error("Failed to fetch GHN wards", error);
+                setWards([]);
             } finally {
                 setLoadingW(false);
             }
@@ -128,7 +137,7 @@ export default function GHNAddressSelect({
                     required
                 >
                     <option value="" disabled>{loadingP ? "Đang tải..." : "Chọn tỉnh/thành"}</option>
-                    {provinces.map(p => (
+                    {(provinces || []).map(p => (
                         <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
                     ))}
                 </select>
@@ -142,7 +151,7 @@ export default function GHNAddressSelect({
                     required
                 >
                     <option value="" disabled>{loadingD ? "Đang tải..." : "Chọn quận/huyện"}</option>
-                    {districts.map(d => (
+                    {(districts || []).map(d => (
                         <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
                     ))}
                 </select>
@@ -156,7 +165,7 @@ export default function GHNAddressSelect({
                     required
                 >
                     <option value="" disabled>{loadingW ? "Đang tải..." : "Chọn phường/xã"}</option>
-                    {wards.map(w => (
+                    {(wards || []).map(w => (
                         <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
                     ))}
                 </select>
