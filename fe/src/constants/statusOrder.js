@@ -17,6 +17,6 @@ export const tabs = [
     { id: "pending", label: "Chờ xác nhận", icon: faBoxOpen },
     { id: "delivering", label: "Đang giao", icon: faTruck },
     { id: "renting", label: "Đang thuê", icon: faClock },
-    { id: "completed", label: "Hoàn thành", icon: faCheckCircle },
+    { id: "completed", label: "Đã thuê", icon: faCheckCircle },
     { id: "cancelled", label: "Đã hủy", icon: faCircleXmark },
 ];
