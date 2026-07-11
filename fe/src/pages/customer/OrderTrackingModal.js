@@ -25,7 +25,11 @@ const STEP_DEFINITIONS = [
 ]
 
 function getTrackingSteps(status) {
-    const currentStep = STEP_DEFINITIONS.find(s => s.status === status)?.id ?? 0
+    let currentStep = 0;
+    if (status === 'pending') currentStep = 1;
+    else if (status === 'delivering') currentStep = 2;
+    else if (['renting', 'returning', 'completed', 'overdue'].includes(status)) currentStep = 4;
+
     return STEP_DEFINITIONS.map((step) => ({
         ...step,
         completed: step.id < currentStep,
@@ -62,10 +66,10 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                 {(showAllItems ? items : items.slice(0, 1)).map((item, index) => (
                     <div key={index} className="flex gap-4">
                         <div className="h-16 w-12 shrink-0 rounded-lg bg-[oklch(0.92_0.03_130)] flex items-center justify-center overflow-hidden border">
-                            {(item.image || order.image) ? (
+                            {(item.costume?.images?.[0] || item.image) ? (
                                 <img
-                                    src={item.image || order.image}
-                                    alt={item.costumeName || order.costumeName}
+                                    src={item.costume?.images?.[0] || item.image}
+                                    alt={item.costume?.name || item.costumeName}
                                     className="h-full w-full object-cover"
                                 />
                             ) : (
@@ -77,7 +81,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                                 className="text-lg font-bold"
                                 style={{ fontFamily: "'Cormorant Garamond', serif" }}
                             >
-                                {item.costumeName || order.costumeName}
+                                {item.costume?.name || item.costumeName}
                             </h3>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -144,7 +148,12 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Địa chỉ giao hàng
                     </p>
-                    <p className="mt-1 text-sm text-foreground">{order.address}</p>
+                    <p className="mt-1 text-sm text-foreground">
+                        {order.shippingAddress 
+                            ? [order.shippingAddress.addressDetail, order.shippingAddress.ward, order.shippingAddress.district, order.shippingAddress.province].filter(Boolean).join(', ')
+                            : (order.address || "Chưa cập nhật")
+                        }
+                    </p>
                 </div>
             </div>
 

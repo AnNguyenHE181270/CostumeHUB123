@@ -5,6 +5,10 @@ import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
 
+const removeAccents = (str) => {
+  return str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D') : "";
+};
+
 export default function OrdersPage() {
   const { role } = useAuth(); // Lấy role (owner hoặc staff) từ Context
   const [orders, setOrders] = useState([]);
@@ -16,7 +20,6 @@ export default function OrdersPage() {
   // Toolbar States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortPrice, setSortPrice] = useState("default");
 
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -39,15 +42,12 @@ export default function OrdersPage() {
   // Đưa về trang 1 khi bất kỳ filter/search/sort nào thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, sortPrice]);
+  }, [searchTerm, statusFilter]);
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'awaitingPayment': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'delivered': return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'returning': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -60,10 +60,7 @@ export default function OrdersPage() {
   const getStatusLabel = (status) => {
     switch (status) {
       case 'pending': return 'Chờ xử lý';
-      case 'awaitingPayment': return 'Chờ thanh toán';
-      case 'preparing': return 'Đang chuẩn bị đồ';
       case 'delivering': return 'Đang giao';
-      case 'delivered': return 'Đã giao hàng';
       case 'renting': return 'Đang thuê';
       case 'returning': return 'Đang trả hàng';
       case 'completed': return 'Hoàn tất';
@@ -82,27 +79,54 @@ export default function OrdersPage() {
     { header: "Tổng tiền", accessor: (row) => <span className="font-semibold text-[#555]">{row.totalAmount?.toLocaleString('vi-VN') || 0} đ</span> },
     { 
       header: "Trạng thái", 
-      accessor: (row) => (
-        <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-block text-center min-w-[110px] ${getStatusColor(row.status)}`}>
-          {getStatusLabel(row.status)}
-        </span>
-      )
+      accessor: (row) => {
+        if (row.status === 'pending' && role === 'staff') {
+          return (
+            <div className="inline-flex w-[110px] gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="flex-[2] py-1.5 border border-transparent bg-emerald-100 text-emerald-700 font-semibold rounded-md hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap text-center"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await rentalService.confirmPreparation(row._id);
+                    setToast({ show: true, message: "Xác nhận thành công!", type: "success" });
+                    fetchOrders();
+                  } catch (error) {
+                    setToast({ show: true, message: error.response?.data?.message || "Lỗi xác nhận", type: "error" });
+                  }
+                }}
+              >
+                Xác nhận
+              </button>
+              <button 
+                className="flex-[1] py-1.5 border border-transparent bg-red-100 text-red-700 font-semibold rounded-md hover:bg-red-200 transition-colors text-[11px] whitespace-nowrap text-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUpdateStatus(row._id, 'cancelled');
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          );
+        }
+        return (
+          <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-block text-center min-w-[110px] ${getStatusColor(row.status)}`}>
+            {getStatusLabel(row.status)}
+          </span>
+        );
+      }
     }
   ];
 
   // Logic Xử lý Lọc, Tìm kiếm và Sắp xếp
   let processedOrders = orders.filter((order) => {
-    const nameStr = (order.shippingAddress?.receiverName || order.customerId?.fullName || "").toLowerCase();
-    const searchMatch = (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) || nameStr.includes(searchTerm.toLowerCase());
+    const nameStr = removeAccents(order.shippingAddress?.receiverName || order.customerId?.fullName || "").toLowerCase();
+    const searchStr = removeAccents(searchTerm).toLowerCase();
+    const searchMatch = (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) || nameStr.includes(searchStr);
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
     return searchMatch && statusMatch;
   });
-
-  if (sortPrice === "asc") {
-    processedOrders.sort((a, b) => (a.totalAmount || 0) - (b.totalAmount || 0));
-  } else if (sortPrice === "desc") {
-    processedOrders.sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0));
-  }
 
   const totalPages = Math.ceil(processedOrders.length / itemsPerPage);
   const currentOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -141,25 +165,12 @@ export default function OrdersPage() {
         >
           <option value="all">Tất cả trạng thái</option>
           <option value="pending">Chờ xử lý</option>
-          <option value="awaitingPayment">Chờ thanh toán</option>
-          <option value="preparing">Đang chuẩn bị đồ</option>
-          <option value="delivering">Đang giao</option>
           <option value="delivered">Đã giao hàng</option>
           <option value="renting">Đang thuê</option>
           <option value="returning">Đang trả hàng</option>
           <option value="completed">Hoàn tất</option>
           <option value="cancelled">Đã hủy</option>
           <option value="overdue">Quá hạn</option>
-        </select>
-
-        <select 
-          value={sortPrice}
-          onChange={(e) => setSortPrice(e.target.value)}
-          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
-        >
-          <option value="default">Sắp xếp giá: Mặc định</option>
-          <option value="asc">Giá: Thấp đến Cao</option>
-          <option value="desc">Giá: Cao đến Thấp</option>
         </select>
       </div>
 
@@ -267,24 +278,14 @@ export default function OrdersPage() {
               {/* CHỈ STAFF MỚI THẤY CÁC NÚT THAO TÁC NÀY */}
               {role === 'staff' && (
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <button 
-                    className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
-                    onClick={() => setIsTrackingOpen(true)}
-                  >
-                    Theo dõi
-                  </button>
-                  <button 
-                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-100 text-emerald-700 font-medium rounded hover:bg-emerald-200 transition-colors text-sm"
-                    onClick={() => handleUpdateStatus(selectedOrder._id, 'preparing')}
-                  >
-                    Xác Nhận
-                  </button>
-                  <button 
-                    className="flex-1 sm:flex-none px-4 py-2 bg-red-100 text-red-700 font-medium rounded hover:bg-red-200 transition-colors text-sm"
-                    onClick={() => handleUpdateStatus(selectedOrder._id, 'cancelled')}
-                  >
-                    Hủy đơn
-                  </button>
+                  {!['pending', 'cancelled'].includes(selectedOrder.status) && (
+                    <button 
+                      className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
+                      onClick={() => setIsTrackingOpen(true)}
+                    >
+                      Theo dõi
+                    </button>
+                  )}
                 </div>
               )}
             </div>
