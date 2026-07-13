@@ -34,6 +34,9 @@ RentalMock.find = (filter) => {
             mockData.rentalSortCalledWith = s;
             return mockData.rentalList || [];
         },
+        then: function (resolve) {
+            resolve(mockData.rentalList || []);
+        },
     };
 };
 const defaultRentalFindOne = (filter) => {
@@ -237,14 +240,25 @@ describe('createOrder', () => {
         );
     });
 
-    test('Costume already booked in this timeframe → throws 400', async () => {
+    test('Costume already booked in this timeframe beyond total stock → throws 400', async () => {
+        // Kho size L có totalStock = 5. Đã có đơn khác trùng khoảng ngày đặt hết 5 bộ.
         const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }] };
-        mockData._rentalFindOneQueue = [{ _id: 'existing_rental_id' }];
+        mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 5 }] }];
 
         await assert.rejects(
             async () => rentalService.createOrder('user_123', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
+    });
+
+    test('Costume overlaps another order but combined quantity still within total stock → succeeds', async () => {
+        // Kho size L có totalStock = 5, đơn khác đã đặt 3 bộ trùng khoảng ngày, đơn mới đặt 2 bộ vẫn đủ.
+        const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 2 }] };
+        mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 3 }] }];
+
+        const result = await rentalService.createOrder('user_123', mockBody);
+
+        assert.strictEqual(result.status, 'pending');
     });
 
     test('Requested size does not exist → throws 404', async () => {

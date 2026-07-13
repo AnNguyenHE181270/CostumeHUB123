@@ -130,22 +130,30 @@ const createOrder = async (customerId, body) => {
       );
     }
 
-    const existingOrder = await Rental.findOne({
+    const variant = costume.variants.find((v) => v.size === item.size);
+    if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
+
+    // Tính tổng số lượng đã được đặt (đơn đang hoạt động) trùng khoảng ngày yêu cầu,
+    // thay vì chặn tuyệt đối chỉ vì trùng costume+size+khoảng ngày.
+    const overlappingOrders = await Rental.find({
       'items.costume': item.costume,
       'items.size': item.size,
       status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
       startDate: { $lte: new Date(endDate) },
       endDate: { $gte: new Date(startDate) },
     });
-    if (existingOrder) {
-      throw new HttpError('Sản phẩm đã được đặt trong vài giờ qua. Vui lòng kiểm tra đơn hàng.', 400);
-    }
+    let bookedQty = 0;
+    overlappingOrders.forEach((order) => {
+      order.items.forEach((oi) => {
+        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
+          bookedQty += oi.quantity;
+        }
+      });
+    });
 
-    const variant = costume.variants.find((v) => v.size === item.size);
-    if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
-    if (item.quantity > variant.availableStock) {
+    if (bookedQty + item.quantity > variant.totalStock) {
       throw new HttpError(
-        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng. Kho chỉ còn ${variant.availableStock}.`,
+        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
         400
       );
     }
