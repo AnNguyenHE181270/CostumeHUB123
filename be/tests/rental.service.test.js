@@ -477,7 +477,10 @@ describe('checkAvailability', () => {
     });
 
     test('Return false when not enough stock due to overlapping rentals', async () => {
-        RentalMock.find = async () => [{ quantity: 2 }, { quantity: 2 }];
+        RentalMock.find = async () => [
+            { items: [{ costume: '60d5ec49c6934c1a48c48a12', quantity: 2 }] },
+            { items: [{ costume: '60d5ec49c6934c1a48c48a12', quantity: 2 }] },
+        ];
 
         const result = await rentalService.checkAvailability({ costumeId: '60d5ec49c6934c1a48c48a12', startDate: tomorrowStr, endDate: fourDaysLaterStr, quantity: 2 });
 

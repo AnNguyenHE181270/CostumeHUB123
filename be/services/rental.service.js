@@ -273,7 +273,7 @@ const confirmReceipt = async (orderId, customerId) => {
   return order;
 };
 
-const checkAvailability = async ({ costumeId, startDate, endDate, quantity }) => {
+const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size }) => {
   const costume = await Costume.findById(costumeId);
   if (!costume) throw new HttpError('Costume not found', 404);
 
@@ -281,15 +281,38 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity }) =>
   const paddedStart = new Date(new Date(startDate).getTime() - paddingMs);
   const paddedEnd = new Date(new Date(endDate).getTime() + paddingMs);
 
+  // Query rentals có items chứa costume này, trong khoảng thời gian overlap
   const overlaps = await Rental.find({
-    costume: costumeId,
-    status: { $in: ['pending', 'confirmed', 'picked_up'] },
+    'items.costume': costumeId,
+    status: { $in: ['pending', 'delivering', 'delivered', 'renting'] },
     startDate: { $lte: paddedEnd },
     endDate: { $gte: paddedStart },
   });
 
-  const rentedQty = overlaps.reduce((sum, o) => sum + o.quantity, 0);
-  const totalStock = costume.variants.reduce((sum, v) => sum + (v.totalStock || 0), 0);
+  // Tính tổng quantity từ items array
+  let rentedQty = 0;
+  overlaps.forEach(rental => {
+    rental.items.forEach(item => {
+      if (item.costume.toString() === costumeId) {
+        // Nếu có size, chỉ count quantity của size đó
+        if (size ? item.size === size : true) {
+          rentedQty += item.quantity;
+        }
+      }
+    });
+  });
+
+  // Tính total stock từ variants
+  let totalStock = 0;
+  if (size) {
+    // Nếu có size, chỉ count stock của size đó
+    const variant = costume.variants.find(v => v.size === size);
+    totalStock = variant?.totalStock || 0;
+  } else {
+    // Nếu không có size, count tất cả
+    totalStock = costume.variants.reduce((sum, v) => sum + (v.totalStock || 0), 0);
+  }
+
   const availableQty = totalStock - rentedQty;
 
   return { isAvailable: availableQty >= quantity, availableQty };
