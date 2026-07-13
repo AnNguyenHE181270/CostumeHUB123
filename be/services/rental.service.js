@@ -8,6 +8,34 @@ const sendEmail = require('./email.service');
 const ghnService = require('./ghn.service');
 const mongoose = require('mongoose');
 const { getRentalPriceFactor } = require('../utils/pricing.util');
+const notificationService = require('./notification.service');
+
+const ORDER_STATUS_MESSAGES = {
+  pending: 'Đơn hàng của bạn đã được tạo và đang chờ xử lý.',
+  delivering: 'Đơn hàng của bạn đang được giao đến bạn.',
+  delivered: 'Đơn hàng của bạn đã được giao thành công.',
+  renting: 'Đơn hàng đã được xác nhận, bạn đang trong thời gian thuê.',
+  returning: 'Yêu cầu trả đồ của bạn đang được cửa hàng xử lý.',
+  completed: 'Đơn hàng đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ của CostumeHUB!',
+  cancelled: 'Đơn hàng của bạn đã bị hủy.',
+  overdue: 'Đơn hàng của bạn đã quá hạn trả. Vui lòng liên hệ cửa hàng để xử lý.',
+};
+
+// Tạo thông báo in-app khi đơn hàng chuyển trạng thái. Không để lỗi thông báo làm hỏng luồng nghiệp vụ chính.
+async function notifyOrderStatus(rental, status) {
+  try {
+    await notificationService.createNotification({
+      userId: rental.customerId,
+      type: 'order_status',
+      title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+      message: ORDER_STATUS_MESSAGES[status] || `Đơn hàng của bạn đã chuyển sang trạng thái ${status}.`,
+      link: '/rental-history',
+      relatedId: rental._id,
+    });
+  } catch (err) {
+    console.error('[Notification Error]', err);
+  }
+}
 
 const autoUpdateDeliveredStatus = async () => {
   const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
@@ -18,6 +46,7 @@ const autoUpdateDeliveredStatus = async () => {
   for (const rental of expiredRentals) {
     rental.status = 'renting';
     await rental.save();
+    await notifyOrderStatus(rental, 'renting');
   }
 };
 
@@ -204,6 +233,19 @@ const createOrder = async (customerId, body) => {
   await newOrder.save();
 
   try {
+    await notificationService.createNotification({
+      userId: customerId,
+      type: 'order_created',
+      title: `Đơn hàng #${newOrder._id.toString().slice(-6).toUpperCase()}`,
+      message: `Đặt đơn thành công! Tổng thanh toán ${totalAmount.toLocaleString('vi-VN')}đ đã được trừ từ ví.`,
+      link: '/rental-history',
+      relatedId: newOrder._id,
+    });
+  } catch (notifyError) {
+    console.error('[Notification Error]', notifyError);
+  }
+
+  try {
     const cart = await Cart.findOne({ customerId });
     if (cart) {
       const orderStart = new Date(startDate).getTime();
@@ -237,6 +279,7 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
   order.paymentStatus = 'refunded';
   await order.save();
+  await notifyOrderStatus(order, 'cancelled');
 
   const user = await User.findById(customerId);
   if (user) {
@@ -278,6 +321,7 @@ const confirmReceipt = async (orderId, customerId) => {
   if (order.status !== 'delivered') throw new HttpError('Đơn hàng không ở trạng thái đang giao tới.', 400);
   order.status = 'renting';
   await order.save();
+  await notifyOrderStatus(order, 'renting');
   return order;
 };
 
@@ -361,6 +405,7 @@ const updateOrderStatus = async (id, status) => {
 
   order.status = status;
   await order.save();
+  await notifyOrderStatus(order, status);
   return order;
 };
 
@@ -390,15 +435,18 @@ const confirmPreparation = async (id) => {
       order.trackingCode = ghnRes.order_code;
       order.status = 'delivering';
       await order.save();
+      await notifyOrderStatus(order, 'delivering');
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
       order.status = 'delivering';
       await order.save();
+      await notifyOrderStatus(order, 'delivering');
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
     order.status = 'delivering';
     await order.save();
+    await notifyOrderStatus(order, 'delivering');
     return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
   }
 };
@@ -513,6 +561,7 @@ const requestReturn = async (id) => {
   }
   rental.status = 'returning';
   await rental.save();
+  await notifyOrderStatus(rental, 'returning');
   return rental;
 };
 
@@ -546,6 +595,7 @@ const inspectReturn = async (id, { damageFee, missingNotes, actualReturnDate }) 
   rental.refundAmount = refundAmount;
   if (missingNotes) rental.cancelReason = missingNotes;
   await rental.save();
+  await notifyOrderStatus(rental, 'completed');
 
   if (refundAmount > 0) {
     const user = await User.findById(rental.customerId);

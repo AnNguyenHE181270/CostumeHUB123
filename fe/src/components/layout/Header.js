@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { formatPrice } from "../../utils/formatters";
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -97,6 +98,8 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="flex-1 flex items-center justify-end gap-6 lg:gap-8 relative z-[60]">
+          <NotificationBell />
+
           <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
             <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
             {cartCount > 0 && (

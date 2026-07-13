@@ -3,6 +3,7 @@ const qs = require("qs");
 const moment = require("moment");
 const User = require("../models/user.model");
 const TopUpTransaction = require("../models/topup.model");
+const notificationService = require("../services/notification.service");
 
 require("dotenv").config();
 
@@ -137,6 +138,19 @@ const vnpayIpn = async (req, res) => {
             if (user) {
                 user.balance = (user.balance || 0) + topUp.amount;
                 await user.save();
+
+                try {
+                    await notificationService.createNotification({
+                        userId: user._id,
+                        type: 'wallet_topup',
+                        title: 'Nạp tiền thành công',
+                        message: `Ví của bạn đã được cộng ${topUp.amount.toLocaleString('vi-VN')}đ.`,
+                        link: '/user/transactions',
+                        relatedId: topUp._id,
+                    });
+                } catch (notifyError) {
+                    console.error('[Notification Error]', notifyError);
+                }
             }
 
             return res.status(200).json({
@@ -200,6 +214,19 @@ const vnpayReturn = async (req, res) => {
                     if (user) {
                         user.balance = (user.balance || 0) + topUp.amount;
                         await user.save();
+
+                        try {
+                            await notificationService.createNotification({
+                                userId: user._id,
+                                type: 'wallet_topup',
+                                title: 'Nạp tiền thành công',
+                                message: `Ví của bạn đã được cộng ${topUp.amount.toLocaleString('vi-VN')}đ.`,
+                                link: '/user/transactions',
+                                relatedId: topUp._id,
+                            });
+                        } catch (notifyError) {
+                            console.error('[Notification Error]', notifyError);
+                        }
                     }
                 }
             }
