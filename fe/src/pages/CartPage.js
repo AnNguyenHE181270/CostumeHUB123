@@ -63,7 +63,7 @@ export default function CartPage() {
   const totalRental = selectedCartItems.reduce((sum, item) => {
     const days = getRentalDays(item.startDate, item.endDate);
     const factor = getRentalPriceFactor(days);
-    return sum + item.rentalPerDay * factor * item.quantity * days;
+    return sum + item.rentalPerDay * factor * item.quantity;
   }, 0);
 
   const totalDeposit = selectedCartItems.reduce(
@@ -279,14 +279,14 @@ export default function CartPage() {
                 <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                   {(() => {
                     const factor = getRentalPriceFactor(rentalDays);
-                    const adjustedRentalPerDay = item.rentalPerDay * factor;
+                    const adjustedRentalPrice = item.rentalPerDay * factor;
                     return (
                       <>
                         <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                          {formatPrice(adjustedRentalPerDay * rentalDays * (item.quantity || 1))}
+                          {formatPrice(adjustedRentalPrice * (item.quantity || 1))}
                         </p>
                         <p className="text-[11px] text-[#999] mb-1">
-                          {formatPrice(adjustedRentalPerDay)} / ngày {factor > 1 ? `(+${Math.round((factor - 1) * 100)}%)` : ""}
+                          {formatPrice(item.rentalPerDay)} {factor > 1 ? `(+${Math.round((factor - 1) * 100)}%)` : ""}
                         </p>
                       </>
                     );
