@@ -3,9 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http")
 const morgan = require("morgan");
-const {Server} = require("socket.io")
 const swaggerUi = require("swagger-ui-express");
-const chatSocket = require("./sockets/chat.socket");
 const YAML = require("yamljs");
 require("dotenv").config();
 
@@ -25,15 +23,7 @@ app.use(morgan("dev"));
 
 const swaggerDocument = YAML.load("./docs/swagger.yaml");
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    credentials: true,
-  },
-});
 
-// inject io vào socket module
-chatSocket(io);
 app.use(
   "/api-docs",
   swaggerUi.serve,

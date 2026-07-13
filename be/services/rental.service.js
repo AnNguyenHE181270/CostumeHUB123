@@ -44,6 +44,7 @@ const getRentalHistory = async (userId) => {
       quantity: item.quantity,
       rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || 0,
     })),
+    createdAt: order.createdAt,
   }));
 };
 
