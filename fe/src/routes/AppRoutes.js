@@ -29,7 +29,6 @@ import ExportPage from "../pages/store-owner/ExportPage";
 // Trang Staff
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffProductsPage from "../pages/staff/StaffProductsPage";
-import StaffChatPage from "../pages/staff/StaffChatPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
@@ -37,7 +36,8 @@ import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage";
-import CustomerChatPage from "../pages/customer/CustomerChatPage";
+import TransactionHistoryPage from "../pages/customer/TransactionHistoryPage";
+import TopupSuccessPage from "../pages/customer/TopupSuccessPage";
 import { ROUTES } from "./routePaths";
 
 
@@ -68,11 +68,12 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
-          <Route path="/customer/chat" element={<CustomerChatPage />} />
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
+            <Route path="/user/transactions" element={<TransactionHistoryPage />} />
+            <Route path="/user/topup-success" element={<TopupSuccessPage />} />
           </Route>
         </Route>
       </Route>
@@ -94,7 +95,6 @@ function AppRoutes() {
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />
-          <Route path="chat" element={<StaffChatPage />} />
         </Route>
       </Route>
 
@@ -111,7 +111,6 @@ function AppRoutes() {
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />
-          <Route path="chat" element={<StaffChatPage />} />
         </Route>
       </Route>
 

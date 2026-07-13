@@ -39,10 +39,6 @@ export default function Header() {
   ];
 
   const roleStr = (typeof role === "string" ? role : (role?.name || user?.role?.name || user?.role || "")).toLowerCase();
-  
-  if (user && (roleStr === "customer" || roleStr === "online-customer")) {
-    NAV_LINKS.push({ label: "CHAT VỚI SHOP", href: "/customer/chat" });
-  }
 
   const [categories, setCategories] = useState([]);
 
