@@ -8,7 +8,7 @@ import {
   faFilePdf,
   faFileWord
 } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
@@ -25,63 +25,103 @@ export default function FrappeStyleDashboard() {
   const [inventoryUtilizationPercentage, setInventoryUtilizationPercentage] = useState(0);
   const [totalStock, setTotalStock] = useState(0);
   const [currentlyRented, setCurrentlyRented] = useState(0);
+  const [categoryData, setCategoryData] = useState([]); 
+  const [recentOrders, setRecentOrders] = useState([]); 
   
-  // States quản lý menu thả xuống
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
-  const [dateRange, setDateRange] = useState("30 ngày qua");
   
-  // States cho tính năng chọn khoảng ngày tùy chỉnh
+  // FIX: Sửa giá trị mặc định thành "Tất cả thời gian" để không bị lọt dữ liệu cũ
+  const [dateRange, setDateRange] = useState("Tất cả thời gian");
+  
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
   const { token } = useAuth();
 
-  const fetchDashboardData = async () => {                                                                                                    
-    try {                                                                                                            
-      setLoadingPage(true);                                                                                                          
-      setToast({ isVisible: false, message: "", type: "success" });                                                              
-                                                                                                                                     
-      const headers = {                                                                                                              
-        "Content-Type": "application/json",                                                                                          
-        Authorization: `Bearer ${token}`,                                                                                            
-      };                                                                                                                             
-                                                                                                                                     
-      const [resRevenue, resActive, resInventory] = await Promise.all([                                                              
-        fetch(`http://localhost:9999/api/rentals/dashboard/revenue`, { headers }),                                                   
-        fetch(`http://localhost:9999/api/rentals/dashboard/active-rentals`, { headers }),                                            
-        fetch(`http://localhost:9999/api/rentals/dashboard/inventory-utilization`, { headers })                                      
-      ]);                                                                                                                            
-                                                                                                                                     
-      if (!resRevenue.ok || !resActive.ok || !resInventory.ok) {                                                                     
-        setToast({ isVisible: true, type: "error", message: "Failed to load dashboard data." });                                     
-        return;                                                                                                                      
-      }                                                                                                                              
-                                                                                                                                     
-      const dataRevenue = await resRevenue.json();                                                                                   
-      const dataActive = await resActive.json();                                                                                     
-      const dataInventory = await resInventory.json();                                                                               
-                                                                                                                                     
-      setRevenue(dataRevenue.totalRevenue || 0);                                                                                          
-      setActiveOrdersCount(dataActive.activeOrdersCount || 0);                                                                            
-      setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);                                                                        
-      setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);                                                        
-      setTotalStock(dataInventory.totalStock || 0);                                                                       
-      setCurrentlyRented(dataInventory.currentlyRented || 0);                                                                             
-                                                                                                                                     
-    } catch (error) {                                                                                                                
-      console.error(error);                                                                                                          
-      setToast({ isVisible: true, type: "error", message: "Network error while loading data." });                                    
-    } finally {                                                                                                                      
-      setLoadingPage(false);                                                                                                         
-    }                                                                                                                                
-  };                                                                                                                                 
-                                                                                                                                     
-  useEffect(() => {                                                                                                                  
-      fetchDashboardData();                                                                                                          
-  }, []); 
+  const getDateParams = useCallback(() => {
+    const now = new Date();
+    let start = null;
+    let end = new Date();
 
-  // Cấu trúc HTML dùng chung cho in PDF và lưu file Word
+    if (dateRange === "Hôm nay") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (dateRange === "7 ngày qua") {
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "30 ngày qua") {
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "Tháng này") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (dateRange === "Tất cả thời gian") {
+      // FIX: Trả về null để Backend không áp dụng filter ngày tháng
+      start = null;
+      end = null;
+    } else if (dateRange.startsWith("Từ")) {
+      if (customStartDate && customEndDate) {
+        start = new Date(customStartDate);
+        end = new Date(customEndDate);
+      }
+    }
+
+    return {
+      startDate: start ? start.toISOString() : "",
+      endDate: end ? end.toISOString() : ""
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const fetchDashboardData = useCallback(async () => {                                                                                                                                                                                                                 
+    try {                                                                                                                                                                                                                                                               
+      setLoadingPage(true);                                                                                                                                                                                                                                             
+      setToast({ isVisible: false, message: "", type: "success" });                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                        
+      const headers = {                                                                                                                                                                                                                                                 
+        "Content-Type": "application/json",                                                                                                                                                                                                                             
+        Authorization: `Bearer ${token}`,                                                                                                                                                                                                                               
+      };                                                                                                                                                                                                                                                                
+      
+      const { startDate, endDate } = getDateParams();
+      const queryParams = `?startDate=${startDate}&endDate=${endDate}`;
+                                                                                                                                                                                                                                                                        
+      const [resRevenue, resActive, resInventory, resOrders] = await Promise.all([                                                                                                                                                                                           
+        fetch(`http://localhost:9999/api/rentals/dashboard/revenue${queryParams}`, { headers }),                                                                                                                                                                       
+        fetch(`http://localhost:9999/api/rentals/dashboard/active-rentals${queryParams}`, { headers }),                                                                                                                                                                 
+        fetch(`http://localhost:9999/api/rentals/dashboard/inventory-utilization${queryParams}`, { headers }),
+        fetch(`http://localhost:9999/api/rentals${queryParams}`, { headers })
+      ]);                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                        
+      if (!resRevenue.ok || !resActive.ok || !resInventory.ok || !resOrders.ok) {                                                                                                                                                                                                 
+        setToast({ isVisible: true, type: "error", message: "Không thể tải dữ liệu báo cáo thống kê." });                                                                                                                                                                 
+        return;                                                                                                                                                                                                                                                         
+      }                                                                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                        
+      const dataRevenue = await resRevenue.json();                                                                                                                                                                                                                      
+      const dataActive = await resActive.json();                                                                                                                                                                                                                        
+      const dataInventory = await resInventory.json();                                                                                                                                                                                                                  
+      const dataOrders = await resOrders.json();
+                                                                                                                                                                                                                                                                        
+      setRevenue(dataRevenue.totalRevenue || 0);                                                                                                                                                                                                                                
+      setActiveOrdersCount(dataActive.activeOrdersCount || 0);                                                                                                                                                                                                                                 
+      setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);                                                                                                                                                                                                                              
+      setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);                                                                                                                                                                                                              
+      setTotalStock(dataInventory.totalStock || 0);                                                                                                                                                                                                                                     
+      setCurrentlyRented(dataInventory.currentlyRented || 0);                                                                                                                                                                                                           
+      setCategoryData(dataInventory.categoryBreakdown || []);
+      
+      const validOrders = Array.isArray(dataOrders) ? dataOrders : (dataOrders.rentals || dataOrders.data || []);
+      setRecentOrders(validOrders.slice(0, 5));
+                                                                                                                                                                                                                                                                        
+    } catch (error) {                                                                                                                                                                                                                                                   
+      console.error(error);                                                                                                                                                                                                                                             
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ khi tải báo cáo." });                                                                                                                                                                 
+    } finally {                                                                                                                                                                                                                                                         
+      setLoadingPage(false);                                                                                                                                                                                                                                            
+    }                                                                                                                                                                                                                                                                   
+  }, [token, getDateParams]);                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                        
+  useEffect(() => {                                                                                                                                                                                                                                                         
+      fetchDashboardData();                                                                                                                                                                                                                                             
+  }, [fetchDashboardData, dateRange]); 
+
   const generateReportHTML = (formattedRevenue, currentDate) => `
     <html>
       <head>
@@ -121,32 +161,6 @@ export default function FrappeStyleDashboard() {
             <td>Trang phục đang thuê<br><strong>${currentlyRented} bộ</strong></td>
             <td>Hiệu suất khai thác kho<br><strong>${inventoryUtilizationPercentage}% (Tổng kho: ${totalStock})</strong></td>
           </tr>
-        </table>
-
-        <div class="section-title">2. Chi tiết cơ cấu danh mục trang phục</div>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Tên danh mục trang phục</th>
-              <th>Số lượng lưu kho hiện tại</th>
-              <th>Số lượt thuê phát sinh</th>
-              <th>Đánh giá vận hành</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Đầm & Váy nữ (Dresses)</td>
-              <td>342 bộ</td>
-              <td>89 lượt</td>
-              <td>Tăng trưởng mạnh</td>
-            </tr>
-            <tr>
-              <td>Âu phục & Vest nam (Suits)</td>
-              <td>85 bộ</td>
-              <td>24 lượt</td>
-              <td>Vận hành ổn định</td>
-            </tr>
-          </tbody>
         </table>
 
         <div class="signature-space">
@@ -200,7 +214,6 @@ export default function FrappeStyleDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // Hàm xử lý khi ấn nút "Áp dụng" khoảng ngày tùy chỉnh
   const handleApplyCustomDate = () => {
     if (customStartDate && customEndDate) {
       const startStr = new Date(customStartDate).toLocaleDateString("vi-VN");
@@ -210,19 +223,28 @@ export default function FrappeStyleDashboard() {
     }
   };
 
+  if (loadingPage) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#eaeaea] border-t-[#1a1a1a]"></div>
+      </div>
+    );
+  }
+
+  const totalCategoryCount = categoryData.reduce((sum, item) => sum + item.count, 0);
+
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
       
       {/* === 1. GLOBAL TOOLBAR === */}
       <div className="bg-white border-b border-[#eaeaea] px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Store Owner Dashboard</h1>
-          <span className="text-xs bg-surface text-[#555] px-2 py-1 rounded">Public</span>
+          <h1 className="text-lg font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Báo Cáo Hoạt Động & Doanh Thu</h1>
+          <span className="text-xs bg-surface text-[#555] px-2 py-1 rounded">Chủ cửa hàng</span>
         </div>
         
         <div className="flex items-center gap-3">
           
-          {/* MENU CHỌN THỜI GIAN KÈM CUSTOM DATE */}
           <div className="relative">
             <button 
               type="button"
@@ -239,9 +261,9 @@ export default function FrappeStyleDashboard() {
             
             {showDateMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-2 z-50 animate-fade-in">
-                {/* Lựa chọn nhanh */}
                 <div className="mb-2">
-                  {["Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"].map((range) => (
+                  {/* FIX: Thêm "Tất cả thời gian" vào menu thả xuống */}
+                  {["Tất cả thời gian", "Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"].map((range) => (
                     <button
                       key={range}
                       type="button"
@@ -257,7 +279,6 @@ export default function FrappeStyleDashboard() {
                   ))}
                 </div>
 
-                {/* Chọn khoảng ngày tùy chỉnh */}
                 <div className="px-4 py-3 border-t border-[#eaeaea] bg-gray-50/50">
                   <p className="text-xs text-[#999] mb-2 font-medium">Tùy chọn khoảng ngày:</p>
                   <div className="flex flex-col gap-2">
@@ -295,7 +316,6 @@ export default function FrappeStyleDashboard() {
 
           <div className="h-6 w-px bg-gray-200"></div>
 
-          {/* NÚT XUẤT FILE PHÁP LÝ */}
           <div className="relative">
             <button 
               type="button"
@@ -305,7 +325,7 @@ export default function FrappeStyleDashboard() {
                 setShowDateMenu(false);
               }} 
               className="text-[#1a1a1a] hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" 
-              title="Xuất báo cáo văn bản"
+              title="Xuất báo cáo văn bản pháp lý"
             >
               <FontAwesomeIcon icon={faDownload} className="text-sm" />
             </button>
@@ -318,7 +338,7 @@ export default function FrappeStyleDashboard() {
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
                 >
                   <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
-                  Xuất file PDF (.pdf)
+                  Xuất văn bản PDF (.pdf)
                 </button>
                 <button 
                   type="button"
@@ -326,7 +346,7 @@ export default function FrappeStyleDashboard() {
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
                 >
                   <FontAwesomeIcon icon={faFileWord} className="text-blue-500" />
-                  Xuất file Word (.doc)
+                  Xuất văn bản Word (.doc)
                 </button>
               </div>
             )}
@@ -336,33 +356,33 @@ export default function FrappeStyleDashboard() {
 
       {/* === 2. DASHBOARD CANVAS === */}
       <div className="flex-1 p-6 overflow-y-auto">
-        <h2 className="text-sm font-semibold text-[#999] uppercase tracking-wider mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Revenue & Operations</h2>
+        <h2 className="text-sm font-semibold text-[#999] uppercase tracking-wider mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Hiệu suất kinh doanh & Tình trạng kho</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-          {/* --- WIDGET 1: KPI Number --- */}
+          {/* --- WIDGET 1: Doanh thu thực tế --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-[#555]">Total Revenue</h3>
+              <h3 className="text-sm font-medium text-[#555]">Tổng doanh thu</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex items-end gap-2">
               <span className="text-3xl font-bold text-[#1a1a1a]">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(revenue || 0)}</span>
             </div>
             <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1">
-              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Compared to previous period
+              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Tổng giá trị các hóa đơn đã chốt trong kỳ
             </div>
           </div>
 
-          {/* --- WIDGET 2: Active Rentals --- */}
+          {/* --- WIDGET 2: Đơn hoạt động --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-[#555]">Active Rentals</h3>
+              <h3 className="text-sm font-medium text-[#555]">Sản phẩm đang lưu hành</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex-1 min-h-[100px] relative mt-2">
               <Bar 
                 data={{
-                  labels: ['Orders', 'Costumes'],
+                  labels: ['Đơn hàng phát sinh', 'Số trang phục'],
                   datasets: [{
                     data: [activeOrdersCount || 0, totalActiveCostumes || 0],
                     backgroundColor: ['#f59e0b', '#3b82f6'],
@@ -380,21 +400,21 @@ export default function FrappeStyleDashboard() {
               />
             </div>
             <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1">
-              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Currently out of store
+              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Số lượng trang phục khách đang giữ bên ngoài
             </div>
           </div>
 
-          {/* --- WIDGET 3: Inventory Utilization --- */}
+          {/* --- WIDGET 3: Hiệu suất khai thác kho --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-[#555]">Inventory Utilization</h3>
+              <h3 className="text-sm font-medium text-[#555]">Hiệu suất khai thác kho</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex-1 flex items-center justify-around relative mt-2 mb-2">
               <div className="relative w-24 h-24">
                 <Doughnut 
                   data={{
-                    labels: ['Rented', 'Available'],
+                    labels: ['Đang cho thuê', 'Còn trống trong kho'],
                     datasets: [{
                       data: [currentlyRented || 0, Math.max(0, (totalStock || 0) - (currentlyRented || 0))],
                       backgroundColor: ['#ef4444', '#f3f4f6'],
@@ -408,19 +428,19 @@ export default function FrappeStyleDashboard() {
                 </div>
               </div>
               <div className="flex flex-col justify-center gap-3">
-                <div><p className="text-[10px] text-[#999] uppercase tracking-wide">Rented</p><p className="text-xl font-bold text-[#ef4444] leading-none">{currentlyRented || 0}</p></div>
-                <div><p className="text-[10px] text-[#999] uppercase tracking-wide">Total Stock</p><p className="text-xl font-bold text-[#1a1a1a] leading-none">{totalStock || 0}</p></div>
+                <div><p className="text-[10px] text-[#999] uppercase tracking-wide">Đang thuê</p><p className="text-xl font-bold text-[#ef4444] leading-none">{currentlyRented || 0}</p></div>
+                <div><p className="text-[10px] text-[#999] uppercase tracking-wide">Tổng kho</p><p className="text-xl font-bold text-[#1a1a1a] leading-none">{totalStock || 0}</p></div>
               </div>
             </div>
             <div className="mt-3 border-t border-[#f0f0f0] pt-3 text-xs text-[#999] flex items-center gap-1 justify-center">
-              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Of total costumes rented
+              <FontAwesomeIcon icon={faChartBar} className="text-[#999]" /> Tỷ lệ sản phẩm mang lại doanh thu trên tổng sản phẩm kho
             </div>
           </div>
 
-          {/* --- WIDGET 4: Bar Chart --- */}
+          {/* --- WIDGET 4: Biểu đồ doanh thu xu hướng --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 md:col-span-2 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-[#555]">Monthly Revenue Trend</h3>
+              <h3 className="text-sm font-medium text-[#555]">Biểu đồ xu hướng doanh thu</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex-1 min-h-[180px] flex items-end justify-around gap-3 pt-2">
@@ -429,59 +449,65 @@ export default function FrappeStyleDashboard() {
               ))}
             </div>
             <div className="flex justify-around mt-2 text-[10px] text-[#999]">
-              <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+              <span>Th1</span><span>Th2</span><span>Th3</span><span>Th4</span><span>Th5</span><span>Th6</span><span>Th7</span><span>Th8</span><span>Th9</span><span>Th10</span><span>Th11</span><span>Th12</span>
             </div>
           </div>
 
-          {/* --- WIDGET 5: Donut/Pie Chart --- */}
+          {/* --- WIDGET 5: Biểu đồ tỷ lệ danh mục thực tế --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col items-center justify-center">
             <div className="flex items-center justify-between w-full mb-4">
-              <h3 className="text-sm font-medium text-[#555]">Rentals by Category</h3>
+              <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục cho thuê</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="w-28 h-28 rounded-full border-[20px] border-[#1a1a1a] relative mb-4" style={{ borderColor: '#3b82f6 #3b82f6 #f59e0b #f59e0b' }}>
-              <div className="absolute inset-0 bg-white rounded-full w-20 h-20 flex items-center justify-center text-xs font-bold text-[#555]">342</div>
+              <div className="absolute inset-0 bg-white rounded-full w-20 h-20 flex items-center justify-center text-xs font-bold text-[#555]">{totalCategoryCount}</div>
             </div>
             <div className="flex gap-4 text-xs text-[#555]">
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> Suits</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Dresses</div>
+              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> Đồ nam</div>
+              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Đồ nữ</div>
             </div>
           </div>
 
-          {/* --- WIDGET 6: Data Table --- */}
+          {/* --- WIDGET 6: Bảng dữ liệu Đơn thuê mới cập nhật --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 lg:col-span-3">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-[#555] flex items-center gap-2">
-                <FontAwesomeIcon icon={faTable} className="text-[#999]" /> Recent Rentals
+                <FontAwesomeIcon icon={faTable} className="text-[#999]" /> Đơn thuê phát sinh trong kỳ báo cáo
               </h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-border border-[#eaeaea] text-[#999] font-normal">
-                    <th className="pb-2 pr-4">Customer</th>
-                    <th className="pb-2 pr-4">Item</th>
-                    <th className="pb-2 pr-4">Date</th>
-                    <th className="pb-2 pr-4 text-right">Amount</th>
-                    <th className="pb-2">Status</th>
+                  <tr className="border-border border-[#eaeaea] text-[#999] font-normal text-xs uppercase">
+                    <th className="pb-2 pr-4">Mã đơn</th>
+                    <th className="pb-2 pr-4">Khách hàng</th>
+                    <th className="pb-2 pr-4">Thời gian thuê</th>
+                    <th className="pb-2 pr-4 text-right">Tổng tiền hóa đơn</th>
+                    <th className="pb-2 text-center">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#555]">
-                  <tr className="border-border border-[#f0f0f0] hover:bg-[#faf9f7]">
-                    <td className="py-3 pr-4 font-medium">Alex Smith</td>
-                    <td className="py-3 pr-4">Wedding Dress</td>
-                    <td className="py-3 pr-4">10/23/2023</td>
-                    <td className="py-3 pr-4 text-right">$120</td>
-                    <td className="py-3"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Active</span></td>
-                  </tr>
-                  <tr className="border-border border-[#f0f0f0] hover:bg-[#faf9f7]">
-                    <td className="py-3 pr-4 font-medium">Emma Johnson</td>
-                    <td className="py-3 pr-4">Men's Suit</td>
-                    <td className="py-3 pr-4">10/22/2023</td>
-                    <td className="py-3 pr-4 text-right">$50</td>
-                    <td className="py-3"><span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs">Pending</span></td>
-                  </tr>
+                  {recentOrders.map((order) => (
+                    <tr key={order._id} className="border-border border-[#f0f0f0] hover:bg-[#faf9f7] text-xs">
+                      <td className="py-3 pr-4 font-semibold text-gray-700">#{order._id?.slice(-6).toUpperCase()}</td>
+                      <td className="py-3 pr-4 font-medium">{order.shippingAddress?.receiverName || order.customerId?.fullName || "Khách hàng"}</td>
+                      <td className="py-3 pr-4">
+                        {new Date(order.startDate).toLocaleDateString("vi-VN")} - {new Date(order.endDate).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td className="py-3 pr-4 text-right font-semibold">{order.totalAmount?.toLocaleString("vi-VN")} đ</td>
+                      <td className="py-3 text-center">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {recentOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-6 text-gray-400">Không tìm thấy đơn hàng nào trong khoảng thời gian được chọn.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

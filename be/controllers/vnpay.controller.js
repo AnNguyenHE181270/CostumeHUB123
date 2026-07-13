@@ -205,10 +205,10 @@ const vnpayReturn = async (req, res) => {
             }
         }
 
-        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
     } catch (error) {
         console.error(error);
-        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
     }
 };
 
@@ -229,8 +229,26 @@ function sortObject(obj) {
     return sorted;
 }
 
+const getTopUpHistory = async (req, res) => {
+    try {
+        const userId = req.userData.id;
+        const topUps = await TopUpTransaction.find({ user: userId }).sort({ createdAt: -1 });
+        return res.status(200).json({
+            success: true,
+            data: topUps,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch top-up history",
+        });
+    }
+};
+
 module.exports = {
     createPaymentUrl,
     vnpayIpn,
     vnpayReturn,
+    getTopUpHistory,
 };

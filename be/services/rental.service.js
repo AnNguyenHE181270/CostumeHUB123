@@ -44,6 +44,7 @@ const getRentalHistory = async (userId) => {
       quantity: item.quantity,
       rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || 0,
     })),
+    createdAt: order.createdAt,
   }));
 };
 
@@ -374,7 +375,14 @@ const getTotalRevenue = async () => {
   const validStatuses = ['delivering', 'delivered', 'renting', 'returning', 'completed', 'overdue'];
   const orders = await Rental.find({ status: { $in: validStatuses } });
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  return { totalRevenue };
+
+  // Tính thêm dữ liệu vẽ biểu đồ (Chart): Gom nhóm doanh thu theo tháng/ngày
+  // (Giữ cho đơn giản: trả về danh sách để FE tự vẽ)
+
+  return {
+    totalRevenue,
+    orderCount: orders.length
+  };
 };
 
 const getActiveRentals = async () => {
@@ -382,23 +390,51 @@ const getActiveRentals = async () => {
   const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
-  return { activeOrdersCount: activeOrders.length, totalActiveCostumes };
+
+  return {
+    activeOrdersCount: activeOrders.length,
+    totalActiveCostumes
+  };
 };
 
-const getInventoryUtilization = async () => {
+// YÊU CẦU: Thống kê sức chứa kho hàng (View Inventory Report)
+const getInventoryUtilization = async (startDate, endDate) => {
+  // FIX: Đã xóa .populate('category') để tránh lỗi sập Server
   const costumes = await Costume.find();
+
   let totalStock = 0;
   costumes.forEach((c) => c.variants.forEach((v) => { totalStock += v.totalStock || 0; }));
 
-  if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0 };
+  if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] };
 
   const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
   const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let currentlyRented = 0;
-  activeOrders.forEach((o) => o.items.forEach((i) => { currentlyRented += i.quantity; }));
+
+  const categoryStats = {};
+
+  activeOrders.forEach((o) => {
+    o.items.forEach((i) => {
+      currentlyRented += i.quantity;
+
+      if (i.costume && i.costume.category) {
+        const catId = i.costume.category.toString();
+        if (!categoryStats[catId]) {
+          categoryStats[catId] = { count: 0 };
+        }
+        categoryStats[catId].count += i.quantity;
+      }
+    });
+  });
 
   const utilizationPercentage = ((currentlyRented / totalStock) * 100).toFixed(2);
-  return { utilizationPercentage: parseFloat(utilizationPercentage), totalStock, currentlyRented };
+
+  return {
+    utilizationPercentage: parseFloat(utilizationPercentage),
+    totalStock,
+    currentlyRented,
+    categoryBreakdown: Object.values(categoryStats)
+  };
 };
 
 const requestReturn = async (id) => {
