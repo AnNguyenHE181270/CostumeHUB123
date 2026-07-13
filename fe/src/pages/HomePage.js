@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import HeroSection from "../components/customer/HeroSection";
 import FeatureBar from "../components/customer/FeatureBar";
 import CategoryShowcase from "../components/customer/CategoryShowcase";
-import ProcessSteps from "../components/customer/ProcessSteps";
 import PromoBanner from "../components/customer/PromoBanner";
 import Testimonials from "../components/customer/Testimonials";
 import ProductCard from "../components/customer/ProductCard";
@@ -26,7 +25,6 @@ const item = {
 
 export default function HomePage() {
   const [recentProducts, setRecentProducts] = useState([]);
-  const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPolicies, setShowPolicies] = useState(false);
   const location = useLocation();
@@ -35,12 +33,8 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const [popularRes, newestRes] = await Promise.all([
-          costumeService.getAll({ sort: 'popular', limit: 15 }),
-          costumeService.getAll({ sort: 'newest', limit: 5 }),
-        ]);
+        const popularRes = await costumeService.getAll({ sort: 'popular', limit: 15 });
         setRecentProducts(popularRes.costumes || []);
-        setNewArrivals(newestRes.costumes || []);
       } catch (err) {
         console.error("Lỗi khi tải sản phẩm:", err.message);
       } finally {
@@ -99,30 +93,6 @@ export default function HomePage() {
       <FeatureBar />
 
       <Testimonials />
-
-      {/* NEW ARRIVALS */}
-      <section className="bg-[#faf9f7] py-16 px-6">
-        <div className="max-w-[1200px] mx-auto">
-          <motion.div variants={item} className="mb-10">
-            <h2 className="text-4xl font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Hàng Mới Về</h2>
-            <p className="text-gray-400">Fresh drops of the season</p>
-          </motion.div>
-
-          <motion.div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6" variants={container}>
-            {newArrivals.map((p) => (
-              <motion.div
-                key={p._id}
-                variants={item}
-                className="h-full transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1.5"
-              >
-                <ProductCard costume={p} />
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      <ProcessSteps />
 
       <PoliciesModal isOpen={showPolicies} onClose={() => setShowPolicies(false)} />
     </motion.div>

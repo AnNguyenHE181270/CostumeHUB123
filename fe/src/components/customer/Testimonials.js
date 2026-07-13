@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const CLOUD = "https://res.cloudinary.com/du0xdjnrx/image/upload";
 const avatarUrl = (id) => `${CLOUD}/c_thumb,g_face,z_0.8,w_200,h_200,q_auto,f_auto/homepage/${id}.jpg`;
@@ -34,6 +34,20 @@ function Stars() {
 }
 
 export default function Testimonials() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const itemsPerView = 3;
+  const maxIndex = Math.max(0, REVIEWS.length - itemsPerView);
+
+  const goToPrev = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : maxIndex));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
+  };
+
+  const visibleReviews = REVIEWS.slice(currentIndex, currentIndex + itemsPerView);
+
   return (
     <section className="py-14 px-6">
       <div className="max-w-[1200px] mx-auto">
@@ -46,27 +60,62 @@ export default function Testimonials() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {REVIEWS.map((r) => (
-            <div
-              key={r.name}
-              className="bg-white rounded-2xl border border-[#f0ece5] p-6 flex items-start gap-4 shadow-sm hover:shadow-lg hover:border-[#b8935a]/30 transition-all duration-300"
-            >
-              <img
-                src={r.avatar}
-                alt={r.name}
-                className="w-12 h-12 rounded-full object-cover shrink-0"
-              />
-              <div className="min-w-0">
+        <div className="pt-7 relative flex items-center justify-center gap-4">
+          <button
+            onClick={goToPrev}
+            className="absolute -left-2 sm:left-0 z-20 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border border-[#d4c5b0] shadow-md hover:bg-[#f9f7f4] hover:border-[#b8935a] transition-all"
+            aria-label="Previous review"
+          >
+            <svg className="w-5 h-5 text-[#1a1a1a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 px-8 sm:px-0">
+            {visibleReviews.map((r) => (
+              <div
+                key={r.name}
+                className="relative bg-white rounded-2xl border border-[#f0ece5] pt-10 pb-6 px-6 shadow-sm hover:shadow-lg hover:border-[#b8935a]/30 transition-all duration-300"
+              >
+                <img
+                  src={r.avatar}
+                  alt={r.name}
+                  className="absolute -top-7 left-6 w-14 h-14 rounded-full object-cover border-4 border-white shadow-md"
+                />
                 <h3 className="text-[14px] font-bold text-[#1a1a1a]">{r.name}</h3>
-                <div className="mt-1 mb-2">
+                <div className="mt-1.5 mb-3">
                   <Stars />
                 </div>
                 <p className="text-[13px] text-gray-500 leading-relaxed">
-                  “{r.quote}”
+                  "{r.quote}"
                 </p>
               </div>
-            </div>
+            ))}
+          </div>
+
+          <button
+            onClick={goToNext}
+            className="absolute -right-2 sm:right-0 z-20 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border border-[#d4c5b0] shadow-md hover:bg-[#f9f7f4] hover:border-[#b8935a] transition-all"
+            aria-label="Next review"
+          >
+            <svg className="w-5 h-5 text-[#1a1a1a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex items-center justify-center gap-1.5 mt-6">
+          {REVIEWS.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(Math.min(idx, maxIndex))}
+              className={`w-2 h-2 rounded-full transition-all ${
+                idx >= currentIndex && idx < currentIndex + itemsPerView
+                  ? "bg-[#b8935a] w-6"
+                  : "bg-[#d4c5b0]"
+              }`}
+              aria-label={`Go to review ${idx + 1}`}
+            />
           ))}
         </div>
       </div>

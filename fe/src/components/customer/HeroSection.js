@@ -72,11 +72,10 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-7xl lg:text-8xl leading-[1.05] font-bold"
-            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            className="font-display-lux text-7xl lg:text-8xl leading-[1.05] font-bold tracking-tight"
           >
-            <span className="text-[#1a1a1a]">Trang Phục</span><br />
-            <span className="text-[#b8935a]">Cao Cấp</span>
+            <span className="text-shine-black">Trang Phục</span><br />
+            <span className="text-shine-gold">Cao Cấp</span>
           </motion.h1>
 
           <motion.p
