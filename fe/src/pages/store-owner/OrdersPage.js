@@ -25,6 +25,11 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
 
+  // Inspect Return Modal State
+  const [isInspectOpen, setIsInspectOpen] = useState(false);
+  const [inspectForm, setInspectForm] = useState({ damageFee: 0, missingNotes: "", actualReturnDate: "" });
+  const [inspectSubmitting, setInspectSubmitting] = useState(false);
+
   const fetchOrders = async () => {
     try {
       const data = await rentalService.getAllOrders();
@@ -139,6 +144,40 @@ export default function OrdersPage() {
       setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
     } catch (error) {
       setToast({ show: true, message: error.response?.data?.message || "Cập nhật thất bại", type: "error" });
+    }
+  };
+
+  const openInspectModal = () => {
+    setInspectForm({
+      damageFee: 0,
+      missingNotes: "",
+      actualReturnDate: new Date().toISOString().slice(0, 10),
+    });
+    setIsInspectOpen(true);
+  };
+
+  const handleInspectSubmit = async () => {
+    if (!selectedOrder) return;
+    setInspectSubmitting(true);
+    try {
+      const result = await rentalService.inspectReturn(selectedOrder._id, {
+        damageFee: Number(inspectForm.damageFee) || 0,
+        missingNotes: inspectForm.missingNotes,
+        actualReturnDate: inspectForm.actualReturnDate,
+      });
+      const { totalFine = 0, refundAmount = 0 } = result?.data || {};
+      setToast({
+        show: true,
+        message: `Đã hoàn tất kiểm tra. Phạt: ${totalFine.toLocaleString('vi-VN')} đ — Hoàn cọc cho khách: ${refundAmount.toLocaleString('vi-VN')} đ`,
+        type: "success",
+      });
+      setIsInspectOpen(false);
+      setSelectedOrder(prev => prev ? { ...prev, status: 'completed' } : null);
+      fetchOrders();
+    } catch (error) {
+      setToast({ show: true, message: error.message || "Lỗi khi kiểm tra đồ trả", type: "error" });
+    } finally {
+      setInspectSubmitting(false);
     }
   };
 
@@ -279,11 +318,19 @@ export default function OrdersPage() {
               {role === 'staff' && (
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   {!['pending', 'cancelled'].includes(selectedOrder.status) && (
-                    <button 
+                    <button
                       className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
                       onClick={() => setIsTrackingOpen(true)}
                     >
                       Theo dõi
+                    </button>
+                  )}
+                  {selectedOrder.status === 'returning' && (
+                    <button
+                      className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
+                      onClick={openInspectModal}
+                    >
+                      Kiểm tra đồ trả
                     </button>
                   )}
                 </div>
@@ -300,6 +347,74 @@ export default function OrdersPage() {
           onOpenChange={setIsTrackingOpen}
           order={selectedOrder}
         />
+      )}
+
+      {/* MODAL KIỂM TRA ĐỒ TRẢ & HOÀN CỌC */}
+      {isInspectOpen && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setIsInspectOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl"
+              disabled={inspectSubmitting}
+            >
+              ✕
+            </button>
+            <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Kiểm tra đồ trả</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Đơn #{selectedOrder._id?.slice(-6).toUpperCase()} — Cọc đã nhận: {(selectedOrder.totalDeposit || 0).toLocaleString('vi-VN')} đ
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#555] mb-1">Ngày trả thực tế</label>
+                <input
+                  type="date"
+                  value={inspectForm.actualReturnDate}
+                  onChange={(e) => setInspectForm((prev) => ({ ...prev, actualReturnDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#555] mb-1">Phí hư hỏng (đ)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={inspectForm.damageFee}
+                  onChange={(e) => setInspectForm((prev) => ({ ...prev, damageFee: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#555] mb-1">Ghi chú (thiếu đồ, hư hỏng...)</label>
+                <textarea
+                  rows={3}
+                  value={inspectForm.missingNotes}
+                  onChange={(e) => setInspectForm((prev) => ({ ...prev, missingNotes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] resize-none"
+                  placeholder="Không bắt buộc"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setIsInspectOpen(false)}
+                disabled={inspectSubmitting}
+                className="flex-1 px-4 py-2 border border-[#eaeaea] rounded-lg text-sm font-medium text-[#555] hover:bg-[#faf9f7] disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleInspectSubmit}
+                disabled={inspectSubmitting}
+                className="flex-1 px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-black disabled:opacity-50"
+              >
+                {inspectSubmitting ? "Đang xử lý..." : "Xác nhận & Hoàn cọc"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast.show && (
