@@ -34,6 +34,9 @@ RentalMock.find = (filter) => {
             mockData.rentalSortCalledWith = s;
             return mockData.rentalList || [];
         },
+        then: function (resolve) {
+            resolve(mockData.rentalList || []);
+        },
     };
 };
 const defaultRentalFindOne = (filter) => {
@@ -72,9 +75,14 @@ RentalMock.findById = (id) => {
 
 // ---- CostumeMock ----
 const CostumeMock = function (data) { Object.assign(this, data); };
-CostumeMock.find = async (filter) => {
+CostumeMock.find = (filter) => {
     mockData.costumeFindFilter = filter;
-    return mockData.costumeList || [];
+    return {
+        populate: function () { return this; },
+        then: function (resolve, reject) {
+            resolve(mockData.costumeList || []);
+        },
+    };
 };
 CostumeMock.findById = async (id) => {
     mockData.costumeFindByIdCalledWith = id;
@@ -232,14 +240,25 @@ describe('createOrder', () => {
         );
     });
 
-    test('Costume already booked in this timeframe → throws 400', async () => {
+    test('Costume already booked in this timeframe beyond total stock → throws 400', async () => {
+        // Kho size L có totalStock = 5. Đã có đơn khác trùng khoảng ngày đặt hết 5 bộ.
         const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }] };
-        mockData._rentalFindOneQueue = [{ _id: 'existing_rental_id' }];
+        mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 5 }] }];
 
         await assert.rejects(
             async () => rentalService.createOrder('user_123', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
+    });
+
+    test('Costume overlaps another order but combined quantity still within total stock → succeeds', async () => {
+        // Kho size L có totalStock = 5, đơn khác đã đặt 3 bộ trùng khoảng ngày, đơn mới đặt 2 bộ vẫn đủ.
+        const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 2 }] };
+        mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 3 }] }];
+
+        const result = await rentalService.createOrder('user_123', mockBody);
+
+        assert.strictEqual(result.status, 'pending');
     });
 
     test('Requested size does not exist → throws 404', async () => {
@@ -607,12 +626,19 @@ describe('Dashboard Analytics', () => {
     test('Get total revenue successfully', async () => {
         RentalMock.find = async (filter) => {
             mockData.rentalFindFilter = filter;
-            return [{ totalAmount: 100000 }, { totalAmount: 250000 }];
+            return [
+                { totalAmount: 100000, createdAt: new Date('2026-01-15') },
+                { totalAmount: 250000, createdAt: new Date('2026-01-20') },
+            ];
         };
 
         const result = await rentalService.getTotalRevenue();
 
-        assert.deepStrictEqual(result, { totalRevenue: 350000 });
+        assert.deepStrictEqual(result, {
+            totalRevenue: 350000,
+            orderCount: 2,
+            revenueByMonth: [{ month: '2026-01', total: 350000 }],
+        });
     });
 
     test('Get active rentals successfully', async () => {
@@ -631,23 +657,37 @@ describe('Dashboard Analytics', () => {
     });
 
     test('getInventoryUtilization → return 0 when total stock is 0', async () => {
-        CostumeMock.find = async () => [];
+        CostumeMock.find = () => ({
+            populate: function () { return this; },
+            then: (resolve) => resolve([]),
+        });
 
         const result = await rentalService.getInventoryUtilization();
 
-        assert.deepStrictEqual(result, { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0 });
+        assert.deepStrictEqual(result, { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] });
     });
 
     test('getInventoryUtilization → calculate percentage correctly', async () => {
-        CostumeMock.find = async () => [
-            { variants: [{ totalStock: 5 }, { totalStock: 5 }] },
-            { variants: [{ totalStock: 10 }] },
-        ];
-        RentalMock.find = async () => [{ items: [{ quantity: 3 }, { quantity: 2 }] }];
+        CostumeMock.find = () => ({
+            populate: function () { return this; },
+            then: (resolve) => resolve([
+                { variants: [{ totalStock: 5 }, { totalStock: 5 }] },
+                { variants: [{ totalStock: 10 }] },
+            ]),
+        });
+        RentalMock.find = () => ({
+            populate: function () { return this; },
+            then: (resolve) => resolve([{ items: [{ quantity: 3 }, { quantity: 2 }] }]),
+        });
 
         const result = await rentalService.getInventoryUtilization();
 
-        assert.deepStrictEqual(result, { utilizationPercentage: 25, totalStock: 20, currentlyRented: 5 });
+        assert.deepStrictEqual(result, {
+            utilizationPercentage: 25,
+            totalStock: 20,
+            currentlyRented: 5,
+            categoryBreakdown: [{ categoryId: 'unknown', name: 'Chưa phân loại', totalStock: 20, rentedCount: 5 }],
+        });
     });
 });
 
@@ -728,7 +768,7 @@ describe('extendRental', () => {
         mockData.rental.status = 'renting';
         mockData.rental.items[0].costume = buildMockCostume();
         mockData.rental.items[0].rentalPricePerDay = 100000;
-        mockData.user.balance = 50000;
+        mockData.user.balance = 5000;
 
         let callCount = 0;
         RentalMock.findOne = (filter) => {
@@ -741,7 +781,7 @@ describe('extendRental', () => {
 
         assert.strictEqual(result.success, false);
         assert.strictEqual(result.insufficientBalance, true);
-        assert.strictEqual(result.currentBalance, 50000);
+        assert.strictEqual(result.currentBalance, 5000);
         assert.ok(!mockData.user._saved);
         assert.ok(!mockData.rental._saved);
     });
@@ -761,7 +801,7 @@ describe('extendRental', () => {
 
         const result = await rentalService.extendRental('rental_123', 'user_123', newEndDateStr);
 
-        assert.strictEqual(mockData.user.balance, 100000); // 300k - 200k
+        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày)
         assert.ok(mockData.user._saved);
         assert.ok(mockData.rental._saved);
         assert.strictEqual(result.success, true);

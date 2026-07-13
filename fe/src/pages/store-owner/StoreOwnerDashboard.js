@@ -15,6 +15,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
+const CATEGORY_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
 export default function FrappeStyleDashboard() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
@@ -25,8 +27,9 @@ export default function FrappeStyleDashboard() {
   const [inventoryUtilizationPercentage, setInventoryUtilizationPercentage] = useState(0);
   const [totalStock, setTotalStock] = useState(0);
   const [currentlyRented, setCurrentlyRented] = useState(0);
-  const [categoryData, setCategoryData] = useState([]); 
-  const [recentOrders, setRecentOrders] = useState([]); 
+  const [categoryData, setCategoryData] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [revenueByMonth, setRevenueByMonth] = useState([]);
   
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
@@ -99,7 +102,8 @@ export default function FrappeStyleDashboard() {
       const dataInventory = await resInventory.json();                                                                                                                                                                                                                  
       const dataOrders = await resOrders.json();
                                                                                                                                                                                                                                                                         
-      setRevenue(dataRevenue.totalRevenue || 0);                                                                                                                                                                                                                                
+      setRevenue(dataRevenue.totalRevenue || 0);
+      setRevenueByMonth(dataRevenue.revenueByMonth || []);                                                                                                                                                                                                                                
       setActiveOrdersCount(dataActive.activeOrdersCount || 0);                                                                                                                                                                                                                                 
       setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);                                                                                                                                                                                                                              
       setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);                                                                                                                                                                                                              
@@ -231,7 +235,7 @@ export default function FrappeStyleDashboard() {
     );
   }
 
-  const totalCategoryCount = categoryData.reduce((sum, item) => sum + item.count, 0);
+  const totalCategoryCount = categoryData.reduce((sum, item) => sum + (item.rentedCount || 0), 0);
 
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
@@ -443,14 +447,33 @@ export default function FrappeStyleDashboard() {
               <h3 className="text-sm font-medium text-[#555]">Biểu đồ xu hướng doanh thu</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="flex-1 min-h-[180px] flex items-end justify-around gap-3 pt-2">
-              {[40, 65, 50, 80, 60, 90, 75, 95, 80, 70, 85, 92].map((h, i) => (
-                <div key={i} className="flex-1 bg-[#1a1a1a] hover:bg-[#333] rounded-sm transition-colors cursor-pointer" style={{ height: `${h}%` }}></div>
-              ))}
-            </div>
-            <div className="flex justify-around mt-2 text-[10px] text-[#999]">
-              <span>Th1</span><span>Th2</span><span>Th3</span><span>Th4</span><span>Th5</span><span>Th6</span><span>Th7</span><span>Th8</span><span>Th9</span><span>Th10</span><span>Th11</span><span>Th12</span>
-            </div>
+            {revenueByMonth.length === 0 ? (
+              <div className="flex-1 min-h-[180px] flex items-center justify-center text-xs text-[#999]">
+                Không có dữ liệu doanh thu trong khoảng thời gian này.
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 min-h-[180px] flex items-end justify-around gap-3 pt-2">
+                  {revenueByMonth.map((m) => {
+                    const maxTotal = Math.max(...revenueByMonth.map((r) => r.total), 1);
+                    const h = Math.max(4, Math.round((m.total / maxTotal) * 100));
+                    return (
+                      <div
+                        key={m.month}
+                        title={new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(m.total)}
+                        className="flex-1 bg-[#1a1a1a] hover:bg-[#333] rounded-sm transition-colors cursor-pointer"
+                        style={{ height: `${h}%` }}
+                      ></div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-around mt-2 text-[10px] text-[#999]">
+                  {revenueByMonth.map((m) => (
+                    <span key={m.month}>Th{Number(m.month.split('-')[1])}</span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* --- WIDGET 5: Biểu đồ tỷ lệ danh mục thực tế --- */}
@@ -459,12 +482,30 @@ export default function FrappeStyleDashboard() {
               <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục cho thuê</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="w-28 h-28 rounded-full border-[20px] border-[#1a1a1a] relative mb-4" style={{ borderColor: '#3b82f6 #3b82f6 #f59e0b #f59e0b' }}>
-              <div className="absolute inset-0 bg-white rounded-full w-20 h-20 flex items-center justify-center text-xs font-bold text-[#555]">{totalCategoryCount}</div>
+            <div className="relative w-28 h-28 mb-4">
+              <Doughnut
+                data={{
+                  labels: categoryData.map((c) => c.name),
+                  datasets: [{
+                    data: categoryData.map((c) => c.rentedCount || 0),
+                    backgroundColor: CATEGORY_COLORS,
+                    borderWidth: 0, cutout: '70%',
+                  }]
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-bold text-[#555]">{totalCategoryCount}</span>
+              </div>
             </div>
-            <div className="flex gap-4 text-xs text-[#555]">
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> Đồ nam</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Đồ nữ</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#555] justify-center max-w-full">
+              {categoryData.length === 0 && <span className="text-[#999]">Chưa có dữ liệu danh mục</span>}
+              {categoryData.map((c, i) => (
+                <div key={c.categoryId} className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}></span>
+                  {c.name} ({c.rentedCount || 0})
+                </div>
+              ))}
             </div>
           </div>
 

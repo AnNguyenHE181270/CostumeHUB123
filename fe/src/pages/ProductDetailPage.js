@@ -14,6 +14,7 @@ import { useCart } from "../context/CartContext";
 import Toast from "../components/ui/Toast";
 import DatePickerGroup from "../components/ui/DatePickerGroup";
 import costumeService from "../services/costume.service";
+import rentalService from "../services/rental.service";
 import { getRentalPriceFactor } from "../utils/formatters";
 
 const STATUS_MAP = {
@@ -90,6 +91,27 @@ export default function ProductDetailPage() {
   const handleDecreaseQty = () => {
     if (quantity > 1) {
       setQuantity(q => q - 1);
+    }
+  };
+
+  // Kiểm tra thật khoảng ngày đã chọn còn đủ tồn kho hay không trước khi thêm giỏ/đặt thuê
+  const verifyAvailability = async () => {
+    try {
+      const data = await rentalService.checkAvailability({
+        costumeId: costume._id,
+        size: selectedVariant?.size,
+        startDate,
+        endDate,
+        quantity,
+      });
+      if (!data.isAvailable) {
+        showToast(`Chỉ còn trống ${data.availableQty} bộ trong khoảng ngày này.`, "error");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      showToast(err.message || "Không thể kiểm tra tồn kho, vui lòng thử lại.", "error");
+      return false;
     }
   };
 
@@ -339,6 +361,11 @@ export default function ProductDetailPage() {
                         return;
                       }
                       setIsBuying(true);
+                      const available = await verifyAvailability();
+                      if (!available) {
+                        setIsBuying(false);
+                        return;
+                      }
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       setIsBuying(false);
                       if (res && !res.success) {
@@ -373,6 +400,8 @@ export default function ProductDetailPage() {
                         showToast(`Phải thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
                         return;
                       }
+                      const available = await verifyAvailability();
+                      if (!available) return;
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       if (res && !res.success) {
                         showToast(res.message || "Có lỗi xảy ra", "error");
