@@ -318,8 +318,8 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
   return { isAvailable: availableQty >= quantity, availableQty };
 };
 
-const getAllOrders = async () => {
-  return Rental.find()
+const getAllOrders = async (startDate, endDate) => {
+  return Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
     .populate('items.costume', 'name images')
     .sort({ createdAt: -1 });
@@ -395,23 +395,47 @@ const confirmPreparation = async (id) => {
   }
 };
 
-const getTotalRevenue = async () => {
+// Xây filter theo khoảng ngày (áp dụng lên createdAt của đơn hàng)
+function buildDateRangeFilter(startDate, endDate) {
+  if (!startDate && !endDate) return {};
+  const createdAt = {};
+  if (startDate) createdAt.$gte = new Date(startDate);
+  if (endDate) createdAt.$lte = new Date(endDate);
+  return { createdAt };
+}
+
+const getTotalRevenue = async (startDate, endDate) => {
   const validStatuses = ['delivering', 'delivered', 'renting', 'returning', 'completed', 'overdue'];
-  const orders = await Rental.find({ status: { $in: validStatuses } });
+  const orders = await Rental.find({
+    status: { $in: validStatuses },
+    ...buildDateRangeFilter(startDate, endDate),
+  });
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-  // Tính thêm dữ liệu vẽ biểu đồ (Chart): Gom nhóm doanh thu theo tháng/ngày
-  // (Giữ cho đơn giản: trả về danh sách để FE tự vẽ)
+  // Gom nhóm doanh thu theo tháng (dựa trên ngày tạo đơn) để vẽ biểu đồ xu hướng
+  const monthlyMap = {};
+  orders.forEach((o) => {
+    const d = new Date(o.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthlyMap[key] = (monthlyMap[key] || 0) + o.totalAmount;
+  });
+  const revenueByMonth = Object.entries(monthlyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, total]) => ({ month, total }));
 
   return {
     totalRevenue,
-    orderCount: orders.length
+    orderCount: orders.length,
+    revenueByMonth,
   };
 };
 
-const getActiveRentals = async () => {
+const getActiveRentals = async (startDate, endDate) => {
   const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
-  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+  const activeOrders = await Rental.find({
+    status: { $in: activeStatuses },
+    ...buildDateRangeFilter(startDate, endDate),
+  });
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
 
@@ -423,30 +447,37 @@ const getActiveRentals = async () => {
 
 // YÊU CẦU: Thống kê sức chứa kho hàng (View Inventory Report)
 const getInventoryUtilization = async (startDate, endDate) => {
-  // FIX: Đã xóa .populate('category') để tránh lỗi sập Server
-  const costumes = await Costume.find();
+  const costumes = await Costume.find().populate('categoryId', 'name');
 
   let totalStock = 0;
-  costumes.forEach((c) => c.variants.forEach((v) => { totalStock += v.totalStock || 0; }));
+  const categoryStockMap = {}; // catId -> { name, totalStock, rentedCount }
+  costumes.forEach((c) => {
+    const catId = c.categoryId?._id?.toString() || 'unknown';
+    const catName = c.categoryId?.name || 'Chưa phân loại';
+    if (!categoryStockMap[catId]) categoryStockMap[catId] = { name: catName, totalStock: 0, rentedCount: 0 };
+    c.variants.forEach((v) => {
+      const stock = v.totalStock || 0;
+      totalStock += stock;
+      categoryStockMap[catId].totalStock += stock;
+    });
+  });
 
   if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] };
 
   const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
-  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+  const activeOrders = await Rental.find({
+    status: { $in: activeStatuses },
+    ...buildDateRangeFilter(startDate, endDate),
+  }).populate('items.costume', 'categoryId');
   let currentlyRented = 0;
-
-  const categoryStats = {};
 
   activeOrders.forEach((o) => {
     o.items.forEach((i) => {
       currentlyRented += i.quantity;
 
-      if (i.costume && i.costume.category) {
-        const catId = i.costume.category.toString();
-        if (!categoryStats[catId]) {
-          categoryStats[catId] = { count: 0 };
-        }
-        categoryStats[catId].count += i.quantity;
+      const catId = i.costume?.categoryId?.toString() || 'unknown';
+      if (categoryStockMap[catId]) {
+        categoryStockMap[catId].rentedCount += i.quantity;
       }
     });
   });
@@ -457,7 +488,12 @@ const getInventoryUtilization = async (startDate, endDate) => {
     utilizationPercentage: parseFloat(utilizationPercentage),
     totalStock,
     currentlyRented,
-    categoryBreakdown: Object.values(categoryStats)
+    categoryBreakdown: Object.entries(categoryStockMap).map(([categoryId, v]) => ({
+      categoryId,
+      name: v.name,
+      totalStock: v.totalStock,
+      rentedCount: v.rentedCount,
+    })),
   };
 };
 
