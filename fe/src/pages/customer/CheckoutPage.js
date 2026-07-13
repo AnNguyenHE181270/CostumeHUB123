@@ -75,7 +75,7 @@ export function Checkout() {
     const totalRental = checkoutItems.reduce((sum, item) => {
         const days = getRentalDays(item.startDate, item.endDate);
         const factor = getRentalPriceFactor(days);
-        return sum + item.rentalPerDay * factor * item.quantity * days;
+        return sum + item.rentalPerDay * factor * item.quantity;
     }, 0);
 
     // tính tiền cọc
@@ -474,7 +474,7 @@ export function Checkout() {
                                                         {item.costumeName} ({item.size})
                                                     </span>
                                                     <span className="font-medium text-foreground shrink-0">
-                                                        {formatPrice(item.rentalPerDay * factor * item.quantity * days)}
+                                                        {formatPrice(item.rentalPerDay * factor * item.quantity)}
                                                     </span>
                                                 </div>
                                             );
