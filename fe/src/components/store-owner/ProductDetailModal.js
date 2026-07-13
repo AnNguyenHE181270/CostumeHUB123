@@ -36,21 +36,12 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="text-sm font-semibold text-[#1a1a1a] truncate max-w-[320px]">{product.name}</span>
+            <span className="text-sm font-semibold text-[#1a1a1a] truncate max-w-[320px]">Chi tiết sản phẩm</span>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${status.cls}`}>
               {status.label}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            {product.status !== "hidden" && (
-              <button
-                onClick={onEdit}
-                className="flex items-center gap-1.5 text-xs font-medium text-[#1a1a1a] border border-[#e0e0e0] hover:border-[#1a1a1a] px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <FontAwesomeIcon icon={faEdit} className="text-[11px]" />
-                Chỉnh sửa
-              </button>
-            )}
             <button
               onClick={onClose}
               className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
@@ -61,11 +52,11 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
         </div>
 
         {/* ── Body ── */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-6">
 
           {/* Left – Images */}
-          <div className="w-[220px] flex-shrink-0 flex flex-col bg-[#fafafa] border-r border-gray-100 p-3 gap-2.5">
-            <div className="flex-1 rounded-xl overflow-hidden bg-white border border-gray-100">
+          <div className="lg:w-[320px] w-full flex-shrink-0 flex flex-col bg-[#fafafa] border border-gray-100 rounded-2xl p-4 gap-3">
+            <div className="h-[420px] rounded-3xl overflow-hidden bg-white border border-gray-100">
               <img
                 src={images[activeImg]}
                 alt={product.name}
@@ -74,12 +65,12 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
               />
             </div>
             {images.length > 1 && (
-              <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-shrink-0">
+              <div className="flex gap-2 overflow-x-auto pb-0.5">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden border-2 transition-all ${
+                    className={`flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ${
                       activeImg === i ? "border-[#f94a00]" : "border-transparent hover:border-gray-300"
                     }`}
                   >
@@ -98,15 +89,15 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
           {/* Right – Info */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
-            {/* Category + slug */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md border border-gray-200 font-medium">
-                <FontAwesomeIcon icon={faTag} className="mr-1 text-[10px]" />
-                {product.categoryId?.name || "Chưa có danh mục"}
-              </span>
-              {product.slug && (
-                <span className="text-[11px] text-gray-400 font-mono">/{product.slug}</span>
-              )}
+            {/* Product title + category */}
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-[#1a1a1a]">{product.name}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md border border-gray-200 font-medium">
+                  <FontAwesomeIcon icon={faTag} className="mr-1 text-[10px]" />
+                  {product.categoryId?.name || "Chưa có danh mục"}
+                </span>
+              </div>
             </div>
 
             {/* Pricing — 3 boxes */}
@@ -150,7 +141,7 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
 
             {/* Description */}
             {product.description && (
-              <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 border-t border-gray-100 pt-3">
+              <p className="text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3">
                 {product.description}
               </p>
             )}
@@ -192,6 +183,26 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
                     );
                   })}
                 </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              {product.status !== "hidden" ? (
+                <button
+                  onClick={onEdit}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-[#1a1a1a] rounded-xl hover:bg-[#0f0f0f] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                  Chỉnh sửa sản phẩm
+                </button>
+              ) : (
+                <button
+                  onClick={onEdit}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[#1a1a1a] bg-[#f5f5f5] rounded-xl border border-[#eaeaea] hover:bg-[#ececec] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                  Chỉnh sửa sản phẩm
+                </button>
               )}
             </div>
           </div>
