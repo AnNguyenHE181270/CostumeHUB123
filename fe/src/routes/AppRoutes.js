@@ -22,14 +22,15 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
-
-import OrdersPage from "../pages/store-owner/OrdersPage";
 import ExportPage from "../pages/store-owner/ExportPage";
 
 // Trang Staff
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffProductsPage from "../pages/staff/StaffProductsPage";
-import StaffChatPage from "../pages/staff/StaffChatPage";
+
+// Trang dùng chung (Staff + Owner)
+import OrdersPage from "../pages/shared/OrdersPage";
+import StaffChatPage from "../pages/shared/StaffChatPage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
