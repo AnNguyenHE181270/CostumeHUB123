@@ -152,7 +152,7 @@ const createOrder = async (customerId, body) => {
 
     const depositPrice = costume.deposit || costume.price || 0;
     const priceFactor = getRentalPriceFactor(rentalDays);
-    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity * rentalDays;
+    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
     totalDeposit += depositPrice * item.quantity;
 
     formattedItems.push({
@@ -540,13 +540,16 @@ const extendRental = async (id, customerId, newEndDate) => {
 
   const oldRentalDays = Math.ceil((oldEndDay.getTime() - new Date(rental.startDate).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
   const totalDaysAfterExtend = oldRentalDays + extendDays;
-  const extendPriceFactor = getRentalPriceFactor(totalDaysAfterExtend);
+  // Giá thuê là mức phí trọn gói cho 1-3 ngày đầu; gia hạn chỉ tính thêm phần phụ phí phát sinh
+  // khi tổng số ngày vượt qua mốc đã tính trước đó (chênh lệch hệ số giá).
+  const oldPriceFactor = getRentalPriceFactor(oldRentalDays);
+  const newPriceFactor = getRentalPriceFactor(totalDaysAfterExtend);
 
   let totalExtendCost = 0;
   for (const item of rental.items) {
     const costume = item.costume;
     const pricePerDay = item.rentalPricePerDay || (costume ? (costume.pricePerDay || costume.price) : 0) || 0;
-    totalExtendCost += pricePerDay * extendPriceFactor * item.quantity * extendDays;
+    totalExtendCost += pricePerDay * (newPriceFactor - oldPriceFactor) * item.quantity;
   }
 
   const user = await User.findById(customerId);
