@@ -37,10 +37,7 @@ const rentalSchema = new mongoose.Schema(
             type: String,
             enum: [
                 "pending",          // Đơn mới tạo
-                "awaitingPayment",  // Chờ khách thanh toán/chuyển tiền
-                "preparing",        // Staff xác nhận tiền (paymentStatus=paid) -> Đang chuẩn bị đồ
                 "delivering",       // Staff chuẩn bị xong ấn Confirm -> Bắn API tạo đơn GHN -> GHN đang giao
-                "delivered",        // Shipper đã giao hàng tới cho khách
                 "renting",          // GHN báo giao thành công (Webhook) -> Khách đang thuê
                 "returning",        // Khách yêu cầu trả đồ, đang chờ store nhận lại
                 "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc

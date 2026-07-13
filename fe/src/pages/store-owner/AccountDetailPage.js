@@ -7,6 +7,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import Toast from "../../components/ui/Toast";
 import userService from "../../services/user.service";
 
+// Hàm Helper dịch Role sang Tiếng Việt
+const translateRole = (roleName) => {
+  if (!roleName) return "";
+  const name = roleName.toLowerCase();
+  if (name === "owner") return "Chủ cửa hàng";
+  if (name === "staff") return "Nhân viên";
+  if (name === "online-customer") return "Khách hàng";
+  return roleName;
+};
+
 export default function AccountDetailPage() {
   const navigate = useNavigate();
   const [loadingPage, setLoadingPage] = useState(true);
@@ -170,7 +180,8 @@ export default function AccountDetailPage() {
                 </div>
                 <div className="text-center">
                   <h4 className="text-lg font-bold text-[#1a1a1a] mb-1">{form.fullName || "Người Dùng"}</h4>
-                  <p className="text-[11px] text-[#999] tracking-[0.1em] uppercase mb-4">{form.role}</p>
+                  {/* FIX 1: Dịch Role dưới avatar */}
+                  <p className="text-[11px] text-[#999] tracking-[0.1em] uppercase mb-4">{translateRole(form.role)}</p>
                 </div>
               </div>
 
@@ -191,16 +202,18 @@ export default function AccountDetailPage() {
                         onChange={handleChange}
                         className="w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 appearance-none"
                       >
+                        {/* FIX 2: Dịch toàn bộ Option */}
                         {availableRoles.length > 0 ? (
                           availableRoles.map((r) => (
                             <option key={r._id} value={r.name}>
-                              {r.name.charAt(0).toUpperCase() + r.name.slice(1).replace("-", " ")}
+                              {translateRole(r.name)}
                             </option>
                           ))
                         ) : (
                           <>
-                            <option value="staff">Staff</option>
-                            <option value="online-customer">Online Customer</option>
+                            <option value="staff">Nhân viên</option>
+                            <option value="online-customer">Khách hàng</option>
+                            <option value="owner">Chủ cửa hàng</option>
                           </>
                         )}
                       </select>

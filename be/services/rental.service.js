@@ -99,7 +99,18 @@ const createOrder = async (customerId, body) => {
 
   const start = new Date(startDate);
   const end = new Date(endDate);
+
+  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (start < today) {
+    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
   const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (rentalDays <= 0) {
+    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
+  }
 
   let totalRentalPrice = 0;
   let totalDeposit = 0;
@@ -109,6 +120,14 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
+
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays > minDays) {
+      throw new HttpError(
+        `Số ngày thuê không vượt quá  (${minDays} ngày).`,
+        400
+      );
+    }
 
     const existingOrder = await Rental.findOne({
       'items.costume': item.costume,
@@ -131,14 +150,15 @@ const createOrder = async (customerId, body) => {
     }
 
     const depositPrice = costume.deposit || costume.price || 0;
-    totalRentalPrice += costume.pricePerDay * item.quantity * rentalDays;
+    const priceFactor = rentalDays >= 3 ? 1.1 : 1.0;
+    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity * rentalDays;
     totalDeposit += depositPrice * item.quantity;
 
     formattedItems.push({
       costume: costume._id,
       size: item.size,
       quantity: item.quantity,
-      rentalPricePerDay: costume.pricePerDay / rentalDays,
+      rentalPricePerDay: costume.pricePerDay,
       depositPrice,
     });
     costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
@@ -340,7 +360,6 @@ const confirmPreparation = async (id) => {
       await order.save();
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
-      console.error('Failed to push to GHN:', ghnError);
       order.status = 'delivering';
       await order.save();
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
@@ -352,42 +371,125 @@ const confirmPreparation = async (id) => {
   }
 };
 
-const getTotalRevenue = async () => {
-  const validStatuses = ['confirmed', 'delivering', 'renting', 'returning', 'completed', 'overdue'];
-  const orders = await Rental.find({ status: { $in: validStatuses } });
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  return { totalRevenue };
+// Bổ sung hàm tiện ích để tạo bộ lọc thời gian
+const createDateFilter = (startDate, endDate, dateField = 'createdAt') => {
+  const filter = {};
+  if (startDate || endDate) {
+    filter[dateField] = {};
+    if (startDate) {
+      // Set to beginning of the start day
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      filter[dateField].$gte = start;
+    }
+    if (endDate) {
+      // Set to end of the end day
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filter[dateField].$lte = end;
+    }
+  }
+  return filter;
 };
 
-const getActiveRentals = async () => {
+// YÊU CẦU: Thống kê doanh thu theo khoảng thời gian
+const getTotalRevenue = async (startDate, endDate) => {
+  const validStatuses = ['confirmed', 'delivering', 'renting', 'returning', 'completed', 'overdue'];
+
+  // Lọc các đơn hàng hoàn thành trong khoảng thời gian (dùng updatedAt để tính lúc chốt đơn)
+  const dateFilter = createDateFilter(startDate, endDate, 'updatedAt');
+
+  const query = {
+    status: { $in: validStatuses },
+    ...dateFilter
+  };
+
+  const orders = await Rental.find(query);
+  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  // Tính thêm dữ liệu vẽ biểu đồ (Chart): Gom nhóm doanh thu theo tháng/ngày
+  // (Giữ cho đơn giản: trả về danh sách để FE tự vẽ)
+
+  return {
+    totalRevenue,
+    orderCount: orders.length
+  };
+};
+
+// YÊU CẦU: Thống kê số đơn đang hoạt động (Đang giao, đang thuê)
+const getActiveRentals = async (startDate, endDate) => {
   const activeStatuses = ['delivering', 'renting', 'overdue'];
-  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+
+  // Với đơn đang Active, ta lọc theo ngày tạo đơn (createdAt)
+  const dateFilter = createDateFilter(startDate, endDate, 'createdAt');
+
+  const query = {
+    status: { $in: activeStatuses },
+    ...dateFilter
+  };
+
+  const activeOrders = await Rental.find(query);
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
-  return { activeOrdersCount: activeOrders.length, totalActiveCostumes };
+
+  return {
+    activeOrdersCount: activeOrders.length,
+    totalActiveCostumes
+  };
 };
 
-const getInventoryUtilization = async () => {
+// YÊU CẦU: Thống kê sức chứa kho hàng (View Inventory Report)
+const getInventoryUtilization = async (startDate, endDate) => {
+  // FIX: Đã xóa .populate('category') để tránh lỗi sập Server
   const costumes = await Costume.find();
+
   let totalStock = 0;
   costumes.forEach((c) => c.variants.forEach((v) => { totalStock += v.totalStock || 0; }));
 
-  if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0 };
+  if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] };
 
   const activeStatuses = ['delivering', 'renting', 'overdue'];
-  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
+  const dateFilter = createDateFilter(startDate, endDate, 'createdAt');
+
+  const query = {
+    status: { $in: activeStatuses },
+    ...dateFilter
+  };
+
+  const activeOrders = await Rental.find(query).populate('items.costume');
   let currentlyRented = 0;
-  activeOrders.forEach((o) => o.items.forEach((i) => { currentlyRented += i.quantity; }));
+
+  const categoryStats = {};
+
+  activeOrders.forEach((o) => {
+    o.items.forEach((i) => {
+      currentlyRented += i.quantity;
+
+      if (i.costume && i.costume.category) {
+        const catId = i.costume.category.toString();
+        if (!categoryStats[catId]) {
+          categoryStats[catId] = { count: 0 };
+        }
+        categoryStats[catId].count += i.quantity;
+      }
+    });
+  });
 
   const utilizationPercentage = ((currentlyRented / totalStock) * 100).toFixed(2);
-  return { utilizationPercentage: parseFloat(utilizationPercentage), totalStock, currentlyRented };
+
+  return {
+    utilizationPercentage: parseFloat(utilizationPercentage),
+    totalStock,
+    currentlyRented,
+    categoryBreakdown: Object.values(categoryStats)
+  };
 };
 
 const requestReturn = async (id) => {
   const rental = await Rental.findById(id);
   if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
-  if (!['renting', 'overdue'].includes(rental.status)) {
-    throw new HttpError('Đơn hàng phải ở trạng thái Đang thuê hoặc Quá hạn', 400);
+  if (!['delivering', 'renting', 'overdue'].includes(rental.status)) {
+    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đang thuê hoặc Quá hạn', 400);
   }
   rental.status = 'returning';
   await rental.save();

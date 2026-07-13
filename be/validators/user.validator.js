@@ -32,7 +32,13 @@ const registerValidator = [
     .optional()
     .isISO8601()
     .toDate()
-    .withMessage("Invalid date of birth"),
+    .withMessage("Invalid date of birth")
+    .custom((value) => {
+      if (value > new Date()) {
+        throw new Error("Date of birth cannot be in the future");
+      }
+      return true;
+    }),
 ];
 
 const verifyOtpValidator = [
@@ -119,7 +125,13 @@ const updateUserValidator = [
     .optional()
     .isISO8601()
     .toDate()
-    .withMessage("Invalid date of birth"),
+    .withMessage("Invalid date of birth")
+    .custom((value) => {
+      if (value > new Date()) {
+        throw new Error("Date of birth cannot be in the future");
+      }
+      return true;
+    }),
 
   body("status")
     .optional()

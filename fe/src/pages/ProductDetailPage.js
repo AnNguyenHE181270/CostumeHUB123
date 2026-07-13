@@ -8,7 +8,6 @@ import {
   faTruckFast,
   faRotateLeft,
   faStar,
-  faCheck,
   faCalendarDays,
 } from "@fortawesome/free-solid-svg-icons";
 import { useCart } from "../context/CartContext";
@@ -54,14 +53,7 @@ export default function ProductDetailPage() {
     setToast({ isVisible: true, message, type });
   };
 
-  const isInCart = costume && selectedVariant
-    ? cartItems.some(item =>
-      (item.costumeId === costume._id || item.costume?._id === costume._id) &&
-      (item.size === selectedVariant.size || item.variant?.size === selectedVariant.size) &&
-      (item.startDate || "").substring(0, 10) === startDate &&
-      (item.endDate || "").substring(0, 10) === endDate
-    )
-    : false;
+
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -285,16 +277,23 @@ export default function ProductDetailPage() {
 
               {/* Date & Quantity Picker */}
               <div className="mb-8">
-                <h4 className="text-[13px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a] mb-4 border-b border-[#eaeaea] pb-2">
-                  Tùy chọn Thuê
-                </h4>
+                <div className="mb-4 border-b border-[#eaeaea] pb-2 flex items-center justify-baseline">
+                  <h4 className="text-[13px] uppercase tracking-[0.1em] font-semibold text-[#1a1a1a]">
+                    Tùy chọn Thuê
+                  </h4>
+                  <p className={`text-xs font-medium`}>
+                    (Số ngày thuê không vượt quá {costume.minRentalDays || 1} ngày.)
+                  </p>
+                </div>
 
                 <DatePickerGroup
                   startDate={startDate}
                   setStartDate={setStartDate}
                   endDate={endDate}
                   setEndDate={setEndDate}
+                  minRentalDays={costume.minRentalDays}
                 />
+
 
 
                 {/* Quantity */}
@@ -313,8 +312,8 @@ export default function ProductDetailPage() {
                 <h4 className="text-[13px] font-semibold text-[#1a1a1a] mb-4">Tóm tắt chi phí tạm tính</h4>
                 <div className="space-y-3 text-[13px]">
                   <div className="flex justify-between text-[#666]">
-                    <span>Tiền thuê ({formatPrice(costume.pricePerDay || costume.price || 0)} x {rentalDays} ngày x {quantity} bộ)</span>
-                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.pricePerDay || costume.price || 0) * rentalDays * quantity)}</span>
+                    <span>Tiền thuê ({formatPrice(costume.pricePerDay || costume.price || 0)} x {rentalDays} ngày x {quantity} bộ{rentalDays >= 3 ? " x 110%" : ""})</span>
+                    <span className="font-semibold text-[#1a1a1a]">{formatPrice((costume.pricePerDay || costume.price || 0) * rentalDays * quantity * (rentalDays >= 3 ? 1.1 : 1.0))}</span>
                   </div>
                   <div className="flex justify-between text-[#666]">
                     <span>Tiền cọc ({formatPrice(costume.deposit || 0)} x {quantity} bộ)</span>
@@ -323,7 +322,7 @@ export default function ProductDetailPage() {
                   <div className="pt-3 border-t border-dashed border-[#ccc] flex justify-between items-center">
                     <span className="font-bold text-[#1a1a1a] uppercase text-[12px]">Tổng thanh toán</span>
                     <span className="font-bold text-[#f94a00] text-[18px]">
-                      {formatPrice(((costume.pricePerDay || costume.price || 0) * rentalDays * quantity) + ((costume.deposit || 0) * quantity))}
+                      {formatPrice(((costume.pricePerDay || costume.price || 0) * rentalDays * quantity * (rentalDays >= 3 ? 1.1 : 1.0)) + ((costume.deposit || 0) * quantity))}
                     </span>
                   </div>
                 </div>
@@ -334,14 +333,16 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (!isInCart) {
-                        setIsBuying(true);
-                        const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
-                        setIsBuying(false);
-                        if (res && !res.success) {
-                          showToast(res.message || "Có lỗi xảy ra", "error");
-                          return;
-                        }
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Số ngày thuê không vượt quá (${costume.minRentalDays || 1} ngày).`, "error");
+                        return;
+                      }
+                      setIsBuying(true);
+                      const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
+                      setIsBuying(false);
+                      if (res && !res.success) {
+                        showToast(res.message || "Có lỗi xảy ra", "error");
+                        return;
                       }
                       navigate("/checkout", {
                         state: {
@@ -366,7 +367,11 @@ export default function ProductDetailPage() {
 
                 <button
                   onClick={async () => {
-                    if (!isInCart && costume.status === "available") {
+                    if (costume.status === "available") {
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Số ngày thuê không vượt quá (${costume.minRentalDays || 1} ngày).`, "error");
+                        return;
+                      }
                       const res = await addToCart(costume, selectedVariant, quantity, startDate, endDate, rentalDays);
                       if (res && !res.success) {
                         showToast(res.message || "Có lỗi xảy ra", "error");
@@ -374,21 +379,15 @@ export default function ProductDetailPage() {
                         showToast("Đã thêm vào giỏ hàng");
                       }
                     }
-                    else if (isInCart) {
-                      await removeFromCart(costume._id, selectedVariant?.size, startDate, endDate);
-                      showToast("Đã bỏ khỏi giỏ hàng");
-                    }
                   }}
-                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${isInCart
-                    ? "border-emerald-500 bg-emerald-50 text-[#1a1a1a] hover:bg-emerald-100 hover:-translate-y-0.5 active:translate-y-0"
-                    : costume.status === "available"
-                      ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
-                      : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
+                  className={`flex-[2] flex items-center justify-center gap-2 py-4 rounded-lg text-[13px] uppercase tracking-[0.08em] font-bold transition-all duration-300 border-2 ${costume.status === "available"
+                    ? "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#fafafa] hover:-translate-y-0.5 active:translate-y-0"
+                    : "border-[#eaeaea] bg-white text-[#999] cursor-not-allowed"
                     }`}
-                  disabled={costume.status !== "available" && !isInCart}
+                  disabled={costume.status !== "available"}
                 >
-                  <FontAwesomeIcon icon={isInCart ? faCheck : faCartPlus} className="text-[14px]" />
-                  {isInCart ? "Đã Thêm" : "Thêm Vào Giỏ"}
+                  <FontAwesomeIcon icon={faCartPlus} className="text-[14px]" />
+                  Thêm Vào Giỏ
                 </button>
               </div>
 

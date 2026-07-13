@@ -26,8 +26,6 @@ export default function CategoryPage() {
   // Sort Options
   const sortOptions = [
     { label: "Mặc định", value: "newest" },
-    { label: "A → Z", value: "name_asc" },
-    { label: "Z → A", value: "name_desc" },
     { label: "Giá tăng dần", value: "price_asc" },
     { label: "Giá giảm dần", value: "price_desc" },
     { label: "Theo mới nhất", value: "newest" },

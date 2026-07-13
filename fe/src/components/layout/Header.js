@@ -138,6 +138,11 @@ export default function Header() {
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
                 </Link>
+                {(roleStr === "staff" || roleStr === "owner" || roleStr === "storeowner" || roleStr === "storeown") && (
+                  <Link to={roleStr === "staff" ? "/staff" : "/owner"} onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
+                    Trang quản trị
+                  </Link>
+                )}
                 <Link to="/rental-history" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Lịch sử thuê
                 </Link>

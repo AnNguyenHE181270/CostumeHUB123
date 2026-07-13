@@ -16,7 +16,7 @@ const FEATURES = [
   {
     icon: faRotateLeft,
     title: "Trả Hàng Dễ Dàng",
-    desc: "Có thể đổi/trả hàng trong vòng đổi sản phẩm 4 tiếng",
+    desc: "Có thể đổi/trả hàng trong vòng 5 tiếng nếu phát hiện lỗi",
   },
   {
     icon: faGem,

@@ -12,24 +12,65 @@ const getAllCarts = async (userId) => {
 
   if (carts.length === 0) throw new HttpError('Cart is empty.', 404);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
   return carts.flatMap((cart) =>
-    cart.items.map((item) => ({
-      _id: item._id,
-      costumeId: item.costume?._id,
-      costumeName: item.costume.name,
-      image: item.costume?.images?.[0] || null,
-      category: item.costume.categoryId.name,
-      size: item.size,
-      quantity: item.quantity,
-      status: item.status,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      deposit: item.costume.deposit,
-      rentalDays: item.rentalDays,
-      rentalPerDay: item.costume.pricePerDay,
-      variants: item.costume?.variants || [],
-      variant: item.costume?.variants?.find((v) => v.size === item.size) || { size: item.size },
-    }))
+    cart.items.map((item) => {
+      let dateError = null;
+      if (item.startDate) {
+        const start = new Date(item.startDate);
+        start.setHours(0, 0, 0, 0);
+        if (isNaN(start.getTime())) {
+          dateError = "Ngày nhận đồ không hợp lệ";
+        } else if (start < tomorrow) {
+          dateError = "Ngày đặt thuê đồ trước ít nhất 1 ngày";
+        } else if (item.endDate) {
+          const end = new Date(item.endDate);
+          end.setHours(0, 0, 0, 0);
+          if (isNaN(end.getTime())) {
+            dateError = "Ngày trả đồ không hợp lệ";
+          } else if (end < tomorrow) {
+            dateError = "Ngày đặt thuê đồ trước ít nhất 1 ngày";
+          } else if (end < start) {
+            dateError = "Ngày trả đồ không được trước ngày nhận đồ";
+          } else {
+            const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const minDays = item.costume?.minRentalDays || 1;
+            if (rentalDays > minDays) {
+              dateError = `Số ngày thuê không vượt quá (${minDays} ngày).`;
+            }
+          }
+        }
+      }
+
+      const itemVariant = item.costume?.variants?.find((v) => v.size === item.size);
+      if (itemVariant && item.quantity > itemVariant.availableStock) {
+        dateError = `Số lượng còn không đủ.`;
+      }
+
+      return {
+        _id: item._id,
+        costumeId: item.costume?._id,
+        costumeName: item.costume.name,
+        image: item.costume?.images?.[0] || null,
+        category: item.costume.categoryId?.name || 'Khác',
+        size: item.size,
+        quantity: item.quantity,
+        status: item.status,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        deposit: item.costume.deposit,
+        rentalDays: item.rentalDays,
+        rentalPerDay: item.costume.pricePerDay,
+        minRentalDays: item.costume?.minRentalDays || 1,
+        variants: item.costume?.variants || [],
+        variant: item.costume?.variants?.find((v) => v.size === item.size) || { size: item.size },
+        dateError,
+      };
+    })
   );
 };
 
@@ -61,7 +102,7 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
   if (startNorm < tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
-  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ', 400);
+  if (endNorm < startNorm) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
   const newItem = { costume: costumeId, size, quantity: numQuantity, startDate: start, endDate: end, rentalDays };
@@ -71,6 +112,7 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   if (!cart) {
     cart = await Cart.create({ customerId: userId, items: [newItem] });
   } else {
+    // Tìm xem trong giỏ đã có sản phẩm này TRÙNG SIZE và TRÙNG NGÀY chưa
     const itemIndex = cart.items.findIndex(
       (item) =>
         item.costume.toString() === costumeId &&
@@ -80,27 +122,44 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
     );
 
     if (itemIndex > -1) {
-      const newQuantity = cart.items[itemIndex].quantity + numQuantity;
+      // ĐÃ TỒN TẠI -> Cộng dồn số lượng
+      const existingQty = cart.items[itemIndex].quantity;
+      const newQuantity = existingQty + numQuantity;
+      
       if (newQuantity > variant.availableStock) {
-        throw new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
+        throw new HttpError(`Số lượng tổng trong giỏ (${newQuantity}) vượt quá tồn kho hiện tại (${variant.availableStock}).`, 400);
       }
-      cart = await Cart.findOneAndUpdate(
-        { customerId: userId },
-        { $inc: { [`items.${itemIndex}.quantity`]: numQuantity } },
-        { new: true }
-      );
+      
+      cart.items[itemIndex].quantity = newQuantity;
     } else {
-      cart = await Cart.findOneAndUpdate({ customerId: userId }, { $push: { items: newItem } }, { new: true });
+      // CHƯA TỒN TẠI HOẶC KHÁC NGÀY -> Kiểm tra xem có bị giao cắt ngày (Overlap) không
+      const overlappingItem = cart.items.find(
+        (item) =>
+          item.costume.toString() === costumeId &&
+          item.size === size &&
+          // Điều kiện trùng lấn ngày: Start1 <= End2 và End1 >= Start2
+          new Date(item.startDate).getTime() <= end.getTime() &&
+          new Date(item.endDate).getTime() >= start.getTime()
+      );
+
+      if (overlappingItem) {
+        throw new HttpError('Trùng ngày thuê với một đơn khác trong giỏ. Vui lòng gộp chung hoặc chọn ngày khác.', 400);
+      }
+
+      // Không trùng ngày -> Thêm mới thành 1 dòng riêng trong giỏ
+      cart.items.push(newItem);
     }
+    
+    // Lưu lại toàn bộ thay đổi
+    await cart.save();
   }
 
-  if (cart) {
-    await cart.populate({
-      path: 'items.costume',
-      select: 'name categoryId images',
-      populate: { path: 'categoryId', select: 'name' },
-    });
-  }
+  // Lấy dữ liệu đầy đủ trả về cho Frontend
+  await cart.populate({
+    path: 'items.costume',
+    select: 'name categoryId images',
+    populate: { path: 'categoryId', select: 'name' },
+  });
 
   return cart;
 };
@@ -118,25 +177,10 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   const variant = costume.variants.find((v) => v.size === size);
   if (!variant) throw new HttpError(`Sản phẩm không có size ${size}`, 404);
   if (variant.availableStock === 0) throw new HttpError('Hết hàng.', 400);
-  if (numQuantity > variant.availableStock) {
-    throw new HttpError(`Số lượng yêu cầu vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
-  }
 
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new HttpError('Ngày tháng không hợp lệ', 400);
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime()); tomorrow.setDate(tomorrow.getDate() + 1);
-  const startNorm = new Date(start); startNorm.setHours(0, 0, 0, 0);
-  const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
-
-  if (startNorm <= tomorrow) throw new HttpError('Ngày nhận đồ phải sau ngày mai', 400);
-  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải lớn hơn hoặc bằng ngày nhận đồ', 400);
-
-  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
-  const rentalPrice = costume.pricePerDay || costume.price || 0;
-  const depositPrice = costume.deposit || 0;
 
   const resolvedOldSize = oldSize || size;
   const resolvedOldStart = oldStartDate ? new Date(oldStartDate) : start;
@@ -154,10 +198,35 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   );
   if (itemIndex === -1) throw new HttpError('Không tìm thấy sản phẩm trong giỏ hàng để cập nhật', 404);
 
+  const existingItem = cart.items[itemIndex];
   const isIdentityChanged =
     size !== resolvedOldSize ||
     start.getTime() !== resolvedOldStart.getTime() ||
     end.getTime() !== resolvedOldEnd.getTime();
+
+  const isDecreasing = !isIdentityChanged && numQuantity < existingItem.quantity;
+
+  if (!isDecreasing && numQuantity > variant.availableStock) {
+    throw new HttpError(`Số lượng yêu cầu vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
+  }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime()); tomorrow.setDate(tomorrow.getDate() + 1);
+  const startNorm = new Date(start); startNorm.setHours(0, 0, 0, 0);
+  const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
+
+  if (startNorm < tomorrow || endNorm < tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
+  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải sau ngày nhận đồ', 400);
+
+  const minDays = costume.minRentalDays || 1;
+  const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24));
+  if (rentalDaysDiff > minDays) {
+    throw new HttpError(`Số ngày thuê không vượt quá (${minDays} ngày).`, 400);
+  }
+
+  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
+  const rentalPrice = costume.pricePerDay || costume.price || 0;
+  const depositPrice = costume.deposit || 0;
 
   if (isIdentityChanged) {
     const existingItemIndex = cart.items.findIndex(
@@ -170,6 +239,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
     );
 
     if (existingItemIndex > -1) {
+      // YÊU CẦU: Nếu cập nhật thay đổi size/ngày mà trùng với một đơn đã có -> Gộp chung lại
       const newTotalQty = cart.items[existingItemIndex].quantity + numQuantity;
       if (newTotalQty > variant.availableStock) {
         throw new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
@@ -178,8 +248,9 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
       cart.items[existingItemIndex].rentalDays = rentalDays;
       cart.items[existingItemIndex].rentalPrice = rentalPrice;
       cart.items[existingItemIndex].depositPrice = depositPrice;
-      cart.items.splice(itemIndex, 1);
+      cart.items.splice(itemIndex, 1); // Xóa dòng cũ đi
     } else {
+      // Không trùng thì chỉ cập nhật lại thông tin
       cart.items[itemIndex].size = size;
       cart.items[itemIndex].quantity = numQuantity;
       cart.items[itemIndex].startDate = start;
@@ -189,6 +260,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
       cart.items[itemIndex].depositPrice = depositPrice;
     }
   } else {
+    // Nếu chỉ tăng giảm số lượng thì sửa thẳng luôn
     cart.items[itemIndex].quantity = numQuantity;
   }
 

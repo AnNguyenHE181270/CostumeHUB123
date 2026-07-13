@@ -5,9 +5,20 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false }) {
+export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false, minRentalDays }) {
     const [activePicker, setActivePicker] = useState(null);
     const pickerRef = useRef(null);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const start = new Date(startDate);
+    const maxEndDate = new Date(start);
+    if (minRentalDays) {
+        maxEndDate.setDate(maxEndDate.getDate() + Number(minRentalDays));
+    }
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -50,11 +61,18 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                     onChange={(date) => {
                                         const startStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
                                         setStartDate(startStr);
-                                        if (startStr > endDate) setEndDate(startStr);
+                                        const newStart = new Date(date);
+                                        const existingEnd = new Date(endDate);
+                                        const diffDays = Math.ceil((existingEnd - newStart) / (1000 * 60 * 60 * 24));
+                                        if (startStr > endDate || (minRentalDays && diffDays > minRentalDays)) {
+                                            const defaultEnd = new Date(newStart);
+                                            defaultEnd.setDate(defaultEnd.getDate() + 1);
+                                            setEndDate(defaultEnd.toISOString().split("T")[0]);
+                                        }
                                         setActivePicker('end'); // Tự động chuyển sang chọn ngày trả
                                     }}
                                     value={new Date(startDate)}
-                                    minDate={new Date()}
+                                    minDate={tomorrow}
                                     className="border-none text-[13px] font-sans w-full"
                                 />
                             </motion.div>
@@ -94,6 +112,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                     }}
                                     value={new Date(endDate)}
                                     minDate={new Date(startDate)}
+                                    maxDate={minRentalDays ? maxEndDate : undefined}
                                     className="border-none text-[13px] font-sans w-full"
                                 />
                             </motion.div>

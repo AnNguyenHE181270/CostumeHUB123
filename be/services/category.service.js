@@ -17,11 +17,11 @@ const createCategory = async ({ name, description, parentId }) => {
 
 const updateCategory = async (id, { name, description, parentId }) => {
   const category = await Category.findById(id);
-  if (!category) throw new HttpError('Category not found.', 404);
+  if (!category) throw new HttpError('Không tìm thấy danh mục.', 404);
 
   if (name) {
     const existing = await Category.findOne({ name, _id: { $ne: id } });
-    if (existing) throw new HttpError('Category name already exists.', 422);
+    if (existing) throw new HttpError('Tên danh mục đã tồn tại.', 422);
     category.name = name;
   }
   if (description !== undefined) category.description = description;
@@ -33,7 +33,7 @@ const updateCategory = async (id, { name, description, parentId }) => {
 
 const toggleCategoryStatus = async (id, isActive) => {
   const category = await Category.findById(id);
-  if (!category) throw new HttpError('Category not found.', 404);
+  if (!category) throw new HttpError('Không tìm thấy danh mục.', 404);
 
   const newStatus = isActive !== undefined ? isActive : !category.isActive;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,9 +7,19 @@ import { formatPrice, getRentalDays } from "../utils/formatters"
 import DatePickerGroup from "../components/ui/DatePickerGroup"
 import Selector from "../components/ui/Selector"
 
+function invalidMessage(item, cartErrors = {}) {
+  if (!item) return false;
+  return !!item.dateError || !!cartErrors[item._id];
+}
+
 export default function CartPage() {
   const { cartItems, removeFromCart, clearCart, updateCartItem } = useCart();
   const navigate = useNavigate();
+  const pendingStartRef = useRef({});
+  const [cartErrors, setCartErrors] = useState({}); // { [itemId]: "error message" }
+
+  const setItemError = (id, msg) => setCartErrors(prev => ({ ...prev, [id]: msg }));
+  const clearItemError = (id) => setCartErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
   const [selectedIds, setSelectedIds] = useState(() =>
     cartItems.filter(item => (item.variant?.availableStock || 0) > 0).map(item => item._id)
   );
@@ -17,18 +27,22 @@ export default function CartPage() {
   useEffect(() => {
     setSelectedIds(prev => {
       const currentIds = cartItems
-        .filter(item => (item.variant?.availableStock || 0) > 0)
+        .filter(item => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors))
         .map(item => item._id);
       if (prev.length === 0 && currentIds.length > 0) {
         return currentIds;
       }
       return prev.filter(id => currentIds.includes(id));
     });
-  }, [cartItems]);
+  }, [cartItems, cartErrors]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(cartItems.filter(item => (item.variant?.availableStock || 0) > 0).map(item => item._id));
+      setSelectedIds(
+        cartItems
+          .filter(item => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors))
+          .map(item => item._id)
+      );
     } else {
       setSelectedIds([]);
     }
@@ -36,7 +50,9 @@ export default function CartPage() {
 
   const toggleItemSelection = (id) => {
     const item = cartItems.find(item => item._id === id);
-    if (item && (item.variant?.availableStock || 0) <= 0) return; // Không cho phép chọn sản phẩm hết hàng
+    if (!item) return;
+    if ((item.variant?.availableStock || 0) <= 0) return; // Không cho phép chọn sản phẩm hết hàng
+    if (invalidMessage(item, cartErrors)) return; // Không cho phép chọn sản phẩm ngày không hợp lệ
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
     );
@@ -45,7 +61,9 @@ export default function CartPage() {
   const selectedCartItems = cartItems.filter(item => selectedIds.includes(item._id));
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce((sum, item) => {
-    return sum + item.rentalPerDay * (item.quantity || 1) * getRentalDays(item.startDate, item.endDate);
+    const days = getRentalDays(item.startDate, item.endDate);
+    const factor = days >= 3 ? 1.1 : 1.0;
+    return sum + item.rentalPerDay * factor * item.quantity;
   }, 0);
 
   const totalDeposit = selectedCartItems.reduce(
@@ -128,10 +146,13 @@ export default function CartPage() {
             const isSelected = selectedIds.includes(itemId);
             const rentalDays = getRentalDays(item.startDate, item.endDate);
             const itemOutOfStock = (item.variant?.availableStock || 0) <= 0;
+            const itemDateInvalidMessage = item.dateError || cartErrors[itemId];
+            const itemDateInvalid = !itemOutOfStock && !!itemDateInvalidMessage;
+            const itemCheckboxDisabled = itemOutOfStock || itemDateInvalid;
             return (
               <div
                 key={itemId}
-                onClick={() => !itemOutOfStock && toggleItemSelection(itemId)}
+                onClick={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
                 className={`rounded-xl border p-2 flex flex-col sm:flex-row gap-5 relative group shadow-sm hover:shadow-md transition-all cursor-pointer items-stretch ${itemOutOfStock ? "bg-[#fafafa] border-red-100 opacity-80" : ""}`}
               >
                 {/* Checkbox */}
@@ -139,8 +160,8 @@ export default function CartPage() {
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    disabled={itemOutOfStock}
-                    onChange={() => !itemOutOfStock && toggleItemSelection(itemId)}
+                    disabled={itemCheckboxDisabled}
+                    onChange={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
                     className="w-5 h-5 cursor-pointer accent-[#1a1a1a] border-[#ccc] rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -216,33 +237,60 @@ export default function CartPage() {
                   </div>
 
                   <div onClick={(e) => e.stopPropagation()} className="mt-2">
+
                     <DatePickerGroup
                       startDate={item.startDate}
                       disabled={itemOutOfStock}
-                      setStartDate={(newStart) => {
+                      minRentalDays={item.minRentalDays}
+                      setStartDate={async (newStart) => {
                         const newEnd = newStart > item.endDate ? newStart : item.endDate;
+                        pendingStartRef.current[itemId] = newStart;
                         if (updateCartItem) {
-                          updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
+                          const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
+                          if (result?.error) setItemError(itemId, result.error);
+                          else clearItemError(itemId);
                         }
                       }}
                       endDate={item.endDate}
-                      setEndDate={(newEnd) => {
+                      setEndDate={async (newEnd) => {
+                        const effectiveStart = pendingStartRef.current[itemId] ?? item.startDate;
+                        delete pendingStartRef.current[itemId];
                         if (updateCartItem) {
-                          updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, item.startDate, newEnd);
+                          const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, newEnd);
+                          if (result?.error) setItemError(itemId, result.error);
+                          else clearItemError(itemId);
                         }
                       }}
                     />
                   </div>
+                  {itemDateInvalidMessage && (
+                    <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg">
+                      <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-[12px] font-semibold text-amber-700">
+                        {itemDateInvalidMessage}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Pricing summary for this item */}
                 <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
-                  <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                    {formatPrice(item.rentalPerDay * (item.quantity || 1))}
-                  </p>
-                  <p className="text-[11px] text-[#999] mb-1">
-                    {formatPrice(item.rentalPerDay)} / ngày
-                  </p>
+                  {(() => {
+                    const factor = rentalDays >= 3 ? 1.1 : 1.0;
+                    const adjustedRentalPerDay = item.rentalPerDay * factor;
+                    return (
+                      <>
+                        <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
+                          {formatPrice(adjustedRentalPerDay * (item.quantity || 1))}
+                        </p>
+                        <p className="text-[11px] text-[#999] mb-1">
+                          {formatPrice(adjustedRentalPerDay)} / ngày {factor > 1 ? "(+10%)" : ""}
+                        </p>
+                      </>
+                    );
+                  })()}
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#666] bg-[#f5f5f5] w-fit px-2 py-1 rounded">
                     <FontAwesomeIcon icon={faCalendarDays} className="text-[#999]" />
                     <span>{rentalDays} ngày</span>
@@ -298,7 +346,7 @@ export default function CartPage() {
           </button>
 
           <p className="text-[11px] text-[#999] text-center mt-4">
-            Bạn có thể xem lại đơn hàng ở bước tiếp theo trước khi chốt.
+            Bạn có thể kiểm tra kỹ thông tin sản phẩm trước khi chốt.
           </p>
         </div>
 

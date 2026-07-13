@@ -1,442 +1,469 @@
-const costumeService = require('../services/costume.service');
-const Costume = require('../models/costume.model');
-const Category = require('../models/category.model');
+const { describe, test, beforeEach } = require('node:test');
+const assert = require('node:assert/strict');
+const mock = require('mock-require');
+
+// ============================
+// Mock State
+// ============================
+
+let mockData = {};
+
+// ---- CostumeMock ----
+const CostumeMock = function (data) {
+  Object.assign(this, data);
+  this.save = async () => {
+    this.saved = true;
+    return this;
+  };
+};
+
+const defaultCostumeFindById = async (id) => {
+  mockData.lastFindById = id;
+  return mockData.costume || null;
+};
+
+const defaultCostumeFind = (filter) => {
+  mockData.costumeFilter = filter;
+  return {
+    populate: function () { return this; },
+    sort: function () { return this; },
+    skip: function (n) { mockData.skipValue = n; return this; },
+    limit: async (n) => { mockData.limitValue = n; return mockData.costumes || []; },
+  };
+};
+
+CostumeMock.find = defaultCostumeFind;
+
+CostumeMock.countDocuments = async (filter) => {
+  mockData.countFilter = filter;
+  return mockData.totalItems ?? 0;
+};
+
+CostumeMock.findById = defaultCostumeFindById;
+
+// ---- CategoryMock ----
+const CategoryMock = function (data) {
+  Object.assign(this, data);
+};
+
+CategoryMock.find = async (filter) => {
+  mockData.categoryFindFilter = filter;
+  return mockData.childCategories || [];
+};
+
+mock('../models/costume.model', CostumeMock);
+mock('../models/category.model', CategoryMock);
+
+const { getAllCostumes, getCostumeById, createCostume, updateCostume, deleteCostume } = require('../services/costume.service');
 const HttpError = require('../models/http-error.model');
-const mongoose = require('mongoose');
 
-// Mock dependencies
-jest.mock('../models/costume.model');
-jest.mock('../models/category.model');
 
-describe('Costume Service - Unit Tests', () => {
-  let mockCostume;
-
+describe('getAllCostumes', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockData = {};
+    CostumeMock.findById = defaultCostumeFindById;
+    CostumeMock.find = defaultCostumeFind;
+  });
 
-    mockCostume = {
-      _id: 'costume_id_123',
-      name: 'Ao Dai Viet Nam',
-      slug: 'ao-dai-viet-nam',
-      sku: 'AD-001',
-      categoryId: 'category_id_123',
-      description: 'Ao dai truyen thong',
-      images: ['image1.png'],
-      size: 'L',
-      color: 'Red',
-      condition: 'New',
-      pricePerDay: 150000,
-      price: 1500000,
-      deposit: 1000000,
-      minRentalDays: 2,
-      lateFeePerDay: 50000,
+  test('Get all costumes list with full filters', async () => {
+    mockData.costumes = [{ _id: 'costume_id_123', name: 'Ao Dai' }];
+    mockData.totalItems = 1;
+    mockData.childCategories = [];
+
+    const result = await getAllCostumes({
+      categoryId: '507f1f77bcf86cd799439011',
+      minPrice: '100000',
+      maxPrice: '200000',
       status: 'available',
-      specifications: {},
-      variants: [
-        { size: 'L', color: 'Red', totalStock: 5, availableStock: 2 }
-      ],
-      createdBy: 'owner_user_id_123',
-      save: jest.fn().mockResolvedValue(this),
+      page: '1',
+      limit: '10',
+    });
+
+    assert.ok(result.costumes);
+    assert.strictEqual(result.costumes.length, 1);
+    assert.deepStrictEqual(result.pagination, {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 1,
+      limit: 10,
+    });
+    // filter status phải đúng
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available'] });
+    // filter price phải đúng
+    assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
+    // filter $or phải tồn tại (do có categoryId)
+    assert.ok(Array.isArray(mockData.costumeFilter.$or));
+  });
+
+  test('Filter costume list by category', async () => {
+    mockData.costumes = [{ _id: 'costume_id_123' }];
+    mockData.totalItems = 1;
+    mockData.childCategories = [{ _id: 'subcategory_id_456' }];
+
+    await getAllCostumes({ categoryId: 'category_id_123' });
+
+    // Category.find phải được gọi để lấy sub-categories
+    assert.ok(mockData.categoryFindFilter !== undefined);
+    // $or phải có trong filter
+    assert.ok(Array.isArray(mockData.costumeFilter.$or));
+  });
+
+  test('Filter costume list by price range', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ minPrice: '100000', maxPrice: '200000' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
+  });
+
+  test('Search costume list by name using regex', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ search: 'Ao Dai' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.name, { $regex: 'Ao Dai', $options: 'i' });
+  });
+
+  test('Sort costume list by price ascending', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+    let capturedSort = null;
+
+    CostumeMock.find = (filter) => {
+      mockData.costumeFilter = filter;
+      return {
+        populate: function () { return this; },
+        sort: function (s) { capturedSort = s; return this; },
+        skip: function () { return this; },
+        limit: async () => [],
+      };
+    };
+
+    await getAllCostumes({ sort: 'price_asc' });
+
+    assert.deepStrictEqual(capturedSort, { pricePerDay: 1 });
+  });
+
+  test('Pagination: page=2, limit=5 → skip=5', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ page: '2', limit: '5' });
+
+    assert.strictEqual(mockData.skipValue, 5);   // (2-1)*5
+    assert.strictEqual(mockData.limitValue, 5);
+  });
+
+  test('Filter by specific status list (available,maintenance)', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ status: 'available,maintenance' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available', 'maintenance'] });
+  });
+
+  test('Get all costume (all status)', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ status: 'all' });
+
+    assert.strictEqual(mockData.costumeFilter.status, undefined);
+    assert.strictEqual(mockData.costumeFilter['variants.availableStock'], undefined);
+  });
+
+  test('Get all costume without hidden status and with available stock', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({});
+
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+    assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
+  });
+});
+
+describe('getCostumeById', () => {
+  beforeEach(() => {
+    mockData = {};
+    CostumeMock.findById = (id) => {
+      mockData.lastFindById = id;
+      return {
+        populate: async () => mockData.costume || null,
+      };
     };
   });
 
-  describe('getAllCostumes', () => {
-    test('1. Get all costumes list', async () => {
-      const mockQuery = {
-        categoryId: '507f1f77bcf86cd799439011',
-        minPrice: '100000',
-        maxPrice: '200000',
-        status: 'available',
-        page: '1',
-        limit: '10',
-      };
+  test('Get costume details successfully', async () => {
+    mockData.costume = { _id: 'costume_id_123', name: 'Ao Dai' };
 
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
+    const result = await getCostumeById('costume_id_123');
 
-      Costume.countDocuments.mockResolvedValue(1);
-      Category.find.mockResolvedValue([]);
-
-      const result = await costumeService.getAllCostumes(mockQuery);
-
-      expect(result).toHaveProperty('costumes');
-      expect(result.costumes).toHaveLength(1);
-      expect(result.pagination).toEqual({
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 1,
-        limit: 10,
-      });
-
-      const expectedFilter = {
-        status: { $in: ['available'] },
-        pricePerDay: { $gte: 100000, $lte: 200000 },
-        $or: [
-          { categoryId: { $in: ['507f1f77bcf86cd799439011'] } },
-          { 'categoryId.$oid': { $in: ['507f1f77bcf86cd799439011'] } },
-          { categoryId: { $in: [expect.any(mongoose.Types.ObjectId)] } }
-        ]
-      };
-
-      expect(Costume.find).toHaveBeenCalledWith(expectedFilter);
-      expect(Costume.countDocuments).toHaveBeenCalledWith(expectedFilter);
-    });
-
-    test('2. Filter costume list by categoryId', async () => {
-      Category.find.mockResolvedValue([{ _id: 'subcategory_id_456' }]);
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      await costumeService.getAllCostumes({ categoryId: 'category_id_123' });
-
-      expect(Category.find).toHaveBeenCalled();
-      expect(Costume.find).toHaveBeenCalledWith(expect.objectContaining({
-        $or: expect.any(Array)
-      }));
-    });
-
-    test('3. Filter costume list by price range', async () => {
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      await costumeService.getAllCostumes({ minPrice: '100000', maxPrice: '200000' });
-
-      expect(Costume.find).toHaveBeenCalledWith(expect.objectContaining({
-        pricePerDay: { $gte: 100000, $lte: 200000 }
-      }));
-    });
-
-    test('4. Search costume list by name using regex', async () => {
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      await costumeService.getAllCostumes({ search: 'Ao Dai' });
-
-      expect(Costume.find).toHaveBeenCalledWith(expect.objectContaining({
-        name: { $regex: 'Ao Dai', $options: 'i' }
-      }));
-    });
-
-    test('5. Sort costume list', async () => {
-      const mockSort = jest.fn().mockReturnThis();
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: mockSort,
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      await costumeService.getAllCostumes({ sort: 'price_asc' });
-
-      expect(mockSort).toHaveBeenCalledWith({ pricePerDay: 1 });
-    });
-
-    test('6. Pagination of costume list', async () => {
-      const mockSkip = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([mockCostume]);
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: mockSkip,
-        limit: mockLimit,
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      await costumeService.getAllCostumes({ page: '2', limit: '5' });
-
-      // Page 2, Limit 5 => skip = (2-1)*5 = 5
-      expect(mockSkip).toHaveBeenCalledWith(5);
-      expect(mockLimit).toHaveBeenCalledWith(5);
-    });
-
-    test('7. Filter costume list by status', async () => {
-      Costume.find.mockImplementation(() => ({
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([mockCostume]),
-      }));
-      Costume.countDocuments.mockResolvedValue(1);
-
-      // Case A: specific status list
-      await costumeService.getAllCostumes({ status: 'available,maintenance' });
-      expect(Costume.find).toHaveBeenLastCalledWith(expect.objectContaining({
-        status: { $in: ['available', 'maintenance'] }
-      }));
-
-      // Case B: status = 'all' (should not filter by status or check stock)
-      await costumeService.getAllCostumes({ status: 'all' });
-      const lastCallArgsAll = Costume.find.mock.calls[Costume.find.mock.calls.length - 1][0];
-      expect(lastCallArgsAll.status).toBeUndefined();
-      expect(lastCallArgsAll['variants.availableStock']).toBeUndefined();
-
-      // Case C: status is empty / undefined (should default to variants.availableStock > 0)
-      await costumeService.getAllCostumes({});
-      expect(Costume.find).toHaveBeenLastCalledWith(expect.objectContaining({
-        status: { $ne: 'hidden' },
-        'variants.availableStock': { $gt: 0 }
-      }));
-    });
+    assert.strictEqual(mockData.lastFindById, 'costume_id_123');
+    assert.strictEqual(result._id, 'costume_id_123');
+    assert.strictEqual(result.name, 'Ao Dai');
   });
 
-  describe('getCostumeById', () => {
-    test('Get costume details', async () => {
-      Costume.findById.mockImplementation(() => ({
-        populate: jest.fn().mockResolvedValue(mockCostume),
-      }));
+  test('Costume not found', async () => {
+    mockData.costume = null;
 
-      const result = await costumeService.getCostumeById('costume_id_123');
+    await assert.rejects(
+      async () => getCostumeById('non_existent_id'),
+      (error) => {
+        assert.ok(error instanceof HttpError);
+        assert.strictEqual(error.statusCode, 404);
+        assert.strictEqual(error.message, 'Costume not found.');
+        return true;
+      }
+    );
+  });
+});
 
-      expect(result).toEqual(mockCostume);
-      expect(Costume.findById).toHaveBeenCalledWith('costume_id_123');
-    });
 
-    test('Get costume details if costume is not found', async () => {
-      Costume.findById.mockImplementation(() => ({
-        populate: jest.fn().mockResolvedValue(null),
-      }));
-
-      await expect(costumeService.getCostumeById('non_existent_id'))
-        .rejects
-        .toThrow(new HttpError('Costume not found.', 404));
-    });
+describe('createCostume', () => {
+  beforeEach(() => {
+    mockData = {};
+    CostumeMock.findById = defaultCostumeFindById;
   });
 
-  describe('createCostume (Role: Owner)', () => {
-    test('Create costume successfully', async () => {
-      const mockInputData = {
-        name: 'Ao Dai Viet Nam',
-        sku: 'AD-001',
-        categoryId: 'category_id_123',
-        pricePerDay: 150000,
-        variants: [
-          { size: 'L', color: 'Red', totalStock: 5 }
-        ],
-      };
+  test('Create costume successfully', async () => {
+    const inputData = {
+      name: 'Ao Dai Viet Nam',
+      sku: 'AD-001',
+      categoryId: 'category_id_123',
+      pricePerDay: 150000,
+      variants: [{ size: 'L', color: 'Red', totalStock: 5 }],
+    };
 
-      Costume.mockImplementation(() => ({
-        ...mockInputData,
-        createdBy: 'owner_user_id_123',
-        save: jest.fn().mockResolvedValue(true),
-      }));
+    const result = await createCostume(inputData, 'owner_user_id_123');
 
-      const result = await costumeService.createCostume(mockInputData, 'owner_user_id_123');
-
-      expect(result.createdBy).toBe('owner_user_id_123');
-      expect(result.name).toBe('Ao Dai Viet Nam');
-    });
-
-    test('Add new outfits with the required data', async () => {
-      const mockMinimalData = {
-        name: 'Áo Dài Học Sinh',
-        sku: 'ADHS-001',
-        categoryId: 'category_id_999',
-      };
-      Costume.mockImplementation((initData) => ({
-        ...initData,
-        save: jest.fn().mockResolvedValue(true),
-      }));
-      const result = await costumeService.createCostume(mockMinimalData, 'owner_user_id_123');
-      expect(result.name).toBe('Áo Dài Học Sinh');
-      expect(result.sku).toBe('ADHS-001');
-      expect(result.images).toEqual([]); // Mặc định là mảng rỗng
-      expect(result.pricePerDay).toBe(0); // Mặc định = 0
-      expect(result.price).toBe(0); // Mặc định = 0
-      expect(result.deposit).toBe(0); // Mặc định = 0
-      expect(result.minRentalDays).toBe(1); // Mặc định = 1
-      expect(result.lateFeePerDay).toBe(0); // Mặc định = 0
-      expect(result.status).toBe('available'); // Mặc định = 'available'
-      expect(result.specifications).toEqual({}); // Mặc định là object rỗng
-      expect(result.variants).toEqual([]); // Mặc định là mảng rỗng
-    })
-
-    test('Check the available inventory levels.', async () => {
-      const mockDataWithVariants = {
-        name: 'Áo Dài Test Biến Thể',
-        sku: 'AD-TEST-002',
-        categoryId: 'category_id_123',
-        variants: [
-          { size: 'S', color: 'Red', totalStock: 10 },
-          { size: 'M', color: 'Red', totalStock: 0 },
-          { size: 'L', color: 'Red' } // Thiếu totalStock
-        ],
-      };
-      Costume.mockImplementation((initData) => ({
-        ...initData,
-        save: jest.fn().mockResolvedValue(true),
-      }));
-      const result = await costumeService.createCostume(mockDataWithVariants, 'owner_user_id_123');
-      expect(result.variants[0].availableStock).toBe(10);
-      expect(result.variants[1].availableStock).toBe(0);
-      expect(result.variants[2].availableStock).toBe(0);
-    })
-
-
-    // khi không có variants -> mặc định size = "free size"
-
+    assert.strictEqual(result.createdBy, 'owner_user_id_123');
+    assert.strictEqual(result.name, 'Ao Dai Viet Nam');
+    assert.strictEqual(result.saved, true);
   });
 
-  describe('update costume', () => {
-    let mockCostumeInstance;
+  test('Add new costume with minimal required data → defaults applied', async () => {
+    const minimalData = {
+      name: 'Ao Dai Hoc Sinh',
+      sku: 'ADHS-001',
+      categoryId: 'category_id_999',
+    };
 
-    beforeEach(() => {
-      mockCostumeInstance = {
-        _id: 'costume_id_123',
-        name: 'Ao Dai Viet Nam',
-        status: 'available',
-        variants: [
-          {
-            _id: 'variant_id_1',
-            sku: 'AD-01',
-            size: 'L',
-            color: 'Red',
-            totalStock: 5,
-            availableStock: 3, // đang thuê: 5 - 3 = 2
-            toObject: function () {
-              return {
-                _id: this._id,
-                sku: this.sku,
-                size: this.size,
-                color: this.color,
-                totalStock: this.totalStock,
-                availableStock: this.availableStock,
-              };
-            },
+    const result = await createCostume(minimalData, 'owner_user_id_123');
+
+    assert.strictEqual(result.name, 'Ao Dai Hoc Sinh');
+    assert.strictEqual(result.sku, 'ADHS-001');
+    assert.deepStrictEqual(result.images, []);
+    assert.strictEqual(result.pricePerDay, 0);
+    assert.strictEqual(result.price, 0);
+    assert.strictEqual(result.deposit, 0);
+    assert.strictEqual(result.minRentalDays, 1);
+    assert.strictEqual(result.lateFeePerDay, 0);
+    assert.strictEqual(result.status, 'available');
+    assert.deepStrictEqual(result.specifications, {});
+    assert.deepStrictEqual(result.variants, []);
+  });
+
+  test('availableStock = totalStock for each variant when created', async () => {
+    const dataWithVariants = {
+      name: 'Ao Dai Test',
+      sku: 'AD-TEST-002',
+      categoryId: 'category_id_123',
+      variants: [
+        { size: 'S', color: 'Red', totalStock: 10 },
+        { size: 'M', color: 'Red', totalStock: 0 },
+        { size: 'L', color: 'Red' },  // thiếu totalStock
+      ],
+    };
+
+    const result = await createCostume(dataWithVariants, 'owner_user_id_123');
+
+    assert.strictEqual(result.variants[0].availableStock, 10);
+    assert.strictEqual(result.variants[1].availableStock, 0);
+    assert.strictEqual(result.variants[2].availableStock, 0);
+  });
+});
+
+
+describe('updateCostume', () => {
+  let mockCostumeInstance;
+
+  beforeEach(() => {
+    mockData = {};
+    mockCostumeInstance = {
+      _id: 'costume_id_123',
+      name: 'Ao Dai Viet Nam',
+      status: 'available',
+      variants: [
+        {
+          _id: 'variant_id_1',
+          sku: 'AD-01',
+          size: 'L',
+          color: 'Red',
+          totalStock: 5,
+          availableStock: 3,   // đang thuê: 5 - 3 = 2
+          toObject: function () {
+            return {
+              _id: this._id,
+              sku: this.sku,
+              size: this.size,
+              color: this.color,
+              totalStock: this.totalStock,
+              availableStock: this.availableStock,
+            };
           },
-        ],
-        save: jest.fn().mockResolvedValue(true),
-      };
-    });
-
-    test('Successfully update costume fields', async () => {
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-
-      const updateData = {
-        name: 'Ao Dai Co Dien',
-        pricePerDay: 200000,
-        variants: [
-          { sku: 'AD-01', totalStock: 10 } // Increase stock from 5 to 10
-        ]
-      };
-
-      const result = await costumeService.updateCostume('costume_id_123', updateData);
-      expect(result.name).toBe('Ao Dai Co Dien');
-      expect(result.pricePerDay).toBe(200000);
-      expect(result.variants[0].totalStock).toBe(10);
-      expect(result.variants[0].availableStock).toBe(8); // 3 + (10 - 5)
-      expect(mockCostumeInstance.save).toHaveBeenCalled();
-    });
-
-    test('Should throw 404 if costume to update is not found', async () => {
-      // Setup Mock
-      Costume.findById.mockResolvedValue(null);
-
-      // Execute & Verify
-      await expect(costumeService.updateCostume('non_existent_id', { name: 'New Name' }))
-        .rejects
-        .toThrow(new HttpError('Costume not found.', 404));
-    });
-
-    test('Increase total stock', async () => {
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 10 } // Tăng từ 5 lên 10
-        ]
-      });
-      expect(result.variants[0].totalStock).toBe(10);
-      expect(result.variants[0].availableStock).toBe(8); // 3 + (10 - 5)
-    });
-    test('Decrease total stock (greater than rented quantity)', async () => {
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 4 } // Giảm từ 5 xuống 4 (vẫn lớn hơn số lượng thuê là 2)
-        ]
-      });
-      expect(result.variants[0].totalStock).toBe(4);
-      expect(result.variants[0].availableStock).toBe(2); // 3 + (4 - 5)
-    });
-    test('Do not allow reducing total stock below the quantity being rented', async () => {
-      mockCostumeInstance.variants[0].availableStock = 1; // 5 - 1 = 4 đang thuê
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 2 } // Muốn giảm xuống 2 nhưng đang thuê 4
-        ]
-      });
-      expect(result.variants[0].totalStock).toBe(4); // Tự động giới hạn ở 4
-      expect(result.variants[0].availableStock).toBe(0); // 1 + (4 - 5)
-    });
-    test('Add new variant', async () => {
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 5 }, // Giữ nguyên biến thể cũ
-          { sku: 'AD-02', totalStock: 3 }  // Thêm biến thể mới
-        ]
-      });
-      expect(result.variants).toHaveLength(2);
-      expect(result.variants[1].sku).toBe('AD-02');
-      expect(result.variants[1].availableStock).toBe(3); // Khởi tạo bằng totalStock
-    });
-    test('Automatically change status to out of stock when stock is zero', async () => {
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 2 } // Giảm tổng kho xuống 2 (nhỏ hơn số lượng đang thuê là 2) => availableStock trở về 0
-        ]
-      });
-      expect(result.variants[0].availableStock).toBe(0);
-      expect(result.status).toBe('out_of_stock');
-    });
-    test('Automatically restore status to available when stock is available again', async () => {
-      mockCostumeInstance.status = 'out_of_stock';
-      mockCostumeInstance.variants[0].availableStock = 0;
-      Costume.findById.mockResolvedValue(mockCostumeInstance);
-      const result = await costumeService.updateCostume('costume_id_123', {
-        variants: [
-          { sku: 'AD-01', totalStock: 10 } // Tăng kho trở lại
-        ]
-      });
-      expect(result.variants[0].availableStock).toBe(5); // 0 + (10 - 5) = 5
-      expect(result.status).toBe('available'); // Tự động khôi phục về available
-    });
+        },
+      ],
+      save: async function () { this.saved = true; },
+    };
+    CostumeMock.findById = async (id) => {
+      mockData.lastFindById = id;
+      return mockData.costume || null;
+    };
+    mockData.costume = mockCostumeInstance;
   });
 
-  describe('deleteCostume (Role: Owner)', () => {
-    test('Hidden costume', async () => {
-      Costume.findById.mockResolvedValue(mockCostume);
-      await costumeService.deleteCostume('costume_id_123');
-      expect(mockCostume.status).toBe('hidden');
-      expect(mockCostume.save).toHaveBeenCalled();
+  test('Should throw 404 if costume to update is not found', async () => {
+    mockData.costume = null;
+
+    await assert.rejects(
+      async () => updateCostume('non_existent_id', { name: 'New Name' }),
+      (error) => {
+        assert.ok(error instanceof HttpError);
+        assert.strictEqual(error.statusCode, 404);
+        assert.strictEqual(error.message, 'Costume not found.');
+        return true;
+      }
+    );
+  });
+
+  test('Successfully update costume fields (name, pricePerDay)', async () => {
+    const result = await updateCostume('costume_id_123', {
+      name: 'Ao Dai Co Dien',
+      pricePerDay: 200000,
+      variants: [{ sku: 'AD-01', totalStock: 10 }],
     });
 
-    test('costume to hidden is not found', async () => {
-      Costume.findById.mockResolvedValue(null);
-      await expect(costumeService.deleteCostume('non_existent_id'))
-        .rejects
-        .toThrow(new HttpError('Costume not found.', 404));
+    assert.strictEqual(result.name, 'Ao Dai Co Dien');
+    assert.strictEqual(result.pricePerDay, 200000);
+    assert.strictEqual(result.variants[0].totalStock, 10);
+    assert.strictEqual(result.variants[0].availableStock, 8); // 3 + (10-5)
+    assert.strictEqual(result.saved, true);
+  });
+
+  test('Increase total stock → availableStock increases by the diff', async () => {
+    const result = await updateCostume('costume_id_123', {
+      variants: [{ sku: 'AD-01', totalStock: 10 }],  // tăng từ 5 lên 10
     });
+
+    assert.strictEqual(result.variants[0].totalStock, 10);
+    assert.strictEqual(result.variants[0].availableStock, 8); // 3 + (10-5)
+  });
+
+  test('Decrease total stock (still > rented quantity) → availableStock decreases', async () => {
+    const result = await updateCostume('costume_id_123', {
+      variants: [{ sku: 'AD-01', totalStock: 4 }],  // giảm từ 5 xuống 4; đang thuê=2
+    });
+
+    assert.strictEqual(result.variants[0].totalStock, 4);
+    assert.strictEqual(result.variants[0].availableStock, 2); // 3 + (4-5)
+  });
+
+  test('Do not allow reducing total stock below rented quantity → clamped to rentedCount', async () => {
+    mockCostumeInstance.variants[0].availableStock = 1; // đang thuê = 5-1 = 4
+
+    const result = await updateCostume('costume_id_123', {
+      variants: [{ sku: 'AD-01', totalStock: 2 }],  // muốn giảm xuống 2 nhưng thuê 4
+    });
+
+    assert.strictEqual(result.variants[0].totalStock, 4);  // clamped to rentedCount
+    assert.strictEqual(result.variants[0].availableStock, 0); // 1 + (4-5) = 0
+  });
+
+  test('Add new variant with a new SKU (size not existed)', async () => {
+    const result = await updateCostume('costume_id_123', {
+      variants: [
+        { sku: 'AD-01', totalStock: 5 },               // giữ nguyên
+        { sku: 'AD-02', size: 'M', totalStock: 3 },    // thêm mới
+      ],
+    });
+
+    assert.strictEqual(result.variants.length, 2);
+    assert.strictEqual(result.variants[1].sku, 'AD-02');
+    assert.strictEqual(result.variants[1].size, 'M');
+    assert.strictEqual(result.variants[1].availableStock, 3); // = totalStock (mới)
+  });
+
+  test('Add new variant with same size as existing', async () => {
+    const result = await updateCostume('costume_id_123', {
+      variants: [
+        { sku: 'AD-01', totalStock: 5 },               // cũ size 'L'
+        { sku: 'AD-02', size: 'L', totalStock: 3 },    // mới cùng size 'L'
+      ],
+    });
+
+    assert.strictEqual(result.variants.length, 2);
+    assert.strictEqual(result.variants[1].sku, 'AD-02');
+    assert.strictEqual(result.variants[1].size, 'L');
+    assert.strictEqual(result.variants[1].availableStock, 3);
+  });
+
+  test('Automatically change status to out_of_stock when all availableStock = 0', async () => {
+    // totalStock=2, đang thuê=2 → availableStock sẽ = 0
+    const result = await updateCostume('costume_id_123', {
+      variants: [{ sku: 'AD-01', totalStock: 2 }],
+    });
+
+    assert.strictEqual(result.variants[0].availableStock, 0);
+    assert.strictEqual(result.status, 'out_of_stock');
+  });
+
+  test('Automatically restore status to available when stock is replenished', async () => {
+    mockCostumeInstance.status = 'out_of_stock';
+    mockCostumeInstance.variants[0].availableStock = 0;
+
+    const result = await updateCostume('costume_id_123', {
+      variants: [{ sku: 'AD-01', totalStock: 10 }],  // tăng kho trở lại
+    });
+
+    assert.strictEqual(result.variants[0].availableStock, 5); // 0 + (10-5)
+    assert.strictEqual(result.status, 'available');
+  });
+});
+
+describe('deleteCostume', () => {
+  beforeEach(() => {
+    mockData = {};
+    CostumeMock.findById = defaultCostumeFindById;
+  });
+
+  test('Hide costume → status becomes "hidden"', async () => {
+    mockData.costume = {
+      _id: 'costume_id_123',
+      status: 'available',
+      save: async function () { this.saved = true; },
+    };
+
+    await deleteCostume('costume_id_123');
+
+    assert.strictEqual(mockData.costume.status, 'hidden');
+    assert.strictEqual(mockData.costume.saved, true);
+  });
+
+  test('Costume to hide not found → throws 404', async () => {
+    mockData.costume = null;
+
+    await assert.rejects(
+      async () => deleteCostume('non_existent_id'),
+      (error) => {
+        assert.ok(error instanceof HttpError);
+        assert.strictEqual(error.statusCode, 404);
+        assert.strictEqual(error.message, 'Costume not found.');
+        return true;
+      }
+    );
   });
 });

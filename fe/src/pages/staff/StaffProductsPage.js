@@ -286,98 +286,101 @@ export default function StaffProductsPage() {
             <p className="text-sm">Không tìm thấy sản phẩm nào</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
-            {costumes.map((costume) => {
-              const statusStyle = getStatusStyle(costume.status);
-              const available = getTotalStock(costume);
-              const total = getTotalCapacity(costume);
+          <div className="overflow-hidden rounded-lg border border-[#eaeaea] mb-8 bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">
+                    <th className="p-4 font-semibold whitespace-nowrap">Sản phẩm</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">Danh mục</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">Giá thuê</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">Tồn kho</th>
+                    <th className="p-4 font-semibold whitespace-nowrap text-center">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {costumes.map((costume) => {
+                    const statusStyle = getStatusStyle(costume.status);
+                    const available = getTotalStock(costume);
+                    const total = getTotalCapacity(costume);
 
-              return (
-                <div
-                  key={costume._id}
-                  className="bg-white border border-[#eaeaea] rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group cursor-pointer"
-                  onClick={() => setSelectedCostume(costume)}
-                >
-                  {/* Image */}
-                  <div className="relative aspect-[3/4] bg-[#f5f5f5] overflow-hidden">
-                    {costume.images?.[0] ? (
-                      <img
-                        src={costume.images[0]}
-                        alt={costume.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#ccc]">
-                        <FontAwesomeIcon icon={faBox} className="text-4xl" />
-                      </div>
-                    )}
+                    return (
+                      <tr
+                        key={costume._id}
+                        onClick={() => setSelectedCostume(costume)}
+                        className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
+                      >
+                        {/* Sản phẩm (Ảnh + Tên) */}
+                        <td className="p-4 text-sm text-[#555] min-w-[250px]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-16 rounded bg-[#f5f5f5] overflow-hidden flex-shrink-0 border border-[#eaeaea]">
+                              {costume.images?.[0] ? (
+                                <img
+                                  src={costume.images[0]}
+                                  alt={costume.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[#ccc]">
+                                  <FontAwesomeIcon icon={faBox} />
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "16px" }}>
+                                {costume.name}
+                              </h3>
+                              <p className="text-xs text-[#999] mt-1">{costume.sku || "N/A"}</p>
+                            </div>
+                          </div>
+                        </td>
 
-                    {/* Status Badge */}
-                    <span className={`absolute top-3 left-3 ${statusStyle.bg} ${statusStyle.text} px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                      {statusStyle.label}
-                    </span>
-
-                    {/* Quick view */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <span className="bg-white text-[#1a1a1a] px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-lg">
-                        <FontAwesomeIcon icon={faEye} /> Xem chi tiết
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-4">
-                    {/* Category */}
-                    <p className="text-[10px] uppercase tracking-wider text-[#999] mb-1">
-                      {costume.categoryId?.name || "Chưa phân loại"}
-                    </p>
-
-                    {/* Name */}
-                    <h3 className="text-sm font-semibold text-[#1a1a1a] line-clamp-1 mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                      {costume.name}
-                    </h3>
-
-                    <p className="text-sm font-bold text-[#1a1a1a] mb-3">
-                      {formatPrice(costume.rentalRates?.pricePerDay || costume.pricePerDay || costume.price)}
-                      <span className="text-xs font-normal text-[#999]"> /ngày</span>
-                    </p>
-
-                    {/* Stock bar */}
-                    <div className="flex items-center justify-between text-xs text-[#999] mb-1.5">
-                      <span>Tồn kho</span>
-                      <span className="font-medium text-[#555]">{available}/{total}</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-[#f0f0f0] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          available === 0 ? "bg-red-400" : available <= 2 ? "bg-yellow-400" : "bg-emerald-400"
-                        }`}
-                        style={{ width: `${total > 0 ? (available / total) * 100 : 0}%` }}
-                      />
-                    </div>
-
-                    {/* Sizes */}
-                    {costume.variants && costume.variants.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {costume.variants.map((v, i) => (
-                          <span
-                            key={i}
-                            className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
-                              v.availableStock > 0
-                                ? "border-[#eaeaea] text-[#555] bg-white"
-                                : "border-red-200 text-red-400 bg-red-50 line-through"
-                            }`}
-                          >
-                            {v.size}
+                        {/* Danh mục */}
+                        <td className="p-4 text-sm text-[#555]">
+                          <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-medium">
+                            {costume.categoryId?.name || "Chưa phân loại"}
                           </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                        </td>
+
+                        {/* Giá thuê */}
+                        <td className="p-4 text-sm text-[#555]">
+                          <span className="font-semibold text-[#1a1a1a]">
+                            {formatPrice(costume.rentalRates?.pricePerDay || costume.pricePerDay || costume.price)}
+                          </span>
+                          <span className="text-xs text-[#999] ml-1">/ngày</span>
+                        </td>
+
+                        {/* Tồn kho */}
+                        <td className="p-4 text-sm text-[#555]">
+                          <div className="flex flex-col gap-1.5 w-24">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-medium text-[#1a1a1a]">{available}</span>
+                              <span className="text-[#999]">/ {total}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#f0f0f0] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  available === 0 ? "bg-red-400" : available <= 2 ? "bg-yellow-400" : "bg-emerald-400"
+                                }`}
+                                style={{ width: `${total > 0 ? (available / total) * 100 : 0}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Trạng thái */}
+                        <td className="p-4 text-sm text-center">
+                          <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 min-w-[110px] ${statusStyle.bg} ${statusStyle.text} border-transparent`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                            {statusStyle.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
