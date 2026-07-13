@@ -1,14 +1,26 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilePdf,
   faFileWord,
+  faFileExcel,
   faChartLine,
   faBoxes,
   faSpinner
 } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
+import costumeService from "../../services/costume.service";
+
+const COSTUME_STATUS_LABEL = {
+  available: "Còn hàng",
+  rented: "Đang thuê",
+  maintenance: "Bảo trì",
+  dry_cleaning: "Đang giặt là",
+  hidden: "Đang ẩn",
+  out_of_stock: "Hết hàng",
+};
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -16,6 +28,7 @@ export default function ExportPage() {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [inventoryExporting, setInventoryExporting] = useState(false);
   
   // Dữ liệu báo cáo
   const [reportData, setReportData] = useState({
@@ -186,6 +199,75 @@ export default function ExportPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportInventoryExcel = async () => {
+    setInventoryExporting(true);
+    try {
+      const data = await costumeService.getAll({
+        limit: 1000,
+        status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden",
+      });
+      const products = data.costumes || [];
+
+      const detailRows = [];
+      let totalStock = 0;
+      let totalAvailable = 0;
+      let totalRented = 0;
+
+      products.forEach((p) => {
+        const variants = p.variants && p.variants.length > 0 ? p.variants : [{}];
+        variants.forEach((v) => {
+          const stock = v.totalStock || 0;
+          const available = v.availableStock || 0;
+          const rented = stock - available;
+          totalStock += stock;
+          totalAvailable += available;
+          totalRented += rented > 0 ? rented : 0;
+
+          detailRows.push({
+            "Tên sản phẩm": p.name || "",
+            "Danh mục": p.categoryId?.name || "",
+            "Size": v.size || "—",
+            "SKU": v.sku || "—",
+            "Tổng kho": stock,
+            "Sẵn sàng cho thuê": available,
+            "Đang thuê": rented > 0 ? rented : 0,
+            "Trạng thái": COSTUME_STATUS_LABEL[v.status || p.status] || v.status || p.status || "",
+          });
+        });
+      });
+
+      const currentDate = new Date().toLocaleString("vi-VN");
+
+      const summarySheetData = [
+        ["BÁO CÁO TỒN KHO CHI TIẾT - COSTUMEHUB"],
+        [`Ngày trích xuất: ${currentDate}`],
+        [],
+        ["Tổng số sản phẩm", products.length],
+        ["Tổng số lượng trong kho", totalStock],
+        ["Sẵn sàng cho thuê", totalAvailable],
+        ["Đang cho thuê", totalRented],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
+      wsSummary["!cols"] = [{ wch: 28 }, { wch: 18 }];
+
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      wsDetail["!cols"] = [
+        { wch: 30 }, { wch: 18 }, { wch: 8 }, { wch: 14 },
+        { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 14 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Tong quan");
+      XLSX.utils.book_append_sheet(wb, wsDetail, "Chi tiet ton kho");
+
+      XLSX.writeFile(wb, `Bao_cao_ton_kho_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      setToast({ isVisible: true, type: "error", message: "Không thể xuất báo cáo tồn kho." });
+    } finally {
+      setInventoryExporting(false);
+    }
+  };
+
   return (
     <div className="bg-[#faf9f7] min-h-screen">
       <div className="bg-white border-b border-[#eaeaea] px-6 py-4 sticky top-0 z-10">
@@ -240,25 +322,32 @@ export default function ExportPage() {
               </div>
             </div>
 
-            {/* Card Báo cáo Tồn kho (Khung chờ phát triển thêm) */}
-            <div className="bg-white rounded-xl border border-[#eaeaea] p-6 shadow-sm opacity-60">
+            {/* Card Báo cáo Tồn kho chi tiết */}
+            <div className="bg-white rounded-xl border border-[#eaeaea] p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-xl">
+                <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
                   <FontAwesomeIcon icon={faBoxes} />
                 </div>
                 <div>
                   <h2 className="font-bold text-[#1a1a1a]">Báo cáo Tồn kho chi tiết</h2>
-                  <p className="text-xs text-[#555]">Danh sách sản phẩm sắp hỏng, quá hạn trả.</p>
+                  <p className="text-xs text-[#555]">Danh sách từng sản phẩm, từng size: tổng kho, sẵn sàng, đang thuê.</p>
                 </div>
               </div>
-              
+
               <div className="bg-[#faf9f7] p-3 rounded-md mb-6 border border-[#eaeaea]">
-                <p className="text-sm text-gray-500 text-center py-2">Tính năng đang được phát triển...</p>
+                <p className="text-sm text-gray-700">Tổng số lượng trong kho: <span className="font-semibold">{reportData.totalStock} bộ</span></p>
+                <p className="text-sm text-gray-700 mt-1">Đang cho thuê: <span className="font-bold text-orange-500">{reportData.currentlyRented} bộ</span></p>
               </div>
 
               <div className="flex gap-3">
-                <button type="button" disabled className="flex-1 py-2.5 bg-gray-100 text-gray-400 rounded-md font-semibold text-sm cursor-not-allowed">
-                  Xuất Excel (.xlsx)
+                <button
+                  type="button"
+                  onClick={handleExportInventoryExcel}
+                  disabled={inventoryExporting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-50 text-emerald-700 rounded-md font-semibold text-sm hover:bg-emerald-100 transition-colors border border-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FontAwesomeIcon icon={inventoryExporting ? faSpinner : faFileExcel} className={inventoryExporting ? "animate-spin" : ""} />
+                  {inventoryExporting ? "Đang tạo file..." : "Xuất Excel (.xlsx)"}
                 </button>
               </div>
             </div>
