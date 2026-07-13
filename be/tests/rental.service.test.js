@@ -155,7 +155,7 @@ function buildMockCostume() {
         pricePerDay: 100000,
         price: 1000000,
         deposit: 500000,
-        minRentalDays: 5,
+        minRentalDays: 1,
         variants: [{ size: 'L', totalStock: 5, availableStock: 5 }],
         save: async function () { this._saved = true; },
     };
@@ -293,9 +293,9 @@ describe('createOrder', () => {
         );
     });
 
-    test('Rental days exceed minRentalDays → throws 400', async () => {
+    test('Rental days below minRentalDays → throws 400', async () => {
         mockData.costume.minRentalDays = 3;
-        const mockBody = { startDate: tomorrowStr, endDate: getFutureDateStr(6), items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }], shippingFee: 50000 };
+        const mockBody = { startDate: tomorrowStr, endDate: getFutureDateStr(2), items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }], shippingFee: 50000 };
         mockData._rentalFindOneQueue = [null];
 
         await assert.rejects(
@@ -549,7 +549,7 @@ describe('confirmPreparation', () => {
         );
     });
 
-    test('Throw 400 when status is not pending or preparing', async () => {
+    test('Throw 400 when status is not pending', async () => {
         mockData.rental.status = 'renting';
         RentalMock.findById = async () => mockData.rental;
 
@@ -560,7 +560,7 @@ describe('confirmPreparation', () => {
     });
 
     test('Push to GHN and transition to delivering', async () => {
-        mockData.rental.status = 'preparing';
+        mockData.rental.status = 'pending';
         mockData.rental.shippingAddress = { receiverName: 'John', receiverPhone: '0987654321', addressDetail: 'Duy Tan', wardCode: '200101', districtId: 2001 };
         ghnCreateOrderImpl = async () => ({ order_code: 'GHN_ORDER_999' });
         RentalMock.findById = async () => mockData.rental;
@@ -573,7 +573,7 @@ describe('confirmPreparation', () => {
     });
 
     test('Transition to delivering with error message when GHN fails', async () => {
-        mockData.rental.status = 'preparing';
+        mockData.rental.status = 'pending';
         mockData.rental.shippingAddress = { receiverName: 'John', receiverPhone: '0987654321', addressDetail: 'Duy Tan', wardCode: '200101', districtId: 2001 };
         ghnCreateOrderImpl = async () => { throw new Error('GHN error'); };
         RentalMock.findById = async () => mockData.rental;
@@ -585,7 +585,7 @@ describe('confirmPreparation', () => {
     });
 
     test('Transition to delivering directly when shippingAddress has no districtId', async () => {
-        mockData.rental.status = 'preparing';
+        mockData.rental.status = 'pending';
         mockData.rental.shippingAddress = { receiverName: 'John', receiverPhone: '0987654321' };
         RentalMock.findById = async () => mockData.rental;
 

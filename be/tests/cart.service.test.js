@@ -25,7 +25,7 @@ const makeCostume = (overrides = {}) => ({
     pricePerDay: 200000,
     price: 2000000,
     deposit: 500000,
-    minRentalDays: 3,
+    minRentalDays: 1,
     categoryId: { _id: 'cat_001', name: 'Truyen Thong' },
     images: ['img1.jpg'],
     variants: [
@@ -266,23 +266,25 @@ describe('addCart', () => {
         assert.ok(mockData.lastFindOneAndUpdateUpdate.$push);
     });
 
-    test('Overlapping date on same costume+size → throws 400', async () => {
+    test('Overlapping date on same costume+size → updates existing item instead of throwing', async () => {
         const existingItem = makeCartItem({
             size: 'M', quantity: 1,
-            startDate: new Date('2026-07-10T00:00:00.000Z'),
-            endDate: new Date('2026-07-12T00:00:00.000Z'),
+            startDate: new Date(START),
+            endDate: new Date(END),
         });
         mockData.cart = makeCart([existingItem]);
 
-        await assert.rejects(
-            async () => addCart(USER_ID, { costumeId: COSTUME_ID, size: 'M', quantity: 1, startDate: '2026-07-11T00:00:00.000Z', endDate: '2026-07-13T00:00:00.000Z' }),
-            (err) => {
-                assert.ok(err instanceof HttpError);
-                assert.strictEqual(err.statusCode, 400);
-                assert.ok(err.message.includes('Trùng ngày thuê'));
-                return true;
-            }
-        );
+        const newStart = new Date(START);
+        newStart.setDate(newStart.getDate() + 1);
+        const newEnd = new Date(newStart);
+        newEnd.setDate(newEnd.getDate() + 5);
+
+        await addCart(USER_ID, { costumeId: COSTUME_ID, size: 'M', quantity: 1, startDate: newStart.toISOString(), endDate: newEnd.toISOString() });
+
+        assert.strictEqual(mockData.cart.items.length, 1);
+        assert.strictEqual(existingItem.startDate.getTime(), newStart.getTime());
+        assert.strictEqual(existingItem.endDate.getTime(), newEnd.getTime());
+        assert.ok(mockData.cart._saved);
     });
 
     test('Costume not found → throws 404', async () => {
@@ -387,7 +389,7 @@ describe('addCart', () => {
         );
     });
 
-    test('Same costume+size+date with different hours → overlapping → throws 400', async () => {
+    test('Same costume+size+date with different hours → overlapping → updates existing item', async () => {
         const existingItem = makeCartItem({ quantity: 2, startDate: new Date(START), endDate: new Date(END) });
         mockData.cart = makeCart([existingItem]);
 
@@ -396,14 +398,12 @@ describe('addCart', () => {
         const inputEnd = new Date(END);
         inputEnd.setHours(18, 45, 0);
 
-        await assert.rejects(
-            async () => addCart(USER_ID, { costumeId: COSTUME_ID, size: 'M', quantity: 1, startDate: inputStart.toISOString(), endDate: inputEnd.toISOString() }),
-            (err) => {
-                assert.ok(err instanceof HttpError);
-                assert.strictEqual(err.statusCode, 400);
-                return true;
-            }
-        );
+        await addCart(USER_ID, { costumeId: COSTUME_ID, size: 'M', quantity: 1, startDate: inputStart.toISOString(), endDate: inputEnd.toISOString() });
+
+        assert.strictEqual(mockData.cart.items.length, 1);
+        assert.strictEqual(existingItem.quantity, 1);
+        assert.strictEqual(existingItem.startDate.getTime(), inputStart.getTime());
+        assert.strictEqual(existingItem.endDate.getTime(), inputEnd.getTime());
     });
 });
 

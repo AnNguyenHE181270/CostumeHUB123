@@ -14,11 +14,10 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const requiredDays = Math.max(1, Number(minRentalDays) || 1);
     const start = new Date(startDate);
-    const maxEndDate = new Date(start);
-    if (minRentalDays) {
-        maxEndDate.setDate(maxEndDate.getDate() + Number(minRentalDays));
-    }
+    const minEndDate = new Date(start);
+    minEndDate.setDate(minEndDate.getDate() + requiredDays);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -64,9 +63,9 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                         const newStart = new Date(date);
                                         const existingEnd = new Date(endDate);
                                         const diffDays = Math.ceil((existingEnd - newStart) / (1000 * 60 * 60 * 24));
-                                        if (startStr > endDate || (minRentalDays && diffDays > minRentalDays)) {
+                                        if (diffDays < requiredDays) {
                                             const defaultEnd = new Date(newStart);
-                                            defaultEnd.setDate(defaultEnd.getDate() + 1);
+                                            defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
                                             setEndDate(defaultEnd.toISOString().split("T")[0]);
                                         }
                                         setActivePicker('end'); // Tự động chuyển sang chọn ngày trả
@@ -111,8 +110,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                         setActivePicker(null); // Chọn xong thì đóng lịch
                                     }}
                                     value={new Date(endDate)}
-                                    minDate={new Date(startDate)}
-                                    maxDate={minRentalDays ? maxEndDate : undefined}
+                                    minDate={minEndDate}
                                     className="border-none text-[13px] font-sans w-full"
                                 />
                             </motion.div>

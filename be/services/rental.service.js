@@ -7,6 +7,7 @@ const HttpError = require('../models/http-error.model');
 const sendEmail = require('./email.service');
 const ghnService = require('./ghn.service');
 const mongoose = require('mongoose');
+const { getRentalPriceFactor } = require('../utils/pricing.util');
 
 const autoUpdateDeliveredStatus = async () => {
   const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
@@ -122,9 +123,9 @@ const createOrder = async (customerId, body) => {
     if (!costume) throw new HttpError('Costume not found.', 404);
 
     const minDays = costume.minRentalDays || 1;
-    if (rentalDays > minDays) {
+    if (rentalDays < minDays) {
       throw new HttpError(
-        `Số ngày thuê không vượt quá  (${minDays} ngày).`,
+        `Phải thuê tối thiểu ${minDays} ngày.`,
         400
       );
     }
@@ -150,7 +151,7 @@ const createOrder = async (customerId, body) => {
     }
 
     const depositPrice = costume.deposit || costume.price || 0;
-    const priceFactor = rentalDays >= 3 ? 1.1 : 1.0;
+    const priceFactor = getRentalPriceFactor(rentalDays);
     totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity * rentalDays;
     totalDeposit += depositPrice * item.quantity;
 
@@ -537,11 +538,15 @@ const extendRental = async (id, customerId, newEndDate) => {
     }
   }
 
+  const oldRentalDays = Math.ceil((oldEndDay.getTime() - new Date(rental.startDate).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
+  const totalDaysAfterExtend = oldRentalDays + extendDays;
+  const extendPriceFactor = getRentalPriceFactor(totalDaysAfterExtend);
+
   let totalExtendCost = 0;
   for (const item of rental.items) {
     const costume = item.costume;
     const pricePerDay = item.rentalPricePerDay || (costume ? (costume.pricePerDay || costume.price) : 0) || 0;
-    totalExtendCost += pricePerDay * item.quantity * extendDays;
+    totalExtendCost += pricePerDay * extendPriceFactor * item.quantity * extendDays;
   }
 
   const user = await User.findById(customerId);

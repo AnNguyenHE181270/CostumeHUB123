@@ -39,8 +39,8 @@ const getAllCarts = async (userId) => {
           } else {
             const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
             const minDays = item.costume?.minRentalDays || 1;
-            if (rentalDays > minDays) {
-              dateError = `Số ngày thuê không vượt quá (${minDays} ngày).`;
+            if (rentalDays < minDays) {
+              dateError = `Phải thuê tối thiểu ${minDays} ngày.`;
             }
           }
         }
@@ -143,11 +143,19 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
       );
 
       if (overlappingItem) {
-        throw new HttpError('Trùng ngày thuê với một đơn khác trong giỏ. Vui lòng gộp chung hoặc chọn ngày khác.', 400);
+        // Khách chọn lại khoảng ngày khác (chồng lấn) cho cùng sản phẩm+size đã có trong giỏ
+        // -> hiểu là đổi ý về thời gian thuê, cập nhật luôn dòng cũ thay vì chặn lỗi.
+        if (numQuantity > variant.availableStock) {
+          throw new HttpError(`Số lượng yêu cầu vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
+        }
+        overlappingItem.startDate = start;
+        overlappingItem.endDate = end;
+        overlappingItem.rentalDays = rentalDays;
+        overlappingItem.quantity = numQuantity;
+      } else {
+        // Không trùng ngày -> Thêm mới thành 1 dòng riêng trong giỏ
+        cart.items.push(newItem);
       }
-
-      // Không trùng ngày -> Thêm mới thành 1 dòng riêng trong giỏ
-      cart.items.push(newItem);
     }
     
     // Lưu lại toàn bộ thay đổi
@@ -220,8 +228,8 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
 
   const minDays = costume.minRentalDays || 1;
   const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24));
-  if (rentalDaysDiff > minDays) {
-    throw new HttpError(`Số ngày thuê không vượt quá (${minDays} ngày).`, 400);
+  if (rentalDaysDiff < minDays) {
+    throw new HttpError(`Phải thuê tối thiểu ${minDays} ngày.`, 400);
   }
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
