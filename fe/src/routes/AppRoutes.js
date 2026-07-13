@@ -23,7 +23,7 @@ import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
 
-import OrdersPage from "../pages/store-owner/OrdersPage";
+import OrdersPage from "../pages/shared/OrdersPage";
 import ExportPage from "../pages/store-owner/ExportPage";
 
 // Trang Staff
