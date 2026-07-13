@@ -132,7 +132,7 @@ const createOrder = async (customerId, body) => {
     const existingOrder = await Rental.findOne({
       'items.costume': item.costume,
       'items.size': item.size,
-      status: { $in: ['pending', 'confirmed', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
       startDate: { $lte: new Date(endDate) },
       endDate: { $gte: new Date(startDate) },
     });
@@ -335,8 +335,8 @@ const updateOrderStatus = async (id, status) => {
 const confirmPreparation = async (id) => {
   const order = await Rental.findById(id);
   if (!order) throw new HttpError('Không tìm thấy đơn hàng', 404);
-  if (!['preparing', 'pending'].includes(order.status)) {
-    throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý hoặc Đang chuẩn bị đồ', 400);
+  if (order.status !== 'pending') {
+    throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý', 400);
   }
 
   if (!order.trackingCode && order.shippingAddress?.districtId) {
@@ -371,40 +371,9 @@ const confirmPreparation = async (id) => {
   }
 };
 
-// Bổ sung hàm tiện ích để tạo bộ lọc thời gian
-const createDateFilter = (startDate, endDate, dateField = 'createdAt') => {
-  const filter = {};
-  if (startDate || endDate) {
-    filter[dateField] = {};
-    if (startDate) {
-      // Set to beginning of the start day
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      filter[dateField].$gte = start;
-    }
-    if (endDate) {
-      // Set to end of the end day
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      filter[dateField].$lte = end;
-    }
-  }
-  return filter;
-};
-
-// YÊU CẦU: Thống kê doanh thu theo khoảng thời gian
-const getTotalRevenue = async (startDate, endDate) => {
-  const validStatuses = ['confirmed', 'delivering', 'renting', 'returning', 'completed', 'overdue'];
-
-  // Lọc các đơn hàng hoàn thành trong khoảng thời gian (dùng updatedAt để tính lúc chốt đơn)
-  const dateFilter = createDateFilter(startDate, endDate, 'updatedAt');
-
-  const query = {
-    status: { $in: validStatuses },
-    ...dateFilter
-  };
-
-  const orders = await Rental.find(query);
+const getTotalRevenue = async () => {
+  const validStatuses = ['delivering', 'delivered', 'renting', 'returning', 'completed', 'overdue'];
+  const orders = await Rental.find({ status: { $in: validStatuses } });
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   // Tính thêm dữ liệu vẽ biểu đồ (Chart): Gom nhóm doanh thu theo tháng/ngày
@@ -416,19 +385,9 @@ const getTotalRevenue = async (startDate, endDate) => {
   };
 };
 
-// YÊU CẦU: Thống kê số đơn đang hoạt động (Đang giao, đang thuê)
-const getActiveRentals = async (startDate, endDate) => {
-  const activeStatuses = ['delivering', 'renting', 'overdue'];
-
-  // Với đơn đang Active, ta lọc theo ngày tạo đơn (createdAt)
-  const dateFilter = createDateFilter(startDate, endDate, 'createdAt');
-
-  const query = {
-    status: { $in: activeStatuses },
-    ...dateFilter
-  };
-
-  const activeOrders = await Rental.find(query);
+const getActiveRentals = async () => {
+  const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
+  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
 
@@ -448,15 +407,8 @@ const getInventoryUtilization = async (startDate, endDate) => {
 
   if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] };
 
-  const activeStatuses = ['delivering', 'renting', 'overdue'];
-  const dateFilter = createDateFilter(startDate, endDate, 'createdAt');
-
-  const query = {
-    status: { $in: activeStatuses },
-    ...dateFilter
-  };
-
-  const activeOrders = await Rental.find(query).populate('items.costume');
+  const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
+  const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let currentlyRented = 0;
 
   const categoryStats = {};
@@ -488,8 +440,8 @@ const getInventoryUtilization = async (startDate, endDate) => {
 const requestReturn = async (id) => {
   const rental = await Rental.findById(id);
   if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
-  if (!['delivering', 'renting', 'overdue'].includes(rental.status)) {
-    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đang thuê hoặc Quá hạn', 400);
+  if (!['delivering', 'delivered', 'renting', 'overdue'].includes(rental.status)) {
+    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đã giao, Đang thuê hoặc Quá hạn', 400);
   }
   rental.status = 'returning';
   await rental.save();
@@ -576,7 +528,7 @@ const extendRental = async (id, customerId, newEndDate) => {
       _id: { $ne: rental._id },
       'items.costume': costume._id,
       'items.size': item.size,
-      status: { $in: ['pending', 'preparing', 'awaitingPayment', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
       startDate: { $lte: newEnd },
       endDate: { $gte: oldEnd },
     });
