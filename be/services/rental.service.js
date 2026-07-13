@@ -131,7 +131,7 @@ const createOrder = async (customerId, body) => {
     const existingOrder = await Rental.findOne({
       'items.costume': item.costume,
       'items.size': item.size,
-      status: { $in: ['pending', 'confirmed', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
       startDate: { $lte: new Date(endDate) },
       endDate: { $gte: new Date(startDate) },
     });
@@ -334,8 +334,8 @@ const updateOrderStatus = async (id, status) => {
 const confirmPreparation = async (id) => {
   const order = await Rental.findById(id);
   if (!order) throw new HttpError('Không tìm thấy đơn hàng', 404);
-  if (!['preparing', 'pending'].includes(order.status)) {
-    throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý hoặc Đang chuẩn bị đồ', 400);
+  if (order.status !== 'pending') {
+    throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý', 400);
   }
 
   if (!order.trackingCode && order.shippingAddress?.districtId) {
@@ -371,14 +371,14 @@ const confirmPreparation = async (id) => {
 };
 
 const getTotalRevenue = async () => {
-  const validStatuses = ['confirmed', 'delivering', 'renting', 'returning', 'completed', 'overdue'];
+  const validStatuses = ['delivering', 'delivered', 'renting', 'returning', 'completed', 'overdue'];
   const orders = await Rental.find({ status: { $in: validStatuses } });
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
   return { totalRevenue };
 };
 
 const getActiveRentals = async () => {
-  const activeStatuses = ['delivering', 'renting', 'overdue'];
+  const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
   const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
@@ -392,7 +392,7 @@ const getInventoryUtilization = async () => {
 
   if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0 };
 
-  const activeStatuses = ['delivering', 'renting', 'overdue'];
+  const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
   const activeOrders = await Rental.find({ status: { $in: activeStatuses } });
   let currentlyRented = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { currentlyRented += i.quantity; }));
@@ -404,8 +404,8 @@ const getInventoryUtilization = async () => {
 const requestReturn = async (id) => {
   const rental = await Rental.findById(id);
   if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
-  if (!['delivering', 'renting', 'overdue'].includes(rental.status)) {
-    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đang thuê hoặc Quá hạn', 400);
+  if (!['delivering', 'delivered', 'renting', 'overdue'].includes(rental.status)) {
+    throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đã giao, Đang thuê hoặc Quá hạn', 400);
   }
   rental.status = 'returning';
   await rental.save();
@@ -492,7 +492,7 @@ const extendRental = async (id, customerId, newEndDate) => {
       _id: { $ne: rental._id },
       'items.costume': costume._id,
       'items.size': item.size,
-      status: { $in: ['pending', 'preparing', 'awaitingPayment', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
       startDate: { $lte: newEnd },
       endDate: { $gte: oldEnd },
     });
