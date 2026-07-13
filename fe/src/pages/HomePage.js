@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import HeroSection from "../components/customer/HeroSection";
 import FeatureBar from "../components/customer/FeatureBar";
+import CategoryShowcase from "../components/customer/CategoryShowcase";
+import ProcessSteps from "../components/customer/ProcessSteps";
+import PromoBanner from "../components/customer/PromoBanner";
+import Testimonials from "../components/customer/Testimonials";
 import ProductCard from "../components/customer/ProductCard";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -58,16 +62,16 @@ export default function HomePage() {
     <motion.div initial="hidden" animate="show" variants={container} className="bg-[#f9f5ed]">
       {/* HERO */}
       <motion.div variants={item}>
-        <HeroSection products={recentProducts.slice(0, 5)} />
+        <HeroSection />
       </motion.div>
 
-      <FeatureBar />
+      <CategoryShowcase />
 
-      {/* HOT PRODUCTS */}
-      <section className="py-20">
+      {/* FEATURED PRODUCTS */}
+      <section className="pt-4 pb-14">
         <motion.div variants={item} className="text-center mb-10">
-          <h2 className="text-4xl font-semibold tracking-tight">Sản Phẩm Hot</h2>
-          <p className="text-gray-400 mt-2">Luxury selection curated for you</p>
+          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#b8935a]">Lựa Chọn Hàng Đầu</span>
+          <h2 className="text-4xl font-semibold tracking-tight mt-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Sản Phẩm Nổi Bật</h2>
         </motion.div>
 
         <motion.div variants={container} className="px-6 pb-6">
@@ -90,11 +94,17 @@ export default function HomePage() {
         </motion.div>
       </section>
 
+      <PromoBanner />
+
+      <FeatureBar />
+
+      <Testimonials />
+
       {/* NEW ARRIVALS */}
-      <section className="bg-[#faf9f7] py-24 px-6">
+      <section className="bg-[#faf9f7] py-16 px-6">
         <div className="max-w-[1200px] mx-auto">
           <motion.div variants={item} className="mb-10">
-            <h2 className="text-4xl font-semibold">New Arrivals</h2>
+            <h2 className="text-4xl font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Hàng Mới Về</h2>
             <p className="text-gray-400">Fresh drops of the season</p>
           </motion.div>
 
@@ -111,6 +121,8 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      <ProcessSteps />
 
       <PoliciesModal isOpen={showPolicies} onClose={() => setShowPolicies(false)} />
     </motion.div>

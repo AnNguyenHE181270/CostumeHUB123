@@ -1,23 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 
-export default function HeroSection({ products = [] }) {
+// Ảnh do chủ shop cung cấp, đã upload lên Cloudinary (homepage/hero-model)
+const HERO_IMAGE =
+  "https://res.cloudinary.com/du0xdjnrx/image/upload/q_auto,f_auto/v1783964454/homepage/hero-model.png";
+
+const QUICK_FILTERS = ["Dạ hội", "Áo dài", "Váy dạ tiệc", "Đầm trắng"];
+
+export default function HeroSection() {
   const navigate = useNavigate();
-  const [idx, setIdx] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    if (!products.length) return;
-
-    const t = setInterval(() => {
-      setIdx((p) => (p + 1) % products.length);
-    }, 5000);
-
-    return () => clearInterval(t);
-  }, [products.length]);
-
-  const product = products[idx];
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -27,129 +22,113 @@ export default function HeroSection({ products = [] }) {
     }
   };
 
-  const handleKeywordSearch = (keyword) => {
-    navigate(`/collections?q=${encodeURIComponent(keyword)}`);
-  };
-
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
+    if (e.key === "Enter") handleSearch();
   };
 
   return (
-    <section className="bg-[#faf9f7] overflow-hidden">
-      <div className="max-w-[1200px] mx-auto px-6 py-24 flex flex-col lg:flex-row items-center gap-12">
+    <section className="relative bg-[#faf6f0] overflow-hidden lg:min-h-[620px] flex items-center">
+      {/* Ảnh nền bên phải, tràn sát viền phải, mờ dần sang trái để hoà vào nền */}
+      <div className="hidden lg:block absolute inset-y-0 right-0 w-[58%]">
+        <img
+          src={HERO_IMAGE}
+          alt="CostumeHUB — Trang phục cao cấp"
+          className="w-full h-full object-cover select-none pointer-events-none"
+          style={{
+            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,1) 34%)",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,1) 34%)",
+          }}
+        />
+      </div>
+
+      {/* Ảnh dạng card cho mobile/tablet (không đủ chỗ tràn viền) */}
+      <div className="lg:hidden w-full px-6 pt-8">
+        <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
+          <img
+            src={HERO_IMAGE}
+            alt="CostumeHUB — Trang phục cao cấp"
+            className="w-full h-full object-cover select-none pointer-events-none"
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-[1300px] mx-auto px-6 lg:px-12 py-16 lg:py-0 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
 
         {/* LEFT TEXT */}
-        <div className="flex-1 w-full">
+        <div className="flex-1 w-full max-w-3xl lg:py-20">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center gap-3 mb-5"
+          >
+            <span className="w-8 h-px bg-[#c9a869]" />
+            <span className="text-[11px] tracking-[0.2em] uppercase text-[#b8935a] font-semibold">
+              Luxury Rental
+            </span>
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-5xl font-bold text-[#1a1a1a]"
+            className="text-7xl lg:text-8xl leading-[1.05] font-bold"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
           >
-            Trang Phục Cao Cấp
+            <span className="text-[#1a1a1a]">Trang Phục</span><br />
+            <span className="text-[#b8935a]">Cao Cấp</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-500 mt-4 text-lg"
+            className="text-gray-500 mt-6 text-lg leading-relaxed max-w-lg"
           >
-            Experience premium fashion rental
+            Cho thuê trang phục thiết kế cao cấp để bạn tỏa sáng trong mọi khoảnh khắc.
           </motion.p>
 
-          {/* Search Bar matching Image 2 */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-10"
+            className="mt-8"
           >
-            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col sm:flex-row items-center p-2 border border-[#eaeaea]">
-              
-              {/* Cột 1: Nhập từ khóa */}
-              <div className="flex-1 w-full px-5 py-3 border-b sm:border-b-0 sm:border-r border-gray-100 cursor-text group min-w-0">
-                <div className="text-[11px] font-bold text-[#1a1a1a] tracking-wider mb-1 whitespace-nowrap">BẠN CẦN TÌM GÌ?</div>
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="VD: Áo dài, Váy cưới..." 
-                  className="w-full text-[13px] text-[#1a1a1a] placeholder-gray-400 bg-transparent border-none outline-none focus:ring-0 p-0 truncate min-w-0"
-                />
-              </div>
-              
-              {/* Cột 2: Sự kiện (Ẩn trên màn hình vừa để tránh chật chội) */}
-              <div className="hidden xl:block flex-1 w-full px-5 py-3 border-r border-gray-100 cursor-pointer hover:bg-gray-50/50 transition-colors">
-                <div className="text-[11px] font-bold text-[#1a1a1a] tracking-wider mb-1 whitespace-nowrap">SỰ KIỆN</div>
-                <div className="text-[13px] text-gray-400 truncate">Kỷ yếu, Tiệc cưới...</div>
-              </div>
-              
-              {/* Cột 3: Thời gian (Ẩn trên màn hình nhỏ/vừa) */}
-              <div className="hidden md:block flex-1 w-full px-5 py-3 cursor-pointer hover:bg-gray-50/50 transition-colors">
-                <div className="text-[11px] font-bold text-[#1a1a1a] tracking-wider mb-1 whitespace-nowrap">THỜI GIAN</div>
-                <div className="text-[13px] text-gray-400 truncate">Thêm ngày nhận - trả</div>
-              </div>
-              
-              {/* Nút Tìm kiếm */}
-              <button 
+            <div className="bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center gap-2 p-2.5 pl-7 border border-[#eaeaea] max-w-xl">
+              <FontAwesomeIcon icon={faMagnifyingGlass} className="text-gray-400 text-[16px] shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Tìm kiếm trang phục bạn yêu thích..."
+                className="flex-1 min-w-0 text-[15px] text-[#1a1a1a] placeholder-gray-400 bg-transparent border-none outline-none focus:ring-0"
+              />
+              <button
                 onClick={handleSearch}
-                className="w-full sm:w-auto mt-2 sm:mt-0 bg-[#1a1a1a] text-white px-7 py-3.5 rounded-full font-semibold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md hover:shadow-lg shrink-0 sm:ml-2"
+                className="shrink-0 bg-[#1a1a1a] text-white px-7 py-3.5 rounded-full font-semibold text-[12px] uppercase tracking-wider hover:bg-black transition-all whitespace-nowrap"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <span className="whitespace-nowrap text-[15px]">Tìm kiếm</span>
+                Tìm kiếm
               </button>
             </div>
 
-            {/* Popular Searches */}
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              <span className="text-[13px] text-gray-500 mr-1 whitespace-nowrap">Tìm kiếm phổ biến:</span>
-              <span onClick={() => handleKeywordSearch("Áo dài")} className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-medium text-[#1a1a1a] hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all whitespace-nowrap">Áo dài truyền thống</span>
-              <span onClick={() => handleKeywordSearch("Váy")} className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-medium text-[#1a1a1a] hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all whitespace-nowrap">Váy dạ hội</span>
-              <span onClick={() => handleKeywordSearch("Hóa trang")} className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-medium text-[#1a1a1a] hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all whitespace-nowrap">Đồ hóa trang</span>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {QUICK_FILTERS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => navigate(`/collections?q=${encodeURIComponent(f)}`)}
+                  className="px-5 py-2.5 bg-white/70 border border-gray-200 rounded-full text-[13px] font-medium text-[#1a1a1a] hover:border-[#c9a869] hover:bg-white transition-all"
+                >
+                  {f}
+                </button>
+              ))}
             </div>
           </motion.div>
         </div>
 
-        {/* RIGHT CINEMATIC IMAGE */}
-        <div className="flex-1 flex justify-center mt-12 lg:mt-0">
-          <div className="relative w-full max-w-[420px] aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl">
-
-            {/* cinematic overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/10 z-10 pointer-events-none" />
-
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={product?._id}
-                src={product?.images?.[0]}
-                className="w-full h-full object-cover"
-                initial={{
-                  opacity: 0,
-                  scale: 1.15,
-                  filter: "blur(12px)",
-                }}
-                animate={{
-                  opacity: 1,
-                  scale: 1.05,
-                  filter: "blur(0px)",
-                }}
-                exit={{
-                  opacity: 0,
-                  scale: 1,
-                  filter: "blur(10px)",
-                }}
-                transition={{
-                  duration: 1.2,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              />
-            </AnimatePresence>
-          </div>
-        </div>
+        {/* Cột phải để trống trên desktop — ảnh đã render dạng nền tràn viền ở trên */}
+        <div className="hidden lg:block flex-1" />
       </div>
     </section>
   );

@@ -35,15 +35,15 @@ export default function CategoryCard({ category, costumeCount = 0, index = 0 }) 
     <div
       onClick={() => navigate(`/category/${category._id}`)}
       className={`group cursor-pointer bg-gradient-to-br ${colorClass} rounded-2xl p-6 
-                  border border-[#f0ece8] hover:shadow-lg hover:-translate-y-1 
-                  transition-all duration-300 flex flex-col justify-between min-h-[180px]`}
+                  border border-[#f0ece8] hover:border-[#b8935a]/30 hover:shadow-[0_16px_36px_rgba(184,147,90,0.08)] hover:-translate-y-1.5 
+                  transition-all duration-500 flex flex-col justify-between min-h-[180px]`}
     >
       {/* Icon */}
-      <div className="text-3xl mb-4">{icon}</div>
+      <div className="text-3xl mb-4 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-6 select-none">{icon}</div>
 
       {/* Content */}
       <div className="flex-1">
-        <h3 className="text-[15px] font-semibold text-[#1a1a1a] mb-1.5 group-hover:text-[#333] transition-colors">
+        <h3 className="text-[15px] font-semibold text-[#1a1a1a] mb-1.5 group-hover:text-[#b8935a] transition-colors">
           {category.name}
         </h3>
         <p className="text-[12px] text-[#999] leading-[1.5] line-clamp-2">
@@ -58,7 +58,7 @@ export default function CategoryCard({ category, costumeCount = 0, index = 0 }) 
         </span>
         <span
           className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center
-                     group-hover:bg-[#1a1a1a] group-hover:text-white transition-all duration-300 shadow-sm"
+                     group-hover:bg-[#b8935a] group-hover:text-white group-hover:scale-110 transition-all duration-300 shadow-sm"
         >
           <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
         </span>
