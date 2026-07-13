@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,6 +23,25 @@
   }
   .animate-marquee:hover {
     animation-play-state: paused;
+  }
+
+  .font-display-lux {
+    font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+  }
+
+  .text-shine-black {
+    background: linear-gradient(115deg, #0d0d0d 20%, #4a4a4a 45%, #0d0d0d 65%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-shine-gold {
+    background: linear-gradient(115deg, #8a6a2f 10%, #e8c471 35%, #fff6d9 50%, #e8c471 65%, #8a6a2f 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 18px rgba(212, 175, 90, 0.4);
   }
 }
 

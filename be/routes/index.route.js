@@ -10,6 +10,7 @@ const staffRoute = require('./staff.route')
 const ghnRoute = require('./ghn.route');
 const vnpayRoute = require('./vnpay.route')
 const issueRoute = require('./issue.route');
+const notificationRoute = require('./notification.route');
 
 router.use("/users", userRoute);
 router.use("/costumes", costumeRoute);
@@ -21,5 +22,6 @@ router.use("/staff", staffRoute)
 router.use("/vnpays", vnpayRoute)
 router.use("/ghn", ghnRoute);
 router.use("/issues", issueRoute);
+router.use("/notifications", notificationRoute);
 
 module.exports = router;

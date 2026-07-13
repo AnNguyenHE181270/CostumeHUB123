@@ -7,7 +7,46 @@ const HttpError = require('../models/http-error.model');
 const sendEmail = require('./email.service');
 const ghnService = require('./ghn.service');
 const mongoose = require('mongoose');
+const fs = require('fs');
 const { getRentalPriceFactor } = require('../utils/pricing.util');
+const notificationService = require('./notification.service');
+const { uploadReturnEvidence } = require('./cloudinary.service');
+
+// Bảng đền bù hư hỏng (khớp nội dung công khai ở trang "Về Chúng Tôi") — staff chọn mức, không tự nhập số tiền
+const DAMAGE_TIER_RANGES = {
+  none: { min: 0, max: 0 },
+  heavy_stain: { min: 20, max: 20 },
+  minor_damage: { min: 30, max: 50 },
+  major_damage: { min: 70, max: 100 },
+  total_loss: { min: 100, max: 100 },
+};
+
+const ORDER_STATUS_MESSAGES = {
+  pending: 'Đơn hàng của bạn đã được tạo và đang chờ xử lý.',
+  delivering: 'Đơn hàng của bạn đang được giao đến bạn.',
+  delivered: 'Đơn hàng của bạn đã được giao thành công.',
+  renting: 'Đơn hàng đã được xác nhận, bạn đang trong thời gian thuê.',
+  returning: 'Yêu cầu trả đồ của bạn đang được cửa hàng xử lý.',
+  completed: 'Đơn hàng đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ của CostumeHUB!',
+  cancelled: 'Đơn hàng của bạn đã bị hủy.',
+  overdue: 'Đơn hàng của bạn đã quá hạn trả. Vui lòng liên hệ cửa hàng để xử lý.',
+};
+
+// Tạo thông báo in-app khi đơn hàng chuyển trạng thái. Không để lỗi thông báo làm hỏng luồng nghiệp vụ chính.
+async function notifyOrderStatus(rental, status) {
+  try {
+    await notificationService.createNotification({
+      userId: rental.customerId,
+      type: 'order_status',
+      title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+      message: ORDER_STATUS_MESSAGES[status] || `Đơn hàng của bạn đã chuyển sang trạng thái ${status}.`,
+      link: '/rental-history',
+      relatedId: rental._id,
+    });
+  } catch (err) {
+    console.error('[Notification Error]', err);
+  }
+}
 
 const autoUpdateDeliveredStatus = async () => {
   const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
@@ -18,6 +57,7 @@ const autoUpdateDeliveredStatus = async () => {
   for (const rental of expiredRentals) {
     rental.status = 'renting';
     await rental.save();
+    await notifyOrderStatus(rental, 'renting');
   }
 };
 
@@ -204,6 +244,19 @@ const createOrder = async (customerId, body) => {
   await newOrder.save();
 
   try {
+    await notificationService.createNotification({
+      userId: customerId,
+      type: 'order_created',
+      title: `Đơn hàng #${newOrder._id.toString().slice(-6).toUpperCase()}`,
+      message: `Đặt đơn thành công! Tổng thanh toán ${totalAmount.toLocaleString('vi-VN')}đ đã được trừ từ ví.`,
+      link: '/rental-history',
+      relatedId: newOrder._id,
+    });
+  } catch (notifyError) {
+    console.error('[Notification Error]', notifyError);
+  }
+
+  try {
     const cart = await Cart.findOne({ customerId });
     if (cart) {
       const orderStart = new Date(startDate).getTime();
@@ -237,6 +290,7 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
   order.paymentStatus = 'refunded';
   await order.save();
+  await notifyOrderStatus(order, 'cancelled');
 
   const user = await User.findById(customerId);
   if (user) {
@@ -278,6 +332,7 @@ const confirmReceipt = async (orderId, customerId) => {
   if (order.status !== 'delivered') throw new HttpError('Đơn hàng không ở trạng thái đang giao tới.', 400);
   order.status = 'renting';
   await order.save();
+  await notifyOrderStatus(order, 'renting');
   return order;
 };
 
@@ -361,6 +416,7 @@ const updateOrderStatus = async (id, status) => {
 
   order.status = status;
   await order.save();
+  await notifyOrderStatus(order, status);
   return order;
 };
 
@@ -390,15 +446,18 @@ const confirmPreparation = async (id) => {
       order.trackingCode = ghnRes.order_code;
       order.status = 'delivering';
       await order.save();
+      await notifyOrderStatus(order, 'delivering');
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
       order.status = 'delivering';
       await order.save();
+      await notifyOrderStatus(order, 'delivering');
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
     order.status = 'delivering';
     await order.save();
+    await notifyOrderStatus(order, 'delivering');
     return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
   }
 };
@@ -513,13 +572,38 @@ const requestReturn = async (id) => {
   }
   rental.status = 'returning';
   await rental.save();
+  await notifyOrderStatus(rental, 'returning');
   return rental;
 };
 
-const inspectReturn = async (id, { damageFee, missingNotes, actualReturnDate }) => {
+const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = []) => {
+  const cleanupFiles = () => {
+    for (const file of files) {
+      if (fs.existsSync(file.path)) {
+        try { fs.unlinkSync(file.path); } catch (err) { console.error('Lỗi khi xóa tệp tạm:', err.message); }
+      }
+    }
+  };
+
   const rental = await Rental.findById(id).populate('items.costume');
-  if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
-  if (rental.status !== 'returning') throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400);
+  if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn thuê', 404); }
+  if (rental.status !== 'returning') { cleanupFiles(); throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400); }
+
+  const tier = damageTier || 'none';
+  const tierRange = DAMAGE_TIER_RANGES[tier];
+  if (!tierRange) { cleanupFiles(); throw new HttpError('Mức độ hư hỏng không hợp lệ.', 400); }
+
+  // Với 2 mức có khoảng dao động (hư nhẹ 30-50%, hư nặng 70-100%), staff chọn % cụ thể trong khoảng;
+  // các mức còn lại (0%, 20%, 100%) là cố định theo chính sách, không cho tuỳ chỉnh.
+  let finalPercent = tierRange.min;
+  if (tierRange.min !== tierRange.max) {
+    const requestedPercent = Number(damagePercent);
+    if (Number.isNaN(requestedPercent) || requestedPercent < tierRange.min || requestedPercent > tierRange.max) {
+      cleanupFiles();
+      throw new HttpError(`Mức đền bù phải trong khoảng ${tierRange.min}% - ${tierRange.max}% cho mức độ hư hỏng này.`, 400);
+    }
+    finalPercent = requestedPercent;
+  }
 
   const scheduledReturn = new Date(rental.endDate);
   const actualReturn = actualReturnDate ? new Date(actualReturnDate) : new Date();
@@ -534,25 +618,52 @@ const inspectReturn = async (id, { damageFee, missingNotes, actualReturnDate }) 
     });
   }
 
-  const finalDamageFee = Number(damageFee) || 0;
-  const totalFine = totalLateFee + finalDamageFee;
   const originalDeposit = rental.totalDeposit || 0;
+  const finalDamageFee = originalDeposit * (finalPercent / 100);
+
+  // Mất/hư hỏng toàn bộ: khấu trừ hết cọc + bồi thường phần giá trị sản phẩm vượt quá tiền cọc đã đóng
+  let replacementFee = 0;
+  if (tier === 'total_loss') {
+    rental.items.forEach((item) => {
+      const replacementValue = item.costume?.price || 0;
+      replacementFee += Math.max(0, replacementValue - (item.depositPrice || 0)) * item.quantity;
+    });
+  }
+
+  const totalFine = totalLateFee + finalDamageFee;
   const refundAmount = Math.max(0, originalDeposit - totalFine);
+
+  // Tải ảnh/video bằng chứng lên Cloudinary làm bằng chứng đơn hàng đã được kiểm tra đúng hiện trạng
+  const evidenceUrls = [];
+  for (const file of files) {
+    try {
+      const url = await uploadReturnEvidence(file.path);
+      evidenceUrls.push(url);
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    } catch (uploadError) {
+      console.error('Lỗi khi tải ảnh/video bằng chứng lên Cloudinary:', uploadError);
+      cleanupFiles();
+      throw new HttpError('Có lỗi xảy ra khi tải ảnh/video bằng chứng lên đám mây.', 500);
+    }
+  }
 
   rental.status = 'completed';
   rental.actualReturnDate = actualReturn;
   rental.lateFee = totalLateFee;
   rental.damageFee = finalDamageFee;
+  rental.replacementFee = replacementFee;
+  rental.damageTier = tier;
+  rental.damagePercent = finalPercent;
+  rental.returnEvidence = evidenceUrls;
   rental.refundAmount = refundAmount;
   if (missingNotes) rental.cancelReason = missingNotes;
   await rental.save();
+  await notifyOrderStatus(rental, 'completed');
 
-  if (refundAmount > 0) {
-    const user = await User.findById(rental.customerId);
-    if (user) {
-      user.balance = (user.balance || 0) + refundAmount;
-      await user.save();
-    }
+  const user = await User.findById(rental.customerId);
+  if (user) {
+    user.balance = (user.balance || 0) + refundAmount - replacementFee;
+    await user.save();
   }
 
   const CostumeModel = mongoose.model('Costume');
@@ -570,7 +681,7 @@ const inspectReturn = async (id, { damageFee, missingNotes, actualReturnDate }) 
     }
   }
 
-  return { totalFine, refundAmount };
+  return { totalFine, refundAmount, damageFee: finalDamageFee, replacementFee };
 };
 
 const extendRental = async (id, customerId, newEndDate) => {

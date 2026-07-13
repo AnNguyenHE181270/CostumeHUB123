@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { formatPrice } from "../../utils/formatters";
 const STATUS_MAP = {
@@ -50,7 +49,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       : "";
 
   return (
-      <div className="group bg-white rounded-xl overflow-hidden border border-[#f0ece8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#f0ece8] hover:border-[#b8935a]/40 hover:shadow-[0_12px_30px_rgba(184,147,90,0.12)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col">
         {/* Image */}
         <div
           className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
@@ -59,7 +58,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
           <img
             src={imgSrc}
             alt={costume.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             onError={() => setImgError(true)}
           />
 
@@ -86,7 +85,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
           {/* Name */}
           <h3
             onClick={() => navigate(`/product/${costume._id}`)}
-            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-gray-600 transition-colors line-clamp-2"
+            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-[#b8935a] transition-colors line-clamp-2"
           >
             {costume.name || "Tên sản phẩm"}
           </h3>
@@ -104,7 +103,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
                   e.stopPropagation();
                   navigate(`/product/${costume._id}`);
                 }}
-                className="w-full py-2 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-[#333] transition-colors text-center"
+                className="w-full py-2.5 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded-lg hover:bg-[#b8935a] active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_4px_12px_rgba(184,147,90,0.25)]"
               >
                 Thuê ngay
               </button>
