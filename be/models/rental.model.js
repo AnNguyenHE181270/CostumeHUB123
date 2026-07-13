@@ -31,7 +31,17 @@ const rentalSchema = new mongoose.Schema(
 
         lateFee: { type: Number, default: 0 },
         damageFee: { type: Number, default: 0 },
+        replacementFee: { type: Number, default: 0 },
         refundAmount: { type: Number, default: 0 },
+
+        // Mức độ hư hỏng khi nhận lại đồ, đối chiếu bảng đền bù ở trang "Về Chúng Tôi"
+        damageTier: {
+            type: String,
+            enum: ["none", "heavy_stain", "minor_damage", "major_damage", "total_loss"],
+            default: "none",
+        },
+        damagePercent: { type: Number, default: 0 },
+        returnEvidence: [{ type: String }],
 
         status: {
             type: String,

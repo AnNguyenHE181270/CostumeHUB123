@@ -81,4 +81,26 @@ const uploadIssueMiddleware = (req, res, next) => {
 
 upload.uploadIssue = uploadIssueMiddleware;
 
+// Ảnh/video bằng chứng khi staff kiểm tra đồ trả — dùng chung cấu hình với uploadIssue (ảnh + video, tối đa 5 tệp)
+const uploadReturnEvidenceMiddleware = (req, res, next) => {
+  const uploader = uploadIssue.array("evidence", 5);
+
+  uploader(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        return res.status(400).json({
+          success: false,
+          message: "Vượt quá số lượng tệp cho phép. Tối đa 5 tệp (4 ảnh và 1 video)."
+        });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
+
+upload.uploadReturnEvidence = uploadReturnEvidenceMiddleware;
+
 module.exports = upload;
