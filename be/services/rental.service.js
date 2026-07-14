@@ -514,14 +514,20 @@ const getActiveRentals = async (startDate, endDate) => {
 
 // YÊU CẦU: Thống kê sức chứa kho hàng (View Inventory Report)
 const getInventoryUtilization = async (startDate, endDate) => {
-  const costumes = await Costume.find().populate('categoryId', 'name');
+  const costumes = await Costume.find().populate({
+    path: 'categoryId',
+    select: 'name parentId',
+    populate: { path: 'parentId', select: 'name' }
+  });
 
   let totalStock = 0;
-  const categoryStockMap = {}; // catId -> { name, totalStock, rentedCount }
+  const categoryStockMap = {}; // catId -> { name, parentId, parentName, totalStock, rentedCount }
   costumes.forEach((c) => {
     const catId = c.categoryId?._id?.toString() || 'unknown';
     const catName = c.categoryId?.name || 'Chưa phân loại';
-    if (!categoryStockMap[catId]) categoryStockMap[catId] = { name: catName, totalStock: 0, rentedCount: 0 };
+    const parentId = c.categoryId?.parentId?._id?.toString() || null;
+    const parentName = c.categoryId?.parentId?.name || null;
+    if (!categoryStockMap[catId]) categoryStockMap[catId] = { name: catName, parentId, parentName, totalStock: 0, rentedCount: 0 };
     c.variants.forEach((v) => {
       const stock = v.totalStock || 0;
       totalStock += stock;
@@ -558,6 +564,8 @@ const getInventoryUtilization = async (startDate, endDate) => {
     categoryBreakdown: Object.entries(categoryStockMap).map(([categoryId, v]) => ({
       categoryId,
       name: v.name,
+      parentId: v.parentId,
+      parentName: v.parentName,
       totalStock: v.totalStock,
       rentedCount: v.rentedCount,
     })),

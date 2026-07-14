@@ -452,60 +452,90 @@ export default function FrappeStyleDashboard() {
                 Không có dữ liệu doanh thu trong khoảng thời gian này.
               </div>
             ) : (
-              <>
-                <div className="flex-1 min-h-[180px] flex items-end justify-around gap-3 pt-2">
-                  {revenueByMonth.map((m) => {
-                    const maxTotal = Math.max(...revenueByMonth.map((r) => r.total), 1);
-                    const h = Math.max(4, Math.round((m.total / maxTotal) * 100));
-                    return (
-                      <div
-                        key={m.month}
-                        title={new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(m.total)}
-                        className="flex-1 bg-[#1a1a1a] hover:bg-[#333] rounded-sm transition-colors cursor-pointer"
-                        style={{ height: `${h}%` }}
-                      ></div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-around mt-2 text-[10px] text-[#999]">
-                  {revenueByMonth.map((m) => (
-                    <span key={m.month}>Th{Number(m.month.split('-')[1])}</span>
-                  ))}
-                </div>
-              </>
+              <div className="flex-1 min-h-[180px] relative mt-2">
+                <Bar 
+                  data={{
+                    labels: revenueByMonth.map(m => `Tháng ${Number(m.month.split('-')[1])}/${m.month.split('-')[0]}`),
+                    datasets: [{
+                      label: 'Doanh thu',
+                      data: revenueByMonth.map(m => m.total),
+                      backgroundColor: '#f97316', // Changed to orange
+                      borderRadius: 4,
+                      barThickness: 30,
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(context.raw);
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      x: { grid: { display: false } },
+                      y: { beginAtZero: true, border: { display: false } }
+                    }
+                  }}
+                />
+              </div>
             )}
           </div>
 
           {/* --- WIDGET 5: Biểu đồ tỷ lệ danh mục thực tế --- */}
-          <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col items-center justify-center">
+          <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between w-full mb-4">
-              <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục cho thuê</h3>
+              <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục theo danh mục cha - con</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="relative w-28 h-28 mb-4">
-              <Doughnut
-                data={{
-                  labels: categoryData.map((c) => c.name),
-                  datasets: [{
-                    data: categoryData.map((c) => c.rentedCount || 0),
-                    backgroundColor: CATEGORY_COLORS,
-                    borderWidth: 0, cutout: '70%',
-                  }]
-                }}
-                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-[#555]">{totalCategoryCount}</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#555] justify-center max-w-full">
-              {categoryData.length === 0 && <span className="text-[#999]">Chưa có dữ liệu danh mục</span>}
-              {categoryData.map((c, i) => (
-                <div key={c.categoryId} className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}></span>
-                  {c.name} ({c.rentedCount || 0})
-                </div>
-              ))}
+            
+            <div className="flex-1 min-h-[200px] relative">
+              {(() => {
+                const groupedCategories = {};
+                categoryData.forEach(c => {
+                  const pName = c.parentName || c.name; // Use parentName, if none, it's a main category
+                  if (!groupedCategories[pName]) groupedCategories[pName] = [];
+                  groupedCategories[pName].push(c);
+                });
+
+                const parentLabels = Object.keys(groupedCategories);
+                const childDatasets = categoryData.map((c, i) => {
+                  const pName = c.parentName || c.name;
+                  const data = parentLabels.map(p => p === pName ? (c.rentedCount || 0) : 0);
+                  return {
+                    label: c.name,
+                    data,
+                    backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                    stack: 'Stack 0',
+                  };
+                });
+
+                return (
+                  <Bar
+                    data={{
+                      labels: parentLabels,
+                      datasets: childDatasets
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                      },
+                      scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, border: { display: false } }
+                      }
+                    }}
+                  />
+                );
+              })()}
             </div>
           </div>
 
