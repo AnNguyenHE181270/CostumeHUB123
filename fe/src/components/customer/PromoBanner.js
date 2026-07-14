@@ -4,11 +4,9 @@ import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 
-const CLOUD = "https://res.cloudinary.com/du0xdjnrx/image/upload";
-
-const EVENING_IMG = `${CLOUD}/q_auto,f_auto/v1783952551/homepage/promo.jpg`;
-const PURE_WHITE_IMG = `${CLOUD}/c_fill,g_auto,w_700,h_460,q_auto,f_auto/v1783952550/homepage/banner_wedding.jpg`;
-const MODERN_CHIC_IMG = `${CLOUD}/c_fill,g_auto,w_700,h_460,q_auto,f_auto/v1783952547/homepage/cat_vest.jpg`;
+const EVENING_IMG = "/images/homepage/promo_evening.png";
+const PURE_WHITE_IMG = "/images/homepage/promo_white.png";
+const MODERN_CHIC_IMG = "/images/homepage/promo_modern.png";
 
 const TILES = [
   {
