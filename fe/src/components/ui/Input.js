@@ -26,10 +26,10 @@ export default function Input({
 
   return (
     <div className="space-y-1.5">
-      {label && (
+        {label && (
         <label htmlFor={name} className="block text-sm font-medium text-text-secondary">
           {label}
-          {required && <span className="text-warning-500 ml-1">*</span>}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
 

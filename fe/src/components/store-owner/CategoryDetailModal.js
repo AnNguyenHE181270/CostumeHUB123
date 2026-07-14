@@ -1,112 +1,146 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faCalendarAlt, faInfoCircle, faFolder, faSitemap } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faFolder, faSitemap, faLayerGroup, faCheckCircle, faChevronRight, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 
-const CategoryDetailModal = ({ isOpen, onClose, category, categories }) => {
+const CategoryDetailModal = ({ isOpen, onClose, category, categories, onSelectCategory }) => {
+  const [openPanel, setOpenPanel] = useState(null);
+
   if (!isOpen || !category) return null;
 
   const parentCat = categories.find(c => c._id === category.parentId);
   const childCats = categories.filter(c => c.parentId === category._id);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const togglePanel = (panel) => {
+    setOpenPanel((prev) => (prev === panel ? null : panel));
+  };
+
+  const handleSelectCategory = (selectedCat) => {
+    if (!selectedCat || !onSelectCategory) return;
+    onSelectCategory(selectedCat);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] relative">
-        
-        {/* Nút đóng */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] relative border border-[#efefef]">
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-full transition-colors z-10"
+          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-gray-500 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-full transition-colors z-10"
         >
           <FontAwesomeIcon icon={faTimes} />
         </button>
 
-        {/* Body */}
-        <div className="px-8 py-8 overflow-y-auto flex-1 space-y-6">
-          
-          {/* Header Info */}
-          <div className="flex flex-col gap-2 border-b border-[#eaeaea] pb-4">
-            <div className="flex items-center gap-3">
-              <h3 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                {category.name}
-              </h3>
-              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${category.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                {category.isActive ? "Đang hoạt động" : "Đã ẩn"}
+        <div className="px-7 py-7 overflow-y-auto flex-1 space-y-5">
+          <div className="rounded-2xl bg-gradient-to-r from-[#1f2937] via-[#374151] to-[#4b5563] p-5 text-white shadow-lg">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-gray-300">
+                  <FontAwesomeIcon icon={faLayerGroup} />
+                  Chi tiết danh mục
+                </div>
+                <h3 className="mt-2 text-2xl font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                  {category.name}
+                </h3>
+              </div>
+              <span className={`px-3 py-1 text-[11px] font-semibold rounded-full border ${category.isActive ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' : 'bg-rose-500/20 text-rose-200 border-rose-400/30'}`}>
+                {category.isActive ? 'Đang hoạt động' : 'Đã ẩn'}
               </span>
             </div>
-            <p className="text-xs text-[#999] font-mono flex items-center gap-1">
-              <FontAwesomeIcon icon={faInfoCircle} /> ID: {category._id}
-            </p>
           </div>
 
-          {/* Description */}
-          <div className="bg-[#faf9f7] rounded-lg p-5 border border-[#eaeaea]">
-            <h4 className="text-xs font-bold text-[#555] mb-2 uppercase tracking-wider">Mô tả danh mục</h4>
-            <p className="text-[#1a1a1a] text-sm leading-relaxed">
+          <div className="rounded-xl border border-[#ececec] bg-[#fafafa] p-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#666] mb-2">
+              <FontAwesomeIcon icon={faCheckCircle} className="text-[#16a34a]" />
+              Mô tả danh mục
+            </div>
+            <p className="text-sm leading-6 text-[#333]">
               {category.description || <span className="text-[#999] italic">Không có mô tả.</span>}
             </p>
           </div>
 
-          {/* Hierarchy */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-[#555] uppercase tracking-wider flex items-center gap-2">
-              <FontAwesomeIcon icon={faSitemap} className="text-[#999]" />
-              Phân cấp cây danh mục
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-[#eaeaea] rounded-lg p-4 bg-white shadow-sm">
-                <span className="block text-[10px] font-semibold text-[#999] uppercase tracking-wider mb-2">Danh mục cha</span>
-                <div className="flex items-center gap-2 text-[#1a1a1a] text-sm">
-                  <FontAwesomeIcon icon={faFolder} className="text-[#999]" />
-                  <span className="font-medium">{parentCat ? parentCat.name : <span className="italic text-[#999]">-- Gốc --</span>}</span>
+          <div className="flex flex-col gap-4">
+            {parentCat && (
+              <div className="rounded-xl border border-[#ececec] bg-white p-4 shadow-sm text-left transition hover:border-[#1f2937] hover:shadow-md">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#888] mb-3">
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faFolder} className="text-[#999]" />
+                    Danh mục cha
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel('parent')}
+                    className="text-[#999] hover:text-[#1f2937] transition"
+                    aria-label="Mở/đóng thông tin danh mục cha"
+                  >
+                    <FontAwesomeIcon icon={openPanel === 'parent' ? faChevronDown : faChevronRight} />
+                  </button>
                 </div>
-              </div>
-              
-              <div className="border border-[#eaeaea] rounded-lg p-4 bg-white shadow-sm">
-                <span className="block text-[10px] font-semibold text-[#999] uppercase tracking-wider mb-2">Danh mục con ({childCats.length})</span>
-                {childCats.length > 0 ? (
-                  <div className="flex flex-col gap-1.5 mt-1 max-h-24 overflow-y-auto">
-                    {childCats.map(child => (
-                      <div key={child._id} className="text-sm text-[#1a1a1a] flex items-center gap-2 font-medium">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#1a1a1a]"></div>
-                        {child.name}
-                      </div>
-                    ))}
+                <div className="text-sm font-medium text-[#1a1a1a]">
+                  {openPanel === 'parent' ? null : (
+                    <span className="font-semibold text-[#111827]">{parentCat.name}</span>
+                  )}
+                </div>
+                {openPanel === 'parent' && (
+                  <div className="mt-3 rounded-lg bg-[#f8fafc] p-3 text-sm text-[#4b5563]">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCategory(parentCat)}
+                      className="w-full rounded-lg border border-[#d1d5db] bg-white p-3 text-left font-semibold text-[#111827] hover:border-[#1f2937] hover:bg-[#f3f4f6] transition"
+                    >
+                      <p>{parentCat.name}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#6b7280]">
+                        {parentCat.description || 'Danh mục cha này chưa có mô tả.'}
+                      </p>
+                    </button>
                   </div>
-                ) : (
-                  <span className="text-[#999] italic text-sm">Không có nhánh con</span>
                 )}
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Timestamps */}
-          <div className="border-t border-[#eaeaea] pt-5 grid grid-cols-2 gap-4">
-            <div>
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#999] uppercase tracking-wider mb-1">
-                <FontAwesomeIcon icon={faCalendarAlt} /> Ngày tạo
-              </span>
-              <p className="text-sm font-medium text-[#1a1a1a]">{formatDate(category.createdAt)}</p>
-            </div>
-            <div>
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#999] uppercase tracking-wider mb-1">
-                <FontAwesomeIcon icon={faCalendarAlt} /> Cập nhật lần cuối
-              </span>
-              <p className="text-sm font-medium text-[#1a1a1a]">{formatDate(category.updatedAt)}</p>
-            </div>
+            {childCats.length > 0 && (
+              <div className="rounded-xl border border-[#ececec] bg-white p-4 shadow-sm text-left transition hover:border-[#1f2937] hover:shadow-md">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#888] mb-3">
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faSitemap} className="text-[#999]" />
+                    Danh mục con ({childCats.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel('child')}
+                    className="text-[#999] hover:text-[#1f2937] transition"
+                    aria-label="Mở/đóng thông tin danh mục con"
+                  >
+                    <FontAwesomeIcon icon={openPanel === 'child' ? faChevronDown : faChevronRight} />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2 max-h-24 overflow-y-auto pr-1">
+                  {childCats.slice(0, 3).map((child) => (
+                    <div key={child._id} className="text-left text-sm text-[#1a1a1a] font-medium">
+                      {openPanel === 'child' ? null : child.name}
+                    </div>
+                  ))}
+                </div>
+                {openPanel === 'child' && (
+                  <div className="mt-3 rounded-lg bg-[#f8fafc] p-3 text-sm text-[#4b5563]">
+                    <div className="space-y-2">
+                      {childCats.map((child) => (
+                        <button
+                          key={child._id}
+                          type="button"
+                          onClick={() => handleSelectCategory(child)}
+                          className="w-full rounded-md border border-[#e5e7eb] bg-white px-3 py-2 text-left hover:bg-[#f9fafb] transition"
+                        >
+                          <p className="font-semibold text-[#111827]">{child.name}</p>
+                          <p className="mt-1 text-xs leading-5 text-[#6b7280]">
+                            {child.description || 'Danh mục con chưa có mô tả.'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
         </div>
       </div>
     </div>

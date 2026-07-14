@@ -7,6 +7,9 @@ const getAllCostumes = async (query) => {
   const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = query;
   const filter = { status: { $ne: 'hidden' } };
 
+  const activeCategories = await Category.find({ isActive: true }).select('_id');
+  const activeCategoryIds = activeCategories.map((c) => c._id.toString());
+
   let allTargetCategoryIds = [];
   if (categoryId) allTargetCategoryIds.push(categoryId);
   if (subCategoryIds) {
@@ -14,25 +17,28 @@ const getAllCostumes = async (query) => {
     allTargetCategoryIds.push(...ids);
   }
 
+  const toObjectId = (id) => {
+    try { return new mongoose.Types.ObjectId(id); } catch (e) { return id; }
+  };
+
   if (allTargetCategoryIds.length > 0) {
-    const toObjectId = (id) => {
-      try { return new mongoose.Types.ObjectId(id); } catch (e) { return id; }
-    };
+    const normalizedIds = allTargetCategoryIds.map(toObjectId);
     const childCategories = await Category.find({
-      $or: [
-        { parentId: { $in: allTargetCategoryIds } },
-        { 'parentId.$oid': { $in: allTargetCategoryIds } },
-        { parentId: { $in: allTargetCategoryIds.map(toObjectId) } },
-      ],
+      parentId: { $in: normalizedIds },
+      isActive: true,
     });
     const childIds = childCategories.map((c) => c._id.toString());
-    const finalIds = [...new Set([...allTargetCategoryIds, ...childIds])];
+    const finalIds = [...new Set([...allTargetCategoryIds, ...childIds])]
+      .filter((id) => activeCategoryIds.includes(id));
 
-    filter.$or = [
-      { categoryId: { $in: finalIds } },
-      { 'categoryId.$oid': { $in: finalIds } },
-      { categoryId: { $in: finalIds.map(toObjectId) } },
-    ];
+    if (finalIds.length === 0) {
+      // If the requested category filter only includes inactive categories, return empty set.
+      filter.categoryId = { $in: [] };
+    } else {
+      filter.categoryId = { $in: finalIds.map(toObjectId) };
+    }
+  } else {
+    filter.categoryId = { $in: activeCategoryIds.map(toObjectId) };
   }
 
   if (minPrice || maxPrice) {
