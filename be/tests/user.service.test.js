@@ -196,7 +196,7 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'active@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'active@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
@@ -208,7 +208,7 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'blocked@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'blocked@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 403); return true; }
         );
     });
@@ -223,7 +223,7 @@ describe('Register', () => {
         };
         mockData.updatedUser = { _id: 'existing_user_id', fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321' };
 
-        const result = await userService.register({ fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321', password: 'password123' });
+        const result = await userService.register({ fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' });
 
         assert.strictEqual(result.type, 'new');
         assert.strictEqual(result.user.id, 'existing_user_id');
@@ -241,7 +241,7 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
@@ -250,7 +250,7 @@ describe('Register', () => {
         mockData.role = null;
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -277,7 +277,7 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
@@ -295,37 +295,40 @@ describe('Register', () => {
         );
     });
 
-    test('Successful registration with missing phone', async () => {
-        const result = await userService.register({ fullName: 'Alice', email: 'new@example.com', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' });
-
-        assert.strictEqual(result.type, 'new');
-        assert.strictEqual(result.user.id, 'new_user_id');
-        assert.ok(mockData.userCreateCalledWith);
-        assert.strictEqual(mockData.userCreateCalledWith.email, 'new@example.com');
-        assert.strictEqual(mockData.userCreateCalledWith.phone, undefined);
-        assert.ok(sendEmailCalledWith);
+    test('Registration fails if phone is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Số điện thoại không được để trống.');
+                return true;
+            }
+        );
     });
 
-    test('Successful registration with missing gender', async () => {
-        const result = await userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', dateOfBirth: '2000-01-01' });
-
-        assert.strictEqual(result.type, 'new');
-        assert.strictEqual(result.user.id, 'new_user_id');
-        assert.ok(mockData.userCreateCalledWith);
-        assert.strictEqual(mockData.userCreateCalledWith.email, 'new@example.com');
-        assert.strictEqual(mockData.userCreateCalledWith.gender, null);
-        assert.ok(sendEmailCalledWith);
+    test('Registration fails if gender is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', dateOfBirth: '2000-01-01' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Giới tính không được để trống.');
+                return true;
+            }
+        );
     });
 
-    test('Successful registration with missing dateOfBirth', async () => {
-        const result = await userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female' });
-
-        assert.strictEqual(result.type, 'new');
-        assert.strictEqual(result.user.id, 'new_user_id');
-        assert.ok(mockData.userCreateCalledWith);
-        assert.strictEqual(mockData.userCreateCalledWith.email, 'new@example.com');
-        assert.strictEqual(mockData.userCreateCalledWith.dateOfBirth, null);
-        assert.ok(sendEmailCalledWith);
+    test('Registration fails if date of birth is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Ngày sinh không được để trống.');
+                return true;
+            }
+        );
     });
 });
 
