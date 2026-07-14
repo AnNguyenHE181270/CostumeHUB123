@@ -390,6 +390,7 @@ const CategoriesPage = () => {
         onClose={() => setViewingCategory(null)}
         category={viewingCategory}
         categories={categories}
+        onSelectCategory={setViewingCategory}
       />
     </div>
   );

@@ -163,7 +163,6 @@ const ProductFormModal = ({
     if (!formData.categoryId) newErrors.categoryId = "Vui lòng chọn danh mục con.";
     if (!formData.pricePerDay) newErrors.pricePerDay = "Vui lòng nhập giá thuê.";
     if (!formData.deposit) newErrors.deposit = "Vui lòng nhập tiền cọc.";
-    if (!formData.description) newErrors.description = "Vui lòng nhập mô tả chi tiết.";
 
     if (formData.variants.length === 0) {
       newErrors.variants = "Vui lòng thêm ít nhất một kích cỡ (Size).";
@@ -243,7 +242,7 @@ const ProductFormModal = ({
               <Input label="Slug (đường dẫn)" name="slug" value={formData.slug} onChange={handleChange} />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Danh mục cha <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
                 <select
                   value={selectedParentId}
                   onChange={handleParentChange}
@@ -281,7 +280,7 @@ const ProductFormModal = ({
               <Input label="Phụ kiện đi kèm (VD: Kiềng bạc, nơ)" name="includedAccessories" value={formData.includedAccessories} onChange={handleChange} />
 
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-sm font-medium text-gray-700">Mô tả chi tiết <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-gray-700">Mô tả chi tiết</label>
                 <textarea
                   name="description"
                   value={formData.description}
@@ -307,7 +306,6 @@ const ProductFormModal = ({
                   min="0"
                   value={formData.pricePerDay}
                   onChange={handleChange}
-                  required
                 />
                 {errors.pricePerDay && <p className="text-red-500 text-xs">{errors.pricePerDay}</p>}
               </div>
@@ -320,7 +318,6 @@ const ProductFormModal = ({
                   min="0"
                   value={formData.deposit}
                   onChange={handleChange}
-                  required
                 />
                 {errors.deposit && <p className="text-red-500 text-xs">{errors.deposit}</p>}
               </div>
@@ -372,7 +369,7 @@ const ProductFormModal = ({
                     className="bg-[#faf9f7] border border-[#eaeaea] rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-end gap-4"
                   >
                     <div className="flex flex-col gap-1 flex-1">
-                      <label className="text-xs font-medium text-gray-600">Kích cỡ *</label>
+                              <label className="text-xs font-medium text-gray-600">Kích cỡ</label>
                       <select
                         value={variant.size}
                         onChange={(e) => handleVariantChange(index, "size", e.target.value)}
@@ -386,7 +383,7 @@ const ProductFormModal = ({
                     </div>
 
                     <div className="flex flex-col gap-1 flex-1">
-                      <label className="text-xs font-medium text-gray-600">Tổng số lượng *</label>
+                      <label className="text-xs font-medium text-gray-600">Tổng số lượng</label>
                       <input
                         type="number"
                         min="1"
@@ -434,7 +431,7 @@ const ProductFormModal = ({
             <h3 className="text-sm font-semibold text-[#555] uppercase tracking-wider mb-5 border-b border-[#eaeaea] pb-2">Hình ảnh minh họa</h3>
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">Tải ảnh lên (Tối đa 5 ảnh) <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium text-gray-700">Tải ảnh lên (Tối đa 5 ảnh)</label>
               <input
                 type="file"
                 accept="image/*"

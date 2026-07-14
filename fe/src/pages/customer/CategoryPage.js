@@ -36,7 +36,7 @@ export default function CategoryPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const data = await categoryService.getAll({ all: true });
+        const data = await categoryService.getAll();
         const cats = data.categories || [];
         const parents = cats.filter(c => !c.parentId);
         const tree = parents.map(p => ({
