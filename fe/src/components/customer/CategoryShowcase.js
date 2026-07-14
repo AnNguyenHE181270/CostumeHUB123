@@ -9,29 +9,25 @@ const CATEGORIES = [
     name: "Dạ Hội",
     desc: "Lộng lẫy & kiêu sa",
     keyword: "Váy Dạ Hội",
-    image:
-      "https://res.cloudinary.com/du0xdjnrx/image/upload/v1783952543/homepage/cat_evening.jpg",
+    image: "/images/homepage/cat_evening.png",
   },
   {
     name: "Áo Dài",
     desc: "Tinh tế & duyên dáng",
     keyword: "Áo Dài",
-    image:
-      "https://res.cloudinary.com/du0xdjnrx/image/upload/v1783952546/homepage/cat_aodai.jpg",
+    image: "/images/homepage/cat_aodai.png",
   },
   {
     name: "Váy Dạ Tiệc",
     desc: "Thanh lịch & cuốn hút",
     keyword: "Váy Dạ Tiệc",
-    image:
-      "https://res.cloudinary.com/du0xdjnrx/image/upload/v1783952545/homepage/cat_cocktail.jpg",
+    image: "/images/homepage/cat_cocktail.png",
   },
   {
     name: "Đầm Trắng",
     desc: "Thanh khiết & sang trọng",
     keyword: "Đầm Trắng",
-    image:
-      "https://res.cloudinary.com/du0xdjnrx/image/upload/c_fill,g_auto,w_900,h_1249,q_auto,f_auto/v1783952550/homepage/banner_wedding.jpg",
+    image: "/images/homepage/cat_wedding.png",
   },
 ];
 
