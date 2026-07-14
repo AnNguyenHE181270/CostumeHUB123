@@ -8,7 +8,7 @@ import Button from "../../components/ui/Button"
 import Radio from "../../components/ui/Radio"
 import Input from "../../components/ui/Input"
 import Toast from "../../components/ui/Toast"
-import { formatPrice, formatDateNoHours, getRentalDays } from "../../utils/formatters"
+import { formatPrice, formatDateNoHours, getRentalDays, getRentalPriceFactor } from "../../utils/formatters"
 import rentalService from "../../services/rental.service";
 
 export function Checkout() {
@@ -74,7 +74,7 @@ export function Checkout() {
     // tính tiền thuê
     const totalRental = checkoutItems.reduce((sum, item) => {
         const days = getRentalDays(item.startDate, item.endDate);
-        const factor = days >= 3 ? 1.1 : 1.0;
+        const factor = getRentalPriceFactor(days);
         return sum + item.rentalPerDay * factor * item.quantity;
     }, 0);
 
@@ -467,7 +467,7 @@ export function Checkout() {
                                     <div className="space-y-3 text-sm">
                                         {checkoutItems.map((item, idx) => {
                                             const days = getRentalDays(item.startDate, item.endDate);
-                                            const factor = days >= 3 ? 1.1 : 1.0;
+                                            const factor = getRentalPriceFactor(days);
                                             return (
                                                 <div key={`${item.costumeId || item._id}-${idx}`} className="flex justify-between">
                                                     <span className="text-muted-foreground line-clamp-1 mr-4">

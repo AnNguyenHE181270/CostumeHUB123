@@ -39,8 +39,8 @@ const getAllCarts = async (userId) => {
           } else {
             const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
             const minDays = item.costume?.minRentalDays || 1;
-            if (rentalDays > minDays) {
-              dateError = `Số ngày thuê không vượt quá (${minDays} ngày).`;
+            if (rentalDays < minDays) {
+              dateError = `Phải thuê tối thiểu ${minDays} ngày.`;
             }
           }
         }
@@ -56,7 +56,7 @@ const getAllCarts = async (userId) => {
         costumeId: item.costume?._id,
         costumeName: item.costume.name,
         image: item.costume?.images?.[0] || null,
-        category: item.costume.categoryId.name,
+        category: item.costume.categoryId?.name || 'Khác',
         size: item.size,
         quantity: item.quantity,
         status: item.status,
@@ -112,20 +112,7 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   if (!cart) {
     cart = await Cart.create({ customerId: userId, items: [newItem] });
   } else {
-    const overlappingItem = cart.items.find(
-      (item) =>
-        item.costume.toString() === costumeId &&
-        item.size === size &&
-        !(new Date(item.startDate).getTime() === start.getTime() && new Date(item.endDate).getTime() === end.getTime()) &&
-        // Điều kiện trùng lấn ngày: Start1 <= End2 và End1 >= Start2
-        new Date(item.startDate).getTime() <= end.getTime() &&
-        new Date(item.endDate).getTime() >= start.getTime()
-    );
-
-    if (overlappingItem) {
-      throw new HttpError('Trùng ngày thuê. Vui lòng kiểm tra lại giỏ hàng.', 400);
-    }
-
+    // Tìm xem trong giỏ đã có sản phẩm này TRÙNG SIZE và TRÙNG NGÀY chưa
     const itemIndex = cart.items.findIndex(
       (item) =>
         item.costume.toString() === costumeId &&
@@ -135,28 +122,52 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
     );
 
     if (itemIndex > -1) {
+      // ĐÃ TỒN TẠI -> Cộng dồn số lượng
       const existingQty = cart.items[itemIndex].quantity;
       const newQuantity = existingQty + numQuantity;
+      
       if (newQuantity > variant.availableStock) {
-        throw new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
+        throw new HttpError(`Số lượng tổng trong giỏ (${newQuantity}) vượt quá tồn kho hiện tại (${variant.availableStock}).`, 400);
       }
-      cart = await Cart.findOneAndUpdate(
-        { customerId: userId },
-        { $inc: { [`items.${itemIndex}.quantity`]: numQuantity } },
-        { new: true }
-      );
+      
+      cart.items[itemIndex].quantity = newQuantity;
     } else {
-      cart = await Cart.findOneAndUpdate({ customerId: userId }, { $push: { items: newItem } }, { new: true });
+      // CHƯA TỒN TẠI HOẶC KHÁC NGÀY -> Kiểm tra xem có bị giao cắt ngày (Overlap) không
+      const overlappingItem = cart.items.find(
+        (item) =>
+          item.costume.toString() === costumeId &&
+          item.size === size &&
+          // Điều kiện trùng lấn ngày: Start1 <= End2 và End1 >= Start2
+          new Date(item.startDate).getTime() <= end.getTime() &&
+          new Date(item.endDate).getTime() >= start.getTime()
+      );
+
+      if (overlappingItem) {
+        // Khách chọn lại khoảng ngày khác (chồng lấn) cho cùng sản phẩm+size đã có trong giỏ
+        // -> hiểu là đổi ý về thời gian thuê, cập nhật luôn dòng cũ thay vì chặn lỗi.
+        if (numQuantity > variant.availableStock) {
+          throw new HttpError(`Số lượng yêu cầu vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
+        }
+        overlappingItem.startDate = start;
+        overlappingItem.endDate = end;
+        overlappingItem.rentalDays = rentalDays;
+        overlappingItem.quantity = numQuantity;
+      } else {
+        // Không trùng ngày -> Thêm mới thành 1 dòng riêng trong giỏ
+        cart.items.push(newItem);
+      }
     }
+    
+    // Lưu lại toàn bộ thay đổi
+    await cart.save();
   }
 
-  if (cart) {
-    await cart.populate({
-      path: 'items.costume',
-      select: 'name categoryId images',
-      populate: { path: 'categoryId', select: 'name' },
-    });
-  }
+  // Lấy dữ liệu đầy đủ trả về cho Frontend
+  await cart.populate({
+    path: 'items.costume',
+    select: 'name categoryId images',
+    populate: { path: 'categoryId', select: 'name' },
+  });
 
   return cart;
 };
@@ -217,8 +228,8 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
 
   const minDays = costume.minRentalDays || 1;
   const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24));
-  if (rentalDaysDiff > minDays) {
-    throw new HttpError(`Số ngày thuê không vượt quá (${minDays} ngày).`, 400);
+  if (rentalDaysDiff < minDays) {
+    throw new HttpError(`Phải thuê tối thiểu ${minDays} ngày.`, 400);
   }
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
@@ -236,6 +247,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
     );
 
     if (existingItemIndex > -1) {
+      // YÊU CẦU: Nếu cập nhật thay đổi size/ngày mà trùng với một đơn đã có -> Gộp chung lại
       const newTotalQty = cart.items[existingItemIndex].quantity + numQuantity;
       if (newTotalQty > variant.availableStock) {
         throw new HttpError(`Số lượng tổng trong giỏ vượt quá tồn kho. Kho chỉ còn ${variant.availableStock}`, 400);
@@ -244,8 +256,9 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
       cart.items[existingItemIndex].rentalDays = rentalDays;
       cart.items[existingItemIndex].rentalPrice = rentalPrice;
       cart.items[existingItemIndex].depositPrice = depositPrice;
-      cart.items.splice(itemIndex, 1);
+      cart.items.splice(itemIndex, 1); // Xóa dòng cũ đi
     } else {
+      // Không trùng thì chỉ cập nhật lại thông tin
       cart.items[itemIndex].size = size;
       cart.items[itemIndex].quantity = numQuantity;
       cart.items[itemIndex].startDate = start;
@@ -255,6 +268,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
       cart.items[itemIndex].depositPrice = depositPrice;
     }
   } else {
+    // Nếu chỉ tăng giảm số lượng thì sửa thẳng luôn
     cart.items[itemIndex].quantity = numQuantity;
   }
 

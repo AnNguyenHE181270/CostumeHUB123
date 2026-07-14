@@ -57,7 +57,8 @@ const checkAvailability = async (req, res, next) => {
 
 const getAllOrders = async (req, res, next) => {
   try {
-    const orders = await rentalService.getAllOrders();
+    const { startDate, endDate } = req.query;
+    const orders = await rentalService.getAllOrders(startDate, endDate);
     res.status(200).json(orders);
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Fetching orders failed', 500));
@@ -84,7 +85,8 @@ const confirmPreparation = async (req, res, next) => {
 
 const getTotalRevenue = async (req, res, next) => {
   try {
-    const result = await rentalService.getTotalRevenue();
+    const { startDate, endDate } = req.query;
+    const result = await rentalService.getTotalRevenue(startDate, endDate);
     res.status(200).json(result);
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Fetching total revenue failed', 500));
@@ -93,7 +95,8 @@ const getTotalRevenue = async (req, res, next) => {
 
 const getActiveRentals = async (req, res, next) => {
   try {
-    const result = await rentalService.getActiveRentals();
+    const { startDate, endDate } = req.query;
+    const result = await rentalService.getActiveRentals(startDate, endDate);
     res.status(200).json(result);
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Fetching active rentals failed', 500));
@@ -102,7 +105,8 @@ const getActiveRentals = async (req, res, next) => {
 
 const getInventoryUtilization = async (req, res, next) => {
   try {
-    const result = await rentalService.getInventoryUtilization();
+    const { startDate, endDate } = req.query;
+    const result = await rentalService.getInventoryUtilization(startDate, endDate);
     res.status(200).json(result);
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Fetching inventory utilization failed', 500));
@@ -120,7 +124,7 @@ const requestReturn = async (req, res, next) => {
 
 const inspectReturn = async (req, res, next) => {
   try {
-    const result = await rentalService.inspectReturn(req.params.id, req.body);
+    const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || []);
     res.status(200).json({ message: 'Kiểm tra và khấu trừ cọc thành công', data: result });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi kiểm tra đồ', 500));

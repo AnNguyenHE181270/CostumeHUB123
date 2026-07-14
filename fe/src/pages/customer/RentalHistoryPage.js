@@ -58,12 +58,17 @@ function RentalHistory() {
         ? rentalOrders
         : activeTab === "renting"
             ? rentalOrders.filter(order => ["delivered", "renting", "overdue"].includes(order.status))
-            : rentalOrders.filter(order => order.status === activeTab)
+            : activeTab === "delivering"
+                ? rentalOrders.filter(order => ["delivering", "returning"].includes(order.status))
+                : rentalOrders.filter(order => order.status === activeTab)
 
     const getOrderCount = (status) => {
         if (status === "all") return rentalOrders.length
         if (status === "renting") {
             return rentalOrders.filter(order => ["delivered", "renting", "overdue"].includes(order.status)).length
+        }
+        if (status === "delivering") {
+            return rentalOrders.filter(order => ["delivering", "returning"].includes(order.status)).length
         }
         return rentalOrders.filter(order => order.status === status).length
     }

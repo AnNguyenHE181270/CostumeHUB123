@@ -55,14 +55,15 @@ const getAllCostumes = async (query) => {
   if (search) filter.name = { $regex: search, $options: 'i' };
 
   const sortMap = {
-    price_asc: { pricePerDay: 1 },
-    price_desc: { pricePerDay: -1 },
-    popular: { totalRentals: -1 },
-    name_asc: { name: 1 },
-    name_desc: { name: -1 },
-    oldest: { createdAt: 1 },
+    price_asc: { pricePerDay: 1, _id: 1 },
+    price_desc: { pricePerDay: -1, _id: -1 },
+    popular: { totalRentals: -1, _id: -1 },
+    name_asc: { name: 1, _id: 1 },
+    name_desc: { name: -1, _id: -1 },
+    oldest: { createdAt: 1, _id: 1 },
+    newest: { createdAt: -1, _id: -1 },
   };
-  const sortOption = sortMap[sort] || { createdAt: -1 };
+  const sortOption = sortMap[sort] || { createdAt: -1, _id: -1 };
 
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.max(1, Math.min(50, parseInt(limit)));

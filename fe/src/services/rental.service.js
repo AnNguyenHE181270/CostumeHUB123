@@ -28,8 +28,8 @@ const rentalService = {
   confirmPreparation: (orderId) =>
     axiosClient.put(`/api/rentals/${orderId}/confirm`),
 
-  inspectReturn: (orderId, data) =>
-    axiosClient.put(`/api/rentals/${orderId}/inspect-return`, data),
+  inspectReturn: (orderId, formData) =>
+    axiosClient.put(`/api/rentals/${orderId}/inspect-return`, formData),
 
   // Dashboard
   getTotalRevenue: () => axiosClient.get('/api/rentals/dashboard/revenue'),

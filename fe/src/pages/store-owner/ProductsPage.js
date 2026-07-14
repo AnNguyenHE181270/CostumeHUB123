@@ -117,6 +117,17 @@ export default function ProductsPage() {
 
   const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
 
+  const stats = useMemo(() => {
+    const total = filteredProducts.length;
+    const hidden = filteredProducts.filter((product) => product.status === "hidden").length;
+    const outOfStock = filteredProducts.filter((product) => {
+      if (product.status === "out_of_stock") return true;
+      const totalAvail = product.variants ? product.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
+      return totalAvail === 0;
+    }).length;
+    return { total, hidden, outOfStock };
+  }, [filteredProducts]);
+
 
 
   const handleOpenAddForm = () => {
@@ -328,6 +339,21 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-[#eaeaea] rounded-2xl p-4 shadow-sm">
+          <p className="text-sm text-[#777]">Tổng sản phẩm</p>
+          <p className="mt-2 text-3xl font-semibold text-[#1a1a1a]">{stats.total}</p>
+        </div>
+        <div className="bg-white border border-[#eaeaea] rounded-2xl p-4 shadow-sm">
+          <p className="text-sm text-[#777]">Sản phẩm đã ẩn</p>
+          <p className="mt-2 text-3xl font-semibold text-[#1a1a1a]">{stats.hidden}</p>
+        </div>
+        <div className="bg-white border border-[#eaeaea] rounded-2xl p-4 shadow-sm">
+          <p className="text-sm text-[#777]">Sản phẩm hết hàng</p>
+          <p className="mt-2 text-3xl font-semibold text-[#1a1a1a]">{stats.outOfStock}</p>
+        </div>
+      </div>
+
       <DataTable
         isLoading={loading}
         isEmpty={filteredProducts.length === 0}
@@ -346,12 +372,12 @@ export default function ProductsPage() {
       >
         <thead>
           <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
-            <th className="w-[30%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Sản phẩm</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Danh mục</th>
-            <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Tồn kho</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Giá & Cọc</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">Trạng thái</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">Thao tác</th>
+            <th className="w-[30%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Sản phẩm</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Danh mục</th>
+            <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Tồn kho</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Giá & Cọc</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Trạng thái</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Thao tác</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#f0f0f0]">
@@ -438,6 +464,13 @@ export default function ProductsPage() {
                 </td>
                 <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => handleOpenEditForm(product)}
+                      className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
+                      title="Sửa thông-tin"
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </button>
                     {product.status === "hidden" ? (
                       <button
                         onClick={() => handleRestoreClick(product)}
@@ -447,22 +480,13 @@ export default function ProductsPage() {
                         <FontAwesomeIcon icon={faEye} />
                       </button>
                     ) : (
-                      <>
-                        <button
-                          onClick={() => handleOpenEditForm(product)}
-                          className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] rounded transition-colors"
-                          title="Sửa thông-tin"
-                        >
-                          <FontAwesomeIcon icon={faEdit} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(product)}
-                          className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Ẩn khỏi cửa hàng"
-                        >
-                          <FontAwesomeIcon icon={faEyeSlash} />
-                        </button>
-                      </>
+                      <button
+                        onClick={() => handleDeleteClick(product)}
+                        className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Ẩn khỏi cửa hàng"
+                      >
+                        <FontAwesomeIcon icon={faEyeSlash} />
+                      </button>
                     )}
                   </div>
                 </td>

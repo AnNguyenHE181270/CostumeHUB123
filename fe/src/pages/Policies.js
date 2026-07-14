@@ -73,7 +73,7 @@ const POLICIES = [
         iconBg: "#1a1a1a",
         items: [
             "Khách hàng có trách nhiệm giữ gìn trang phục, không tự ý sửa chữa hoặc giặt tẩy mạnh.",
-            <>Phí trả muộn: <strong style={{ color: "#1a1a1a" }}>10% giá cọc/ngày</strong> theo thời điểm trả thực tế.</>,
+            <>Phí trả muộn: <strong style={{ color: "#1a1a1a" }}>10% tiền cọc/ngày</strong> trễ, tối đa <strong style={{ color: "#1a1a1a" }}>100% tiền cọc</strong>.</>,
         ],
     },
     {
@@ -92,8 +92,8 @@ const POLICIES = [
         accent: "#1a1a1a",
         iconBg: "#1a1a1a",
         items: [
-            <>Hư hỏng nhẹ: Phí bồi thường <strong style={{ color: "#1a1a1a" }}>20% tiền cọc</strong>.</>,
-            <>Mất hoặc hư hỏng không phục hồi: Khấu trừ <strong style={{ color: "#1a1a1a" }}>100% tiền cọc</strong>.</>,
+            <>Trang phục có <strong style={{ color: "#1a1a1a" }}>5 cấp độ</strong> đền bù, từ không trừ cọc đến khấu trừ toàn bộ — xem chi tiết ở trang Về Chúng Tôi.</>,
+            <>Mất hoặc hư hỏng không thể phục hồi: khấu trừ <strong style={{ color: "#1a1a1a" }}>100% tiền cọc</strong> + phí thay thế nếu giá trị vượt cọc.</>,
         ],
     },
     {

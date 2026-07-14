@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faArrowRight, faCalendarDays, faShieldHalved, faTags } from "@fortawesome/free-solid-svg-icons";
-import { formatPrice, getRentalDays } from "../utils/formatters"
+import { formatPrice, getRentalDays, getRentalPriceFactor } from "../utils/formatters"
 import DatePickerGroup from "../components/ui/DatePickerGroup"
 import Selector from "../components/ui/Selector"
 
@@ -62,7 +62,7 @@ export default function CartPage() {
   // tính tiền thuê
   const totalRental = selectedCartItems.reduce((sum, item) => {
     const days = getRentalDays(item.startDate, item.endDate);
-    const factor = days >= 3 ? 1.1 : 1.0;
+    const factor = getRentalPriceFactor(days);
     return sum + item.rentalPerDay * factor * item.quantity;
   }, 0);
 
@@ -278,15 +278,15 @@ export default function CartPage() {
                 {/* Pricing summary for this item */}
                 <div className="w-full sm:w-[200px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0ece8] pt-4 sm:pt-0 sm:pl-5">
                   {(() => {
-                    const factor = rentalDays >= 3 ? 1.1 : 1.0;
-                    const adjustedRentalPerDay = item.rentalPerDay * factor;
+                    const factor = getRentalPriceFactor(rentalDays);
+                    const adjustedRentalPrice = item.rentalPerDay * factor;
                     return (
                       <>
                         <p className="text-[16px] font-bold text-[#1a1a1a] mb-2">
-                          {formatPrice(adjustedRentalPerDay * (item.quantity || 1))}
+                          {formatPrice(adjustedRentalPrice * (item.quantity || 1))}
                         </p>
                         <p className="text-[11px] text-[#999] mb-1">
-                          {formatPrice(adjustedRentalPerDay)} / ngày {factor > 1 ? "(+10%)" : ""}
+                          {formatPrice(item.rentalPerDay)} {factor > 1 ? `(+${Math.round((factor - 1) * 100)}%)` : ""}
                         </p>
                       </>
                     );

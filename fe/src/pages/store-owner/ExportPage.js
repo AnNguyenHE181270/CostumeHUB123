@@ -1,14 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilePdf,
   faFileWord,
+  faFileExcel,
   faChartLine,
   faBoxes,
-  faSpinner
+  faSpinner,
+  faCalendarAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
+import costumeService from "../../services/costume.service";
+
+const DATE_RANGE_OPTIONS = ["Tất cả thời gian", "Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"];
+
+const COSTUME_STATUS_LABEL = {
+  available: "Còn hàng",
+  rented: "Đang thuê",
+  maintenance: "Bảo trì",
+  dry_cleaning: "Đang giặt là",
+  hidden: "Đang ẩn",
+  out_of_stock: "Hết hàng",
+};
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 
@@ -16,6 +31,7 @@ export default function ExportPage() {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [inventoryExporting, setInventoryExporting] = useState(false);
   
   // Dữ liệu báo cáo
   const [reportData, setReportData] = useState({
@@ -26,49 +42,106 @@ export default function ExportPage() {
     totalStock: 0,
     currentlyRented: 0
   });
+  const [categoryData, setCategoryData] = useState([]);
+
+  const [dateRange, setDateRange] = useState("Tất cả thời gian");
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
+  const getDateParams = useCallback(() => {
+    const now = new Date();
+    let start = null;
+    let end = new Date();
+
+    if (dateRange === "Hôm nay") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (dateRange === "7 ngày qua") {
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "30 ngày qua") {
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "Tháng này") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (dateRange === "Tất cả thời gian") {
+      start = null;
+      end = null;
+    } else if (dateRange.startsWith("Từ")) {
+      if (customStartDate && customEndDate) {
+        start = new Date(customStartDate);
+        end = new Date(customEndDate);
+      }
+    }
+
+    return {
+      startDate: start ? start.toISOString() : "",
+      endDate: end ? end.toISOString() : ""
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const fetchReportData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const { startDate, endDate } = getDateParams();
+      const queryParams = `?startDate=${startDate}&endDate=${endDate}`;
+
+      const [resRevenue, resActive, resInventory] = await Promise.all([
+        fetch(`${API_URL}/api/rentals/dashboard/revenue${queryParams}`, { headers }),
+        fetch(`${API_URL}/api/rentals/dashboard/active-rentals${queryParams}`, { headers }),
+        fetch(`${API_URL}/api/rentals/dashboard/inventory-utilization${queryParams}`, { headers })
+      ]);
+
+      if (resRevenue.ok && resActive.ok && resInventory.ok) {
+        const dataRevenue = await resRevenue.json();
+        const dataActive = await resActive.json();
+        const dataInventory = await resInventory.json();
+
+        setReportData({
+          revenue: dataRevenue.totalRevenue || 0,
+          activeOrdersCount: dataActive.activeOrdersCount || 0,
+          totalActiveCostumes: dataActive.totalActiveCostumes || 0,
+          inventoryUtilizationPercentage: dataInventory.utilizationPercentage || 0,
+          totalStock: dataInventory.totalStock || 0,
+          currentlyRented: dataInventory.currentlyRented || 0
+        });
+        setCategoryData(dataInventory.categoryBreakdown || []);
+      } else {
+        setToast({ isVisible: true, type: "error", message: "Không thể lấy dữ liệu báo cáo." });
+      }
+    } catch (error) {
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ." });
+    } finally {
+      setLoading(false);
+    }
+  }, [token, getDateParams]);
 
   useEffect(() => {
-    const fetchReportData = async () => {
-      try {
-        setLoading(true);
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        const [resRevenue, resActive, resInventory] = await Promise.all([
-          fetch(`${API_URL}/api/rentals/dashboard/revenue`, { headers }),
-          fetch(`${API_URL}/api/rentals/dashboard/active-rentals`, { headers }),
-          fetch(`${API_URL}/api/rentals/dashboard/inventory-utilization`, { headers })
-        ]);
-
-        if (resRevenue.ok && resActive.ok && resInventory.ok) {
-          const dataRevenue = await resRevenue.json();
-          const dataActive = await resActive.json();
-          const dataInventory = await resInventory.json();
-
-          setReportData({
-            revenue: dataRevenue.totalRevenue || 0,
-            activeOrdersCount: dataActive.activeOrdersCount || 0,
-            totalActiveCostumes: dataActive.totalActiveCostumes || 0,
-            inventoryUtilizationPercentage: dataInventory.utilizationPercentage || 0,
-            totalStock: dataInventory.totalStock || 0,
-            currentlyRented: dataInventory.currentlyRented || 0
-          });
-        } else {
-          setToast({ isVisible: true, type: "error", message: "Không thể lấy dữ liệu báo cáo." });
-        }
-      } catch (error) {
-        setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ." });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (token) {
       fetchReportData();
     }
-  }, [token]);
+  }, [token, fetchReportData]);
+
+  const handleApplyCustomDate = () => {
+    if (customStartDate && customEndDate) {
+      const startStr = new Date(customStartDate).toLocaleDateString("vi-VN");
+      const endStr = new Date(customEndDate).toLocaleDateString("vi-VN");
+      setDateRange(`Từ ${startStr} đến ${endStr}`);
+      setShowDateMenu(false);
+    }
+  };
+
+  // Đánh giá vận hành theo tỷ lệ số lượt thuê / tổng kho của từng danh mục
+  const getCategoryAssessment = (rentedCount, totalStock) => {
+    if (!totalStock) return "Chưa có dữ liệu";
+    const ratio = rentedCount / totalStock;
+    if (ratio >= 0.5) return "Tăng trưởng mạnh";
+    if (ratio >= 0.2) return "Vận hành ổn định";
+    return "Cần theo dõi";
+  };
 
   const generateReportHTML = (formattedRevenue, currentDate) => `
     <html>
@@ -97,7 +170,7 @@ export default function ExportPage() {
         <div class="header">
           <div class="company-name">Hệ thống quản lý trang phục CostumeHUB</div>
           <div class="report-title">BÁO CÁO HOẠT ĐỘNG KINH DOANH</div>
-          <div class="report-date">Kỳ báo cáo: 30 ngày qua</div>
+          <div class="report-date">Kỳ báo cáo: ${dateRange}</div>
           <div style="font-size: 11px; color: #777; margin-top: 4px;">Ngày trích xuất dữ liệu: ${currentDate}</div>
         </div>
 
@@ -122,18 +195,16 @@ export default function ExportPage() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Đầm & Váy nữ (Dresses)</td>
-              <td>342 bộ</td>
-              <td>89 lượt</td>
-              <td>Tăng trưởng mạnh</td>
-            </tr>
-            <tr>
-              <td>Âu phục & Vest nam (Suits)</td>
-              <td>85 bộ</td>
-              <td>24 lượt</td>
-              <td>Vận hành ổn định</td>
-            </tr>
+            ${categoryData.length === 0
+              ? '<tr><td colspan="4" style="text-align:center;">Không có dữ liệu danh mục</td></tr>'
+              : categoryData.map((c) => `
+                <tr>
+                  <td>${c.name}</td>
+                  <td>${c.totalStock} bộ</td>
+                  <td>${c.rentedCount} lượt</td>
+                  <td>${getCategoryAssessment(c.rentedCount, c.totalStock)}</td>
+                </tr>
+              `).join('')}
           </tbody>
         </table>
 
@@ -186,13 +257,144 @@ export default function ExportPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportInventoryExcel = async () => {
+    setInventoryExporting(true);
+    try {
+      const data = await costumeService.getAll({
+        limit: 1000,
+        status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden",
+      });
+      const products = data.costumes || [];
+
+      const detailRows = [];
+      let totalStock = 0;
+      let totalAvailable = 0;
+      let totalRented = 0;
+
+      products.forEach((p) => {
+        const variants = p.variants && p.variants.length > 0 ? p.variants : [{}];
+        variants.forEach((v) => {
+          const stock = v.totalStock || 0;
+          const available = v.availableStock || 0;
+          const rented = stock - available;
+          totalStock += stock;
+          totalAvailable += available;
+          totalRented += rented > 0 ? rented : 0;
+
+          detailRows.push({
+            "Tên sản phẩm": p.name || "",
+            "Danh mục": p.categoryId?.name || "",
+            "Size": v.size || "—",
+            "SKU": v.sku || "—",
+            "Tổng kho": stock,
+            "Sẵn sàng cho thuê": available,
+            "Đang thuê": rented > 0 ? rented : 0,
+            "Trạng thái": COSTUME_STATUS_LABEL[v.status || p.status] || v.status || p.status || "",
+          });
+        });
+      });
+
+      const currentDate = new Date().toLocaleString("vi-VN");
+
+      const summarySheetData = [
+        ["BÁO CÁO TỒN KHO CHI TIẾT - COSTUMEHUB"],
+        [`Ngày trích xuất: ${currentDate}`],
+        [],
+        ["Tổng số sản phẩm", products.length],
+        ["Tổng số lượng trong kho", totalStock],
+        ["Sẵn sàng cho thuê", totalAvailable],
+        ["Đang cho thuê", totalRented],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
+      wsSummary["!cols"] = [{ wch: 28 }, { wch: 18 }];
+
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      wsDetail["!cols"] = [
+        { wch: 30 }, { wch: 18 }, { wch: 8 }, { wch: 14 },
+        { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 14 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Tong quan");
+      XLSX.utils.book_append_sheet(wb, wsDetail, "Chi tiet ton kho");
+
+      XLSX.writeFile(wb, `Bao_cao_ton_kho_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      setToast({ isVisible: true, type: "error", message: "Không thể xuất báo cáo tồn kho." });
+    } finally {
+      setInventoryExporting(false);
+    }
+  };
+
   return (
     <div className="bg-[#faf9f7] min-h-screen">
-      <div className="bg-white border-b border-[#eaeaea] px-6 py-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-          Trung tâm Xuất Báo cáo
-        </h1>
-        <p className="text-sm text-[#555] mt-1">Trích xuất và tải xuống các số liệu vận hành của hệ thống</p>
+      <div className="bg-white border-b border-[#eaeaea] px-6 py-4 sticky top-0 z-10 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Trung tâm Xuất Báo cáo
+          </h1>
+          <p className="text-sm text-[#555] mt-1">Trích xuất và tải xuống các số liệu vận hành của hệ thống</p>
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); setShowDateMenu(!showDateMenu); }}
+            className="flex items-center gap-2 border border-[#eaeaea] rounded-md px-3 py-1.5 text-sm text-[#555] hover:bg-[#faf9f7] transition-colors"
+          >
+            <FontAwesomeIcon icon={faCalendarAlt} className="text-[#999] text-xs" />
+            <span className="font-medium text-[#1a1a1a]">{dateRange}</span>
+          </button>
+
+          {showDateMenu && (
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-2 z-50">
+              <div className="mb-2">
+                {DATE_RANGE_OPTIONS.map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setDateRange(range); setShowDateMenu(false); }}
+                    className="w-full text-left px-4 py-1.5 text-sm text-gray-700 hover:bg-[#faf9f7] block font-medium"
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+
+              <div className="px-4 py-3 border-t border-[#eaeaea] bg-gray-50/50">
+                <p className="text-xs text-[#999] mb-2 font-medium">Tùy chọn khoảng ngày:</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-8">Từ:</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="border border-[#eaeaea] rounded px-2 py-1 text-sm text-[#555] flex-1 focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-8">Đến:</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="border border-[#eaeaea] rounded px-2 py-1 text-sm text-[#555] flex-1 focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyCustomDate}
+                    disabled={!customStartDate || !customEndDate}
+                    className="mt-2 w-full bg-[#1a1a1a] text-white rounded py-1.5 text-xs font-semibold hover:bg-[#333] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="p-6 max-w-5xl mx-auto">
@@ -216,7 +418,7 @@ export default function ExportPage() {
               </div>
               
               <div className="bg-[#faf9f7] p-3 rounded-md mb-6 border border-[#eaeaea]">
-                <p className="text-sm text-gray-700">Kỳ dữ liệu: <span className="font-semibold">30 ngày gần nhất</span></p>
+                <p className="text-sm text-gray-700">Kỳ dữ liệu: <span className="font-semibold">{dateRange}</span></p>
                 <p className="text-sm text-gray-700 mt-1">Doanh thu hiện tại: <span className="font-bold text-green-600">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(reportData.revenue)}</span></p>
               </div>
 
@@ -240,25 +442,32 @@ export default function ExportPage() {
               </div>
             </div>
 
-            {/* Card Báo cáo Tồn kho (Khung chờ phát triển thêm) */}
-            <div className="bg-white rounded-xl border border-[#eaeaea] p-6 shadow-sm opacity-60">
+            {/* Card Báo cáo Tồn kho chi tiết */}
+            <div className="bg-white rounded-xl border border-[#eaeaea] p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-xl">
+                <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
                   <FontAwesomeIcon icon={faBoxes} />
                 </div>
                 <div>
                   <h2 className="font-bold text-[#1a1a1a]">Báo cáo Tồn kho chi tiết</h2>
-                  <p className="text-xs text-[#555]">Danh sách sản phẩm sắp hỏng, quá hạn trả.</p>
+                  <p className="text-xs text-[#555]">Danh sách từng sản phẩm, từng size: tổng kho, sẵn sàng, đang thuê.</p>
                 </div>
               </div>
-              
+
               <div className="bg-[#faf9f7] p-3 rounded-md mb-6 border border-[#eaeaea]">
-                <p className="text-sm text-gray-500 text-center py-2">Tính năng đang được phát triển...</p>
+                <p className="text-sm text-gray-700">Tổng số lượng trong kho: <span className="font-semibold">{reportData.totalStock} bộ</span></p>
+                <p className="text-sm text-gray-700 mt-1">Đang cho thuê: <span className="font-bold text-orange-500">{reportData.currentlyRented} bộ</span></p>
               </div>
 
               <div className="flex gap-3">
-                <button type="button" disabled className="flex-1 py-2.5 bg-gray-100 text-gray-400 rounded-md font-semibold text-sm cursor-not-allowed">
-                  Xuất Excel (.xlsx)
+                <button
+                  type="button"
+                  onClick={handleExportInventoryExcel}
+                  disabled={inventoryExporting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-50 text-emerald-700 rounded-md font-semibold text-sm hover:bg-emerald-100 transition-colors border border-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FontAwesomeIcon icon={inventoryExporting ? faSpinner : faFileExcel} className={inventoryExporting ? "animate-spin" : ""} />
+                  {inventoryExporting ? "Đang tạo file..." : "Xuất Excel (.xlsx)"}
                 </button>
               </div>
             </div>

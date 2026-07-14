@@ -171,7 +171,7 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         const newErrors = {
             reason: "",
             customReason: "",
@@ -417,7 +417,7 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                             <p className="text-sm font-medium pb-2">Bằng chứng<span className="text-red-500 pl-1">*</span></p>
                             <p className="text-xs text-gray-500 mb-2">(Định dạng JPG, PNG, MP4. Tối đa 4 ảnh và 1 video)</p>
 
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-2">
                                 <label className="w-20 h-20 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors rounded-lg group border border-gray-200 border-dashed shrink-0">
                                     <input
                                         type="file"
@@ -454,33 +454,35 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
 
                         <div>
                             <p className="text-sm font-medium pb-2">Phương thức giải quyết<span className="text-red-500 pl-1">*</span></p>
-                            {RESOLUTION_OPTIONS.map((opt) => (
-                                <label
-                                    key={opt.value}
-                                    htmlFor={`resolution-${opt.value}`}
-                                    className={
-                                        "flex items-center gap-2 p-2 my-1 border rounded-lg cursor-pointer transition-colors " +
-                                        (resolution === opt.value
-                                            ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50"
-                                            : "border-gray-200 hover:bg-gray-50")
-                                    }
-                                >
-                                    <Radio
-                                        id={`resolution-${opt.value}`}
-                                        name="resolution"
-                                        value={opt.value}
-                                        checked={resolution === opt.value}
-                                        onChange={(e) => setResolution(e.target.value)}
-                                    />
-                                    <span className="text-sm font-medium">{opt.label}</span>
-                                </label>
-                            ))}
+                            <div className="flex gap-4">
+                                {RESOLUTION_OPTIONS.map((opt) => (
+                                    <label
+                                        key={opt.value}
+                                        htmlFor={`resolution-${opt.value}`}
+                                        className={
+                                            "flex-1 flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors " +
+                                            (resolution === opt.value
+                                                ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/50"
+                                                : "border-gray-200 hover:bg-gray-50")
+                                        }
+                                    >
+                                        <Radio
+                                            id={`resolution-${opt.value}`}
+                                            name="resolution"
+                                            value={opt.value}
+                                            checked={resolution === opt.value}
+                                            onChange={(e) => setResolution(e.target.value)}
+                                        />
+                                        <span className="text-sm font-medium">{opt.label}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         <div>
                             <p className="text-sm font-medium pb-2">Ghi chú thêm (Tùy chọn)</p>
                             <textarea
-                                className="w-full bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black p-3 resize-none text-sm placeholder:text-gray-400"
+                                className="w-full bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black p-2 resize-none text-sm placeholder:text-gray-400"
                                 placeholder="Mô tả chi tiết tình trạng sản phẩm và yêu cầu của bạn..."
                                 rows="4"
                                 value={note}

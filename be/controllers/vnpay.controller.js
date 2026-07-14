@@ -3,6 +3,7 @@ const qs = require("qs");
 const moment = require("moment");
 const User = require("../models/user.model");
 const TopUpTransaction = require("../models/topup.model");
+const notificationService = require("../services/notification.service");
 
 require("dotenv").config();
 
@@ -137,6 +138,19 @@ const vnpayIpn = async (req, res) => {
             if (user) {
                 user.balance = (user.balance || 0) + topUp.amount;
                 await user.save();
+
+                try {
+                    await notificationService.createNotification({
+                        userId: user._id,
+                        type: 'wallet_topup',
+                        title: 'Nạp tiền thành công',
+                        message: `Ví của bạn đã được cộng ${topUp.amount.toLocaleString('vi-VN')}đ.`,
+                        link: '/user/transactions',
+                        relatedId: topUp._id,
+                    });
+                } catch (notifyError) {
+                    console.error('[Notification Error]', notifyError);
+                }
             }
 
             return res.status(200).json({
@@ -200,15 +214,28 @@ const vnpayReturn = async (req, res) => {
                     if (user) {
                         user.balance = (user.balance || 0) + topUp.amount;
                         await user.save();
+
+                        try {
+                            await notificationService.createNotification({
+                                userId: user._id,
+                                type: 'wallet_topup',
+                                title: 'Nạp tiền thành công',
+                                message: `Ví của bạn đã được cộng ${topUp.amount.toLocaleString('vi-VN')}đ.`,
+                                link: '/user/transactions',
+                                relatedId: topUp._id,
+                            });
+                        } catch (notifyError) {
+                            console.error('[Notification Error]', notifyError);
+                        }
                     }
                 }
             }
         }
 
-        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
     } catch (error) {
         console.error(error);
-        return res.redirect(`${process.env.CLIENT_URL}/user/my-profile`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
     }
 };
 
@@ -229,8 +256,26 @@ function sortObject(obj) {
     return sorted;
 }
 
+const getTopUpHistory = async (req, res) => {
+    try {
+        const userId = req.userData.id;
+        const topUps = await TopUpTransaction.find({ user: userId }).sort({ createdAt: -1 });
+        return res.status(200).json({
+            success: true,
+            data: topUps,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch top-up history",
+        });
+    }
+};
+
 module.exports = {
     createPaymentUrl,
     vnpayIpn,
     vnpayReturn,
+    getTopUpHistory,
 };

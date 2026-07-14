@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
 import AuthLayout from "../layouts/AuthLayout";
@@ -21,13 +21,33 @@ export default function VerifyOtpPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
+    const [searchParams] = useSearchParams();
+    const queryOtp = searchParams.get("otp");
     const decodedEmail = decodeURIComponent(email || "");
 
     useEffect(() => {
-        if (!location.state?.fromRegister) {
+        if (!location.state?.fromRegister && !queryOtp) {
             navigate(ROUTES.REGISTER, { replace: true });
         }
-    }, [location.state, navigate]);
+    }, [location.state, navigate, queryOtp]);
+
+    useEffect(() => {
+        if (queryOtp && queryOtp.length === OTP_LENGTH) {
+            const pastedArray = queryOtp.slice(0, OTP_LENGTH).split("");
+            const newOtp = new Array(OTP_LENGTH).fill("");
+            pastedArray.forEach((char, i) => { newOtp[i] = char.toUpperCase(); });
+            setOtp(newOtp);
+            
+            // Auto submit
+            setLoading(true);
+            userService.verifyOtp(decodedEmail, queryOtp)
+                .then(() => navigate(ROUTES.LOGIN))
+                .catch((err) => {
+                    setError(err.message || "Xác thực thất bại. Mã OTP không chính xác.");
+                    setLoading(false);
+                });
+        }
+    }, [queryOtp, decodedEmail, navigate]);
 
     useEffect(() => {
         if (timeLeft <= 0) return;
@@ -74,19 +94,19 @@ export default function VerifyOtpPage() {
         try {
                     await userService.resendOtp(decodedEmail);
             setTimeLeft(TIMER_SECONDS); setOtp(new Array(OTP_LENGTH).fill("")); inputRefs.current[0]?.focus();
-        } catch (err) { setError(err.message || "Failed to resend code."); } finally { setIsResending(false); }
+        } catch (err) { setError(err.message || "Gửi lại mã thất bại."); } finally { setIsResending(false); }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (loading) return;
         const otpCode = otp.join("");
-        if (otpCode.length !== OTP_LENGTH) { setError("Please enter all 6 characters."); return; }
+        if (otpCode.length !== OTP_LENGTH) { setError("Vui lòng nhập đủ 6 ký tự."); return; }
         setLoading(true); setError("");
         try {
                 await userService.verifyOtp(decodedEmail, otpCode);
             navigate(ROUTES.LOGIN);
-        } catch (err) { setError(err.message || "Verification failed. Incorrect OTP."); } finally { setLoading(false); }
+        } catch (err) { setError(err.message || "Xác thực thất bại. Mã OTP không chính xác."); } finally { setLoading(false); }
     };
 
     const formatTime = (seconds) => { const m = Math.floor(seconds / 60).toString().padStart(1, "0"); const s = (seconds % 60).toString().padStart(2, "0"); return `${m}:${s}`; };
@@ -103,9 +123,9 @@ export default function VerifyOtpPage() {
                 </div>
                 
                 <div className="mb-10">
-                    <h2 className="text-text-primary text-4xl font-semibold tracking-tight mb-3">Verify OTP</h2>
+                    <h2 className="text-text-primary text-4xl font-semibold tracking-tight mb-3">Xác thực OTP</h2>
                     <p className="text-text-secondary text-sm leading-relaxed">
-                        A verification code has been sent to<br />
+                        Một mã xác thực đã được gửi đến<br />
                         <span className="text-text-primary font-medium">{decodedEmail}</span>
                     </p>
                 </div>
@@ -134,13 +154,13 @@ export default function VerifyOtpPage() {
                         type="submit" 
                         variant="primary"
                         icon={faArrowRight} 
-                        label="Confirm" 
+                        label="Xác nhận" 
                         loading={loading} 
                     />
                     
                     <div className="text-sm text-text-secondary pt-2">
                         {timeLeft > 0 ? (
-                            <>Resend code in <span className="text-[#1a1a1a] font-medium tabular-nums">{formatTime(timeLeft)}</span></>
+                            <>Gửi lại mã sau <span className="text-[#1a1a1a] font-medium tabular-nums">{formatTime(timeLeft)}</span></>
                         ) : (
                             <button 
                                 type="button" 
@@ -148,7 +168,7 @@ export default function VerifyOtpPage() {
                                 disabled={isResending} 
                                 className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors disabled:opacity-50"
                             >
-                                {isResending ? "Sending..." : "Resend OTP"}
+                                {isResending ? "Đang gửi..." : "Gửi lại OTP"}
                             </button>
                         )}
                     </div>

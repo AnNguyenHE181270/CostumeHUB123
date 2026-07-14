@@ -37,7 +37,7 @@ export default function LoginPage() {
       try {
         data = await userService.login(form.email, form.password);
       } catch (err) {
-        setError(err.message || "Login failed.");
+        setError(err.message || "Đăng nhập thất bại.");
         return;
       }
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
         navigate("/", { state: { showPolicies: true } });
       }
     } catch (error) {
-      setError("Network error. Please try again.");
+      setError("Lỗi kết nối. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -76,16 +76,16 @@ export default function LoginPage() {
 
         <div className="mb-10">
           <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
-            Welcome Back
+            Chào mừng trở lại
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-            Sign In
+            Đăng Nhập
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="Email Address"
+            label="Địa chỉ Email"
             name="email"
             type="email"
             value={form.email}
@@ -95,12 +95,12 @@ export default function LoginPage() {
           />
 
           <Input
-            label="Password"
+            label="Mật khẩu"
             name="password"
             type={showPw ? "text" : "password"}
             value={form.password}
             onChange={handleChange}
-            placeholder="Enter your password"
+            placeholder="Nhập mật khẩu của bạn"
             required
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
@@ -128,7 +128,7 @@ export default function LoginPage() {
                 className="text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors"
                 onClick={() => setRemember((prev) => !prev)}
               >
-                Remember me
+                Ghi nhớ đăng nhập
               </span>
             </div>
 
@@ -136,7 +136,7 @@ export default function LoginPage() {
               href="/forgot-password"
               className="text-[#1a1a1a] text-sm font-medium hover:text-[#1a1a1a] transition-colors"
             >
-              Forgot Password?
+              Quên mật khẩu?
             </a>
           </div>
 
@@ -147,19 +147,19 @@ export default function LoginPage() {
               type="submit"
               variant="primary"
               icon={faArrowRight}
-              label="Sign In"
+              label="Đăng Nhập"
               loading={loading}
             />
           </div>
 
           <p className="text-center text-sm text-text-secondary mt-8">
-            Don't have an account?{" "}
+            Chưa có tài khoản?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.REGISTER)}
               className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
-              Create an account
+              Đăng ký ngay
             </button>
           </p>
         </form>

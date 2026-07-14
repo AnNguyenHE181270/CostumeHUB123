@@ -38,11 +38,28 @@ export default function RegisterPage() {
     e.preventDefault();
     if (loading) return;
     if (!form.acceptTerms) {
-      setError("You must agree to the terms to continue.");
+      setError("Bạn phải đồng ý với các điều khoản để tiếp tục.");
+      return;
+    }
+    if (!form.phone.trim()) {
+      setError("Vui lòng nhập số điện thoại.");
+      return;
+    }
+    if (!form.gender) {
+      setError("Vui lòng chọn giới tính.");
+      return;
+    }
+    if (!form.dateOfBirth) {
+      setError("Vui lòng chọn ngày sinh.");
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (form.dateOfBirth > today) {
+      setError("Ngày sinh không được ở trong tương lai.");
       return;
     }
     if (form.password !== matchPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu không khớp.");
       return;
     }
     setLoading(true);
@@ -51,7 +68,7 @@ export default function RegisterPage() {
       await userService.register(form);
       navigate(`/verify-otp/${encodeURIComponent(form.email)}`, { state: { fromRegister: true } });
     } catch (err) {
-      setError(err.message || "Register failed.");
+      setError(err.message || "Đăng ký thất bại.");
     } finally {
       setLoading(false);
     }
@@ -70,31 +87,32 @@ export default function RegisterPage() {
 
         <div className="mb-10">
           <p className="text-[#1a1a1a] text-[10px] uppercase tracking-[0.3em] font-medium mb-3">
-            Start the Journey
+            Bắt đầu hành trình
           </p>
           <h2 className="text-text-primary text-4xl font-semibold tracking-tight">
-            Create Account
+            Đăng Ký Tài Khoản
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Input
-              label="Full Name"
+              label="Họ và Tên"
               name="fullName"
               type="text"
               value={form.fullName}
               onChange={handleChange}
-              placeholder="John Doe"
+              placeholder="Nguyễn Văn A"
               required
             />
             <Input
-              label="Phone Number"
+              label="Số điện thoại"
               name="phone"
               type="tel"
               value={form.phone}
               onChange={handleChange}
-              placeholder="e.g., +1 234 567 890"
+              placeholder="VD: 0912345678"
+              required
             />
           </div>
 
@@ -109,38 +127,41 @@ export default function RegisterPage() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Input label="Gender">
+            <Input label="Giới tính">
               <select
                 name="gender"
                 value={form.gender}
                 onChange={handleChange}
                 className={`${inputBase} cursor-pointer`}
+                required
               >
-                <option value="">Select Gender</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
+                <option value="">Chọn giới tính</option>
+                <option value="female">Nữ</option>
+                <option value="male">Nam</option>
+                <option value="other">Khác</option>
               </select>
             </Input>
-            <Input label="Date of Birth">
+            <Input label="Ngày sinh">
               <input
                 type="date"
                 name="dateOfBirth"
                 value={form.dateOfBirth}
                 onChange={handleChange}
                 className={inputBase}
+                max={new Date().toISOString().split("T")[0]}
+                required
               />
             </Input>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Input
-              label="Password"
+              label="Mật khẩu"
               name="password"
               type={showPw ? "text" : "password"}
               value={form.password}
               onChange={handleChange}
-              placeholder="6+ characters"
+              placeholder="Từ 6 ký tự trở lên"
               required
               rightIcon={
                 <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
@@ -148,12 +169,12 @@ export default function RegisterPage() {
               onRightIconClick={() => setShowPw(!showPw)}
             />
             <Input
-              label="Confirm Password"
+              label="Xác nhận mật khẩu"
               name="confirmPassword"
               type={showConfirmPw ? "text" : "password"}
               value={matchPassword}
               onChange={(e) => setMatchPassword(e.target.value)}
-              placeholder="Confirm Password"
+              placeholder="Xác nhận mật khẩu"
               required
               rightIcon={
                 <FontAwesomeIcon
@@ -192,19 +213,19 @@ export default function RegisterPage() {
               )}
             </button>
             <span className="text-sm text-text-secondary leading-[1.5]">
-              I agree to the{" "}
+              Tôi đồng ý với{" "}
               <button
                 type="button"
                 className="text-text-primary font-medium hover:text-[#1a1a1a] transition-colors"
               >
-                Terms of Service
+                Điều khoản Dịch vụ
               </button>{" "}
-              and{" "}
+              và{" "}
               <button
                 type="button"
                 className="text-text-primary font-medium hover:text-[#1a1a1a] transition-colors"
               >
-                Privacy Policy
+                Chính sách Bảo mật
               </button>
             </span>
           </div>
@@ -216,19 +237,19 @@ export default function RegisterPage() {
               type="submit"
               variant="primary"
               icon={faArrowRight}
-              label="Create Account"
+              label="Đăng Ký"
               loading={loading}
             />
           </div>
 
           <p className="text-center text-sm text-text-secondary">
-            Already have an account?{" "}
+            Đã có tài khoản?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.LOGIN)}
               className="text-[#1a1a1a] font-medium hover:text-[#1a1a1a] transition-colors"
             >
-              Sign In
+              Đăng nhập
             </button>
           </p>
         </form>

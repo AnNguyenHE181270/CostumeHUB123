@@ -17,6 +17,7 @@ const CategoriesPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "", parentId: "" });
+  const [isRootMode, setIsRootMode] = useState(false);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
@@ -24,6 +25,7 @@ const CategoriesPage = () => {
   const [viewingCategory, setViewingCategory] = useState(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  
   const showToast = (message, type = "success") => {
     setToast({ isVisible: true, message, type });
   };
@@ -58,7 +60,6 @@ const CategoriesPage = () => {
       }
     });
 
-    // Mặc định mở rộng tất cả danh mục gốc (tuỳ chọn)
     const initialExpanded = {};
     roots.forEach(r => initialExpanded[r._id] = true);
     setExpandedNodes(initialExpanded);
@@ -88,25 +89,26 @@ const CategoriesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredCategories]);
 
-
   // ---- Form Handlers ----
   const handleOpenAddRoot = () => {
     setEditingCategory(null);
     setFormData({ name: "", description: "", parentId: "" });
+    setIsRootMode(true);
     setIsFormOpen(true);
   };
 
   const handleOpenAddChild = (parentCat) => {
-    // Tự động mở rộng cha khi thêm con
     setExpandedNodes(prev => ({ ...prev, [parentCat._id]: true }));
     setEditingCategory(null);
     setFormData({ name: "", description: "", parentId: parentCat._id });
+    setIsRootMode(false);
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
     setFormData({ name: cat.name, description: cat.description, parentId: cat.parentId || "" });
+    setIsRootMode(false);
     setIsFormOpen(true);
   };
 
@@ -117,7 +119,11 @@ const CategoriesPage = () => {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name) return alert("Vui lòng nhập tên danh mục!");
+    // Issue 1: Chuyển alert thành thông báo Toast tiếng Việt
+    if (!formData.name) {
+      showToast("Vui lòng nhập tên danh mục!", "error");
+      return;
+    }
 
     setPendingData(formData);
     setConfirmAction(editingCategory ? 'edit' : 'add');
@@ -146,7 +152,7 @@ const CategoriesPage = () => {
       fetchCategories();
       showToast("Thêm danh mục thành công!");
     } catch (err) {
-      showToast(err.message || "Failed to add category", "error");
+      showToast(err.message || "Lỗi khi thêm danh mục", "error");
     }
   };
 
@@ -156,7 +162,7 @@ const CategoriesPage = () => {
       fetchCategories();
       showToast("Cập nhật danh mục thành công!");
     } catch (err) {
-      showToast(err.message || "Failed to edit category", "error");
+      showToast(err.message || "Lỗi khi cập nhật danh mục", "error");
     }
   };
 
@@ -166,7 +172,7 @@ const CategoriesPage = () => {
       fetchCategories();
       showToast("Thay đổi trạng thái thành công!");
     } catch (err) {
-      showToast(err.message || "Failed to toggle status", "error");
+      showToast(err.message || "Lỗi khi thay đổi trạng thái", "error");
     }
   };
 
@@ -194,9 +200,7 @@ const CategoriesPage = () => {
       const hasChildren = node.children && node.children.length > 0;
 
       return (
-        
         <React.Fragment key={node._id}>
-          
           <div
             className={`group flex items-center justify-between p-3 border-b hover:bg-[#faf9f7] transition-colors ${!node.isActive ? 'bg-[#faf9f7] opacity-60' : 'bg-white'}`}
             style={{ paddingLeft: `${level * 2 + 1}rem` }}
@@ -222,10 +226,8 @@ const CategoriesPage = () => {
               <span className={`font-medium ${!node.isActive ? 'line-through text-[#999]' : 'text-[#1a1a1a]'}`}>
                 {node.name}
               </span>
-
             </div>
                   
-
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); setViewingCategory(node); }}
@@ -234,24 +236,26 @@ const CategoriesPage = () => {
               >
                 <FontAwesomeIcon icon={faInfoCircle} />
               </button>
+              
+              {/* Issue 7: Đưa nút Sửa (Edit) ra khỏi cụm kiểm tra node.isActive để có thể sửa danh mục bị ẩn */}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
+                className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                title="Sửa danh mục"
+              >
+                <FontAwesomeIcon icon={faEdit} />
+              </button>
+
               {node.isActive && (
-                <>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
-                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
-                    title="Thêm danh mục con"
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
-                    className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
-                    title="Sửa danh mục"
-                  >
-                    <FontAwesomeIcon icon={faEdit} />
-                  </button>
-                </>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
+                  className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                  title="Thêm danh mục con"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
               )}
+              
               <button
                 onClick={(e) => { e.stopPropagation(); handleToggleStatusClick(node); }}
                 className={`p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${node.isActive ? 'text-red-600 hover:bg-red-100' : 'text-green-600 hover:bg-green-100'}`}
@@ -273,7 +277,6 @@ const CategoriesPage = () => {
 
   return (
     <div className="space-y-6">
-      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -287,55 +290,53 @@ const CategoriesPage = () => {
           <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
-                    <div className="relative flex-1 w-full">
-                      <FontAwesomeIcon
-                        icon={faSearch}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
-                      />
-                      <Input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Tìm kiếm theo tên danh mục..."
-                        className="!pl-10"
-                      />
-                    </div>
-            
-                  </div>
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm">
+      
+      <div className="bg-white rounded-2xl p-5 border border-[#eaeaea] shadow-sm flex flex-col md:flex-row items-center gap-4">
+        <div className="relative flex-1 w-full">
+          <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm theo tên danh mục..."
+            className="!pl-10"
+          />
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-2xl p-5 border border-[#eaeaea] shadow-sm">
         {tree.length > 0 ? (
-          <div className="border border-[#f0f0f0] rounded-xl overflow-hidden">
+          <div className="border border-[#eaeaea] rounded-xl overflow-hidden">
             {renderTree(tree)}
           </div>
         ) : (
           <p className="text-center text-[#999] py-10">Chưa có danh mục nào.</p>
         )}
       </div>
-      
 
       {/* Form Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 m-4">
-            <h2 className="text-xl font-bold mb-4 border-b pb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40 px-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 m-auto">
+            <h2 className="text-xl font-bold mb-5 border-b border-[#eaeaea] pb-3 text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               {editingCategory ? "Sửa danh mục" : (formData.parentId ? "Thêm danh mục con" : "Thêm danh mục gốc")}
             </h2>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
-              {(editingCategory || formData.parentId) && (
+              {!isRootMode && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-[#555]">Danh mục cha</label>
+                  <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
                   <select
                     name="parentId"
                     value={formData.parentId}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#eaeaea] rounded-lg focus:ring-2 focus:ring-[#1a1a1a] outline-none disabled:bg-[#f5f5f5] disabled:cursor-not-allowed"
-                    disabled={true}
+                    className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-lg focus:border-[#1a1a1a] outline-none transition-colors bg-white text-sm"
                   >
                     <option value="">-- Không có (Danh mục gốc) --</option>
-                    {categories.map(c => (
+                    {categories
+                      .filter(c => !editingCategory || c._id !== editingCategory._id) // Tránh tự chọn bản thân làm cha
+                      .map(c => (
                       <option key={c._id} value={c._id}>{c.name}</option>
                     ))}
                   </select>
@@ -344,9 +345,20 @@ const CategoriesPage = () => {
 
               <Input label="Mô tả" name="description" value={formData.description} onChange={handleChange} />
 
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="secondary" type="button" onClick={() => setIsFormOpen(false)}>Hủy</Button>
-                <Button variant="primary" type="submit">Xác nhận</Button>
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-[#eaeaea]">
+                <button 
+                  type="button" 
+                  onClick={() => setIsFormOpen(false)}
+                  className="px-5 py-2 border border-[#eaeaea] text-gray-700 rounded-lg hover:bg-[#faf9f7] font-medium text-sm transition-colors"
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="submit"
+                  className="px-5 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#333] font-medium text-sm transition-colors"
+                >
+                  Xác nhận
+                </button>
               </div>
             </form>
           </div>
