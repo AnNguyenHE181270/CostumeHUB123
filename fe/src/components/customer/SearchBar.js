@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes, faHistory, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { formatPrice } from "../../utils/formatters";
+import costumeService from "../../services/costume.service";
 
 export default function SearchBar() {
   const [query, setQuery] = useState("");
@@ -44,11 +45,8 @@ export default function SearchBar() {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:9999"}/api/costumes?search=${encodeURIComponent(query)}&limit=5`);
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.costumes || []);
-        }
+        const res = await costumeService.getAll({ search: query, limit: 5 });
+        setResults(res.costumes || []);
       } catch (error) {
         console.error("Search error:", error);
       } finally {

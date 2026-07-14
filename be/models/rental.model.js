@@ -31,14 +31,25 @@ const rentalSchema = new mongoose.Schema(
 
         lateFee: { type: Number, default: 0 },
         damageFee: { type: Number, default: 0 },
+        replacementFee: { type: Number, default: 0 },
         refundAmount: { type: Number, default: 0 },
+
+        // Mức độ hư hỏng khi nhận lại đồ, đối chiếu bảng đền bù ở trang "Về Chúng Tôi"
+        damageTier: {
+            type: String,
+            enum: ["none", "heavy_stain", "minor_damage", "major_damage", "total_loss"],
+            default: "none",
+        },
+        damagePercent: { type: Number, default: 0 },
+        returnEvidence: [{ type: String }],
 
         status: {
             type: String,
             enum: [
                 "pending",          // Đơn mới tạo
                 "delivering",       // Staff chuẩn bị xong ấn Confirm -> Bắn API tạo đơn GHN -> GHN đang giao
-                "renting",          // GHN báo giao thành công (Webhook) -> Khách đang thuê
+                "delivered",        // GHN báo giao thành công (Webhook) -> Chờ khách xác nhận đã nhận hàng (hoặc tự động sau 5 tiếng)
+                "renting",          // Khách đã xác nhận nhận hàng, hoặc quá 5 tiếng kể từ lúc giao -> Đang thuê
                 "returning",        // Khách yêu cầu trả đồ, đang chờ store nhận lại
                 "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc
                 "cancelled",        // Hủy đơn

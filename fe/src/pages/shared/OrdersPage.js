@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 import rentalService from "../../services/rental.service";
@@ -11,6 +12,7 @@ const removeAccents = (str) => {
 
 export default function OrdersPage() {
   const { role } = useAuth(); // Lấy role (owner hoặc staff) từ Context
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -279,11 +281,19 @@ export default function OrdersPage() {
               {role === 'staff' && (
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   {!['pending', 'cancelled'].includes(selectedOrder.status) && (
-                    <button 
+                    <button
                       className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
                       onClick={() => setIsTrackingOpen(true)}
                     >
                       Theo dõi
+                    </button>
+                  )}
+                  {selectedOrder.status === 'returning' && (
+                    <button
+                      className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
+                      onClick={() => navigate(`/staff/rentals/${selectedOrder._id}/inspect-return`, { state: { order: selectedOrder } })}
+                    >
+                      Kiểm tra đồ trả
                     </button>
                   )}
                 </div>

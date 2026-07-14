@@ -17,6 +17,7 @@ const CategoriesPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "", parentId: "" });
+  const [isRootMode, setIsRootMode] = useState(false);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState("");
@@ -92,6 +93,7 @@ const CategoriesPage = () => {
   const handleOpenAddRoot = () => {
     setEditingCategory(null);
     setFormData({ name: "", description: "", parentId: "" });
+    setIsRootMode(true);
     setIsFormOpen(true);
   };
 
@@ -99,12 +101,14 @@ const CategoriesPage = () => {
     setExpandedNodes(prev => ({ ...prev, [parentCat._id]: true }));
     setEditingCategory(null);
     setFormData({ name: "", description: "", parentId: parentCat._id });
+    setIsRootMode(false);
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
     setFormData({ name: cat.name, description: cat.description, parentId: cat.parentId || "" });
+    setIsRootMode(false);
     setIsFormOpen(true);
   };
 
@@ -320,23 +324,24 @@ const CategoriesPage = () => {
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Input label="Tên danh mục" name="name" value={formData.name} onChange={handleChange} required />
 
-              {/* Issue 2 & 4: Mở khóa chọn Danh mục cha cho mọi Form Thêm/Sửa */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
-                <select
-                  name="parentId"
-                  value={formData.parentId}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-lg focus:border-[#1a1a1a] outline-none transition-colors bg-white text-sm"
-                >
-                  <option value="">-- Không có (Danh mục gốc) --</option>
-                  {categories
-                    .filter(c => !editingCategory || c._id !== editingCategory._id) // Tránh tự chọn bản thân làm cha
-                    .map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+              {!isRootMode && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
+                  <select
+                    name="parentId"
+                    value={formData.parentId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-lg focus:border-[#1a1a1a] outline-none transition-colors bg-white text-sm"
+                  >
+                    <option value="">-- Không có (Danh mục gốc) --</option>
+                    {categories
+                      .filter(c => !editingCategory || c._id !== editingCategory._id) // Tránh tự chọn bản thân làm cha
+                      .map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <Input label="Mô tả" name="description" value={formData.description} onChange={handleChange} />
 
@@ -385,6 +390,7 @@ const CategoriesPage = () => {
         onClose={() => setViewingCategory(null)}
         category={viewingCategory}
         categories={categories}
+        onSelectCategory={setViewingCategory}
       />
     </div>
   );

@@ -27,6 +27,12 @@ export function getRentalDays(start, end) {
     return days > 0 ? days : 1;
 };
 
+// Chính sách giá thuê: 1-3 ngày đầu giữ nguyên giá, từ ngày thứ 4 trở đi mỗi ngày tăng thêm 5% giá thuê.
+export function getRentalPriceFactor(rentalDays) {
+    const extraDays = Math.max(0, (rentalDays || 0) - 3);
+    return 1 + extraDays * 0.05;
+}
+
 export function formatTime(dateString) {
     if (!dateString) return "";
     const date = new Date(dateString);

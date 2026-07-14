@@ -4,8 +4,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
-import SearchBar from "../customer/SearchBar";
 import { formatPrice } from "../../utils/formatters";
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -39,10 +39,6 @@ export default function Header() {
   ];
 
   const roleStr = (typeof role === "string" ? role : (role?.name || user?.role?.name || user?.role || "")).toLowerCase();
-  
-  if (user && (roleStr === "customer" || roleStr === "online-customer")) {
-    NAV_LINKS.push({ label: "CHAT VỚI SHOP", href: "/customer/chat" });
-  }
 
   const [categories, setCategories] = useState([]);
 
@@ -50,7 +46,7 @@ export default function Header() {
     const fetchCategories = async () => {
       try {
         const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
-        const res = await fetch(`${API_URL}/api/categories?all=true`);
+        const res = await fetch(`${API_URL}/api/categories`);
         if (res.ok) {
           const data = await res.json();
           const cats = data.categories || [];
@@ -71,8 +67,8 @@ export default function Header() {
   }, []);
 
   return (
-    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-4" : "bg-white pt-6"}`}>
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-6">
+    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-3" : "bg-white pt-4"}`}>
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-3">
 
         {/* Left: Mobile Menu Toggle or Desktop Links */}
         <div className="flex-1 flex items-center">
@@ -89,12 +85,12 @@ export default function Header() {
         </div>
 
         {/* Center: Logo */}
-        <div className="flex-shrink-0 text-center -translate-y-2">
+        <div className="flex-shrink-0 text-center">
           <Link to="/" className="flex flex-col items-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold text-black leading-none tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            <h1 className="text-2xl lg:text-3xl font-semibold text-black leading-none tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               CostumeHUB
             </h1>
-            <span className="text-[9px] tracking-[0.3em] uppercase text-gray-400 mt-2 font-medium">
+            <span className="text-[8px] tracking-[0.3em] uppercase text-gray-400 mt-1.5 font-medium">
               LUXE RENTAL
             </span>
           </Link>
@@ -102,9 +98,7 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="flex-1 flex items-center justify-end gap-6 lg:gap-8 relative z-[60]">
-          <div className="hidden lg:flex flex-1 max-w-[300px] justify-end w-full">
-            <SearchBar />
-          </div>
+          <NotificationBell />
 
           <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
             <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
@@ -142,6 +136,11 @@ export default function Header() {
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
                 </Link>
+                {(roleStr === "staff" || roleStr === "owner" || roleStr === "storeowner" || roleStr === "storeown") && (
+                  <Link to={roleStr === "staff" ? "/staff" : "/owner"} onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
+                    Trang quản trị
+                  </Link>
+                )}
                 <Link to="/rental-history" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Lịch sử thuê
                 </Link>

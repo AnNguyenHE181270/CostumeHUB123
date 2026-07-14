@@ -15,6 +15,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
+const CATEGORY_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
 export default function FrappeStyleDashboard() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
@@ -25,8 +27,9 @@ export default function FrappeStyleDashboard() {
   const [inventoryUtilizationPercentage, setInventoryUtilizationPercentage] = useState(0);
   const [totalStock, setTotalStock] = useState(0);
   const [currentlyRented, setCurrentlyRented] = useState(0);
-  const [categoryData, setCategoryData] = useState([]); 
-  const [recentOrders, setRecentOrders] = useState([]); 
+  const [categoryData, setCategoryData] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [revenueByMonth, setRevenueByMonth] = useState([]);
   
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
@@ -99,7 +102,8 @@ export default function FrappeStyleDashboard() {
       const dataInventory = await resInventory.json();                                                                                                                                                                                                                  
       const dataOrders = await resOrders.json();
                                                                                                                                                                                                                                                                         
-      setRevenue(dataRevenue.totalRevenue || 0);                                                                                                                                                                                                                                
+      setRevenue(dataRevenue.totalRevenue || 0);
+      setRevenueByMonth(dataRevenue.revenueByMonth || []);                                                                                                                                                                                                                                
       setActiveOrdersCount(dataActive.activeOrdersCount || 0);                                                                                                                                                                                                                                 
       setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);                                                                                                                                                                                                                              
       setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);                                                                                                                                                                                                              
@@ -231,7 +235,7 @@ export default function FrappeStyleDashboard() {
     );
   }
 
-  const totalCategoryCount = categoryData.reduce((sum, item) => sum + item.count, 0);
+  const totalCategoryCount = categoryData.reduce((sum, item) => sum + (item.rentedCount || 0), 0);
 
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
@@ -443,28 +447,95 @@ export default function FrappeStyleDashboard() {
               <h3 className="text-sm font-medium text-[#555]">Biểu đồ xu hướng doanh thu</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="flex-1 min-h-[180px] flex items-end justify-around gap-3 pt-2">
-              {[40, 65, 50, 80, 60, 90, 75, 95, 80, 70, 85, 92].map((h, i) => (
-                <div key={i} className="flex-1 bg-[#1a1a1a] hover:bg-[#333] rounded-sm transition-colors cursor-pointer" style={{ height: `${h}%` }}></div>
-              ))}
-            </div>
-            <div className="flex justify-around mt-2 text-[10px] text-[#999]">
-              <span>Th1</span><span>Th2</span><span>Th3</span><span>Th4</span><span>Th5</span><span>Th6</span><span>Th7</span><span>Th8</span><span>Th9</span><span>Th10</span><span>Th11</span><span>Th12</span>
-            </div>
+            {revenueByMonth.length === 0 ? (
+              <div className="flex-1 min-h-[180px] flex items-center justify-center text-xs text-[#999]">
+                Không có dữ liệu doanh thu trong khoảng thời gian này.
+              </div>
+            ) : (
+              <div className="flex-1 min-h-[180px] relative mt-2">
+                <Bar 
+                  data={{
+                    labels: revenueByMonth.map(m => `Tháng ${Number(m.month.split('-')[1])}/${m.month.split('-')[0]}`),
+                    datasets: [{
+                      label: 'Doanh thu',
+                      data: revenueByMonth.map(m => m.total),
+                      backgroundColor: '#f97316', // Changed to orange
+                      borderRadius: 4,
+                      barThickness: 30,
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(context.raw);
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      x: { grid: { display: false } },
+                      y: { beginAtZero: true, border: { display: false } }
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* --- WIDGET 5: Biểu đồ tỷ lệ danh mục thực tế --- */}
-          <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col items-center justify-center">
+          <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between w-full mb-4">
-              <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục cho thuê</h3>
+              <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục theo danh mục cha - con</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            <div className="w-28 h-28 rounded-full border-[20px] border-[#1a1a1a] relative mb-4" style={{ borderColor: '#3b82f6 #3b82f6 #f59e0b #f59e0b' }}>
-              <div className="absolute inset-0 bg-white rounded-full w-20 h-20 flex items-center justify-center text-xs font-bold text-[#555]">{totalCategoryCount}</div>
-            </div>
-            <div className="flex gap-4 text-xs text-[#555]">
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> Đồ nam</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Đồ nữ</div>
+            
+            <div className="flex-1 min-h-[200px] relative">
+              {(() => {
+                const groupedCategories = {};
+                categoryData.forEach(c => {
+                  const pName = c.parentName || c.name; // Use parentName, if none, it's a main category
+                  if (!groupedCategories[pName]) groupedCategories[pName] = [];
+                  groupedCategories[pName].push(c);
+                });
+
+                const parentLabels = Object.keys(groupedCategories);
+                const childDatasets = categoryData.map((c, i) => {
+                  const pName = c.parentName || c.name;
+                  const data = parentLabels.map(p => p === pName ? (c.rentedCount || 0) : 0);
+                  return {
+                    label: c.name,
+                    data,
+                    backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                    stack: 'Stack 0',
+                  };
+                });
+
+                return (
+                  <Bar
+                    data={{
+                      labels: parentLabels,
+                      datasets: childDatasets
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                      },
+                      scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, border: { display: false } }
+                      }
+                    }}
+                  />
+                );
+              })()}
             </div>
           </div>
 

@@ -4,9 +4,6 @@ const mock = require('mock-require');
 
 process.env.JWT_SECRET = 'test_jwt_secret';
 
-// ============================
-// Mock State
-// ============================
 
 let mockData = {};
 let bcryptCompareResult = true;
@@ -16,7 +13,6 @@ let sendEmailCalledWith = null;
 let uploadImageResult = null;
 let fsUnlinkCalledWith = null;
 
-// ---- UserMock ----
 const UserMock = function (data) { Object.assign(this, data); };
 
 UserMock.findOne = async (filter) => {
@@ -37,7 +33,20 @@ UserMock.findById = (id) => {
     return { populate: async () => mockData.user || null };
 };
 
-UserMock.find = () => {
+UserMock.find = (query) => {
+    mockData.userFindCalledWith = query;
+    if (query && query.$or && mockData.userList) {
+        const searchRegexes = query.$or.map(cond => {
+            const key = Object.keys(cond)[0];
+            const val = cond[key];
+            const pattern = typeof val === 'object' && val.$regex ? val.$regex : '';
+            return { key, regex: new RegExp(pattern, 'i') };
+        });
+        const filtered = mockData.userList.filter(u => {
+            return searchRegexes.some(({ key, regex }) => regex.test(u[key] || ''));
+        });
+        return { populate: async () => filtered };
+    }
     return { populate: async () => mockData.userList || [] };
 };
 
@@ -51,21 +60,18 @@ UserMock.findByIdAndUpdate = async (id, data, opts) => {
     return mockData.updatedUser || null;
 };
 
-// ---- RoleMock ----
 const RoleMock = function (data) { Object.assign(this, data); };
 RoleMock.findOne = async (filter) => {
     mockData.roleFindOneFilter = filter;
     return mockData.role || null;
 };
 
-// ---- bcryptMock ----
 const bcryptMock = {
     genSalt: async () => 'salt',
     hash: async (val, salt) => bcryptHashImpl(val, salt),
     compare: async (plain, hashed) => bcryptCompareResult,
 };
 
-// ---- jwtMock ----
 const jwtMock = {
     sign: (payload, secret, opts) => {
         mockData.jwtSignCalledWith = { payload, secret, opts };
@@ -74,15 +80,12 @@ const jwtMock = {
     verify: (token, secret) => ({ id: 'user_123', email: 'test@example.com' }),
 };
 
-// ---- sendEmail ----
 const sendEmailMock = async (opts) => { sendEmailCalledWith = opts; return true; };
 
-// ---- cloudinary ----
 const cloudinaryMock = {
     uploadImage: async (path) => { mockData.uploadImagePath = path; return uploadImageResult || 'http://cloudinary.com/avatar.png'; },
 };
 
-// ---- fs ----
 const fsMock = {
     unlinkSync: (path) => { fsUnlinkCalledWith = path; },
 };
@@ -108,10 +111,6 @@ function resetAll() {
     fsUnlinkCalledWith = null;
 }
 
-// ============================
-// describe: Login
-// ============================
-
 describe('Login', () => {
     beforeEach(() => {
         resetAll();
@@ -125,14 +124,13 @@ describe('Login', () => {
             role: { name: 'online-customer' },
             save: async function () { this._saved = true; },
         };
-        // login uses .select().populate() chain
         UserMock.findOne = (filter) => ({
             select: function () { return this; },
             populate: async () => mockData.user,
         });
     });
 
-    test('Account not found → throws 404', async () => {
+    test('Account not found', async () => {
         UserMock.findOne = (filter) => ({
             select: function () { return this; },
             populate: async () => null,
@@ -144,7 +142,7 @@ describe('Login', () => {
         );
     });
 
-    test('Account is blocked → throws 403', async () => {
+    test('Account is blocked', async () => {
         mockData.user.status = 'blocked';
 
         await assert.rejects(
@@ -173,7 +171,7 @@ describe('Login', () => {
         assert.strictEqual(mockData.jwtSignCalledWith.secret, 'test_jwt_secret');
     });
 
-    test('Wrong password → throws 401', async () => {
+    test('Wrong password', async () => {
         bcryptCompareResult = false;
 
         await assert.rejects(
@@ -183,39 +181,34 @@ describe('Login', () => {
     });
 });
 
-// ============================
-// describe: Register
-// ============================
-
 describe('Register', () => {
     beforeEach(() => {
         resetAll();
         mockData.role = { _id: 'role_customer_id', name: 'online-customer' };
-        // Default: no existing user
         UserMock.findOne = async (filter) => null;
         mockData.createdUser = { _id: 'new_user_id', fullName: 'Alice', email: 'new@example.com', phone: '0987654321' };
     });
 
-    test('Email already exists (active) → throws 422', async () => {
+    test('Email already exists (active)', async () => {
         UserMock.findOne = async (filter) => {
             if (filter.email) return { status: 'active' };
             return null;
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'active@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'active@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
 
-    test('Email already exists (blocked + verified) → throws 403', async () => {
+    test('Email already exists (blocked + verified)', async () => {
         UserMock.findOne = async (filter) => {
             if (filter.email) return { status: 'blocked', isEmailVerified: true };
             return null;
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'blocked@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'blocked@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 403); return true; }
         );
     });
@@ -230,7 +223,7 @@ describe('Register', () => {
         };
         mockData.updatedUser = { _id: 'existing_user_id', fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321' };
 
-        const result = await userService.register({ fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321', password: 'password123' });
+        const result = await userService.register({ fullName: 'Alice Updated', email: 'pending@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' });
 
         assert.strictEqual(result.type, 'new');
         assert.strictEqual(result.user.id, 'existing_user_id');
@@ -238,7 +231,7 @@ describe('Register', () => {
         assert.ok(mockData.userFindByIdAndUpdateCalledWith);
     });
 
-    test('Phone number already exists (active) → throws 422', async () => {
+    test('Phone number already exists (active)', async () => {
         let count = 0;
         UserMock.findOne = async (filter) => {
             count++;
@@ -248,16 +241,16 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
 
-    test('Role not found → throws 404', async () => {
+    test('Role not found', async () => {
         mockData.role = null;
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -274,7 +267,7 @@ describe('Register', () => {
         assert.strictEqual(result.nextResendIn, 60 * 1000);
     });
 
-    test('Phone already exists (separate call) → throws 422', async () => {
+    test('Phone already exists (separate call)', async () => {
         let count = 0;
         UserMock.findOne = async (filter) => {
             count++;
@@ -284,15 +277,60 @@ describe('Register', () => {
         };
 
         await assert.rejects(
-            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123' }),
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 422); return true; }
         );
     });
-});
 
-// ============================
-// describe: Forgot Password
-// ============================
+    test('Registration fails if date of birth is in the future', async () => {
+        const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // tomorrow
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female', dateOfBirth: futureDate }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Ngày sinh không thể ở trong tương lai.');
+                return true;
+            }
+        );
+    });
+
+    test('Registration fails if phone is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', password: 'password123', gender: 'female', dateOfBirth: '2000-01-01' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Số điện thoại không được để trống.');
+                return true;
+            }
+        );
+    });
+
+    test('Registration fails if gender is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', dateOfBirth: '2000-01-01' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Giới tính không được để trống.');
+                return true;
+            }
+        );
+    });
+
+    test('Registration fails if date of birth is missing', async () => {
+        await assert.rejects(
+            async () => userService.register({ fullName: 'Alice', email: 'new@example.com', phone: '0987654321', password: 'password123', gender: 'female' }),
+            (err) => {
+                assert.ok(err instanceof HttpError);
+                assert.strictEqual(err.statusCode, 400);
+                assert.strictEqual(err.message, 'Ngày sinh không được để trống.');
+                return true;
+            }
+        );
+    });
+});
 
 describe('Forgot Password', () => {
     beforeEach(() => {
@@ -310,7 +348,7 @@ describe('Forgot Password', () => {
         UserMock.findOne = async () => mockData.user;
     });
 
-    test('Email not found → throws 200 HttpError', async () => {
+    test('Email not found', async () => {
         UserMock.findOne = async () => null;
 
         await assert.rejects(
@@ -319,7 +357,7 @@ describe('Forgot Password', () => {
         );
     });
 
-    test('Email not verified → throws 403', async () => {
+    test('Email not verified', async () => {
         mockData.user.isEmailVerified = false;
 
         await assert.rejects(
@@ -328,7 +366,7 @@ describe('Forgot Password', () => {
         );
     });
 
-    test('Account blocked → throws 403', async () => {
+    test('Account blocked', async () => {
         mockData.user.status = 'blocked';
 
         await assert.rejects(
@@ -348,10 +386,6 @@ describe('Forgot Password', () => {
     });
 });
 
-// ============================
-// describe: Reset Password
-// ============================
-
 describe('Reset Password', () => {
     beforeEach(() => {
         resetAll();
@@ -366,7 +400,7 @@ describe('Reset Password', () => {
         UserMock.findOne = async () => mockData.user;
     });
 
-    test('Invalid or expired token → throws 400', async () => {
+    test('Invalid or expired token', async () => {
         UserMock.findOne = async () => null;
 
         await assert.rejects(
@@ -375,7 +409,7 @@ describe('Reset Password', () => {
         );
     });
 
-    test('Successful reset password → password updated, token cleared', async () => {
+    test('Successful reset password', async () => {
         await userService.resetPassword('valid_token', 'new_password123');
 
         assert.strictEqual(mockData.user.password, 'hashed_new_password123');
@@ -384,16 +418,11 @@ describe('Reset Password', () => {
         assert.ok(mockData.user._saved);
     });
 
-    test('Missing password field → hash is called with undefined', async () => {
+    test('Missing password field', async () => {
         await userService.resetPassword('valid_token', undefined);
-        // no throw expected
         assert.ok(mockData.user._saved);
     });
 });
-
-// ============================
-// describe: updateUsers
-// ============================
 
 describe('updateUsers', () => {
     beforeEach(() => {
@@ -403,14 +432,14 @@ describe('updateUsers', () => {
         UserMock.findOne = async () => null; // no email/phone conflict by default
     });
 
-    test('Invalid user ID → throws 400', async () => {
+    test('Invalid user ID', async () => {
         await assert.rejects(
             async () => userService.updateUsers('invalid-id', { role: 'staff' }, '507f1f77bcf86cd799439012'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
 
-    test('Updating own role/status → throws 403', async () => {
+    test('Updating own role/status', async () => {
         const userId = '507f1f77bcf86cd799439011';
         await assert.rejects(
             async () => userService.updateUsers(userId, { role: 'staff' }, userId),
@@ -418,7 +447,7 @@ describe('updateUsers', () => {
         );
     });
 
-    test('Role not found → throws 404', async () => {
+    test('Role not found', async () => {
         mockData.role = null;
 
         await assert.rejects(
@@ -427,7 +456,7 @@ describe('updateUsers', () => {
         );
     });
 
-    test('Try to assign owner role → throws 403', async () => {
+    test('Try to assign owner role', async () => {
         mockData.role = { name: 'owner' };
 
         await assert.rejects(
@@ -436,7 +465,7 @@ describe('updateUsers', () => {
         );
     });
 
-    test('Email already in use by another user → throws 400', async () => {
+    test('Email already in use by another user', async () => {
         UserMock.findOne = async (filter) => {
             if (filter.email) return { _id: 'another_user_id', email: 'taken@example.com' };
             return null;
@@ -448,7 +477,7 @@ describe('updateUsers', () => {
         );
     });
 
-    test('Phone already in use by another user → throws 400', async () => {
+    test('Phone already in use by another user', async () => {
         UserMock.findOne = async (filter) => {
             if (filter.email) return null;
             if (filter.phone) return { _id: 'another_user_id', phone: '0987654321' };
@@ -479,10 +508,6 @@ describe('updateUsers', () => {
         assert.strictEqual(mockData.userFindByIdAndUpdateCalledWith.data.avatar, 'http://cloudinary.com/new_avatar.png');
     });
 });
-
-// ============================
-// describe: Addresses Flow
-// ============================
 
 describe('Addresses Flow', () => {
     const email = 'test@example.com';
@@ -528,7 +553,7 @@ describe('Addresses Flow', () => {
             assert.strictEqual(result.receiverName, 'John Doe');
         });
 
-        test('New isDefault address → reset other defaults', async () => {
+        test('New isDefault address', async () => {
             mockData.user.addresses = [
                 { _id: { toString: () => 'addr_1' }, isDefault: true },
                 { _id: { toString: () => 'addr_2' }, isDefault: false },
@@ -572,7 +597,7 @@ describe('Addresses Flow', () => {
             );
         });
 
-        test('Address not found → throws 404', async () => {
+        test('Address not found', async () => {
             await assert.rejects(
                 async () => userService.updateAddress(email, 'addr_1', addressData),
                 (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
@@ -594,7 +619,7 @@ describe('Addresses Flow', () => {
     });
 
     describe('deleteAddress', () => {
-        test('User not found → throws 404', async () => {
+        test('User not found', async () => {
             UserMock.findOne = async () => null;
             await assert.rejects(
                 async () => userService.deleteAddress(email, 'addr_1'),
@@ -602,14 +627,14 @@ describe('Addresses Flow', () => {
             );
         });
 
-        test('Address not found → throws 404', async () => {
+        test('Address not found', async () => {
             await assert.rejects(
                 async () => userService.deleteAddress(email, 'addr_1'),
                 (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
             );
         });
 
-        test('Last address → throws 400', async () => {
+        test('Last address', async () => {
             mockData.user.addresses = [{ _id: 'addr_1', receiverName: 'Alice', toString: () => 'addr_1' }];
 
             await assert.rejects(
@@ -633,7 +658,7 @@ describe('Addresses Flow', () => {
     });
 
     describe('findAddressById', () => {
-        test('User not found → throws 404', async () => {
+        test('User not found', async () => {
             UserMock.findOne = async () => null;
             await assert.rejects(
                 async () => userService.findAddressById(email, 'addr_1'),
@@ -641,7 +666,7 @@ describe('Addresses Flow', () => {
             );
         });
 
-        test('Address not found → throws 404', async () => {
+        test('Address not found', async () => {
             await assert.rejects(
                 async () => userService.findAddressById(email, 'addr_1'),
                 (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
@@ -659,14 +684,11 @@ describe('Addresses Flow', () => {
     });
 });
 
-// ============================
-// describe: getMyProfile
-// ============================
 
 describe('getMyProfile', () => {
     beforeEach(() => { resetAll(); });
 
-    test('User not found → throws 404', async () => {
+    test('User not found', async () => {
         UserMock.findOne = () => ({ populate: async () => null });
 
         await assert.rejects(
@@ -685,10 +707,6 @@ describe('getMyProfile', () => {
     });
 });
 
-// ============================
-// describe: getAllUsers
-// ============================
-
 describe('getAllUsers', () => {
     beforeEach(() => { resetAll(); });
 
@@ -704,11 +722,43 @@ describe('getAllUsers', () => {
         assert.deepStrictEqual(result[0], { id: 'user_1', fullName: 'Alice', email: 'alice@example.com', phone: '111111', avatar: 'avatar1.png', status: 'active', role: 'online-customer', createdAt: '2026-07-01', updatedAt: '2026-07-02' });
         assert.deepStrictEqual(result[1], { id: 'user_2', fullName: 'Bob', email: 'bob@example.com', phone: '222222', avatar: 'avatar2.png', status: 'blocked', role: 'staff', createdAt: '2026-07-03', updatedAt: '2026-07-04' });
     });
-});
 
-// ============================
-// describe: verifyOtp
-// ============================
+    test('Search users by name (partial match)', async () => {
+        mockData.userList = [
+            { _id: 'user_1', fullName: 'Alice Smith', email: 'alice@example.com', phone: '111111', avatar: 'avatar1.png', status: 'active', role: { name: 'online-customer' }, createdAt: '2026-07-01', updatedAt: '2026-07-02' },
+            { _id: 'user_2', fullName: 'Bob Jones', email: 'bob@example.com', phone: '222222', avatar: 'avatar2.png', status: 'blocked', role: { name: 'staff' }, createdAt: '2026-07-03', updatedAt: '2026-07-04' },
+        ];
+
+        const result = await userService.getAllUsers('Alice');
+
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0].fullName, 'Alice Smith');
+        assert.deepStrictEqual(mockData.userFindCalledWith, {
+            $or: [
+                { fullName: { $regex: 'Alice', $options: 'i' } },
+                { email: { $regex: 'Alice', $options: 'i' } }
+            ]
+        });
+    });
+
+    test('Search users by email (partial match)', async () => {
+        mockData.userList = [
+            { _id: 'user_1', fullName: 'Alice Smith', email: 'alice@example.com', phone: '111111', avatar: 'avatar1.png', status: 'active', role: { name: 'online-customer' }, createdAt: '2026-07-01', updatedAt: '2026-07-02' },
+            { _id: 'user_2', fullName: 'Bob Jones', email: 'bob@example.com', phone: '222222', avatar: 'avatar2.png', status: 'blocked', role: { name: 'staff' }, createdAt: '2026-07-03', updatedAt: '2026-07-04' },
+        ];
+
+        const result = await userService.getAllUsers('bob@ex');
+
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0].fullName, 'Bob Jones');
+        assert.deepStrictEqual(mockData.userFindCalledWith, {
+            $or: [
+                { fullName: { $regex: 'bob@ex', $options: 'i' } },
+                { email: { $regex: 'bob@ex', $options: 'i' } }
+            ]
+        });
+    });
+});
 
 describe('verifyOtp', () => {
     beforeEach(() => {
@@ -723,33 +773,33 @@ describe('verifyOtp', () => {
         UserMock.findOne = () => ({ select: async () => mockData.existUser });
     });
 
-    test('User not found → throws 404', async () => {
+    test('User not found', async () => {
         UserMock.findOne = () => ({ select: async () => null });
         await assert.rejects(async () => userService.verifyOtp('nonexistent@example.com', '123456'), (err) => { assert.strictEqual(err.statusCode, 404); return true; });
     });
 
-    test('Already active and verified → throws 400', async () => {
+    test('Already active and verified', async () => {
         mockData.existUser.status = 'active';
         mockData.existUser.isEmailVerified = true;
         await assert.rejects(async () => userService.verifyOtp('john@example.com', '123456'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
 
-    test('User is blocked → throws 403', async () => {
+    test('User is blocked', async () => {
         mockData.existUser.status = 'blocked';
         await assert.rejects(async () => userService.verifyOtp('john@example.com', '123456'), (err) => { assert.strictEqual(err.statusCode, 403); return true; });
     });
 
-    test('OTP code is missing → throws 400', async () => {
+    test('OTP code is missing', async () => {
         mockData.existUser.otpCode = null;
         await assert.rejects(async () => userService.verifyOtp('john@example.com', '123456'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
 
-    test('OTP expired → throws 400', async () => {
+    test('OTP expired', async () => {
         mockData.existUser.otpExpires = new Date(Date.now() - 1000);
         await assert.rejects(async () => userService.verifyOtp('john@example.com', '123456'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
 
-    test('OTP invalid (bcrypt mismatch) → throws 400', async () => {
+    test('OTP invalid (bcrypt mismatch)', async () => {
         bcryptCompareResult = false;
         await assert.rejects(async () => userService.verifyOtp('john@example.com', 'wrongotp'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
@@ -766,10 +816,6 @@ describe('verifyOtp', () => {
     });
 });
 
-// ============================
-// describe: resendOtp
-// ============================
-
 describe('resendOtp', () => {
     beforeEach(() => {
         resetAll();
@@ -782,28 +828,28 @@ describe('resendOtp', () => {
         UserMock.findOne = () => ({ select: async () => mockData.existUser });
     });
 
-    test('User not found → throws 404', async () => {
+    test('User not found', async () => {
         UserMock.findOne = () => ({ select: async () => null });
         await assert.rejects(async () => userService.resendOtp('nonexistent@example.com'), (err) => { assert.strictEqual(err.statusCode, 404); return true; });
     });
 
-    test('Already active and verified → throws 400', async () => {
+    test('Already active and verified', async () => {
         mockData.existUser.status = 'active';
         mockData.existUser.isEmailVerified = true;
         await assert.rejects(async () => userService.resendOtp('john@example.com'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
 
-    test('User is blocked → throws 403', async () => {
+    test('User is blocked', async () => {
         mockData.existUser.status = 'blocked';
         await assert.rejects(async () => userService.resendOtp('john@example.com'), (err) => { assert.strictEqual(err.statusCode, 403); return true; });
     });
 
-    test('Resend before cooldown passes → throws 429', async () => {
+    test('Resend before cooldown passes', async () => {
         mockData.existUser.otpCooldownUntil = new Date(Date.now() + 30 * 1000);
         await assert.rejects(async () => userService.resendOtp('john@example.com'), (err) => { assert.strictEqual(err.statusCode, 429); return true; });
     });
 
-    test('Successfully resend OTP → updates cooldown and sends email', async () => {
+    test('Successfully resend OTP', async () => {
         await userService.resendOtp('john@example.com');
 
         assert.ok(mockData.existUser._saved);
@@ -815,18 +861,14 @@ describe('resendOtp', () => {
     });
 });
 
-// ============================
-// describe: findUserById
-// ============================
-
 describe('findUserById', () => {
     beforeEach(() => { resetAll(); });
 
-    test('Invalid ID format → throws 400', async () => {
+    test('Invalid ID format', async () => {
         await assert.rejects(async () => userService.findUserById('invalid-id'), (err) => { assert.strictEqual(err.statusCode, 400); return true; });
     });
 
-    test('User not found → throws 404', async () => {
+    test('User not found', async () => {
         UserMock.findById = () => ({ populate: async () => null });
         await assert.rejects(async () => userService.findUserById('507f1f77bcf86cd799439011'), (err) => { assert.strictEqual(err.statusCode, 404); return true; });
     });
@@ -840,10 +882,6 @@ describe('findUserById', () => {
     });
 });
 
-// ============================
-// describe: updateMyProfile
-// ============================
-
 describe('updateMyProfile', () => {
     beforeEach(() => {
         resetAll();
@@ -851,7 +889,7 @@ describe('updateMyProfile', () => {
         UserMock.findOne = async () => mockData.user;
     });
 
-    test('User not found → throws 404', async () => {
+    test('User not found', async () => {
         UserMock.findOne = async () => null;
         await assert.rejects(async () => userService.updateMyProfile('nonexistent@example.com', { fullName: 'New Name' }), (err) => { assert.strictEqual(err.statusCode, 404); return true; });
     });

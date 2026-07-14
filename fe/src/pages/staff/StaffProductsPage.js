@@ -61,7 +61,7 @@ export default function StaffProductsPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const data = await categoryService.getAll({ all: true });
+        const data = await categoryService.getAll();
         setCategories(data.categories || []);
       } catch (err) {
         console.error("Lỗi tải danh mục:", err);
