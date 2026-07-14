@@ -25,7 +25,7 @@ export default function ProductsPage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await categoryService.getAll({ all: true });
+      const data = await categoryService.getAll();
       setCategories(data.categories || []);
     } catch (err) {
       setToast({ isVisible: true, type: "error", message: err.message || "Network error while loading data." });

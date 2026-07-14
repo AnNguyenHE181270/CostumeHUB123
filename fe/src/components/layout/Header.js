@@ -46,7 +46,7 @@ export default function Header() {
     const fetchCategories = async () => {
       try {
         const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
-        const res = await fetch(`${API_URL}/api/categories?all=true`);
+        const res = await fetch(`${API_URL}/api/categories`);
         if (res.ok) {
           const data = await res.json();
           const cats = data.categories || [];
