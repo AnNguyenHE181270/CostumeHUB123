@@ -46,4 +46,36 @@ const deleteCostume = async (req, res, next) => {
   }
 };
 
-module.exports = { getAllCostumes, getCostumeById, createCostume, updateCostume, deleteCostume };
+const getMaintenanceCostumes = async (req, res, next) => {
+  try {
+    if (!['staff', 'owner'].includes(req.userData.role)) {
+      throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
+    }
+    const costumes = await costumeService.getMaintenanceCostumes();
+    res.status(200).json({ success: true, costumes });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lấy danh sách sản phẩm bảo trì thất bại.', 500));
+  }
+};
+
+const completeMaintenance = async (req, res, next) => {
+  try {
+    if (!['staff', 'owner'].includes(req.userData.role)) {
+      throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
+    }
+    const costume = await costumeService.completeMaintenance(req.params.id);
+    res.status(200).json({ success: true, message: 'Đã cập nhật sản phẩm về trạng thái sẵn sàng cho thuê.', costume });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Cập nhật trạng thái bảo trì thất bại.', 500));
+  }
+};
+
+module.exports = {
+  getAllCostumes,
+  getCostumeById,
+  createCostume,
+  updateCostume,
+  deleteCostume,
+  getMaintenanceCostumes,
+  completeMaintenance,
+};

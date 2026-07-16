@@ -7,7 +7,6 @@ import { formatPrice } from "../../utils/formatters";
 const STATUS_MAP = {
   rented: { label: "Đang Thuê", color: "bg-red-500" },
   maintenance: { label: "Bảo Trì", color: "bg-amber-500" },
-  dry_cleaning: { label: "Bảo Trì", color: "bg-amber-500" },
 };
 
 const PLACEHOLDER_IMG =

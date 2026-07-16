@@ -20,7 +20,6 @@ const COSTUME_STATUS_LABEL = {
   available: "Còn hàng",
   rented: "Đang thuê",
   maintenance: "Bảo trì",
-  dry_cleaning: "Bảo trì",
   hidden: "Đang ẩn",
   out_of_stock: "Hết hàng",
 };
@@ -262,7 +261,7 @@ export default function ExportPage() {
     try {
       const data = await costumeService.getAll({
         limit: 1000,
-        status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden",
+        status: "available,out_of_stock,maintenance,rented,hidden",
       });
       const products = data.costumes || [];
 
