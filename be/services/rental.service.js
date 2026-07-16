@@ -56,6 +56,7 @@ const autoUpdateDeliveredStatus = async () => {
   });
   for (const rental of expiredRentals) {
     rental.status = 'renting';
+    rental.rentingAt = new Date(rental.deliveredAt.getTime() + 5 * 60 * 60 * 1000);
     await rental.save();
     await notifyOrderStatus(rental, 'renting');
   }
@@ -331,6 +332,7 @@ const confirmReceipt = async (orderId, customerId) => {
   if (!order) throw new HttpError('Không tìm thấy đơn hàng.', 404);
   if (order.status !== 'delivered') throw new HttpError('Đơn hàng không ở trạng thái đang giao tới.', 400);
   order.status = 'renting';
+  order.rentingAt = new Date();
   await order.save();
   await notifyOrderStatus(order, 'renting');
   return order;
@@ -826,4 +828,5 @@ module.exports = {
   requestReturn,
   inspectReturn,
   extendRental,
+  notifyOrderStatus,
 };

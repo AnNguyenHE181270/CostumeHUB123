@@ -97,6 +97,9 @@ const rentalSchema = new mongoose.Schema(
             type: String,
             default: ""
         },
+        rentingAt: {
+            type: Date
+        },
     },
     {
         timestamps: true,

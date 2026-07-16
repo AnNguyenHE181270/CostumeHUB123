@@ -3,6 +3,9 @@ const Issue = require('../models/issue.model');
 const Rental = require('../models/rental.model');
 const HttpError = require('../models/http-error.model');
 const { uploadIssueMedia } = require('./cloudinary.service');
+const User = require('../models/user.model');
+const Costume = require('../models/costume.model');
+const sendEmail = require('./email.service');
 
 const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
   const cleanupFiles = () => {
@@ -31,6 +34,19 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
 
   const existingIssue = await Issue.findOne({ rentalId });
   if (existingIssue) { cleanupFiles(); throw new HttpError('Đơn hàng thuê này đã có khiếu nại.', 400); }
+
+  if (!['delivered', 'renting'].includes(rental.status)) {
+    cleanupFiles();
+    throw new HttpError('Đơn hàng ở trạng thái này không thể khiếu nại.', 400);
+  }
+
+  if (rental.status === 'renting' && rental.rentingAt) {
+    const fiveHoursMs = 5 * 60 * 60 * 1000;
+    if (Date.now() - new Date(rental.rentingAt).getTime() > fiveHoursMs) {
+      cleanupFiles();
+      throw new HttpError('Đơn hàng đã quá hạn khiếu nại (tối đa 5 tiếng kể từ khi bắt đầu thuê).', 400);
+    }
+  }
 
   const isCustomerOwner = rental.customerId.toString() === userId;
   const isStaffOrOwner = ['staff', 'owner'].includes(userRole);
@@ -87,4 +103,153 @@ const cancelIssue = async (id, userId) => {
   return issue;
 };
 
-module.exports = { createIssue, getIssueByRentalId, cancelIssue };
+const getAllIssues = async (query) => {
+  const { status } = query || {};
+  const filter = {};
+  if (status && status !== 'all') {
+    filter.status = status;
+  }
+  return Issue.find(filter)
+    .populate({
+      path: 'rentalId',
+      populate: { path: 'customerId', select: 'fullName email phone' }
+    })
+    .sort({ createdAt: -1 });
+};
+
+const handleIssue = async (id, { action, rejectReason }, files, userId, userRole) => {
+  const cleanupFiles = () => {
+    for (const file of files) {
+      if (fs.existsSync(file.path)) {
+        try { fs.unlinkSync(file.path); } catch (err) { console.error('Lỗi khi xóa tệp tạm:', err.message); }
+      }
+    }
+  };
+
+  const issue = await Issue.findById(id);
+  if (!issue) { cleanupFiles(); throw new HttpError('Không tìm thấy khiếu nại.', 404); }
+  if (!['pending', 'escalated'].includes(issue.status)) {
+    cleanupFiles();
+    throw new HttpError('Khiếu nại đã được xử lý hoặc đã hủy.', 400);
+  }
+
+  const rental = await Rental.findById(issue.rentalId);
+  if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn hàng thuê tương ứng.', 404); }
+
+  // Ràng buộc 1: Nếu đơn hàng > 1tr VNĐ và vai trò là staff:
+  // Staff chỉ được phép đẩy lên owner (escalate), không được đồng ý/từ chối!
+  if (rental.totalAmount > 1000000 && userRole === 'staff') {
+    if (action !== 'escalate') {
+      cleanupFiles();
+      throw new HttpError('Đơn hàng có giá trị cao (>1 triệu VNĐ), nhân viên phải đẩy lên cho chủ cửa hàng xử lý.', 403);
+    }
+  }
+
+  // Tải bằng chứng chụp bởi nhân viên / chủ cửa hàng
+  const evidenceUrls = [];
+  for (const file of files) {
+    try {
+      const url = await uploadIssueMedia(file.path);
+      evidenceUrls.push(url);
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    } catch (uploadError) {
+      console.error('Lỗi khi tải lên Cloudinary:', uploadError);
+      cleanupFiles();
+      throw new HttpError('Có lỗi xảy ra khi tải ảnh/video lên đám mây.', 500);
+    }
+  }
+
+  const { notifyOrderStatus } = require('./rental.service');
+
+  if (action === 'escalate') {
+    if (userRole !== 'staff') {
+      throw new HttpError('Chỉ nhân viên mới có quyền đẩy khiếu nại lên chủ cửa hàng.', 403);
+    }
+    issue.status = 'escalated';
+    issue.rejectEvidence = evidenceUrls; // Lưu hình ảnh/video khi nhận lại đồ từ khách hàng
+    await issue.save();
+    return issue;
+  }
+
+  if (action === 'accept') {
+    // 1. Hoàn tiền cọc và tiền thuê vào ví
+    const user = await User.findById(rental.customerId);
+    if (user) {
+      user.balance = (user.balance || 0) + rental.totalAmount;
+      await user.save();
+    }
+
+    // 2. Hoàn trả tồn kho trang phục
+    for (const item of rental.items) {
+      const costume = await Costume.findById(item.costume);
+      if (costume) {
+        const variant = costume.variants.find((v) => v.size === item.size);
+        if (variant) {
+          variant.availableStock += item.quantity;
+          await costume.save();
+        }
+      }
+    }
+
+    issue.status = 'accepted';
+    await issue.save();
+
+    rental.status = 'completed';
+    rental.paymentStatus = 'refunded';
+    await rental.save();
+    await notifyOrderStatus(rental, 'completed');
+
+    // Gửi email thông báo cho khách hàng
+    try {
+      if (user?.email) {
+        await sendEmail({
+          to: user.email,
+          subject: 'CostumeHUB — Khiếu nại đơn hàng đã được chấp nhận',
+          text: `Chào ${user.fullName},\n\nKhiếu nại cho đơn hàng ${rental._id} của bạn đã được chấp nhận. Hệ thống đã hoàn trả đầy đủ ${rental.totalAmount.toLocaleString('vi-VN')} đ (bao gồm cả tiền cọc và tiền thuê) vào tài khoản ví của bạn.`,
+          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Khiếu nại cho đơn hàng <b>${rental._id}</b> của bạn đã được chấp nhận.</p><p>Hệ thống đã hoàn trả đầy đủ <b>${rental.totalAmount.toLocaleString('vi-VN')} đ</b> (bao gồm tiền cọc và tiền thuê) vào tài khoản ví của bạn.</p>`,
+        });
+      }
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email đồng ý khiếu nại:', mailError);
+    }
+
+    return issue;
+  }
+
+  if (action === 'reject') {
+    if (!rejectReason) {
+      throw new HttpError('Lý do từ chối khiếu nại là bắt buộc.', 400);
+    }
+    issue.status = 'rejected';
+    issue.rejectReason = rejectReason;
+    if (evidenceUrls.length > 0) {
+      issue.rejectEvidence = evidenceUrls;
+    }
+    await issue.save();
+
+    // Giữ đơn hàng ở trạng thái renting
+    rental.status = 'renting';
+    await rental.save();
+    await notifyOrderStatus(rental, 'renting');
+
+    // Gửi email từ chối kèm lý do + ảnh/video
+    const user = await User.findById(rental.customerId);
+    try {
+      if (user?.email) {
+        const mediaList = evidenceUrls.map(url => `<li><a href="${url}">${url.endsWith('.mp4') ? 'Xem Video' : 'Xem Ảnh'}</a></li>`).join('');
+        await sendEmail({
+          to: user.email,
+          subject: 'CostumeHUB — Khiếu nại đơn hàng bị từ chối',
+          text: `Chào ${user.fullName},\n\nKhiếu nại cho đơn hàng ${rental._id} của bạn đã bị từ chối.\nLý do từ chối: ${rejectReason}\nBằng chứng đính kèm: ${evidenceUrls.join(', ')}`,
+          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Khiếu nại cho đơn hàng <b>${rental._id}</b> của bạn đã bị từ chối.</p><p>Lý do từ chối: <span style="color:red">${rejectReason}</span></p><p>Bằng chứng đính kèm từ cửa hàng:</p><ul>${mediaList}</ul>`,
+        });
+      }
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email từ chối khiếu nại:', mailError);
+    }
+
+    return issue;
+  }
+};
+
+module.exports = { createIssue, getIssueByRentalId, cancelIssue, getAllIssues, handleIssue };

@@ -27,8 +27,16 @@ const issueSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "rejected", "accepted"],
+      enum: ["pending", "rejected", "accepted", "cancelled", "escalated"],
       default: "pending",
+    },
+    rejectReason: {
+      type: String,
+      default: "",
+    },
+    rejectEvidence: {
+      type: [String],
+      default: [],
     },
   },
   {

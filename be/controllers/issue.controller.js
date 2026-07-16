@@ -28,4 +28,28 @@ const cancelIssue = async (req, res, next) => {
   }
 };
 
-module.exports = { createIssue, getIssueByRentalId, cancelIssue };
+const getAllIssues = async (req, res, next) => {
+  try {
+    if (!['staff', 'owner'].includes(req.userData.role)) {
+      throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
+    }
+    const issues = await issueService.getAllIssues(req.query);
+    res.status(200).json({ success: true, issues });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lấy danh sách khiếu nại thất bại.', 500));
+  }
+};
+
+const handleIssue = async (req, res, next) => {
+  try {
+    if (!['staff', 'owner'].includes(req.userData.role)) {
+      throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
+    }
+    const issue = await issueService.handleIssue(req.params.id, req.body, req.files || [], req.userData.id, req.userData.role);
+    res.status(200).json({ success: true, message: 'Xử lý khiếu nại thành công.', issue });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Xử lý khiếu nại thất bại.', 500));
+  }
+};
+
+module.exports = { createIssue, getIssueByRentalId, cancelIssue, getAllIssues, handleIssue };

@@ -28,10 +28,12 @@ export const ROUTES = {
   STORE_OWNER_INVENTORY: "inventory",
   STORE_OWNER_ORDERS: "orders",
   STORE_OWNER_EXPORT: "export",
+  STORE_OWNER_ISSUES: "issues",
 
   // Staff Routes
   STAFF_BASE: "/staff",
   STAFF_ORDERS: "orders",
   STAFF_PRODUCTS: "products",
+  STAFF_ISSUES: "issues",
   // STAFF_DASHBOARD: "/staff/dashboard",
 };
