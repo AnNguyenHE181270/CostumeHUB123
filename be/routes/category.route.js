@@ -1,6 +1,8 @@
 const express = require("express");
 const { getAllCategories, createCategory, updateCategory, toggleCategoryStatus } = require("../controllers/category.controller");
 const { checkAuth, isOwner } = require("../middlewares/check-auth.middleware"); // Đã import thêm isOwner có sẵn của team
+const validate = require('../middlewares/validate.middleware');
+const { createCategoryValidator, updateCategoryValidator, toggleCategoryStatusValidator } = require('../validators/category.validator');
 const router = express.Router();
 
 // 1. Middleware bảo vệ API lấy "toàn bộ" danh mục
@@ -29,8 +31,8 @@ router.use(checkAuth);
 // Bắt buộc phải là Chủ cửa hàng (Sử dụng luôn middleware có sẵn của team)
 router.use(isOwner); 
 
-router.post("/", createCategory);
-router.put("/:id", updateCategory);
-router.put("/:id/toggle", toggleCategoryStatus);
+router.post("/", createCategoryValidator, validate, createCategory);
+router.put("/:id", updateCategoryValidator, validate, updateCategory);
+router.put("/:id/toggle", toggleCategoryStatusValidator, validate, toggleCategoryStatus);
 
 module.exports = router;
