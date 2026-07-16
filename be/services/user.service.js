@@ -114,7 +114,7 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 
 const register = async ({ fullName, email, phone, password, gender, dateOfBirth }) => {
   const now = new Date();
-  
+
   if (!phone) throw new HttpError('Số điện thoại không được để trống.', 400);
   if (!gender) throw new HttpError('Giới tính không được để trống.', 400);
   if (!dateOfBirth) throw new HttpError('Ngày sinh không được để trống.', 400);

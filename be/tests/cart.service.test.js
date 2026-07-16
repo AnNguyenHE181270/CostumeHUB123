@@ -224,37 +224,40 @@ describe('addCart', () => {
     test('Push new item into existing cart (no matching item)', async () => {
         const cart = makeCart([]);
         mockData.cart = cart;
-        mockData.updatedCart = makeCart([makeCartItem()]);
 
         await addCart(USER_ID, basePayload());
 
-        assert.ok(mockData.lastFindOneAndUpdateUpdate.$push);
+        assert.strictEqual(cart.items.length, 1);
+        assert.ok(cart._saved);
     });
 
     test('Add item with same costume, size, and date → $inc quantity', async () => {
         const existingItem = makeCartItem({ size: 'M', quantity: 2, startDate: new Date(START), endDate: new Date(END) });
-        mockData.cart = makeCart([existingItem]);
-        mockData.updatedCart = makeCart([{ ...existingItem, quantity: 3 }]);
+        const cart = makeCart([existingItem]);
+        mockData.cart = cart;
 
         await addCart(USER_ID, basePayload());
 
-        assert.ok(mockData.lastFindOneAndUpdateUpdate.$inc);
+        assert.strictEqual(cart.items[0].quantity, 3);
+        assert.ok(cart._saved);
     });
 
     test('Add item with different size → $push new item', async () => {
         const existingItemM = makeCartItem({ size: 'M', quantity: 1, startDate: new Date(START), endDate: new Date(END) });
-        mockData.cart = makeCart([existingItemM]);
-        mockData.updatedCart = makeCart([existingItemM, makeCartItem({ size: 'L' })]);
+        const cart = makeCart([existingItemM]);
+        mockData.cart = cart;
 
         await addCart(USER_ID, { costumeId: COSTUME_ID, size: 'L', quantity: 1, startDate: START.toISOString(), endDate: END.toISOString() });
 
-        assert.ok(mockData.lastFindOneAndUpdateUpdate.$push);
+        assert.strictEqual(cart.items.length, 2);
+        assert.strictEqual(cart.items[1].size, 'L');
+        assert.ok(cart._saved);
     });
 
     test('Add item with same costume + size but different date → $push new item', async () => {
         const existingItem = makeCartItem({ size: 'M', quantity: 1, startDate: new Date(START), endDate: new Date(END) });
-        mockData.cart = makeCart([existingItem]);
-        mockData.updatedCart = makeCart([existingItem, makeCartItem()]);
+        const cart = makeCart([existingItem]);
+        mockData.cart = cart;
 
         const event2Start = new Date(START);
         event2Start.setDate(event2Start.getDate() + 14);
@@ -263,7 +266,8 @@ describe('addCart', () => {
 
         await addCart(USER_ID, { costumeId: COSTUME_ID, size: 'M', quantity: 1, startDate: event2Start.toISOString(), endDate: event2End.toISOString() });
 
-        assert.ok(mockData.lastFindOneAndUpdateUpdate.$push);
+        assert.strictEqual(cart.items.length, 2);
+        assert.ok(cart._saved);
     });
 
     test('Overlapping date on same costume+size → updates existing item instead of throwing', async () => {

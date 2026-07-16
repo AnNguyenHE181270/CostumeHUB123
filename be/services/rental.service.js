@@ -80,6 +80,7 @@ const getRentalHistory = async (userId) => {
     totalPrice: order.totalAmount,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
+      costumeId: item.costume?._id,
       costumeName: item.costume?.name || 'Sản phẩm',
       image: item.costume?.images?.[0] || '',
       size: item.size,
@@ -126,6 +127,7 @@ const getOrderDetail = async (orderId, customerId) => {
     orderDate: order.createdAt,
     rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
     items: order.items.map((item) => ({
+      costumeId: item.costume?._id,
       costumeName: item.costume.name,
       image: item.costume.images[0],
       size: item.size,
