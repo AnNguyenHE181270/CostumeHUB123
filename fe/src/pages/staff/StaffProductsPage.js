@@ -11,18 +11,19 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import CategoryDropdown from "../../components/ui/CategoryDropdown";
+import DataTable from "../../components/ui/DataTable";
 import costumeService from "../../services/costume.service";
 import categoryService from "../../services/category.service";
 
 // Trạng thái sản phẩm
 const COSTUME_STATUSES = [
-  { value: "",              label: "Tất cả trạng thái" },
-  { value: "available",     label: "Còn trống",        bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
-  { value: "rented",        label: "Đang thuê",        bg: "bg-blue-100",    text: "text-blue-700",    dot: "bg-blue-500" },
-  { value: "maintenance",   label: "Bảo trì",          bg: "bg-yellow-100",  text: "text-yellow-700",  dot: "bg-yellow-500" },
-  { value: "dry_cleaning",  label: "Giặt hấp",         bg: "bg-purple-100",  text: "text-purple-700",  dot: "bg-purple-500" },
-  { value: "out_of_stock",  label: "Hết hàng",         bg: "bg-red-100",     text: "text-red-700",     dot: "bg-red-500" },
-  { value: "hidden",        label: "Ẩn",               bg: "bg-gray-100",    text: "text-gray-500",    dot: "bg-gray-400" },
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "available", label: "Còn trống", bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
+  { value: "rented", label: "Đang thuê", bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-500" },
+  { value: "maintenance", label: "Bảo trì", bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-500" },
+  { value: "dry_cleaning", label: "Giặt hấp", bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-500" },
+  { value: "out_of_stock", label: "Hết hàng", bg: "bg-red-100", text: "text-red-700", dot: "bg-red-500" },
+  { value: "hidden", label: "Ẩn", bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
 ];
 
 const getStatusStyle = (status) => {
@@ -50,7 +51,7 @@ export default function StaffProductsPage() {
 
   // Detail modal
   const [selectedCostume, setSelectedCostume] = useState(null);
-  
+
   // Search Autocomplete State
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -151,19 +152,6 @@ export default function StaffProductsPage() {
 
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
-
-      {/* === TOOLBAR === */}
-      <div className="bg-white border-b border-[#eaeaea] px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Tra cứu sản phẩm
-          </h1>
-          <span className="text-xs bg-[#f5f5f5] text-[#555] px-2 py-1 rounded">
-            {pagination.totalItems} sản phẩm
-          </span>
-        </div>
-      </div>
-
       {/* === CONTENT === */}
       <div className="flex-1 p-6 overflow-y-auto">
 
@@ -185,7 +173,7 @@ export default function StaffProductsPage() {
                 }}
                 className="w-full bg-white border border-[#eaeaea] rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#1a1a1a] transition-colors"
               />
-              
+
               {showSuggestions && searchInput.trim() && (
                 <div className="absolute top-full left-0 w-full mt-2 bg-white border border-[#eaeaea] rounded-lg shadow-xl overflow-hidden">
                   {isSearching ? (
@@ -195,7 +183,7 @@ export default function StaffProductsPage() {
                   ) : suggestions.length > 0 ? (
                     <ul>
                       {suggestions.map(s => (
-                        <li 
+                        <li
                           key={s._id}
                           className="px-4 py-3 hover:bg-[#fafafa] cursor-pointer flex items-center gap-3 border-b border-[#f5f5f5] last:border-0"
                           onClick={() => {
@@ -212,7 +200,7 @@ export default function StaffProductsPage() {
                           </div>
                         </li>
                       ))}
-                      <li 
+                      <li
                         className="px-4 py-3 text-center bg-[#fafafa] text-[12px] font-semibold text-[#666] hover:text-[#1a1a1a] cursor-pointer"
                         onClick={handleSearch}
                       >
@@ -230,10 +218,10 @@ export default function StaffProductsPage() {
 
             {/* Category Filter */}
             <div className="relative z-20">
-              <CategoryDropdown 
-                categories={categories} 
-                value={selectedCategory} 
-                onChange={setSelectedCategory} 
+              <CategoryDropdown
+                categories={categories}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
               />
             </div>
 
@@ -275,160 +263,148 @@ export default function StaffProductsPage() {
           </div>
         </div>
 
-        {/* --- Product Grid --- */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <FontAwesomeIcon icon={faSpinner} className="text-2xl text-[#1a1a1a] animate-spin" />
-          </div>
-        ) : costumes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#999]">
-            <FontAwesomeIcon icon={faBox} className="text-4xl mb-3" />
-            <p className="text-sm">Không tìm thấy sản phẩm nào</p>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-[#eaeaea] mb-8 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">
-                    <th className="p-4 font-semibold whitespace-nowrap">Sản phẩm</th>
-                    <th className="p-4 font-semibold whitespace-nowrap">Danh mục</th>
-                    <th className="p-4 font-semibold whitespace-nowrap">Giá thuê</th>
-                    <th className="p-4 font-semibold whitespace-nowrap">Tồn kho</th>
-                    <th className="p-4 font-semibold whitespace-nowrap text-center">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {costumes.map((costume) => {
-                    const statusStyle = getStatusStyle(costume.status);
-                    const available = getTotalStock(costume);
-                    const total = getTotalCapacity(costume);
+        {/* --- Product Table using DataTable --- */}
+        <DataTable
+          isLoading={loading}
+          isEmpty={!loading && costumes.length === 0}
+          emptyMessage="Không tìm thấy sản phẩm nào"
+          footer={
+            pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 py-4 border-t border-[#eaeaea]">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
+                </button>
 
-                    return (
-                      <tr
-                        key={costume._id}
-                        onClick={() => setSelectedCostume(costume)}
-                        className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "..." ? (
+                      <span key={`dots-${i}`} className="px-2 text-[#999] text-sm">...</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${p === page
+                            ? "bg-[#1a1a1a] text-white"
+                            : "border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5]"
+                          }`}
                       >
-                        {/* Sản phẩm (Ảnh + Tên) */}
-                        <td className="p-4 text-sm text-[#555] min-w-[250px]">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-16 rounded bg-[#f5f5f5] overflow-hidden flex-shrink-0 border border-[#eaeaea]">
-                              {costume.images?.[0] ? (
-                                <img
-                                  src={costume.images[0]}
-                                  alt={costume.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[#ccc]">
-                                  <FontAwesomeIcon icon={faBox} />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "16px" }}>
-                                {costume.name}
-                              </h3>
-                              <p className="text-xs text-[#999] mt-1">{costume.sku || "N/A"}</p>
-                            </div>
+                        {p}
+                      </button>
+                    )
+                  )}
+
+                <button
+                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page >= pagination.totalPages}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                </button>
+              </div>
+            )
+          }
+        >
+          <thead>
+            <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Sản phẩm</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Danh mục</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Giá thuê</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Tồn kho</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {costumes.map((costume) => {
+              const statusStyle = getStatusStyle(costume.status);
+              const available = getTotalStock(costume);
+              const total = getTotalCapacity(costume);
+
+              return (
+                <tr
+                  key={costume._id}
+                  onClick={() => setSelectedCostume(costume)}
+                  className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
+                >
+                  {/* Sản phẩm (Ảnh + Tên) */}
+                  <td className="py-4 px-6 text-sm text-[#555] min-w-[250px] text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-16 rounded bg-[#f5f5f5] overflow-hidden flex-shrink-0 border border-[#eaeaea]">
+                        {costume.images?.[0] ? (
+                          <img
+                            src={costume.images[0]}
+                            alt={costume.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#ccc]">
+                            <FontAwesomeIcon icon={faBox} />
                           </div>
-                        </td>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "16px" }}>
+                          {costume.name}
+                        </h3>
+                        <p className="text-xs text-[#999] mt-1">{costume.sku || "N/A"}</p>
+                      </div>
+                    </div>
+                  </td>
 
-                        {/* Danh mục */}
-                        <td className="p-4 text-sm text-[#555]">
-                          <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-medium">
-                            {costume.categoryId?.name || "Chưa phân loại"}
-                          </span>
-                        </td>
+                  {/* Danh mục */}
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-medium">
+                      {costume.categoryId?.name || "Chưa phân loại"}
+                    </span>
+                  </td>
 
-                        {/* Giá thuê */}
-                        <td className="p-4 text-sm text-[#555]">
-                          <span className="font-semibold text-[#1a1a1a]">
-                            {formatPrice(costume.rentalRates?.pricePerDay || costume.pricePerDay || costume.price)}
-                          </span>
-                          <span className="text-xs text-[#999] ml-1">/ngày</span>
-                        </td>
+                  {/* Giá thuê */}
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    <span className="font-semibold text-[#1a1a1a]">
+                      {formatPrice(costume.rentalRates?.pricePerDay || costume.pricePerDay || costume.price)}
+                    </span>
+                    <span className="text-xs text-[#999] ml-1">/ngày</span>
+                  </td>
 
-                        {/* Tồn kho */}
-                        <td className="p-4 text-sm text-[#555]">
-                          <div className="flex flex-col gap-1.5 w-24">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-medium text-[#1a1a1a]">{available}</span>
-                              <span className="text-[#999]">/ {total}</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-[#f0f0f0] rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  available === 0 ? "bg-red-400" : available <= 2 ? "bg-yellow-400" : "bg-emerald-400"
-                                }`}
-                                style={{ width: `${total > 0 ? (available / total) * 100 : 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
+                  {/* Tồn kho */}
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    <div className="flex flex-col gap-1.5 w-24">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-[#1a1a1a]">{available}</span>
+                        <span className="text-[#999]">/ {total}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#f0f0f0] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${available === 0 ? "bg-red-400" : available <= 2 ? "bg-yellow-400" : "bg-emerald-400"
+                            }`}
+                          style={{ width: `${total > 0 ? (available / total) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
 
-                        {/* Trạng thái */}
-                        <td className="p-4 text-sm text-center">
-                          <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 min-w-[110px] ${statusStyle.bg} ${statusStyle.text} border-transparent`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                            {statusStyle.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                  {/* Trạng thái */}
+                  <td className="py-4 px-6 text-sm text-center">
+                    <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusStyle.bg} ${statusStyle.text} border-transparent`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                      {statusStyle.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
 
-        {/* --- Pagination --- */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pb-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-            </button>
-
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
-              .reduce((acc, p, i, arr) => {
-                if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, i) =>
-                p === "..." ? (
-                  <span key={`dots-${i}`} className="px-2 text-[#999] text-sm">...</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      p === page
-                        ? "bg-[#1a1a1a] text-white"
-                        : "border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5]"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-
-            <button
-              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-              disabled={page >= pagination.totalPages}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* === DETAIL MODAL === */}

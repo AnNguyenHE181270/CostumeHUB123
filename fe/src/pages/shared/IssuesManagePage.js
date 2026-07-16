@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import issueService from "../../services/issue.service";
+import DataTable from "../../components/ui/DataTable";
+import Pagination from "../../components/ui/Pagination";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleExclamation,
@@ -678,158 +680,113 @@ export default function IssuesManagePage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table using DataTable */}
       <div className="flex-1">
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#eaeaea] border-t-[#1a1a1a]" />
-          </div>
-        ) : paginated.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-[#f0f0f0] flex items-center justify-center">
-              <FontAwesomeIcon
-                icon={faCircleExclamation}
-                className="text-[#ccc] text-2xl"
+        <DataTable
+          isLoading={loading}
+          isEmpty={!loading && filtered.length === 0}
+          emptyMessage="Không tìm thấy khiếu nại nào"
+          footer={
+            totalPages > 1 && (
+              <Pagination
+                displayCount={paginated.length}
+                totalCount={filtered.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
               />
-            </div>
-            <p className="text-[#aaa] text-sm">Không có khiếu nại nào</p>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-[#eaeaea] bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#f0f0f0] bg-[#fafafa]">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Mã đơn
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Khách hàng
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Yêu cầu
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Giá trị
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Ngày gửi
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-[#888] uppercase tracking-wider">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f5f5f5]">
-                {paginated.map((iss) => {
-                  const rental = iss.rentalId;
-                  const customer = rental?.customerId;
-                  const isHighValue = (rental?.totalAmount || 0) > 1000000;
-                  const canHandle =
-                    iss.status === "pending" || iss.status === "escalated";
-                  return (
-                    <tr
-                      key={iss._id}
-                      className="hover:bg-[#fafafa] transition-colors"
+            )
+          }
+        >
+          <thead>
+            <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Mã đơn</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Khách hàng</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Yêu cầu</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Giá trị</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Ngày gửi</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">Trạng thái</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map((iss) => {
+              const rental = iss.rentalId;
+              const customer = rental?.customerId;
+              const isHighValue = (rental?.totalAmount || 0) > 1000000;
+              const canHandle =
+                iss.status === "pending" || iss.status === "escalated";
+              return (
+                <tr
+                  key={iss._id}
+                  className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors"
+                >
+                  <td className="py-4 px-6 text-sm text-[#1a1a1a] text-left">
+                    <span className="font-mono text-xs text-[#555] font-semibold">
+                      #{rental?._id?.slice(-6).toUpperCase() || "—"}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-sm text-[#1a1a1a] text-left">
+                    <p className="font-semibold text-[#1a1a1a] text-[13px]">
+                      {customer?.fullName || "—"}
+                    </p>
+                    <p className="text-[11px] text-[#aaa]">
+                      {customer?.email || ""}
+                    </p>
+                  </td>
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 text-[11px] font-semibold border border-amber-100">
+                      {RESOLUTION_LABELS[iss.resolution] || iss.resolution}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    <span
+                      className={`text-[13px] font-bold ${isHighValue ? "text-red-600" : "text-[#333]"}`}
                     >
-                      <td className="px-4 py-3.5">
-                        <span className="font-mono text-xs text-[#555] font-semibold">
-                          #{rental?._id?.slice(-6).toUpperCase() || "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <p className="font-semibold text-[#1a1a1a] text-[13px]">
-                          {customer?.fullName || "—"}
-                        </p>
-                        <p className="text-[11px] text-[#aaa]">
-                          {customer?.email || ""}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 text-[11px] font-semibold border border-amber-100">
-                          {RESOLUTION_LABELS[iss.resolution] || iss.resolution}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`text-[13px] font-bold ${isHighValue ? "text-red-600" : "text-[#333]"
-                            }`}
+                      {formatCurrency(rental?.totalAmount)}
+                      {isHighValue && (
+                        <span className="ml-1 text-[10px]">⚠️</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-sm text-[#555] text-left">
+                    {formatDate(iss.createdAt)}
+                  </td>
+                  <td className="py-4 px-6 text-sm text-center">
+                    <span
+                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[iss.status]}`}
+                    >
+                      {STATUS_LABELS[iss.status] || iss.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-sm text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedIssue(iss)}
+                        title="Xem chi tiết"
+                        className="w-8 h-8 rounded-lg border border-[#eaeaea] flex items-center justify-center text-[#888] hover:bg-[#f5f5f5] hover:text-[#1a1a1a] transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faEye} size="xs" />
+                      </button>
+                      {canHandle && (
+                        <button
+                          onClick={() => setHandleTarget(iss)}
+                          title="Xử lý khiếu nại"
+                          className="w-8 h-8 rounded-lg border border-[#1a1a1a] bg-[#1a1a1a] flex items-center justify-center text-white hover:bg-[#333] transition-colors"
                         >
-                          {formatCurrency(rental?.totalAmount)}
-                          {isHighValue && (
-                            <span className="ml-1 text-[10px]">⚠️</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-[#555] text-[12px]">
-                        {formatDate(iss.createdAt)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span
-                          className={`inline-block px-3 py-1.5 rounded-xl text-[11px] font-semibold ${STATUS_STYLES[iss.status]}`}
-                        >
-                          {STATUS_LABELS[iss.status] || iss.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setSelectedIssue(iss)}
-                            title="Xem chi tiết"
-                            className="w-8 h-8 rounded-lg border border-[#eaeaea] flex items-center justify-center text-[#888] hover:bg-[#f5f5f5] hover:text-[#1a1a1a] transition-colors"
-                          >
-                            <FontAwesomeIcon icon={faEye} size="xs" />
-                          </button>
-                          {canHandle && (
-                            <button
-                              onClick={() => setHandleTarget(iss)}
-                              title="Xử lý khiếu nại"
-                              className="w-8 h-8 rounded-lg border border-[#1a1a1a] bg-[#1a1a1a] flex items-center justify-center text-white hover:bg-[#333] transition-colors"
-                            >
-                              <FontAwesomeIcon
-                                icon={faCircleExclamation}
-                                size="xs"
-                              />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="border-t border-[#f0f0f0] px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-[#aaa]">
-                  {(currentPage - 1) * itemsPerPage + 1}–
-                  {Math.min(currentPage * itemsPerPage, filtered.length)} /{" "}
-                  {filtered.length}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    className="w-7 h-7 rounded-lg border border-[#eaeaea] flex items-center justify-center text-[#888] hover:bg-[#f5f5f5] disabled:opacity-40 transition-colors"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} size="xs" />
-                  </button>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    className="w-7 h-7 rounded-lg border border-[#eaeaea] flex items-center justify-center text-[#888] hover:bg-[#f5f5f5] disabled:opacity-40 transition-colors"
-                  >
-                    <FontAwesomeIcon icon={faChevronRight} size="xs" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                          <FontAwesomeIcon
+                            icon={faCircleExclamation}
+                            size="xs"
+                          />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
       </div>
 
       {/* Detail Drawer */}
