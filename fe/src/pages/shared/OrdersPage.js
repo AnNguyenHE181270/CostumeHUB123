@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
+import DataTable from "../../components/ui/DataTable";
+import SearchInput from "../../components/ui/SearchInput";
 import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
@@ -23,17 +25,22 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const [loading, setLoading] = useState(true);
+
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
 
   const fetchOrders = async () => {
     try {
+      setLoading(true);
       const data = await rentalService.getAllOrders();
       const validOrders = Array.isArray(data) ? data : (data.rentals || data.data || []);
       setOrders(validOrders);
     } catch (error) {
       console.error("Lỗi fetch đơn hàng", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,54 +79,7 @@ export default function OrdersPage() {
     }
   };
 
-  const columns = [
-    { header: "Mã Đơn", accessor: (row) => <span className="font-medium text-[#555]">{row._id ? row._id.slice(-6).toUpperCase() : "N/A"}</span> },
-    { header: "Khách hàng", accessor: (row) => row.shippingAddress?.receiverName || row.customerId?.fullName || "Khách vãng lai" },
-    { header: "Trang phục", accessor: (row) => row.items && row.items.length > 0 ? row.items.map(i => i.costume?.name).join(', ') : "N/A" },
-    { header: "Ngày lấy", accessor: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : "N/A" },
-    { header: "Ngày trả", accessor: (row) => row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : "N/A" },
-    { header: "Tổng tiền", accessor: (row) => <span className="font-semibold text-[#555]">{row.totalAmount?.toLocaleString('vi-VN') || 0} đ</span> },
-    { 
-      header: "Trạng thái", 
-      accessor: (row) => {
-        if (row.status === 'pending' && role === 'staff') {
-          return (
-            <div className="inline-flex w-[110px] gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <button 
-                className="flex-[2] py-1.5 border border-transparent bg-emerald-100 text-emerald-700 font-semibold rounded-md hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap text-center"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  try {
-                    await rentalService.confirmPreparation(row._id);
-                    setToast({ show: true, message: "Xác nhận thành công!", type: "success" });
-                    fetchOrders();
-                  } catch (error) {
-                    setToast({ show: true, message: error.response?.data?.message || "Lỗi xác nhận", type: "error" });
-                  }
-                }}
-              >
-                Xác nhận
-              </button>
-              <button 
-                className="flex-[1] py-1.5 border border-transparent bg-red-100 text-red-700 font-semibold rounded-md hover:bg-red-200 transition-colors text-[11px] whitespace-nowrap text-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleUpdateStatus(row._id, 'cancelled');
-                }}
-              >
-                Hủy
-              </button>
-            </div>
-          );
-        }
-        return (
-          <span className={`px-2.5 py-1.5 border rounded-md text-[12px] font-semibold inline-block text-center min-w-[110px] ${getStatusColor(row.status)}`}>
-            {getStatusLabel(row.status)}
-          </span>
-        );
-      }
-    }
-  ];
+
 
   // Logic Xử lý Lọc, Tìm kiếm và Sắp xếp
   let processedOrders = orders.filter((order) => {
@@ -145,77 +105,39 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="space-y-6 relative">
-      {/* Sticky Top Header & Filters */}
-      <div className="sticky top-0 z-20 bg-surface pt-6 pb-4 -mx-6 px-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Quản lý Đơn Thuê
-          </h1>
-        </div>
+    <div className="space-y-6">
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center">
+        <SearchInput
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Tìm mã đơn, tên khách hàng..."
+          wrapperClassName="w-full sm:w-72"
+        />
 
-        {/* Toolbar: Filter & Search & Sort */}
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4">
-          <input
-            type="text"
-            placeholder="Tìm mã đơn, tên khách hàng..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2.5 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-72 bg-white"
-          />
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48 bg-white"
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="delivered">Đã giao hàng</option>
-            <option value="renting">Đang thuê</option>
-            <option value="returning">Đang trả hàng</option>
-            <option value="completed">Hoàn tất</option>
-            <option value="cancelled">Đã hủy</option>
-            <option value="overdue">Quá hạn</option>
-          </select>
-        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555] w-full sm:w-48 cursor-pointer"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="pending">Chờ xử lý</option>
+          <option value="delivered">Đã giao hàng</option>
+          <option value="renting">Đang thuê</option>
+          <option value="returning">Đang trả hàng</option>
+          <option value="completed">Hoàn tất</option>
+          <option value="cancelled">Đã hủy</option>
+          <option value="overdue">Quá hạn</option>
+        </select>
       </div>
 
-      {/* Table Data wrapped in a white card for clean styling */}
-      <div className="overflow-hidden rounded-lg border border-[#eaeaea] bg-white">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">
-              {columns.map((col, idx) => (
-                <th key={idx} className="p-4 font-semibold whitespace-nowrap">{col.header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentOrders.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="text-center py-8 text-gray-400 text-sm">Không có đơn hàng nào</td>
-              </tr>
-            ) : (
-              currentOrders.map((row, idx) => (
-                <tr 
-                  key={row._id} 
-                  onClick={() => setSelectedOrder(row)}
-                  className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
-                >
-                  {columns.map((col, cIdx) => (
-                    <td key={cIdx} className="p-4 text-sm text-[#555]">
-                      {typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor]}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-
-        {processedOrders.length > 0 && (
-          <div className="p-4 border-t border-[#eaeaea]">
+      {/* Table Data styled exactly like AccountsPage */}
+      <DataTable
+        isLoading={loading}
+        isEmpty={!loading && processedOrders.length === 0}
+        emptyMessage="Không tìm thấy đơn hàng nào phù hợp."
+        footer={
+          processedOrders.length > 0 && (
             <Pagination
               displayCount={currentOrders.length}
               totalCount={processedOrders.length}
@@ -223,9 +145,79 @@ export default function OrdersPage() {
               totalPages={totalPages}
               onPageChange={(page) => setCurrentPage(page)}
             />
-          </div>
-        )}
-      </div>
+          )
+        }
+      >
+        <thead>
+          <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Mã Đơn</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Khách hàng</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Trang phục</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Ngày lấy</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Ngày trả</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Tổng tiền</th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {currentOrders.map((row) => (
+            <tr
+              key={row._id}
+              onClick={() => setSelectedOrder(row)}
+              className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors cursor-pointer"
+            >
+              <td className="py-4 px-6 text-sm text-[#1a1a1a] text-left">
+                <span className="font-medium text-[#555]">{row._id ? row._id.slice(-6).toUpperCase() : "N/A"}</span>
+              </td>
+              <td className="py-4 px-6 text-sm text-[#1a1a1a] text-left">
+                {row.shippingAddress?.receiverName || row.customerId?.fullName || "Khách vãng lai"}
+              </td>
+              <td className="py-4 px-6 text-sm text-[#555] text-left max-w-xs truncate">
+                {row.items && row.items.length > 0 ? row.items.map(i => i.costume?.name).join(', ') : "N/A"}
+              </td>
+              <td className="py-4 px-6 text-sm text-[#555] text-left">
+                {row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : "N/A"}
+              </td>
+              <td className="py-4 px-6 text-sm text-[#555] text-left">
+                {row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : "N/A"}
+              </td>
+              <td className="py-4 px-6 text-sm text-[#555] text-left">
+                <span className="font-semibold text-[#1a1a1a]">{row.totalAmount?.toLocaleString('vi-VN') || 0} đ</span>
+              </td>
+              <td className="py-4 px-6 text-left" onClick={(e) => e.stopPropagation()}>
+                {row.status === 'pending' && role === 'staff' ? (
+                  <div className="inline-flex gap-1.5">
+                    <button
+                      className="py-1.5 px-3 border border-transparent bg-emerald-100 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
+                      onClick={async () => {
+                        try {
+                          await rentalService.confirmPreparation(row._id);
+                          setToast({ show: true, message: "Xác nhận thành công!", type: "success" });
+                          fetchOrders();
+                        } catch (error) {
+                          setToast({ show: true, message: error.response?.data?.message || "Lỗi xác nhận", type: "error" });
+                        }
+                      }}
+                    >
+                      Xác nhận
+                    </button>
+                    <button
+                      className="py-1.5 px-3 border border-transparent bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
+                      onClick={() => handleUpdateStatus(row._id, 'cancelled')}
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                ) : (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(row.status)}`}>
+                    {getStatusLabel(row.status)}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </DataTable>
 
       {/* MODAL CHI TIẾT ĐƠN HÀNG */}
       {selectedOrder && (
@@ -241,10 +233,10 @@ export default function OrdersPage() {
                   <li key={idx} className="flex justify-between items-center text-sm border-b border-gray-200 pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
-                        <img 
-                          src={item.costume?.images?.[0] || item.image || "https://placehold.co/40x48"} 
-                          alt={item.costume?.name || item.costumeName} 
-                          className="w-full h-full object-cover" 
+                        <img
+                          src={item.costume?.images?.[0] || item.image || "https://placehold.co/40x48"}
+                          alt={item.costume?.name || item.costumeName}
+                          className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="flex flex-col">
@@ -281,7 +273,7 @@ export default function OrdersPage() {
                   {getStatusLabel(selectedOrder.status)}
                 </span>
               </div>
-              
+
               {/* CHỈ STAFF MỚI THẤY CÁC NÚT THAO TÁC NÀY */}
               {role === 'staff' && (
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">

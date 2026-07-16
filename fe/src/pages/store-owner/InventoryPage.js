@@ -43,25 +43,25 @@ export default function InventoryPage() {
   // Enrich each product with aggregate inventory numbers
   const enriched = useMemo(() => products.map(p => {
     const variants = p.variants || [];
-    const totalStock  = variants.reduce((s, v) => s + (v.totalStock || 0), 0);
-    const availStock  = variants.reduce((s, v) => s + (v.availableStock || 0), 0);
+    const totalStock = variants.reduce((s, v) => s + (v.totalStock || 0), 0);
+    const availStock = variants.reduce((s, v) => s + (v.availableStock || 0), 0);
     return {
       ...p,
-      _totalStock:  totalStock,
-      _availStock:  availStock,
+      _totalStock: totalStock,
+      _availStock: availStock,
       _rentedStock: totalStock - availStock,
-      _sizeCount:   variants.length,
+      _sizeCount: variants.length,
       _isOutOfStock: availStock === 0 && totalStock > 0,
-      _isEmpty:      totalStock === 0,
+      _isEmpty: totalStock === 0,
     };
   }), [products]);
 
   const filtered = useMemo(() => enriched.filter(p => {
     const matchSearch = p.name?.toLowerCase().includes(search.toLowerCase());
     const matchStock =
-      filterStock === "all"          ? true :
-      filterStock === "out_of_stock" ? p._isOutOfStock :
-      filterStock === "in_stock"     ? p._availStock > 0 : true;
+      filterStock === "all" ? true :
+        filterStock === "out_of_stock" ? p._isOutOfStock :
+          filterStock === "in_stock" ? p._availStock > 0 : true;
     return matchSearch && matchStock;
   }), [enriched, search, filterStock]);
 
@@ -74,9 +74,9 @@ export default function InventoryPage() {
 
   // Summary stats at top
   const stats = useMemo(() => ({
-    totalProducts:  enriched.length,
-    totalItems:     enriched.reduce((s, p) => s + p._totalStock, 0),
-    availItems:     enriched.reduce((s, p) => s + p._availStock, 0),
+    totalProducts: enriched.length,
+    totalItems: enriched.reduce((s, p) => s + p._totalStock, 0),
+    availItems: enriched.reduce((s, p) => s + p._availStock, 0),
     outOfStockCount: enriched.filter(p => p._isOutOfStock).length,
   }), [enriched]);
 
@@ -93,7 +93,7 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
 
-      {/* ── Page header ── */}
+      {/* ── Page header ──
       <div>
         <h2
           className="text-2xl font-semibold tracking-tight text-[#1a1a1a]"
@@ -104,7 +104,7 @@ export default function InventoryPage() {
         <p className="text-[#999] text-sm mt-1">
           Theo dõi tồn kho và cập nhật số lượng từng sản phẩm
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

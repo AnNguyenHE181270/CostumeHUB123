@@ -102,11 +102,10 @@ function MediaViewer({ urls = [], title = "Bằng chứng" }) {
             <button
               key={i}
               onClick={() => setActiveIdx(i)}
-              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                i === activeIdx
-                  ? "border-[#1a1a1a]"
-                  : "border-transparent opacity-60 hover:opacity-100"
-              }`}
+              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === activeIdx
+                ? "border-[#1a1a1a]"
+                : "border-transparent opacity-60 hover:opacity-100"
+                }`}
             >
               {isVideo(url) ? (
                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -224,9 +223,8 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
             <div className="flex justify-between">
               <span className="text-[#888]">Tổng tiền</span>
               <span
-                className={`font-bold ${
-                  isHighValue ? "text-red-600" : "text-[#1a1a1a]"
-                }`}
+                className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
+                  }`}
               >
                 {formatCurrency(rental?.totalAmount)}
               </span>
@@ -249,21 +247,19 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                 <>
                   <button
                     onClick={() => setAction("accept")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                      action === "accept"
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "accept"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                      }`}
                   >
                     <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
                   </button>
                   <button
                     onClick={() => setAction("reject")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                      action === "reject"
-                        ? "bg-red-600 text-white border-red-600"
-                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "reject"
+                      ? "bg-red-600 text-white border-red-600"
+                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                      }`}
                   >
                     <FontAwesomeIcon icon={faTimes} /> Từ chối
                   </button>
@@ -272,11 +268,10 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
               {canEscalate && (
                 <button
                   onClick={() => setAction("escalate")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                    action === "escalate"
-                      ? "bg-violet-600 text-white border-violet-600"
-                      : "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "escalate"
+                    ? "bg-violet-600 text-white border-violet-600"
+                    : "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100"
+                    }`}
                 >
                   <FontAwesomeIcon icon={faArrowUp} /> Đẩy lên Owner
                 </button>
@@ -460,9 +455,8 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
               <div className="flex justify-between">
                 <span className="text-[#888]">Tổng tiền</span>
                 <span
-                  className={`font-bold ${
-                    isHighValue ? "text-red-600" : "text-[#1a1a1a]"
-                  }`}
+                  className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
+                    }`}
                 >
                   {formatCurrency(rental?.totalAmount)}
                   {isHighValue && " ⚠️"}
@@ -631,11 +625,10 @@ export default function IssuesManagePage() {
       {/* Toast */}
       {toast.show && (
         <div
-          className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg border text-sm font-medium transition-all ${
-            toast.type === "success"
-              ? "bg-white text-emerald-700 border-emerald-200"
-              : "bg-white text-red-700 border-red-200"
-          }`}
+          className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg border text-sm font-medium transition-all ${toast.type === "success"
+            ? "bg-white text-emerald-700 border-emerald-200"
+            : "bg-white text-red-700 border-red-200"
+            }`}
         >
           <FontAwesomeIcon
             icon={
@@ -646,22 +639,7 @@ export default function IssuesManagePage() {
         </div>
       )}
 
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-[#f7f7f7] pt-6 pb-4 -mx-6 px-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-[#1a1a1a] flex items-center gap-2">
-              <FontAwesomeIcon
-                icon={faCircleExclamation}
-                className="text-amber-500"
-              />
-              Quản lý khiếu nại
-            </h1>
-            <p className="text-sm text-[#888] mt-0.5">
-              {filtered.length} khiếu nại
-            </p>
-          </div>
-        </div>
+      <div className="sticky top-0 z-20 bg-white pt-6 pb-4 -mx-6 px-6">
 
         {/* Status filter tabs */}
         <div className="flex gap-1.5 flex-wrap mb-3">
@@ -672,11 +650,10 @@ export default function IssuesManagePage() {
                 setStatusFilter(tab.key);
                 setCurrentPage(1);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === tab.key
-                  ? "bg-[#1a1a1a] text-white"
-                  : "bg-white text-[#555] border border-[#eaeaea] hover:border-[#ccc]"
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${statusFilter === tab.key
+                ? "bg-[#1a1a1a] text-white"
+                : "bg-white text-[#555] border border-[#eaeaea] hover:border-[#ccc]"
+                }`}
             >
               {tab.label}
             </button>
@@ -777,9 +754,8 @@ export default function IssuesManagePage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <span
-                          className={`text-[13px] font-bold ${
-                            isHighValue ? "text-red-600" : "text-[#333]"
-                          }`}
+                          className={`text-[13px] font-bold ${isHighValue ? "text-red-600" : "text-[#333]"
+                            }`}
                         >
                           {formatCurrency(rental?.totalAmount)}
                           {isHighValue && (

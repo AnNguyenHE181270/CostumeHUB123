@@ -1,10 +1,11 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPlus, faSearch, faEdit,
+  faPlus, faEdit,
   faUserShield, faUserTie, faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { useMemo, useState, useEffect } from "react";
 import Button from "../../components/ui/Button";
+import SearchInput from "../../components/ui/SearchInput";
 import DataTable from "../../components/ui/DataTable";
 import Pagination from "../../components/ui/Pagination";
 import { useNavigate } from "react-router-dom";
@@ -88,32 +89,14 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="space-y-6 pt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Quản Lý Tài Khoản
-          </h2>
-          <p className="text-[#999] text-sm mt-1">
-            Quản lý thông tin và quyền truy cập của người dùng trên hệ thống
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
 
       <div className="flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
-          <FontAwesomeIcon
-            icon={faSearch}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm theo tên hoặc email..."
-            className="w-full pl-10 pr-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent text-sm"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm kiếm theo tên hoặc email..."
+        />
 
         <select
           value={filterRole}

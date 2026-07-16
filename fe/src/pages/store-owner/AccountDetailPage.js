@@ -26,14 +26,14 @@ export default function AccountDetailPage() {
   const [avatarFile, setAvatarFile] = useState(null);
 
   const [form, setForm] = useState({
-      phone: "",
-      email: "",
-      fullName: "",
-      gender: "",
-      dateOfBirth: "",
-      avatar: "",
-      status: "",
-      role: "",
+    phone: "",
+    email: "",
+    fullName: "",
+    gender: "",
+    dateOfBirth: "",
+    avatar: "",
+    status: "",
+    role: "",
   });
   const { id } = useParams();
 
@@ -83,15 +83,15 @@ export default function AccountDetailPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (submitting) return;
-  
+
     try {
       setSubmitting(true);
       setToast({ isVisible: false, message: "", type: "success" });
-        
+
       const formData = new FormData();
-      
+
       Object.keys(form).forEach(key => {
         if (key !== 'avatar' && form[key] !== null && form[key] !== undefined) {
           formData.append(key, form[key]);
@@ -127,39 +127,20 @@ export default function AccountDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-6">
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="text-[12px] uppercase tracking-[0.1em] font-semibold text-[#555] hover:text-[#1a1a1a] transition-colors flex items-center gap-2 mb-4"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} /> Quay lại
-          </button>
-          <h2 className="text-3xl font-bold text-[#1a1a1a] tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Hồ Sơ Tài Khoản
-          </h2>
-          <p className="text-[#999] text-[14px] mt-2">
-            Quản lý thông tin và quyền truy cập của người dùng này.
-          </p>
-        </div>
-      </div>
-
       <div className="bg-white border border-[#eaeaea] p-8 md:p-10 h-full">
-        <Toast 
-          isVisible={toast.isVisible} 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast({ ...toast, isVisible: false })} 
+        <Toast
+          isVisible={toast.isVisible}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ ...toast, isVisible: false })}
         />
 
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
-            
+
             {/* Left Column: Avatar & System Access */}
             <div className="flex flex-col lg:w-[280px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
-              
+
               <div className="flex flex-col items-center mb-10">
                 <div className="relative group mb-6">
                   <div className="w-40 h-40 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
@@ -170,7 +151,7 @@ export default function AccountDetailPage() {
                         {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
                       </span>
                     )}
-                    
+
                     <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
                       <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-2xl mb-2" />
                       <span className="text-[#1a1a1a] text-[11px] font-bold uppercase tracking-wider">Chọn ảnh</span>
@@ -232,11 +213,10 @@ export default function AccountDetailPage() {
                         name="status"
                         value={form.status}
                         onChange={handleChange}
-                        className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200 focus:ring-1 appearance-none ${
-                          form.status === "blocked" 
-                            ? "border-red-200 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500" 
-                            : "bg-surface border-borderorder text-text-primary focus:border-primary-500 focus:bg-background focus:ring-primary-500"
-                        }`}
+                        className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200 focus:ring-1 appearance-none ${form.status === "blocked"
+                          ? "border-red-200 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500"
+                          : "bg-surface border-borderorder text-text-primary focus:border-primary-500 focus:bg-background focus:ring-primary-500"
+                          }`}
                       >
                         <option value="active">Hoạt động (Active)</option>
                         <option value="pending">Chờ xử lý (Pending)</option>
@@ -254,7 +234,7 @@ export default function AccountDetailPage() {
 
             {/* Right Column: Form Section */}
             <div className="flex-1">
-              
+
               {/* Thông tin cá nhân (Read Only) */}
               <div>
                 <h4 className="text-[14px] font-bold text-[#1a1a1a] uppercase tracking-[0.1em] mb-6 pb-2 border-b border-[#eaeaea]">
@@ -328,13 +308,13 @@ export default function AccountDetailPage() {
 
                   <div className="md:col-span-2 pt-6 mt-2 border-t border-[#eaeaea] flex items-center justify-end">
                     <Button type="submit" variant="primary" disabled={submitting}>
-                      <FontAwesomeIcon icon={faSave} className="mr-2" /> 
+                      <FontAwesomeIcon icon={faSave} className="mr-2" />
                       {submitting ? "Đang lưu..." : "Lưu Thay Đổi"}
                     </Button>
                   </div>
                 </div>
               </div>
-              
+
             </div>
           </div>
         </form>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye, faFolder, faFolderOpen, faChevronRight, faChevronDown, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import CategoryDetailModal from "../../components/store-owner/CategoryDetailModal";
 import Input from "../../components/ui/Input";
+import SearchInput from "../../components/ui/SearchInput";
 
 import Toast from "../../components/ui/Toast";
 import categoryService from "../../services/category.service";
@@ -25,7 +26,7 @@ const CategoriesPage = () => {
   const [viewingCategory, setViewingCategory] = useState(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
-  
+
   const showToast = (message, type = "success") => {
     setToast({ isVisible: true, message, type });
   };
@@ -227,7 +228,7 @@ const CategoriesPage = () => {
                 {node.name}
               </span>
             </div>
-                  
+
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); setViewingCategory(node); }}
@@ -236,7 +237,7 @@ const CategoriesPage = () => {
               >
                 <FontAwesomeIcon icon={faInfoCircle} />
               </button>
-              
+
               {/* Issue 7: Đưa nút Sửa (Edit) ra khỏi cụm kiểm tra node.isActive để có thể sửa danh mục bị ẩn */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleOpenEdit(node); }}
@@ -255,7 +256,7 @@ const CategoriesPage = () => {
                   <FontAwesomeIcon icon={faPlus} />
                 </button>
               )}
-              
+
               <button
                 onClick={(e) => { e.stopPropagation(); handleToggleStatusClick(node); }}
                 className={`p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${node.isActive ? 'text-red-600 hover:bg-red-100' : 'text-green-600 hover:bg-green-100'}`}
@@ -277,36 +278,19 @@ const CategoriesPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Sticky Top Header & Search Bar */}
-      <div className="sticky top-0 z-20 bg-surface pt-6 pb-4 -mx-6 px-6 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Quản lý Danh mục
-            </h2>
-            <p className="text-[#999] text-sm mt-1">
-              Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn danh mục
-            </p>
-          </div>
-          <div>
+      <div className="grid grid-cols-6 gap-4 items-center">
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm theo tên danh mục..."
+            wrapperClassName="col-span-1"
+          />
+          <div className="col-start-6 col-span-1">
             <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />
           </div>
         </div>
-        
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="relative flex-1 w-full">
-            <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
-            <Input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm theo tên danh mục..."
-              className="!pl-10"
-            />
-          </div>
-        </div>
-      </div>
-      
+
+
       {/* Category Tree List without outer redundant border card */}
       <div>
         {tree.length > 0 ? (
@@ -343,8 +327,8 @@ const CategoriesPage = () => {
                     {categories
                       .filter(c => !editingCategory || c._id !== editingCategory._id) // Tránh tự chọn bản thân làm cha
                       .map(c => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
-                    ))}
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
                   </select>
                 </div>
               )}
@@ -352,14 +336,14 @@ const CategoriesPage = () => {
               <Input label="Mô tả" name="description" value={formData.description} onChange={handleChange} />
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-[#eaeaea]">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsFormOpen(false)}
                   className="px-5 py-2 border border-[#eaeaea] text-gray-700 rounded-lg hover:bg-[#faf9f7] font-medium text-sm transition-colors"
                 >
                   Hủy
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="px-5 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#333] font-medium text-sm transition-colors"
                 >

@@ -29,11 +29,11 @@ export default function Button({
       className={`${baseClasses} ${variants[variant] || variants.primary} ${className}`}
       {...props}
     >
-      {loading ? "Loading..." : (children || label)}
-
       {icon && !loading && (
         <FontAwesomeIcon icon={icon} className="text-[14px]" />
       )}
+
+      {loading ? "Loading..." : (children || label)}
     </button>
   );
 }

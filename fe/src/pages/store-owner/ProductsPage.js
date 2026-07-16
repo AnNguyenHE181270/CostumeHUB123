@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faEyeSlash, faEye, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faEyeSlash, faEye } from "@fortawesome/free-solid-svg-icons";
 import Button from "../../components/ui/Button";
 import ProductFormModal from "../../components/store-owner/ProductFormModal";
 import ProductDetailModal from "../../components/store-owner/ProductDetailModal";
@@ -9,6 +9,7 @@ import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 
 import Input from "../../components/ui/Input";
+import SearchInput from "../../components/ui/SearchInput";
 import DataTable from "../../components/ui/DataTable";
 import CategoryDropdown from "../../components/ui/CategoryDropdown";
 import costumeService from "../../services/costume.service";
@@ -273,36 +274,18 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-6 pt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Quản lý Sản phẩm
-          </h2>
-          <p className="text-[#999] text-sm mt-1">
-            Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn sản phẩm
-          </p>
-        </div>
-        <div>
-          <Button icon={faPlus} label="Thêm sản phẩm" variant="primary" onClick={handleOpenAddForm} />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="relative w-full md:col-span-1">
-          <FontAwesomeIcon
-            icon={faSearch}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm"
-          />
-          <Input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm sản phẩm..."
-            className="!pl-10 w-full"
-          />
-        </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-6 gap-4 items-center">
+        {/* Search — đầu dòng, 1/6 */}
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm kiếm sản phẩm..."
+          wrapperClassName="col-span-1"
+        />
 
-        <div className="relative z-20 w-full">
+        {/* Category filter */}
+        <div className="relative z-20 col-span-1">
           <CategoryDropdown
             categories={categories}
             value={filterCatagory}
@@ -310,7 +293,8 @@ export default function ProductsPage() {
           />
         </div>
 
-        <div className="w-full">
+        {/* Status filter */}
+        <div className="col-span-1">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -326,7 +310,8 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        <div className="w-full">
+        {/* Sort filter */}
+        <div className="col-span-1">
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
@@ -337,7 +322,16 @@ export default function ProductsPage() {
             <option value="price_desc">Giá thuê: Cao đến Thấp</option>
           </select>
         </div>
+
+        {/* Spacer */}
+        <div className="col-span-1" />
+
+        {/* Button — cuối dòng, 1/6 */}
+        <div className="col-span-1">
+          <Button icon={faPlus} label="Thêm sản phẩm" variant="primary" onClick={handleOpenAddForm} />
+        </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-[#eaeaea] rounded-2xl p-4 shadow-sm">

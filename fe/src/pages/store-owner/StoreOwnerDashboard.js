@@ -21,7 +21,7 @@ export default function FrappeStyleDashboard() {
   const [loadingPage, setLoadingPage] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
-  
+
   const [revenue, setRevenue] = useState(0);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   const [totalActiveCostumes, setTotalActiveCostumes] = useState(0);
@@ -31,13 +31,13 @@ export default function FrappeStyleDashboard() {
   const [categoryData, setCategoryData] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [revenueByMonth, setRevenueByMonth] = useState([]);
-  
+
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
-  
+
   // FIX: Sửa giá trị mặc định thành "Tất cả thời gian" để không bị lọt dữ liệu cũ
   const [dateRange, setDateRange] = useState("Tất cả thời gian");
-  
+
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
@@ -73,66 +73,65 @@ export default function FrappeStyleDashboard() {
     };
   }, [dateRange, customStartDate, customEndDate]);
 
-  const fetchDashboardData = useCallback(async () => {                                                                                                                                                                                                                 
-    try {                                                                                                                                                                                                                                                               
-      setLoadingPage(true);                                                                                                                                                                                                                                             
-      setToast({ isVisible: false, message: "", type: "success" });                                                                                                                                                                                                    
-                                                                                                                                                                                                                                                                        
-      const headers = {                                                                                                                                                                                                                                                 
-        "Content-Type": "application/json",                                                                                                                                                                                                                             
-        Authorization: `Bearer ${token}`,                                                                                                                                                                                                                               
-      };                                                                                                                                                                                                                                                                
-      
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoadingPage(true);
+      setToast({ isVisible: false, message: "", type: "success" });
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       const { startDate, endDate } = getDateParams();
       const queryParams = `?startDate=${startDate}&endDate=${endDate}`;
-                                                                                                                                                                                                                                                                        
-      const [resRevenue, resActive, resInventory, resOrders] = await Promise.all([                                                                                                                                                                                           
-        fetch(`http://localhost:9999/api/rentals/dashboard/revenue${queryParams}`, { headers }),                                                                                                                                                                       
-        fetch(`http://localhost:9999/api/rentals/dashboard/active-rentals${queryParams}`, { headers }),                                                                                                                                                                 
+
+      const [resRevenue, resActive, resInventory, resOrders] = await Promise.all([
+        fetch(`http://localhost:9999/api/rentals/dashboard/revenue${queryParams}`, { headers }),
+        fetch(`http://localhost:9999/api/rentals/dashboard/active-rentals${queryParams}`, { headers }),
         fetch(`http://localhost:9999/api/rentals/dashboard/inventory-utilization${queryParams}`, { headers }),
         fetch(`http://localhost:9999/api/rentals${queryParams}`, { headers })
-      ]);                                                                                                                                                                                                                                                                
-                                                                                                                                                                                                                                                                        
-      if (!resRevenue.ok || !resActive.ok || !resInventory.ok || !resOrders.ok) {                                                                                                                                                                                                 
-        setToast({ isVisible: true, type: "error", message: "Không thể tải dữ liệu báo cáo thống kê." });                                                                                                                                                                 
-        return;                                                                                                                                                                                                                                                         
-      }                                                                                                                                                                                                                                                                 
-                                                                                                                                                                                                                                                                        
-      const dataRevenue = await resRevenue.json();                                                                                                                                                                                                                      
-      const dataActive = await resActive.json();                                                                                                                                                                                                                        
-      const dataInventory = await resInventory.json();                                                                                                                                                                                                                  
+      ]);
+
+      if (!resRevenue.ok || !resActive.ok || !resInventory.ok || !resOrders.ok) {
+        setToast({ isVisible: true, type: "error", message: "Không thể tải dữ liệu báo cáo thống kê." });
+        return;
+      }
+
+      const dataRevenue = await resRevenue.json();
+      const dataActive = await resActive.json();
+      const dataInventory = await resInventory.json();
       const dataOrders = await resOrders.json();
-                                                                                                                                                                                                                                                                        
+
       setRevenue(dataRevenue.totalRevenue || 0);
-      setRevenueByMonth(dataRevenue.revenueByMonth || []);                                                                                                                                                                                                                                
-      setActiveOrdersCount(dataActive.activeOrdersCount || 0);                                                                                                                                                                                                                                 
-      setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);                                                                                                                                                                                                                              
-      setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);                                                                                                                                                                                                              
-      setTotalStock(dataInventory.totalStock || 0);                                                                                                                                                                                                                                     
-      setCurrentlyRented(dataInventory.currentlyRented || 0);                                                                                                                                                                                                           
+      setRevenueByMonth(dataRevenue.revenueByMonth || []);
+      setActiveOrdersCount(dataActive.activeOrdersCount || 0);
+      setTotalActiveCostumes(dataActive.totalActiveCostumes || 0);
+      setInventoryUtilizationPercentage(dataInventory.utilizationPercentage || 0);
+      setTotalStock(dataInventory.totalStock || 0);
+      setCurrentlyRented(dataInventory.currentlyRented || 0);
       setCategoryData(dataInventory.categoryBreakdown || []);
-      
+
       const validOrders = Array.isArray(dataOrders) ? dataOrders : (dataOrders.rentals || dataOrders.data || []);
       setRecentOrders(validOrders.slice(0, 5));
-                                                                                                                                                                                                                                                                        
-    } catch (error) {                                                                                                                                                                                                                                                   
-      console.error(error);                                                                                                                                                                                                                                             
-      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ khi tải báo cáo." });                                                                                                                                                                 
-    } finally {                                                                                                                                                                                                                                                         
+
+    } catch (error) {
+      console.error(error);
+      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ khi tải báo cáo." });
+    } finally {
       setLoadingPage(false);
       setInitialLoading(false);
-    }                                                                                                                                                                                                                                                                   
-  }, [token, getDateParams]);                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                        
-  useEffect(() => {                                                                                                                                                                                                                                                         
-      fetchDashboardData();                                                                                                                                                                                                                                             
-  }, [fetchDashboardData, dateRange]); 
+    }
+  }, [token, getDateParams]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData, dateRange]);
 
   const generateReportHTML = (formattedRevenue, currentDate) => `
     <html>
       <head>
         <meta charset="utf-8">
-        <title>Báo cáo doanh thu - CostumeHUB</title>
         <style>
           body { font-family: Arial, sans-serif; color: #1a1a1a; line-height: 1.6; padding: 30px; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #1a1a1a; padding-bottom: 15px; }
@@ -154,7 +153,6 @@ export default function FrappeStyleDashboard() {
       <body>
         <div class="header">
           <div class="company-name">Hệ thống quản lý trang phục CostumeHUB</div>
-          <div class="report-title">BÁO CÁO HOẠT ĐỘNG KINH DOANH</div>
           <div class="report-date">Kỳ báo cáo: ${dateRange}</div>
           <div style="font-size: 11px; color: #777; margin-top: 4px;">Ngày trích xuất dữ liệu: ${currentDate}</div>
         </div>
@@ -191,11 +189,11 @@ export default function FrappeStyleDashboard() {
     setShowExportMenu(false);
     const formattedRevenue = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(revenue || 0);
     const currentDate = new Date().toLocaleString("vi-VN");
-    
+
     const printWindow = window.open("", "_blank");
     printWindow.document.write(generateReportHTML(formattedRevenue, currentDate));
     printWindow.document.close();
-    
+
     setTimeout(() => {
       printWindow.focus();
       printWindow.print();
@@ -206,10 +204,10 @@ export default function FrappeStyleDashboard() {
     setShowExportMenu(false);
     const formattedRevenue = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(revenue || 0);
     const currentDate = new Date().toLocaleString("vi-VN");
-    
+
     const htmlContent = generateReportHTML(formattedRevenue, currentDate);
     const blob = new Blob(["\ufeff" + htmlContent], { type: "application/msword" });
-    
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -241,34 +239,25 @@ export default function FrappeStyleDashboard() {
 
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
-      
-      {/* === 1. GLOBAL TOOLBAR === */}
-      <div className="bg-white border-b border-[#eaeaea] px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Báo Cáo Hoạt Động & Doanh Thu</h1>
-          <span className="text-xs bg-surface text-[#555] px-2 py-1 rounded">Chủ cửa hàng</span>
-        </div>
-        
+      <div className="flex items-center justify-end gap-3">
         <div className="flex items-center gap-3">
-          
           <div className="relative">
-            <button 
+            <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 setShowDateMenu(!showDateMenu);
                 setShowExportMenu(false);
               }}
-              className="flex items-center gap-2 border border-[#eaeaea] rounded-md px-3 py-1.5 text-sm text-[#555] hover:bg-[#faf9f7] transition-colors"
+              className="flex items-center gap-2 border border-[#eaeaea] rounded-xl bg-white px-4 py-2 text-sm text-[#555] hover:bg-[#faf9f7] transition-colors min-h-[40px] shadow-sm font-medium"
             >
               <FontAwesomeIcon icon={faCalendarAlt} className="text-[#999] text-xs" />
-              <span className="font-medium text-[#1a1a1a]">{dateRange}</span>
+              <span className="text-[#1a1a1a]">{dateRange}</span>
             </button>
-            
+
             {showDateMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-2 z-50 animate-fade-in">
                 <div className="mb-2">
-                  {/* FIX: Thêm "Tất cả thời gian" vào menu thả xuống */}
                   {["Tất cả thời gian", "Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"].map((range) => (
                     <button
                       key={range}
@@ -323,22 +312,22 @@ export default function FrappeStyleDashboard() {
           <div className="h-6 w-px bg-gray-200"></div>
 
           <div className="relative">
-            <button 
+            <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 setShowExportMenu(!showExportMenu);
                 setShowDateMenu(false);
-              }} 
-              className="text-[#1a1a1a] hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" 
+              }}
+              className="w-10 h-10 flex items-center justify-center border border-[#eaeaea] bg-white text-[#1a1a1a] hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-colors shadow-sm"
               title="Xuất báo cáo văn bản pháp lý"
             >
               <FontAwesomeIcon icon={faDownload} className="text-sm" />
             </button>
-            
+
             {showExportMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-1 z-50 animate-fade-in">
-                <button 
+                <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); handleExportPDF(); }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
@@ -346,7 +335,7 @@ export default function FrappeStyleDashboard() {
                   <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
                   Xuất văn bản PDF (.pdf)
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); handleExportDOC(); }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
@@ -386,7 +375,7 @@ export default function FrappeStyleDashboard() {
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
             <div className="flex-1 min-h-[100px] relative mt-2">
-              <Bar 
+              <Bar
                 data={{
                   labels: ['Đơn hàng phát sinh', 'Số trang phục'],
                   datasets: [{
@@ -412,13 +401,13 @@ export default function FrappeStyleDashboard() {
 
           {/* --- WIDGET 3: Hiệu suất khai thác kho --- */}
           <div className="bg-white border border-[#eaeaea] rounded-lg shadow-sm p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
+            {/* <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-[#555]">Hiệu suất khai thác kho</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
-            </div>
+            </div> */}
             <div className="flex-1 flex items-center justify-around relative mt-2 mb-2">
               <div className="relative w-24 h-24">
-                <Doughnut 
+                <Doughnut
                   data={{
                     labels: ['Đang cho thuê', 'Còn trống trong kho'],
                     datasets: [{
@@ -455,7 +444,7 @@ export default function FrappeStyleDashboard() {
               </div>
             ) : (
               <div className="flex-1 min-h-[180px] relative mt-2">
-                <Bar 
+                <Bar
                   data={{
                     labels: revenueByMonth.map(m => `Tháng ${Number(m.month.split('-')[1])}/${m.month.split('-')[0]}`),
                     datasets: [{
@@ -473,7 +462,7 @@ export default function FrappeStyleDashboard() {
                       legend: { display: false },
                       tooltip: {
                         callbacks: {
-                          label: function(context) {
+                          label: function (context) {
                             return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(context.raw);
                           }
                         }
@@ -495,7 +484,7 @@ export default function FrappeStyleDashboard() {
               <h3 className="text-sm font-medium text-[#555]">Cơ cấu trang phục theo danh mục cha - con</h3>
               <button type="button" className="text-[#999] hover:text-[#555]"><FontAwesomeIcon icon={faEllipsisV} className="text-xs" /></button>
             </div>
-            
+
             <div className="flex-1 min-h-[200px] relative">
               {(() => {
                 const groupedCategories = {};
