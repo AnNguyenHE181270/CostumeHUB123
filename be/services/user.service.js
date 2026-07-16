@@ -114,6 +114,12 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 
 const register = async ({ fullName, email, phone, password, gender, dateOfBirth }) => {
   const now = new Date();
+  
+  if (!phone) throw new HttpError('Số điện thoại không được để trống.', 400);
+  if (!gender) throw new HttpError('Giới tính không được để trống.', 400);
+  if (!dateOfBirth) throw new HttpError('Ngày sinh không được để trống.', 400);
+  if (new Date(dateOfBirth) > now) throw new HttpError('Ngày sinh không thể ở trong tương lai.', 400);
+
   const existUser = await User.findOne({ email });
 
   if (existUser && existUser.status === 'active') {
@@ -278,8 +284,14 @@ const resetPassword = async (token, password) => {
   await user.save();
 };
 
-const getAllUsers = async () => {
-  const users = await User.find().populate('role');
+const getAllUsers = async (search = '') => {
+  const query = search ? {
+    $or: [
+      { fullName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
+    ]
+  } : {};
+  const users = await User.find(query).populate('role');
   return users.map((u) => ({
     fullName: u.fullName, email: u.email, phone: u.phone, avatar: u.avatar,
     status: u.status, role: u.role.name, createdAt: u.createdAt, updatedAt: u.updatedAt, id: u._id,
