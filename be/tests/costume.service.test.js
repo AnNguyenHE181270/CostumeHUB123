@@ -46,9 +46,17 @@ const CategoryMock = function (data) {
   Object.assign(this, data);
 };
 
-CategoryMock.find = async (filter) => {
+CategoryMock.find = (filter) => {
   mockData.categoryFindFilter = filter;
-  return mockData.childCategories || [];
+  const result = mockData.childCategories || [];
+  return {
+    select: async function (fields) {
+      return result;
+    },
+    then: function (resolve, reject) {
+      return Promise.resolve(result).then(resolve, reject);
+    }
+  };
 };
 
 mock('../models/costume.model', CostumeMock);
@@ -68,7 +76,7 @@ describe('getAllCostumes', () => {
   test('Get all costumes list with full filters', async () => {
     mockData.costumes = [{ _id: 'costume_id_123', name: 'Ao Dai' }];
     mockData.totalItems = 1;
-    mockData.childCategories = [];
+    mockData.childCategories = [{ _id: '507f1f77bcf86cd799439011' }];
 
     const result = await getAllCostumes({
       categoryId: '507f1f77bcf86cd799439011',
@@ -91,21 +99,21 @@ describe('getAllCostumes', () => {
     assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available'] });
     // filter price phải đúng
     assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
-    // filter $or phải tồn tại (do có categoryId)
-    assert.ok(Array.isArray(mockData.costumeFilter.$or));
+    // filter categoryId phải đúng
+    assert.ok(mockData.costumeFilter.categoryId);
   });
 
   test('Filter costume list by category', async () => {
     mockData.costumes = [{ _id: 'costume_id_123' }];
     mockData.totalItems = 1;
-    mockData.childCategories = [{ _id: 'subcategory_id_456' }];
+    mockData.childCategories = [{ _id: 'category_id_123' }, { _id: 'subcategory_id_456' }];
 
     await getAllCostumes({ categoryId: 'category_id_123' });
 
     // Category.find phải được gọi để lấy sub-categories
     assert.ok(mockData.categoryFindFilter !== undefined);
-    // $or phải có trong filter
-    assert.ok(Array.isArray(mockData.costumeFilter.$or));
+    // categoryId phải có trong filter
+    assert.ok(mockData.costumeFilter.categoryId);
   });
 
   test('Filter costume list by price range', async () => {
@@ -143,7 +151,7 @@ describe('getAllCostumes', () => {
 
     await getAllCostumes({ sort: 'price_asc' });
 
-    assert.deepStrictEqual(capturedSort, { pricePerDay: 1 });
+    assert.deepStrictEqual(capturedSort, { pricePerDay: 1, _id: 1 });
   });
 
   test('Pagination: page=2, limit=5 → skip=5', async () => {
@@ -453,7 +461,7 @@ describe('deleteCostume', () => {
     assert.strictEqual(mockData.costume.saved, true);
   });
 
-  test('Costume to hide not found → throws 404', async () => {
+  test('Costume to hide not found', async () => {
     mockData.costume = null;
 
     await assert.rejects(

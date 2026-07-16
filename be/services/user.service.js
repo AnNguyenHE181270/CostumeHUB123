@@ -114,6 +114,24 @@ const sendResetPasswordEmail = async (email, resetUrl, fullName) => {
 
 const register = async ({ fullName, email, phone, password, gender, dateOfBirth }) => {
   const now = new Date();
+
+  if (!phone) {
+    throw new HttpError('Số điện thoại không được để trống.', 400);
+  }
+  if (!gender) {
+    throw new HttpError('Giới tính không được để trống.', 400);
+  }
+  if (!dateOfBirth) {
+    throw new HttpError('Ngày sinh không được để trống.', 400);
+  }
+  const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) {
+    throw new HttpError('Ngày sinh không hợp lệ.', 400);
+  }
+  if (dob > now) {
+    throw new HttpError('Ngày sinh không thể ở trong tương lai.', 400);
+  }
+
   const existUser = await User.findOne({ email });
 
   if (existUser && existUser.status === 'active') {
