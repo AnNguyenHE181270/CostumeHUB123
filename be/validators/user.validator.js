@@ -21,15 +21,21 @@ const registerValidator = [
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
 
-  body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
+  body("phone")
+    .notEmpty()
+    .withMessage("Phone is required")
+    .isMobilePhone()
+    .withMessage("Invalid phone number"),
 
   body("gender")
-    .optional()
+    .notEmpty()
+    .withMessage("Gender is required")
     .isIn(["male", "female", "other"])
     .withMessage("Gender must be male, female, or other"),
 
   body("dateOfBirth")
-    .optional()
+    .notEmpty()
+    .withMessage("Date of birth is required")
     .isISO8601()
     .toDate()
     .withMessage("Invalid date of birth")
