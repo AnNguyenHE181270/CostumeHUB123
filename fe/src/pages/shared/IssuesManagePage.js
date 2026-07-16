@@ -449,14 +449,14 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
     issue.status === "pending" || (issue.status === "escalated" && role === "owner");
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white w-full max-w-[480px] h-full overflow-y-auto shadow-2xl flex flex-col">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col z-10">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-[#eaeaea] px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-[#eaeaea] px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
           <div>
             <h2 className="text-[15px] font-bold text-[#1a1a1a]">
               Chi tiết khiếu nại
@@ -473,141 +473,153 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
           </button>
         </div>
 
-        <div className="flex-1 px-6 py-5 space-y-6">
-          <span
-            className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold ${STATUS_STYLES[issue.status]}`}
-          >
-            {STATUS_LABELS[issue.status] || issue.status}
-          </span>
-
-          {/* Customer info */}
-          <div>
-            <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-              Thông tin khách hàng
-            </p>
-            <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#888]">Họ tên</span>
-                <span className="font-semibold">{customer?.fullName || "—"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#888]">Email</span>
-                <span className="text-[#555]">{customer?.email || "—"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#888]">SĐT</span>
-                <span className="text-[#555]">{customer?.phone || "—"}</span>
-              </div>
-            </div>
+        {/* Content Body */}
+        <div className="flex-1 px-6 py-5 overflow-y-auto">
+          <div className="mb-4">
+            <span
+              className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold ${STATUS_STYLES[issue.status]}`}
+            >
+              {STATUS_LABELS[issue.status] || issue.status}
+            </span>
           </div>
 
-          {/* Order info */}
-          <div>
-            <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-              Thông tin đơn hàng
-            </p>
-            <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#888]">Mã đơn</span>
-                <span className="font-mono font-semibold">
-                  {rental?._id?.slice(-8).toUpperCase() || "—"}
-                </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Cột trái: Thông tin khách hàng, đơn hàng & khiếu nại */}
+            <div className="space-y-6">
+              {/* Customer info */}
+              <div>
+                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
+                  Thông tin khách hàng
+                </p>
+                <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm border border-[#eaeaea]">
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Họ tên</span>
+                    <span className="font-semibold text-[#1a1a1a]">{customer?.fullName || "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Email</span>
+                    <span className="text-[#555]">{customer?.email || "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">SĐT</span>
+                    <span className="text-[#555]">{customer?.phone || "—"}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[#888]">Tổng tiền</span>
-                <span
-                  className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
-                    }`}
-                >
-                  {formatCurrency(rental?.totalAmount)}
-                  {isHighValue && " ⚠️"}
-                </span>
+
+              {/* Order info */}
+              <div>
+                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
+                  Thông tin đơn hàng
+                </p>
+                <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm border border-[#eaeaea]">
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Mã đơn</span>
+                    <span className="font-mono font-semibold text-[#1a1a1a]">
+                      {rental?._id?.slice(-8).toUpperCase() || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Tổng tiền</span>
+                    <span
+                      className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
+                        }`}
+                    >
+                      {formatCurrency(rental?.totalAmount)}
+                      {isHighValue && " ⚠️"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Ngày thuê</span>
+                    <span className="text-[#555]">{formatDate(rental?.startDate)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Ngày trả</span>
+                    <span className="text-[#555]">{formatDate(rental?.endDate)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[#888]">Ngày thuê</span>
-                <span>{formatDate(rental?.startDate)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#888]">Ngày trả</span>
-                <span>{formatDate(rental?.endDate)}</span>
+
+              {/* Issue content */}
+              <div>
+                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
+                  Nội dung khiếu nại
+                </p>
+                <div className="space-y-3">
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                    <p className="text-xs text-amber-600 font-semibold mb-1">
+                      Yêu cầu giải quyết
+                    </p>
+                    <p className="text-sm font-semibold text-[#1a1a1a]">
+                      {RESOLUTION_LABELS[issue.resolution] || issue.resolution}
+                    </p>
+                  </div>
+                  <div className="bg-[#fafafa] border border-[#eaeaea] rounded-xl p-4">
+                    <p className="text-xs text-[#888] font-semibold mb-1">
+                      Lý do khiếu nại
+                    </p>
+                    <p className="text-sm text-[#333] leading-relaxed">
+                      {issue.reason}
+                    </p>
+                  </div>
+                  {issue.note && (
+                    <div className="bg-[#fafafa] border border-[#eaeaea] rounded-xl p-4">
+                      <p className="text-xs text-[#888] font-semibold mb-1">
+                        Ghi chú thêm
+                      </p>
+                      <p className="text-sm text-[#555]">{issue.note}</p>
+                    </div>
+                  )}
+                  <div className="text-xs text-[#888] italic">
+                    Gửi lúc: {formatDate(issue.createdAt)}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Issue content */}
-          <div>
-            <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-              Nội dung khiếu nại
-            </p>
-            <div className="space-y-3">
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                <p className="text-xs text-amber-600 font-semibold mb-1">
-                  Yêu cầu giải quyết
+            {/* Cột phải: Bằng chứng hình ảnh/video & lý do phản hồi */}
+            <div className="space-y-6">
+              {/* Customer evidence */}
+              <div>
+                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
+                  <FontAwesomeIcon icon={faImage} className="mr-1.5" />
+                  Bằng chứng từ khách hàng
                 </p>
-                <p className="text-sm font-semibold text-[#1a1a1a]">
-                  {RESOLUTION_LABELS[issue.resolution] || issue.resolution}
-                </p>
+                <MediaViewer urls={issue.evidence || []} title="Bằng chứng khách" />
               </div>
-              <div className="bg-[#fafafa] rounded-xl p-4">
-                <p className="text-xs text-[#888] font-semibold mb-1">
-                  Lý do khiếu nại
-                </p>
-                <p className="text-sm text-[#333] leading-relaxed">
-                  {issue.reason}
-                </p>
-              </div>
-              {issue.note && (
-                <div className="bg-[#fafafa] rounded-xl p-4">
-                  <p className="text-xs text-[#888] font-semibold mb-1">
-                    Ghi chú thêm
+
+              {/* Store evidence */}
+              {issue.rejectEvidence?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
+                    <FontAwesomeIcon icon={faImage} className="mr-1.5" />
+                    {isEscalated
+                      ? "Bằng chứng từ nhân viên (lúc nhận hàng)"
+                      : "Bằng chứng từ cửa hàng (từ chối)"}
                   </p>
-                  <p className="text-sm text-[#555]">{issue.note}</p>
+                  <MediaViewer
+                    urls={issue.rejectEvidence}
+                    title="Bằng chứng cửa hàng"
+                  />
                 </div>
               )}
-              <div className="text-xs text-[#888]">
-                Gửi lúc: {formatDate(issue.createdAt)}
-              </div>
+
+              {/* Reject reason */}
+              {issue.rejectReason && (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                  <p className="text-xs text-red-600 font-semibold mb-1">
+                    Lý do từ chối
+                  </p>
+                  <p className="text-sm text-red-800">{issue.rejectReason}</p>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Customer evidence */}
-          <div>
-            <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-              <FontAwesomeIcon icon={faImage} className="mr-1.5" />
-              Bằng chứng từ khách hàng
-            </p>
-            <MediaViewer urls={issue.evidence || []} title="Bằng chứng khách" />
-          </div>
-
-          {/* Store evidence */}
-          {issue.rejectEvidence?.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-                <FontAwesomeIcon icon={faImage} className="mr-1.5" />
-                {isEscalated
-                  ? "Bằng chứng từ nhân viên (lúc nhận hàng)"
-                  : "Bằng chứng từ cửa hàng (từ chối)"}
-              </p>
-              <MediaViewer
-                urls={issue.rejectEvidence}
-                title="Bằng chứng cửa hàng"
-              />
-            </div>
-          )}
-
-          {/* Reject reason */}
-          {issue.rejectReason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-              <p className="text-xs text-red-600 font-semibold mb-1">
-                Lý do từ chối
-              </p>
-              <p className="text-sm text-red-800">{issue.rejectReason}</p>
-            </div>
-          )}
         </div>
 
+        {/* Footer actions */}
         {canHandle && (
-          <div className="sticky bottom-0 bg-white border-t border-[#eaeaea] px-6 py-4">
+          <div className="sticky bottom-0 bg-white border-t border-[#eaeaea] px-6 py-4 rounded-b-2xl">
             <button
               onClick={() => onAction(issue)}
               className="w-full py-3 bg-[#1a1a1a] text-white rounded-xl font-semibold text-sm hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
@@ -622,7 +634,6 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
   );
 }
 
-/* ─── Main Page ─────────────────────────────────────────────────────────────── */
 export default function IssuesManagePage() {
   const { role } = useAuth();
   const [issues, setIssues] = useState([]);
