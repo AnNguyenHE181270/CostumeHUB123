@@ -18,24 +18,19 @@ export default function ProfileLayout() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 lg:px-12 py-12 md:py-20 font-body">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#1a1a1a] tracking-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Hồ Sơ Của Tôi
-          </h1>
-          <p className="text-[14px] text-[#858585]">
-            Quản lý thông tin cá nhân và tài khoản của bạn.
-          </p>
+      <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
+        {/* Left Column: Header & Sidebar */}
+        <div className="w-full lg:w-[280px] shrink-0 space-y-8">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold text-[#1a1a1a] tracking-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Hồ Sơ Của Tôi
+            </h1>
+          </div>
+          <ProfileSidebar handleLogout={handleLogout} className="space-y-8" />
         </div>
-        <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <ProfileSidebar handleLogout={handleLogout} />
 
         {/* Right Column: Content */}
-        <div className="lg:col-span-9">
+        <div className="flex-1">
           <Outlet />
         </div>
       </div>

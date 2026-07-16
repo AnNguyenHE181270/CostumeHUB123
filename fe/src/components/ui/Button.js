@@ -9,7 +9,8 @@ export default function Button({
   variant = "primary",
   className = "",
   onClick,
-  children
+  children,
+  ...props
 }) {
   const baseClasses = "w-full group py-3.5 px-6 rounded-none text-[12px] tracking-[0.1em] uppercase font-semibold flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed";
   
@@ -26,6 +27,7 @@ export default function Button({
       disabled={loading}
       onClick={onClick}
       className={`${baseClasses} ${variants[variant] || variants.primary} ${className}`}
+      {...props}
     >
       {loading ? "Loading..." : (children || label)}
 

@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars, faCamera } from "@fortawesome/free-solid-svg-icons";
+import { faCamera } from "@fortawesome/free-solid-svg-icons";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import { useState, useEffect } from "react";
@@ -128,77 +128,76 @@ export default function ProfilePage() {
         onClose={() => setToast({ ...toast, isVisible: false })} 
       />
 
-      <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
+      <div className="flex flex-col lg:flex-row gap-12 lg:items-start pb-8 border-b border-[#eaeaea]">
         {/* Avatar Section */}
-        <div className="flex flex-col items-center lg:w-[280px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
-          <div className="relative group mb-6">
-            <div className="w-40 h-40 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
+        <div className="flex flex-col items-center lg:w-[220px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
+          <div className="relative mb-4">
+            <div className="w-32 h-32 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center overflow-hidden relative shadow-sm">
               <img src={form.avatar || user.avatar || "https://i.pravatar.cc/300"} alt="User Avatar" className="w-full h-full object-cover" />
-              
-              <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
-                <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-2xl mb-2" />
-                <span className="text-[#1a1a1a] text-[11px] font-bold uppercase tracking-wider">Chọn ảnh</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-              </label>
             </div>
           </div>
           <div className="text-center">
-            <h4 className="text-lg font-bold text-[#1a1a1a] mb-1">{form.fullName || user.fullName}</h4>
-            <p className="text-[11px] text-[#999] tracking-[0.1em] uppercase mb-4">Thành viên Vogue</p>
-            <p className="text-[12px] text-[#858585] mb-1">Dung lượng tối đa 1 MB</p>
-            <p className="text-[12px] text-[#858585]">Định dạng: .JPEG, .PNG</p>
+            <h4 className="text-lg font-bold text-[#1a1a1a] mb-4">{form.fullName || user.fullName}</h4>
+            <label className="inline-flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-2.5 text-[11px] font-semibold text-[#1a1a1a] uppercase tracking-wider hover:bg-gray-50 active:scale-[0.985] transition-all cursor-pointer shadow-sm">
+              <FontAwesomeIcon icon={faCamera} className="text-xs" />
+              <span>ĐỔI ẢNH</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            </label>
           </div>
         </div>
 
         <div className="flex-1">
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+          <form onSubmit={handleSubmit} id="profile-form">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <div className="md:col-span-2">
-                <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
-                  <FontAwesomeIcon icon={faUser} /> Họ và Tên
+                <label className="block text-[10px] font-bold text-[#555] uppercase tracking-[0.1em] mb-2">
+                  Họ và Tên
                 </label>
                 <Input
                   type="text"
                   name="fullName"
                   value={form.fullName}
                   onChange={handleChange}
+                  className="!rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
-                  <FontAwesomeIcon icon={faEnvelope} /> Địa chỉ Email
+                <label className="block text-[10px] font-bold text-[#555] uppercase tracking-[0.1em] mb-2">
+                  Địa chỉ Email
                 </label>
                 <Input
                   type="email"
                   name="email"
                   defaultValue={user.email}
                   readOnly
+                  className="!rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
-                  <FontAwesomeIcon icon={faPhone} /> Số Điện Thoại
+                <label className="block text-[10px] font-bold text-[#555] uppercase tracking-[0.1em] mb-2">
+                  Số Điện Thoại
                 </label>
                 <Input
                   type="tel"
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
+                  className="!rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
-                  <FontAwesomeIcon icon={faVenusMars} /> Giới Tính
+                <label className="block text-[10px] font-bold text-[#555] uppercase tracking-[0.1em] mb-2">
+                  Giới Tính
                 </label>
                 <div className="relative">
                   <select
                     name="gender"
                     value={form.gender}
                     onChange={handleChange}
-                    className="w-full bg-surface border border-borderorder rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 appearance-none"
+                    className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500 appearance-none"
                   >
                     <option value="male">Nam</option>
                     <option value="female">Nữ</option>
@@ -211,54 +210,62 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-semibold text-[#555] uppercase tracking-[0.1em] mb-2">
-                  <FontAwesomeIcon icon={faCalendarDay} /> Ngày Sinh
+                <label className="block text-[10px] font-bold text-[#555] uppercase tracking-[0.1em] mb-2">
+                  Ngày Sinh
                 </label>
                 <Input
                   type="date"
                   name="dateOfBirth"
                   value={form.dateOfBirth}
                   onChange={handleChange}
+                  className="!rounded-lg"
                 />
-              </div>
-
-              <div className="md:col-span-2 pt-6 mt-2 border-t border-[#eaeaea]">
-                <Button type="submit" variant="primary" disabled={submitting}>
-                  {submitting ? "Đang lưu..." : "Lưu Thay Đổi"}
-                </Button>
               </div>
             </div>
           </form>
+        </div>
+      </div>
 
-          {/* Wallet Section */}
-          <div className="mt-10 pt-8 border-t border-[#eaeaea]">
-            <h4 className="text-xl font-bold text-[#1a1a1a] mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Ví Điện Tử
-            </h4>
-            <div className="bg-[#fcfaf5] border border-[#f0e6d3] p-6 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <p className="text-[12px] text-[#858585] tracking-[0.1em] uppercase mb-1">Số dư hiện tại</p>
-                <p className="text-3xl font-bold text-[#1a1a1a]">{formatPrice(user.balance || 0)}</p>
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <Input 
-                  type="number" 
-                  placeholder="Nhập số tiền nạp..." 
-                  value={topUpAmount}
-                  onChange={(e) => setTopUpAmount(e.target.value)}
-                  className="max-w-[200px]"
-                />
-                <Button 
-                  onClick={handleTopUp} 
-                  disabled={isToppingUp}
-                  className="whitespace-nowrap"
-                >
-                  {isToppingUp ? "Đang xử lý..." : "Nạp tiền qua VNPay"}
-                </Button>
-              </div>
-            </div>
+      {/* Wallet Section (occupying full width!) */}
+      <div className="mt-8">
+        <h4 className="text-xl font-bold text-[#1a1a1a] mb-6 pl-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+          Ví Điện Tử
+        </h4>
+        <div className="bg-[#fcfaf5] border border-[#f0e6d3] p-6 rounded-xl flex flex-col md:flex-row md:items-center justify-start gap-12 lg:gap-24">
+          <div>
+            <p className="text-[12px] text-[#858585] tracking-[0.1em] uppercase mb-1">Số dư hiện tại</p>
+            <p className="text-3xl font-bold text-[#1a1a1a]">{formatPrice(user.balance || 0)}</p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <input 
+              type="number" 
+              placeholder="Nhập số tiền" 
+              value={topUpAmount}
+              onChange={(e) => setTopUpAmount(e.target.value)}
+              className="w-full md:w-48 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-[#1a1a1a] outline-none focus:border-black focus:ring-1 focus:ring-black placeholder:text-gray-400"
+            />
+            <Button 
+              type="button"
+              onClick={handleTopUp} 
+              disabled={isToppingUp}
+              className="!rounded-lg whitespace-nowrap px-6 py-3.5 bg-[#1b1b1b] text-white font-semibold text-[11px] uppercase tracking-wider hover:bg-black shadow-sm"
+            >
+              {isToppingUp ? "Đang xử lý..." : "NẠP TIỀN QUA VNPAY"}
+            </Button>
           </div>
         </div>
+      </div>
+
+      {/* Submit Button Section */}
+      <div className="flex justify-end mt-6 pt-4 border-t border-[#eaeaea]">
+        <Button 
+          type="submit" 
+          form="profile-form"
+          disabled={submitting}
+          className="!rounded-lg max-w-[200px] bg-[#1a1a1a] text-white hover:bg-black font-semibold py-3.5 px-8 text-[12px] tracking-[0.1em] uppercase transition-all duration-200"
+        >
+          {submitting ? "Đang lưu..." : "LƯU THAY ĐỔI"}
+        </Button>
       </div>
     </div>
   );
