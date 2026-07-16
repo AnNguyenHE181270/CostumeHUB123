@@ -392,6 +392,54 @@ const updateOrderStatus = async (id, status) => {
   const order = await Rental.findById(id);
   if (!order) throw new HttpError('Order not found', 404);
 
+  if (status === 'cancelled' && order.status !== 'cancelled') {
+    if (!['pending'].includes(order.status)) {
+      throw new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400);
+    }
+
+    // 1. Hoàn tiền ví
+    const user = await User.findById(order.customerId);
+    if (user) {
+      user.balance = (user.balance || 0) + order.totalAmount;
+      await user.save();
+    }
+
+    // 2. Hoàn trả tồn kho trang phục
+    for (const item of order.items) {
+      const costume = await Costume.findById(item.costume);
+      if (costume) {
+        const variant = costume.variants.find((v) => v.size === item.size);
+        if (variant) {
+          variant.availableStock += item.quantity;
+          await costume.save();
+        }
+      }
+    }
+
+    // 3. Cập nhật trạng thái đơn hàng
+    order.status = 'cancelled';
+    order.cancelReason = 'Cửa hàng hủy đơn';
+    order.paymentStatus = 'refunded';
+    await order.save();
+
+    // 4. Gửi email thông báo cho khách hàng
+    try {
+      if (user?.email) {
+        await sendEmail({
+          to: user.email,
+          subject: 'CostumeHUB — Thông báo hủy đơn hàng',
+          text: `Chào ${user.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy bởi cửa hàng.\nLý do: Cửa hàng hủy đơn`,
+          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy bởi cửa hàng.</p><p>Lý do: <span style="color:red">Cửa hàng hủy đơn</span></p>`,
+        });
+      }
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email hủy đơn:', mailError);
+    }
+
+    await notifyOrderStatus(order, 'cancelled');
+    return order;
+  }
+
   if (status === 'delivering' && !order.trackingCode && order.shippingAddress?.districtId) {
     try {
       const ghnRes = await ghnService.createOrder({

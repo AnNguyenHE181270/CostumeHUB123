@@ -686,7 +686,7 @@ describe('Dashboard Analytics', () => {
             utilizationPercentage: 25,
             totalStock: 20,
             currentlyRented: 5,
-            categoryBreakdown: [{ categoryId: 'unknown', name: 'Chưa phân loại', totalStock: 20, rentedCount: 5 }],
+            categoryBreakdown: [{ categoryId: 'unknown', name: 'Chưa phân loại', parentId: null, parentName: null, totalStock: 20, rentedCount: 5 }],
         });
     });
 });
