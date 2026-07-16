@@ -18,7 +18,7 @@ import {
 
 const STATUS_LABELS = {
   pending: "Chờ xử lý",
-  escalated: "Chờ Owner duyệt",
+  escalated: "Chờ duyệt",
   accepted: "Đã chấp nhận",
   rejected: "Đã từ chối",
   cancelled: "Đã hủy",
@@ -132,27 +132,88 @@ function MediaViewer({ urls = [], title = "Bằng chứng" }) {
 
 /* ─── Handle Modal ──────────────────────────────────────────────────────────── */
 function HandleModal({ issue, role, onClose, onSuccess }) {
-  const [action, setAction] = useState("");
+  const rental = issue.rentalId;
+  const isHighValue = (rental?.totalAmount || 0) >= 1000000;
+  const isEscalated = issue.status === "escalated";
+
+  const canAcceptReject = !isHighValue || (role === "owner" && isEscalated);
+  const canEscalate = role === "staff" && isHighValue && !isEscalated;
+
+  const [action, setAction] = useState(() => {
+    return role === "staff" && isHighValue && !isEscalated ? "escalate" : "";
+  });
   const [rejectReason, setRejectReason] = useState("");
   const [files, setFiles] = useState([]);
-  const [previews, setPreviews] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef();
 
-  const rental = issue.rentalId;
-  const isHighValue = (rental?.totalAmount || 0) > 1000000;
-  const isEscalated = issue.status === "escalated";
+  const filesRef = useRef(files);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
 
-  const canAcceptReject = role === "owner" || !isHighValue || isEscalated;
-  const canEscalate = role === "staff" && isHighValue && !isEscalated;
+  useEffect(() => {
+    return () => {
+      filesRef.current.forEach((f) => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+    };
+  }, []);
 
   const handleFileChange = (e) => {
-    const selected = Array.from(e.target.files);
-    setFiles(selected);
-    setPreviews(
-      selected.map((f) => ({ url: URL.createObjectURL(f), type: f.type }))
-    );
+    setError("");
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    let newFiles = [...files];
+    let imageCount = newFiles.filter(f => f.type === "image").length;
+    let videoCount = newFiles.filter(f => f.type === "video").length;
+
+    for (const file of selectedFiles) {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+
+      if (!isImage && !isVideo) {
+        setError(`Tệp "${file.name}" không hợp lệ. Chỉ chấp nhận tệp ảnh hoặc video.`);
+        continue;
+      }
+
+      if (isImage) {
+        if (imageCount >= 4) {
+          setError("Chỉ được tải lên tối đa 4 ảnh.");
+          continue;
+        }
+        imageCount++;
+        newFiles.push({
+          file,
+          type: "image",
+          preview: URL.createObjectURL(file)
+        });
+      } else if (isVideo) {
+        if (videoCount >= 1) {
+          setError("Chỉ được tải lên tối đa 1 video.");
+          continue;
+        }
+        videoCount++;
+        newFiles.push({
+          file,
+          type: "video",
+          preview: URL.createObjectURL(file)
+        });
+      }
+    }
+    setFiles(newFiles);
+    e.target.value = "";
+  };
+
+  const handleRemoveFile = (index) => {
+    const newFiles = [...files];
+    const removed = newFiles.splice(index, 1)[0];
+    if (removed && removed.preview) {
+      URL.revokeObjectURL(removed.preview);
+    }
+    setFiles(newFiles);
   };
 
   const handleSubmit = async () => {
@@ -164,7 +225,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
       setError("Vui lòng nhập lý do từ chối.");
       return;
     }
-    if (action !== "accept" && files.length === 0) {
+    if (action !== "accept" && role !== "owner" && files.length === 0) {
       setError("Vui lòng tải lên ít nhất 1 ảnh/video bằng chứng.");
       return;
     }
@@ -175,7 +236,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append("action", action);
       if (rejectReason) formData.append("rejectReason", rejectReason);
-      files.forEach((f) => formData.append("evidence", f));
+      files.forEach((f) => formData.append("evidence", f.file));
       await issueService.handle(issue._id, formData);
       onSuccess();
     } catch (err) {
@@ -233,56 +294,42 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
             </div>
             {isHighValue && role === "staff" && !isEscalated && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-                ⚠️ Đơn hàng có giá trị cao (&gt;1 triệu VNĐ). Nhân viên chỉ
-                được phép đẩy lên Owner xử lý.
+                ⚠️ Đơn hàng có giá trị cao (từ 1 triệu VNĐ). Nhân viên chỉ
+                được phép đẩy lên Chủ cửa hàng xử lý.
               </p>
             )}
           </div>
 
           {/* Action selector */}
-          <div>
-            <label className="block text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">
-              Hành động
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {canAcceptReject && (
-                <>
-                  <button
-                    onClick={() => setAction("accept")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                      action === "accept"
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
-                  </button>
-                  <button
-                    onClick={() => setAction("reject")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                      action === "reject"
-                        ? "bg-red-600 text-white border-red-600"
-                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faTimes} /> Từ chối
-                  </button>
-                </>
-              )}
-              {canEscalate && (
+          {canAcceptReject && (
+            <div>
+              <label className="block text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">
+                Hành động
+              </label>
+              <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setAction("escalate")}
+                  onClick={() => setAction("accept")}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                    action === "escalate"
-                      ? "bg-violet-600 text-white border-violet-600"
-                      : "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100"
+                    action === "accept"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                   }`}
                 >
-                  <FontAwesomeIcon icon={faArrowUp} /> Đẩy lên Owner
+                  <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
                 </button>
-              )}
+                <button
+                  onClick={() => setAction("reject")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                    action === "reject"
+                      ? "bg-red-600 text-white border-red-600"
+                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faTimes} /> Từ chối
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Reject reason */}
           {action === "reject" && (
@@ -301,7 +348,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
           )}
 
           {/* Evidence upload */}
-          {action && action !== "accept" && (
+          {action && action !== "accept" && role !== "owner" && (
             <div>
               <label className="block text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">
                 {action === "escalate"
@@ -324,15 +371,15 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                 className="hidden"
                 onChange={handleFileChange}
               />
-              {previews.length > 0 && (
+              {files.length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
-                  {previews.map((p, i) => (
+                  {files.map((f, i) => (
                     <div
                       key={i}
-                      className="w-16 h-16 rounded-lg overflow-hidden border border-[#eaeaea]"
+                      className="w-16 h-16 rounded-lg overflow-hidden border border-[#eaeaea] relative group bg-black flex items-center justify-center shrink-0"
                     >
-                      {p.type.startsWith("video/") ? (
-                        <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      {f.type === "video" ? (
+                        <div className="w-full h-full flex items-center justify-center">
                           <FontAwesomeIcon
                             icon={faVideo}
                             className="text-white"
@@ -340,11 +387,18 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                         </div>
                       ) : (
                         <img
-                          src={p.url}
+                          src={f.preview}
                           alt={`preview-${i}`}
-                          className="w-full h-full object-cover"
+                          className="max-h-full max-w-full object-contain"
                         />
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(i)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-[8px]" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -370,12 +424,16 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
           <button
             onClick={handleSubmit}
             disabled={submitting || !action}
-            className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#333] transition-colors flex items-center gap-2"
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${
+              action === "escalate"
+                ? "bg-violet-600 hover:bg-violet-700 text-white"
+                : "bg-[#1a1a1a] hover:bg-[#333] text-white"
+            }`}
           >
             {submitting && (
               <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
             )}
-            Xác nhận
+            {action === "escalate" ? "Đẩy lên Chủ cửa hàng" : "Xác nhận"}
           </button>
         </div>
       </div>
@@ -387,10 +445,10 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
 function DetailDrawer({ issue, role, onClose, onAction }) {
   const rental = issue.rentalId;
   const customer = rental?.customerId;
-  const isHighValue = (rental?.totalAmount || 0) > 1000000;
+  const isHighValue = (rental?.totalAmount || 0) >= 1000000;
   const isEscalated = issue.status === "escalated";
   const canHandle =
-    issue.status === "pending" || issue.status === "escalated";
+    issue.status === "pending" || (issue.status === "escalated" && role === "owner");
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -749,9 +807,9 @@ export default function IssuesManagePage() {
                 {paginated.map((iss) => {
                   const rental = iss.rentalId;
                   const customer = rental?.customerId;
-                  const isHighValue = (rental?.totalAmount || 0) > 1000000;
+                  const isHighValue = (rental?.totalAmount || 0) >= 1000000;
                   const canHandle =
-                    iss.status === "pending" || iss.status === "escalated";
+                    iss.status === "pending" || (iss.status === "escalated" && role === "owner");
                   return (
                     <tr
                       key={iss._id}

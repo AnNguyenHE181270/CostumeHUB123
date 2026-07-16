@@ -138,10 +138,10 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
 
   // Ràng buộc 1: Nếu đơn hàng > 1tr VNĐ và vai trò là staff:
   // Staff chỉ được phép đẩy lên owner (escalate), không được đồng ý/từ chối!
-  if (rental.totalAmount > 1000000 && userRole === 'staff') {
+  if (rental.totalAmount >= 1000000 && userRole === 'staff') {
     if (action !== 'escalate') {
       cleanupFiles();
-      throw new HttpError('Đơn hàng có giá trị cao (>1 triệu VNĐ), nhân viên phải đẩy lên cho chủ cửa hàng xử lý.', 403);
+      throw new HttpError('Đơn hàng có giá trị cao (từ 1 triệu VNĐ), nhân viên phải đẩy lên cho chủ cửa hàng xử lý.', 403);
     }
   }
 
