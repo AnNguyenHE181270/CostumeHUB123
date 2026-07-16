@@ -145,39 +145,44 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#eaeaea] p-6 relative">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Quản lý Đơn Thuê</h1>
+    <div className="space-y-6 relative">
+      {/* Sticky Top Header & Filters */}
+      <div className="sticky top-0 z-20 bg-surface pt-6 pb-4 -mx-6 px-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Quản lý Đơn Thuê
+          </h1>
+        </div>
+
+        {/* Toolbar: Filter & Search & Sort */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+          <input
+            type="text"
+            placeholder="Tìm mã đơn, tên khách hàng..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-4 py-2.5 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-72 bg-white"
+          />
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48 bg-white"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="delivered">Đã giao hàng</option>
+            <option value="renting">Đang thuê</option>
+            <option value="returning">Đang trả hàng</option>
+            <option value="completed">Hoàn tất</option>
+            <option value="cancelled">Đã hủy</option>
+            <option value="overdue">Quá hạn</option>
+          </select>
+        </div>
       </div>
 
-      {/* Toolbar: Filter & Search & Sort */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Tìm mã đơn, tên khách hàng..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors w-full sm:w-72"
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-[#eaeaea] rounded-lg text-sm outline-none focus:border-[#1a1a1a] transition-colors cursor-pointer w-full sm:w-48"
-        >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="pending">Chờ xử lý</option>
-          <option value="delivered">Đã giao hàng</option>
-          <option value="renting">Đang thuê</option>
-          <option value="returning">Đang trả hàng</option>
-          <option value="completed">Hoàn tất</option>
-          <option value="cancelled">Đã hủy</option>
-          <option value="overdue">Quá hạn</option>
-        </select>
-      </div>
-
-      {/* Table Data */}
-      <div className="overflow-hidden rounded-lg border border-[#eaeaea]">
+      {/* Table Data wrapped in a white card for clean styling */}
+      <div className="overflow-hidden rounded-lg border border-[#eaeaea] bg-white">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-[#faf9f7] border-b border-[#eaeaea] text-[#999] text-xs uppercase tracking-wider">

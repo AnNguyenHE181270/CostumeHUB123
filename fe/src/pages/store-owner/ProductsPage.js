@@ -273,7 +273,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -287,7 +287,7 @@ export default function ProductsPage() {
           <Button icon={faPlus} label="Thêm sản phẩm" variant="primary" onClick={handleOpenAddForm} />
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="relative w-full md:col-span-1">
           <FontAwesomeIcon
             icon={faSearch}

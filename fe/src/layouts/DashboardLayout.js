@@ -20,8 +20,8 @@ export default function DashboardLayout() {
     <div className="flex min-h-screen bg-surface">
       <Sidebar menuItems={currentMenu} />
 
-      <main className="flex-1 overflow-x-hidden">
-        <div className="p-6">
+      <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden">
+        <div className="px-6 pb-6 pt-0">
           <Outlet />
         </div>
       </main>

@@ -88,7 +88,7 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -100,7 +100,7 @@ export default function AccountsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm flex flex-col md:flex-row items-center gap-4">
+      <div className="flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
           <FontAwesomeIcon
             icon={faSearch}

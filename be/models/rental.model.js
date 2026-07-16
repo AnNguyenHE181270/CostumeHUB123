@@ -103,4 +103,8 @@ const rentalSchema = new mongoose.Schema(
     }
 );
 
+rentalSchema.index({ status: 1 });
+rentalSchema.index({ createdAt: -1 });
+rentalSchema.index({ customerId: 1 });
+
 module.exports = mongoose.model("Rental", rentalSchema);

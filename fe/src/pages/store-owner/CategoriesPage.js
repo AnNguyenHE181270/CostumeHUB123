@@ -277,40 +277,46 @@ const CategoriesPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Quản lý Danh mục
-          </h2>
-          <p className="text-[#999] text-sm mt-1">
-            Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn danh mục
-          </p>
+      {/* Sticky Top Header & Search Bar */}
+      <div className="sticky top-0 z-20 bg-surface pt-6 pb-4 -mx-6 px-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Quản lý Danh mục
+            </h2>
+            <p className="text-[#999] text-sm mt-1">
+              Xem, thêm, sửa, quản lý trạng thái, hoặc ẩn danh mục
+            </p>
+          </div>
+          <div>
+            <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />
+          </div>
         </div>
-        <div>
-          <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />
+        
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
+            <Input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm theo tên danh mục..."
+              className="!pl-10"
+            />
+          </div>
         </div>
       </div>
       
-      <div className="bg-white rounded-2xl p-5 border border-[#eaeaea] shadow-sm flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
-          <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] text-sm" />
-          <Input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm theo tên danh mục..."
-            className="!pl-10"
-          />
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-2xl p-5 border border-[#eaeaea] shadow-sm">
+      {/* Category Tree List without outer redundant border card */}
+      <div>
         {tree.length > 0 ? (
-          <div className="border border-[#eaeaea] rounded-xl overflow-hidden">
+          <div className="border border-[#eaeaea] rounded-xl overflow-hidden bg-white">
             {renderTree(tree)}
           </div>
         ) : (
-          <p className="text-center text-[#999] py-10">Chưa có danh mục nào.</p>
+          <div className="bg-white border border-[#eaeaea] rounded-xl py-10 text-center text-[#999]">
+            Chưa có danh mục nào.
+          </div>
         )}
       </div>
 

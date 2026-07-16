@@ -130,6 +130,10 @@ const costumeSchema = new mongoose.Schema(
   }
 );
 
+costumeSchema.index({ status: 1 });
+costumeSchema.index({ categoryId: 1 });
+costumeSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model(
   "Costume",
   costumeSchema

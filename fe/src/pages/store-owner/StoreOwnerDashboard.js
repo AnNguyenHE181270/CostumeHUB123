@@ -18,7 +18,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 const CATEGORY_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function FrappeStyleDashboard() {
-  const [loadingPage, setLoadingPage] = useState(true);
+  const [loadingPage, setLoadingPage] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   
   const [revenue, setRevenue] = useState(0);
@@ -118,7 +119,8 @@ export default function FrappeStyleDashboard() {
       console.error(error);                                                                                                                                                                                                                                             
       setToast({ isVisible: true, type: "error", message: "Lỗi kết nối máy chủ khi tải báo cáo." });                                                                                                                                                                 
     } finally {                                                                                                                                                                                                                                                         
-      setLoadingPage(false);                                                                                                                                                                                                                                            
+      setLoadingPage(false);
+      setInitialLoading(false);
     }                                                                                                                                                                                                                                                                   
   }, [token, getDateParams]);                                                                                                                                                                                                                                                            
                                                                                                                                                                                                                                                                         
@@ -227,7 +229,7 @@ export default function FrappeStyleDashboard() {
     }
   };
 
-  if (loadingPage) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#eaeaea] border-t-[#1a1a1a]"></div>

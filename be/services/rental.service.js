@@ -476,7 +476,7 @@ const getTotalRevenue = async (startDate, endDate) => {
   const orders = await Rental.find({
     status: { $in: validStatuses },
     ...buildDateRangeFilter(startDate, endDate),
-  });
+  }, 'totalAmount createdAt');
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   // Gom nhóm doanh thu theo tháng (dựa trên ngày tạo đơn) để vẽ biểu đồ xu hướng
@@ -502,7 +502,7 @@ const getActiveRentals = async (startDate, endDate) => {
   const activeOrders = await Rental.find({
     status: { $in: activeStatuses },
     ...buildDateRangeFilter(startDate, endDate),
-  });
+  }, 'items');
   let totalActiveCostumes = 0;
   activeOrders.forEach((o) => o.items.forEach((i) => { totalActiveCostumes += i.quantity; }));
 
@@ -514,7 +514,7 @@ const getActiveRentals = async (startDate, endDate) => {
 
 // YÊU CẦU: Thống kê sức chứa kho hàng (View Inventory Report)
 const getInventoryUtilization = async (startDate, endDate) => {
-  const costumes = await Costume.find().populate({
+  const costumes = await Costume.find({}, 'categoryId variants').populate({
     path: 'categoryId',
     select: 'name parentId',
     populate: { path: 'parentId', select: 'name' }
@@ -541,7 +541,7 @@ const getInventoryUtilization = async (startDate, endDate) => {
   const activeOrders = await Rental.find({
     status: { $in: activeStatuses },
     ...buildDateRangeFilter(startDate, endDate),
-  }).populate('items.costume', 'categoryId');
+  }, 'items').populate('items.costume', 'categoryId');
   let currentlyRented = 0;
 
   activeOrders.forEach((o) => {
