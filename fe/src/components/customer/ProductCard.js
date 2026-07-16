@@ -6,7 +6,7 @@ const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500" },
   rented: { label: "Đang Thuê", color: "bg-red-500" },
   maintenance: { label: "Bảo Trì", color: "bg-amber-500" },
-  dry_cleaning: { label: "Đang Giặt", color: "bg-amber-500" },
+  dry_cleaning: { label: "Bảo Trì", color: "bg-amber-500" },
 };
 
 const PLACEHOLDER_IMG =

@@ -21,7 +21,7 @@ const STATUS_MAP = {
   available: { label: "Còn Hàng", color: "bg-emerald-500", dot: "bg-emerald-400" },
   rented: { label: "Đang Thuê", color: "bg-red-500", dot: "bg-red-400" },
   maintenance: { label: "Bảo Trì", color: "bg-amber-500", dot: "bg-amber-400" },
-  dry_cleaning: { label: "Đang Giặt", color: "bg-amber-500", dot: "bg-amber-400" },
+  dry_cleaning: { label: "Bảo Trì", color: "bg-amber-500", dot: "bg-amber-400" },
 };
 
 function formatPrice(price) {

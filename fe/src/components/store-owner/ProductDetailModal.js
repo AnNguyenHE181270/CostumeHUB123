@@ -6,7 +6,7 @@ const STATUS_MAP = {
   available:    { label: "Sẵn sàng",    cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   rented:       { label: "Đang thuê",   cls: "bg-purple-50 text-purple-700 border-purple-200" },
   maintenance:  { label: "Bảo trì",     cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  dry_cleaning: { label: "Đang giặt",   cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  dry_cleaning: { label: "Bảo trì",   cls: "bg-orange-50 text-orange-700 border-orange-200" },
   hidden:       { label: "Đã ẩn",       cls: "bg-red-50 text-red-700 border-red-200" },
   out_of_stock: { label: "Hết hàng",    cls: "bg-gray-100 text-gray-500 border-gray-300" },
 };

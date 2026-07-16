@@ -320,7 +320,7 @@ export default function ProductsPage() {
             <option value="available">Sẵn sàng</option>
             <option value="out_of_stock">Hết hàng</option>
             <option value="maintenance">Bảo trì</option>
-            <option value="dry_cleaning">Đang giặt</option>
+            <option value="dry_cleaning">Bảo trì</option>
             <option value="rented">Đang thuê</option>
             <option value="hidden">Đã ẩn</option>
           </select>
@@ -457,7 +457,7 @@ export default function ProductsPage() {
                     >
                       <option value="available">Sẵn sàng</option>
                       <option value="maintenance">Bảo trì</option>
-                      <option value="dry_cleaning">Đang giặt</option>
+                      <option value="dry_cleaning">Bảo trì</option>
                       <option value="rented" disabled>Đang thuê</option>
                     </select>
                   )}

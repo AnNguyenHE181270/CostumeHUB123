@@ -12,7 +12,7 @@ const PRICE_OPTIONS = [
 const STATUS_OPTIONS = [
   { value: "available", label: "Còn Hàng" },
   { value: "rented", label: "Đang Thuê" },
-  { value: "maintenance,dry_cleaning", label: "Bảo Trì / Đang Giặt" },
+  { value: "maintenance,dry_cleaning", label: "Bảo Trì" },
 ];
 
 export default function FilterSidebar({

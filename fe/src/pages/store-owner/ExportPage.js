@@ -20,7 +20,7 @@ const COSTUME_STATUS_LABEL = {
   available: "Còn hàng",
   rented: "Đang thuê",
   maintenance: "Bảo trì",
-  dry_cleaning: "Đang giặt là",
+  dry_cleaning: "Bảo trì",
   hidden: "Đang ẩn",
   out_of_stock: "Hết hàng",
 };
