@@ -55,6 +55,9 @@ const getAllCostumes = async (query) => {
       if (statuses.length > 0) filter.status = { $in: statuses };
     }
   } else {
+    // Không truyền status (khách duyệt web mặc định) -> chỉ hiện sản phẩm sẵn sàng cho thuê,
+    // không dựa vào availableStock đơn thuần vì sản phẩm đang bảo trì/giặt là vẫn có thể còn availableStock > 0.
+    filter.status = 'available';
     filter['variants.availableStock'] = { $gt: 0 };
   }
 
