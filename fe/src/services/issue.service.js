@@ -1,7 +1,10 @@
 import axiosClient from '../api/axiosClient';
 
 const issueService = {
-  create: (formData) => axiosClient.post('/api/issues/create', formData),
+  create: (formData) =>
+    axiosClient.post('/api/issues/create', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 
   getByRentalId: (rentalId) => axiosClient.get(`/api/issues/rental/${rentalId}`),
 
