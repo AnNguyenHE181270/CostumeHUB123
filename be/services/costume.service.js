@@ -55,6 +55,9 @@ const getAllCostumes = async (query) => {
       if (statuses.length > 0) filter.status = { $in: statuses };
     }
   } else {
+    // Không truyền status (khách duyệt web mặc định) -> chỉ hiện sản phẩm sẵn sàng cho thuê,
+    // không dựa vào availableStock đơn thuần vì sản phẩm đang bảo trì/giặt là vẫn có thể còn availableStock > 0.
+    filter.status = 'available';
     filter['variants.availableStock'] = { $gt: 0 };
   }
 
@@ -162,7 +165,7 @@ const updateCostume = async (id, data) => {
 
     if (data.status === undefined) {
       const totalAvailable = newVariants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
-      const lockedStatuses = ['hidden', 'maintenance', 'dry_cleaning', 'rented'];
+      const lockedStatuses = ['hidden', 'maintenance', 'rented'];
       if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
         costume.status = 'out_of_stock';
       } else if (totalAvailable > 0 && costume.status === 'out_of_stock') {
@@ -182,4 +185,30 @@ const deleteCostume = async (id) => {
   await costume.save();
 };
 
-module.exports = { getAllCostumes, getCostumeById, createCostume, updateCostume, deleteCostume };
+// Staff xác nhận đã bảo trì/giặt là xong -> sản phẩm sẵn sàng cho thuê lại.
+const getMaintenanceCostumes = async () => {
+  return Costume.find({ status: 'maintenance' })
+    .populate('categoryId', 'name')
+    .sort({ updatedAt: -1 });
+};
+
+const completeMaintenance = async (id) => {
+  const costume = await Costume.findById(id);
+  if (!costume) throw new HttpError('Không tìm thấy sản phẩm.', 404);
+  if (costume.status !== 'maintenance') {
+    throw new HttpError('Sản phẩm không ở trạng thái bảo trì.', 400);
+  }
+  costume.status = 'available';
+  await costume.save();
+  return costume;
+};
+
+module.exports = {
+  getAllCostumes,
+  getCostumeById,
+  createCostume,
+  updateCostume,
+  deleteCostume,
+  getMaintenanceCostumes,
+  completeMaintenance,
+};

@@ -5,6 +5,8 @@ const {
   createCostume,
   updateCostume,
   deleteCostume,
+  getMaintenanceCostumes,
+  completeMaintenance,
 } = require("../controllers/costume.controller");
 const { checkAuth, isOwner } = require("../middlewares/check-auth.middleware");
 const validate = require('../middlewares/validate.middleware');
@@ -16,6 +18,9 @@ router.get("/", getAllCostumes);
 router.get("/:id", getCostumeByIdValidator, validate, getCostumeById);
 
 router.use(checkAuth);
+
+router.get("/maintenance/list", getMaintenanceCostumes);
+router.put("/:id/complete-maintenance", completeMaintenance);
 
 router.post("/", isOwner, createCostumeValidator, validate, createCostume);
 router.put("/:id", isOwner, updateCostumeValidator, validate, updateCostume);

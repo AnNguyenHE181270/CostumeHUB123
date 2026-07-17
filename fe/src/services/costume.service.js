@@ -13,6 +13,10 @@ const costumeService = {
   update: (id, data) => axiosClient.put(`/api/costumes/${id}`, data),
 
   delete: (id) => axiosClient.delete(`/api/costumes/${id}`),
+
+  getMaintenanceList: () => axiosClient.get('/api/costumes/maintenance/list'),
+
+  completeMaintenance: (id) => axiosClient.put(`/api/costumes/${id}/complete-maintenance`),
 };
 
 export default costumeService;
