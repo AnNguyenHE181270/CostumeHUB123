@@ -6,12 +6,16 @@ import {
   faChartBar,
   faTable,
   faFilePdf,
-  faFileWord
+  faFileWord,
+  faFileExcel,
+  faSpinner,
+  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import * as XLSX from "xlsx";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -21,6 +25,7 @@ export default function FrappeStyleDashboard() {
   const [loadingPage, setLoadingPage] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [excelExporting, setExcelExporting] = useState(false);
 
   const [revenue, setRevenue] = useState(0);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
@@ -128,94 +133,294 @@ export default function FrappeStyleDashboard() {
     fetchDashboardData();
   }, [fetchDashboardData, dateRange]);
 
-  const generateReportHTML = (formattedRevenue, currentDate) => `
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; color: #1a1a1a; line-height: 1.6; padding: 30px; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #1a1a1a; padding-bottom: 15px; }
-          .company-name { font-size: 14px; font-weight: bold; text-transform: uppercase; }
-          .report-title { font-size: 22px; font-weight: bold; margin: 10px 0; }
-          .report-date { font-size: 13px; color: #555; }
-          .section-title { font-size: 14px; font-weight: bold; text-transform: uppercase; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
-          .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          .summary-table td { padding: 15px; background: #f9f9f9; border: 1px solid #eaeaea; text-align: center; width: 25%; }
-          .summary-table strong { font-size: 16px; color: #000; display: block; margin-top: 4px; }
-          table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-          table.data-table th { background: #f5f5f5; font-weight: bold; border: 1px solid #eaeaea; padding: 8px; text-align: left; }
-          table.data-table td { border: 1px solid #eaeaea; padding: 8px; }
-          .signature-space { margin-top: 50px; width: 100%; }
-          .signature-table { width: 100%; border: none; }
-          .signature-table td { border: none; text-align: center; width: 50%; font-size: 13px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="company-name">Hệ thống quản lý trang phục CostumeHUB</div>
-          <div class="report-date">Kỳ báo cáo: ${dateRange}</div>
-          <div style="font-size: 11px; color: #777; margin-top: 4px;">Ngày trích xuất dữ liệu: ${currentDate}</div>
-        </div>
+  const fmtVND = (n) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n || 0);
+  const fmtNum2 = (n) => new Intl.NumberFormat("vi-VN").format(n || 0);
+  const fmtPct2 = (n) => `${parseFloat(n || 0).toFixed(1)}%`;
 
-        <div class="section-title">1. Chỉ số tổng quan tài chính & vận hành</div>
-        <table class="summary-table">
-          <tr>
-            <td>Tổng doanh thu kỳ này<br><strong>${formattedRevenue}</strong></td>
-            <td>Số đơn phát sinh<br><strong>${activeOrdersCount} đơn</strong></td>
-            <td>Trang phục đang thuê<br><strong>${currentlyRented} bộ</strong></td>
-            <td>Hiệu suất khai thác kho<br><strong>${inventoryUtilizationPercentage}% (Tổng kho: ${totalStock})</strong></td>
-          </tr>
-        </table>
-
-        <div class="signature-space">
-          <table class="signature-table">
-            <tr>
-              <td>
-                <div style="font-weight: bold; margin-bottom: 60px;">Người lập báo cáo</div>
-                <div style="font-style: italic; color: #555;">(Ký và ghi rõ họ tên)</div>
-              </td>
-              <td>
-                <div style="font-weight: bold; margin-bottom: 60px;">Chủ cửa hàng phê duyệt</div>
-                <div style="font-style: italic; color: #555;">(Ký tên, đóng dấu)</div>
-              </td>
-            </tr>
-          </table>
-        </div>
-      </body>
-    </html>
-  `;
-
-  const handleExportPDF = () => {
-    setShowExportMenu(false);
-    const formattedRevenue = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(revenue || 0);
-    const currentDate = new Date().toLocaleString("vi-VN");
-
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(generateReportHTML(formattedRevenue, currentDate));
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 250);
+  // Fetch full report data on demand khi export
+  const fetchFullReportData = async () => {
+    const { startDate, endDate } = getDateParams();
+    const q = `?startDate=${startDate}&endDate=${endDate}`;
+    const res = await fetch(`http://localhost:9999/api/reports/full${q}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Không thể tải dữ liệu báo cáo toàn diện");
+    return res.json();
   };
 
-  const handleExportDOC = () => {
+  const buildFullHTML = (r, now) => {
+    const section = (num, title) =>
+      `<div style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;
+        margin-top:28px;margin-bottom:10px;padding:5px 10px;background:#f5f5f5;
+        border-left:4px solid #1a1a1a;">${num}. ${title}</div>`;
+    const kpiTbl = (cells) =>
+      `<table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><tr>${
+        cells.map(c => `<td style="padding:11px;background:#f9f9f9;border:1px solid #eaeaea;text-align:center;">
+          <div style="font-size:11px;color:#777;text-transform:uppercase;">${c.label}</div>
+          <div style="font-size:15px;font-weight:bold;margin-top:3px;">${c.value}</div></td>`).join('')
+      }</tr></table>`;
+    const tbl = (headers, rows) =>
+      `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;">
+        <thead><tr>${headers.map(h => `<th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:left;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map((r, i) =>
+          `<tr style="background:${i % 2 ? '#fafafa' : '#fff'}">${
+            r.map(c => `<td style="border-bottom:1px solid #eaeaea;padding:6px 8px;">${c}</td>`).join('')
+          }</tr>`
+        ).join('')}</tbody></table>`;
+    const { revenue, topCostumes, lifecycle, inventory, customers, issues, wallet } = r;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Báo cáo - CostumeHUB</title>
+    <style>* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.6;padding:40px 50px;}</style>
+    </head><body>
+    <div style="text-align:center;border-bottom:3px solid #1a1a1a;padding-bottom:14px;margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;color:#555;">Hệ thống quản lý trang phục</div>
+      <div style="font-size:24px;font-weight:bold;">CostumeHUB</div>
+      <div style="font-size:15px;font-weight:600;margin-top:3px;">BÁO CÁO TOÀN DIỆN HOẠT ĐỘNG KINH DOANH</div>
+      <div style="font-size:13px;color:#555;margin-top:5px;">Kỳ báo cáo: <strong>${dateRange}</strong></div>
+      <div style="font-size:11px;color:#999;margin-top:2px;">Ngày trích xuất: ${now}</div>
+    </div>
+    ${section(1, "Tổng quan tài chính & vận hành")}
+    ${kpiTbl([
+      { label: "Tổng doanh thu", value: fmtVND(revenue?.totalRevenue) },
+      { label: "Số đơn", value: `${fmtNum2(revenue?.orderCount)} đơn` },
+      { label: "Tỷ lệ hoàn tất", value: fmtPct2(lifecycle?.completionRate) },
+      { label: "Tỷ lệ quá hạn", value: fmtPct2(lifecycle?.overdueRate) },
+    ])}
+    ${kpiTbl([
+      { label: "Phí trễ hạn (lateFee)", value: fmtVND(lifecycle?.totalLateFee) },
+      { label: "Phí hư hỏng (damageFee)", value: fmtVND(lifecycle?.totalDamageFee) },
+      { label: "Tổng nạp ví", value: fmtVND(wallet?.totalTopUp) },
+      { label: "Tỷ lệ khiếu nại", value: fmtPct2(issues?.issueRate) },
+    ])}
+    ${section(2, "Doanh thu theo phương thức thanh toán")}
+    ${revenue?.revenueByPaymentMethod?.length ? tbl(
+      ["Phương thức", "Số đơn", "Doanh thu"],
+      revenue.revenueByPaymentMethod.map(p => [p.method, fmtNum2(p.count), fmtVND(p.total)])
+    ) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu.</p>"}
+    ${section(3, "Vòng đời đơn hàng")}
+    ${tbl(["Trạng thái","Số đơn","Tỷ lệ"],
+      (lifecycle?.lifecycle || []).map(l => [l.label, fmtNum2(l.count),
+        lifecycle.total > 0 ? fmtPct2(l.count / lifecycle.total * 100) : "0%"])
+    )}
+    ${section(4, "Top 10 trang phục thuê nhiều nhất")}
+    ${topCostumes?.topByRental?.length ? tbl(
+      ["#","Tên trang phục","Lượt thuê","Doanh thu"],
+      topCostumes.topByRental.slice(0,10).map((c,i) => [i+1, c.name, fmtNum2(c.rentalCount), fmtVND(c.revenue)])
+    ) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu.</p>"}
+    ${section(5, "Top 10 khách hàng chi tiêu nhiều nhất")}
+    ${customers?.topBySpending?.length ? tbl(
+      ["#","Họ tên","Số lần thuê","Tổng chi tiêu"],
+      customers.topBySpending.slice(0,10).map((c,i) => [i+1, c.fullName, c.rentalCount, fmtVND(c.totalSpent)])
+    ) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu.</p>"}
+    ${section(6, "Khiếu nại & Ví điện tử")}
+    ${kpiTbl([
+      { label: "Tổng khiếu nại", value: `${issues?.total || 0} đơn` },
+      { label: "Tỷ lệ", value: fmtPct2(issues?.issueRate) },
+      { label: "GD nạp ví thành công", value: `${fmtNum2(wallet?.successCount)} (${wallet?.successRate || 0}%)` },
+      { label: "Tổng tiền nạp", value: fmtVND(wallet?.totalTopUp) },
+    ])}
+    <table style="width:100%;border-collapse:collapse;margin-top:50px;">
+      <tr>
+        <td style="border:none;text-align:center;width:50%;padding-top:8px;font-size:13px;">
+          <div style="font-weight:bold;margin-bottom:55px;">Người lập báo cáo</div>
+          <div style="font-style:italic;color:#777;font-size:12px;">(Ký và ghi rõ họ tên)</div>
+        </td>
+        <td style="border:none;text-align:center;width:50%;padding-top:8px;font-size:13px;">
+          <div style="font-weight:bold;margin-bottom:55px;">Chủ cửa hàng phê duyệt</div>
+          <div style="font-style:italic;color:#777;font-size:12px;">(Ký tên, đóng dấu)</div>
+        </td>
+      </tr>
+    </table>
+    <div style="margin-top:36px;text-align:center;font-size:10px;color:#bbb;border-top:1px solid #eaeaea;padding-top:10px;">
+      Tài liệu được tạo tự động bởi hệ thống CostumeHUB — ${now}
+    </div>
+    </body></html>`;
+  };
+
+  const handleExportPDF = async () => {
     setShowExportMenu(false);
-    const formattedRevenue = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(revenue || 0);
-    const currentDate = new Date().toLocaleString("vi-VN");
+    setExcelExporting(true);
+    try {
+      const r = await fetchFullReportData();
+      const now = new Date().toLocaleString("vi-VN");
+      const w = window.open("", "_blank");
+      w.document.write(buildFullHTML(r, now));
+      w.document.close();
+      setTimeout(() => { w.focus(); w.print(); }, 400);
+    } catch (err) { console.error(err); }
+    finally { setExcelExporting(false); }
+  };
 
-    const htmlContent = generateReportHTML(formattedRevenue, currentDate);
-    const blob = new Blob(["\ufeff" + htmlContent], { type: "application/msword" });
+  const handleExportDOC = async () => {
+    setShowExportMenu(false);
+    setExcelExporting(true);
+    try {
+      const r = await fetchFullReportData();
+      const now = new Date().toLocaleString("vi-VN");
+      const html = buildFullHTML(r, now);
+      const blob = new Blob(["\ufeff" + html], { type: "application/msword" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Bao_cao_toan_dien_CostumeHUB_${new Date().toISOString().slice(0, 10)}.doc`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (err) { console.error(err); }
+    finally { setExcelExporting(false); }
+  };
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Bao_cao_${dateRange.replace(/ /g, "_").replace(/\//g, "-")}_CostumeHUB.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleExportExcel = async () => {
+    setShowExportMenu(false);
+    setExcelExporting(true);
+    try {
+      const r = await fetchFullReportData();
+      const now = new Date().toLocaleString("vi-VN");
+      const { revenue, topCostumes, lifecycle, inventory, customers, issues, wallet } = r;
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Tổng quan
+      const wsSummary = XLSX.utils.aoa_to_sheet([
+        ["BÁO CÁO TỔNG HỢP HOẠT ĐỘNG KINH DOANH - COSTUMEHUB"],
+        [`Kỳ báo cáo: ${dateRange}`], [`Ngày trích xuất: ${now}`], [],
+        ["CHỈ SỐ", "GIÁ TRỊ", "GHI CHÚ"],
+        ["Tổng doanh thu", revenue?.totalRevenue || 0, fmtVND(revenue?.totalRevenue)],
+        ["Số đơn phát sinh", revenue?.orderCount || 0, ""],
+        ["Tỷ lệ hoàn tất", `${lifecycle?.completionRate || 0}%`, "completed / tổng"],
+        ["Tỷ lệ huỷ", `${lifecycle?.cancelRate || 0}%`, ""],
+        ["Tỷ lệ quá hạn", `${lifecycle?.overdueRate || 0}%`, ""],
+        ["Thời gian thuê TB", `${lifecycle?.avgRentalDays || 0} ngày`, ""],
+        ["Phí trễ hạn (lateFee)", lifecycle?.totalLateFee || 0, fmtVND(lifecycle?.totalLateFee)],
+        ["Phí hư hỏng (damageFee)", lifecycle?.totalDamageFee || 0, fmtVND(lifecycle?.totalDamageFee)],
+        ["Tổng nạp ví", wallet?.totalTopUp || 0, fmtVND(wallet?.totalTopUp)],
+        ["GD nạp thành công", wallet?.successCount || 0, `${wallet?.successRate || 0}%`],
+        ["Tổng đơn khiếu nại", issues?.total || 0, `Tỷ lệ: ${issues?.issueRate || 0}%`],
+        ["Khách mới trong kỳ", customers?.newCustomers || 0, ""],
+      ]);
+      wsSummary["!cols"] = [{ wch: 36 }, { wch: 20 }, { wch: 24 }];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Tong quan");
+
+      // Sheet 2: Doanh thu theo tháng
+      if (revenue?.revenueByMonth?.length > 0) {
+        const wsM = XLSX.utils.json_to_sheet(revenue.revenueByMonth.map(m => {
+          const [y, mo] = m.month.split("-");
+          return { "Tháng": `Tháng ${Number(mo)}/${y}`, "Doanh thu (đ)": m.total, "Doanh thu": fmtVND(m.total) };
+        }));
+        wsM["!cols"] = [{ wch: 16 }, { wch: 18 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, wsM, "Doanh thu theo thang");
+      }
+
+      // Sheet 3: Theo phương thức TT
+      if (revenue?.revenueByPaymentMethod?.length > 0) {
+        const wsP = XLSX.utils.json_to_sheet(revenue.revenueByPaymentMethod.map(p => ({
+          "Phương thức": p.method, "Số đơn": p.count,
+          "Doanh thu (đ)": p.total, "Doanh thu": fmtVND(p.total),
+        })));
+        wsP["!cols"] = [{ wch: 16 }, { wch: 10 }, { wch: 18 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, wsP, "Theo phuong thuc TT");
+      }
+
+      // Sheet 4: Top trang phục thuê nhiều
+      if (topCostumes?.topByRental?.length > 0) {
+        const wsT = XLSX.utils.json_to_sheet(topCostumes.topByRental.map((c, i) => ({
+          "Hạng": i + 1, "Tên": c.name, "Lượt thuê": c.rentalCount,
+          "Doanh thu (đ)": c.revenue, "Doanh thu": fmtVND(c.revenue),
+        })));
+        wsT["!cols"] = [{ wch: 6 }, { wch: 32 }, { wch: 12 }, { wch: 18 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, wsT, "Top trang phuc thue nhieu");
+      }
+
+      // Sheet 5: Top trang phục doanh thu
+      if (topCostumes?.topByRevenue?.length > 0) {
+        const wsR = XLSX.utils.json_to_sheet(topCostumes.topByRevenue.map((c, i) => ({
+          "Hạng": i + 1, "Tên": c.name,
+          "Doanh thu (đ)": c.revenue, "Doanh thu": fmtVND(c.revenue), "Lượt thuê": c.rentalCount,
+        })));
+        wsR["!cols"] = [{ wch: 6 }, { wch: 32 }, { wch: 18 }, { wch: 22 }, { wch: 12 }];
+        XLSX.utils.book_append_sheet(wb, wsR, "Top trang phuc doanh thu");
+      }
+
+      // Sheet 6: Vòng đời đơn
+      const wsLife = XLSX.utils.aoa_to_sheet([
+        ["PHÂN TÍCH VÒNG ĐỜI ĐƠN"], [],
+        ["Tổng đơn", lifecycle?.total || 0],
+        ["Tỷ lệ hoàn tất", `${lifecycle?.completionRate || 0}%`],
+        ["Tỷ lệ huỷ", `${lifecycle?.cancelRate || 0}%`],
+        ["Tỷ lệ quá hạn", `${lifecycle?.overdueRate || 0}%`],
+        ["Thời gian thuê TB", `${lifecycle?.avgRentalDays || 0} ngày`], [],
+        ["TRẠNG THÁI", "SỐ ĐƠN", "TỶ LỆ"],
+        ...(lifecycle?.lifecycle || []).map(l => [
+          l.label, l.count,
+          lifecycle.total > 0 ? `${(l.count / lifecycle.total * 100).toFixed(1)}%` : "0%"
+        ]), [],
+        ["PHÍ PHÁT SINH", ""],
+        ["Phí trễ hạn (lateFee)", lifecycle?.totalLateFee || 0],
+        ["Phí hư hỏng (damageFee)", lifecycle?.totalDamageFee || 0],
+      ]);
+      wsLife["!cols"] = [{ wch: 30 }, { wch: 14 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsLife, "Vong doi don hang");
+
+      // Sheet 7: Tồn kho theo size
+      if (inventory?.rows?.length > 0) {
+        const wsInv = XLSX.utils.json_to_sheet(inventory.rows.map(r => ({
+          "Tên": r.name, "Danh mục": r.category, "Size": r.size, "SKU": r.sku,
+          "Tổng kho": r.totalStock, "Sẵn sàng": r.availableStock,
+          "Đang thuê": r.rentedStock, "Tỷ lệ": `${r.utilizationPct}%`,
+        })));
+        wsInv["!cols"] = [{ wch: 28 }, { wch: 18 }, { wch: 8 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+        XLSX.utils.book_append_sheet(wb, wsInv, "Ton kho theo size");
+      }
+
+      // Sheet 8: Hot vs Cold
+      if (inventory?.hotCostumes?.length > 0) {
+        const hot = (inventory.hotCostumes || []).map((r, i) => ({ "Loại": "🔥 Cháy hàng", "Hạng": i+1, "Tên": r.name, "Size": r.size, "Đang thuê": r.rentedStock, "Tỷ lệ": `${r.utilizationPct}%` }));
+        const cold = (inventory.coldCostumes || []).map((r, i) => ({ "Loại": "🧊 Ế hàng", "Hạng": i+1, "Tên": r.name, "Size": r.size, "Đang thuê": r.rentedStock, "Tỷ lệ": `${r.utilizationPct}%` }));
+        const wsHC = XLSX.utils.json_to_sheet([...hot, ...cold]);
+        wsHC["!cols"] = [{ wch: 14 }, { wch: 8 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 }];
+        XLSX.utils.book_append_sheet(wb, wsHC, "Hot vs Cold costumes");
+      }
+
+      // Sheet 9: Top khách hàng
+      if (customers?.topByRental?.length > 0) {
+        const wsCust = XLSX.utils.json_to_sheet(customers.topByRental.map((c, i) => ({
+          "Hạng": i+1, "Họ tên": c.fullName, "Email": c.email,
+          "SĐT": c.phone, "Số lần thuê": c.rentalCount,
+          "Tổng chi tiêu (đ)": c.totalSpent, "Tổng chi tiêu": fmtVND(c.totalSpent),
+        })));
+        wsCust["!cols"] = [{ wch: 8 }, { wch: 26 }, { wch: 26 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, wsCust, "Top khach hang");
+      }
+
+      // Sheet 10: Khiếu nại
+      const wsIssue = XLSX.utils.aoa_to_sheet([
+        ["BÁO CÁO KHIẾU NẠI"], [],
+        ["Tổng đơn khiếu nại", issues?.total || 0],
+        ["Tổng đơn thuê trong kỳ", issues?.totalRentals || 0],
+        ["Tỷ lệ đơn có khiếu nại", `${issues?.issueRate || 0}%`], [],
+        ["PHÂN LOẠI THEO TRẠNG THÁI", ""],
+        ...(issues?.statusBreakdown || []).map(s => [s.status, s.count]), [],
+        ["PHÂN LOẠI THEO GIẢI PHÁP", ""],
+        ...(issues?.resolutionBreakdown || []).map(r => [r.resolution, r.count]),
+      ]);
+      wsIssue["!cols"] = [{ wch: 32 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsIssue, "Khieu nai");
+
+      // Sheet 11: Ví điện tử
+      const wsWallet = XLSX.utils.aoa_to_sheet([
+        ["BÁO CÁO NẠP VÍ ĐIỆN TỬ"], [],
+        ["Tổng giao dịch nạp", wallet?.total || 0],
+        ["Thành công", wallet?.successCount || 0, `${wallet?.successRate || 0}%`],
+        ["Thất bại", wallet?.failedCount || 0, ""],
+        ["Đang chờ", wallet?.pendingCount || 0, ""],
+        ["Tổng tiền nạp thành công", wallet?.totalTopUp || 0, fmtVND(wallet?.totalTopUp)],
+      ]);
+      wsWallet["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsWallet, "Vi dien tu");
+
+      XLSX.writeFile(wb, `Bao_cao_toan_dien_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error("Lỗi xuất Excel:", err);
+    } finally {
+      setExcelExporting(false);
+    }
   };
 
   const handleApplyCustomDate = () => {
@@ -319,29 +524,68 @@ export default function FrappeStyleDashboard() {
                 setShowExportMenu(!showExportMenu);
                 setShowDateMenu(false);
               }}
-              className="w-10 h-10 flex items-center justify-center border border-[#eaeaea] bg-white text-[#1a1a1a] hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-colors shadow-sm"
-              title="Xuất báo cáo văn bản pháp lý"
+              className="flex items-center gap-2 border border-[#eaeaea] bg-white text-[#1a1a1a] hover:bg-[#faf9f7] rounded-xl px-3 py-2 min-h-[40px] transition-colors shadow-sm"
+              title="Xuất báo cáo"
             >
-              <FontAwesomeIcon icon={faDownload} className="text-sm" />
+              {excelExporting
+                ? <FontAwesomeIcon icon={faSpinner} className="animate-spin text-sm text-emerald-600" />
+                : <FontAwesomeIcon icon={faDownload} className="text-sm" />
+              }
+              <span className="text-sm font-medium hidden sm:inline">Xuất file</span>
+              <FontAwesomeIcon icon={faChevronDown} className="text-[#bbb] text-xs" />
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-1 z-50 animate-fade-in">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-[#eaeaea] rounded-xl shadow-xl z-50 overflow-hidden">
+                {/* Header */}
+                <div className="px-4 py-2.5 border-b border-[#f0f0f0] bg-[#faf9f7]">
+                  <p className="text-[10px] font-bold text-[#999] uppercase tracking-widest">Xuất báo cáo kỳ này</p>
+                </div>
+
+                {/* Excel */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); handleExportExcel(); }}
+                  disabled={excelExporting}
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-emerald-50 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                >
+                  <span className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
+                    <FontAwesomeIcon icon={excelExporting ? faSpinner : faFileExcel} className={excelExporting ? "animate-spin text-xs" : "text-xs"} />
+                  </span>
+                  <div>
+                    <div className="font-semibold text-[#1a1a1a]">{excelExporting ? "Đang tạo..." : "Xuất Excel"}</div>
+                    <div className="text-[10px] text-[#999]">3 sheets · .xlsx</div>
+                  </div>
+                </button>
+
+                {/* PDF */}
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); handleExportPDF(); }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-red-50 flex items-center gap-3 transition-colors group"
                 >
-                  <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
-                  Xuất văn bản PDF (.pdf)
+                  <span className="w-8 h-8 rounded-lg bg-red-100 text-red-500 group-hover:bg-red-500 group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
+                    <FontAwesomeIcon icon={faFilePdf} className="text-xs" />
+                  </span>
+                  <div>
+                    <div className="font-semibold text-[#1a1a1a]">Xuất PDF</div>
+                    <div className="text-[10px] text-[#999]">In trực tiếp · .pdf</div>
+                  </div>
                 </button>
+
+                {/* Word */}
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); handleExportDOC(); }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-medium"
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-blue-50 flex items-center gap-3 transition-colors group"
                 >
-                  <FontAwesomeIcon icon={faFileWord} className="text-blue-500" />
-                  Xuất văn bản Word (.doc)
+                  <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-500 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
+                    <FontAwesomeIcon icon={faFileWord} className="text-xs" />
+                  </span>
+                  <div>
+                    <div className="font-semibold text-[#1a1a1a]">Xuất Word</div>
+                    <div className="text-[10px] text-[#999]">Chỉnh sửa được · .doc</div>
+                  </div>
                 </button>
               </div>
             )}
