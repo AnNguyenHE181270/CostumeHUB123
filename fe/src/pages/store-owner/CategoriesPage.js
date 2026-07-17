@@ -109,7 +109,8 @@ const CategoriesPage = () => {
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
     setFormData({ name: cat.name, description: cat.description, parentId: cat.parentId || "" });
-    setIsRootMode(false);
+    // If the category has no parent, it's a root category — hide the parent selector
+    setIsRootMode(!cat.parentId);
     setIsFormOpen(true);
   };
 
