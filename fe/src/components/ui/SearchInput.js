@@ -7,7 +7,7 @@ export default function SearchInput({
   onChange,
   placeholder = "Tìm kiếm...",
   className = "",
-  wrapperClassName = "w-full md:w-1/6",
+  wrapperClassName = "w-full md:w-2/6",
   ...props
 }) {
   return (

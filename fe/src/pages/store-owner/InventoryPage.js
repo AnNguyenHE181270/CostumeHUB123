@@ -29,7 +29,7 @@ export default function InventoryPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented" });
+      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,rented" });
       setProducts(data.costumes || []);
     } catch {
       showToast("Không thể tải dữ liệu kho", "error");

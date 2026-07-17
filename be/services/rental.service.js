@@ -729,7 +729,7 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
     if (item.costume) {
-      await CostumeModel.findByIdAndUpdate(item.costume._id, { status: 'dry_cleaning' });
+      await CostumeModel.findByIdAndUpdate(item.costume._id, { status: 'maintenance' });
       const costumeToUpdate = await CostumeModel.findById(item.costume._id || item.costume);
       if (costumeToUpdate) {
         const variant = costumeToUpdate.variants.find((v) => v.size === item.size);

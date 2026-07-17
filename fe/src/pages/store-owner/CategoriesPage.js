@@ -284,7 +284,7 @@ const CategoriesPage = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm theo tên danh mục..."
-            wrapperClassName="col-span-1"
+            wrapperClassName="col-span-2"
           />
           <div className="col-start-6 col-span-1">
             <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />

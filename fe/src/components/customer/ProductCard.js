@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faStar } from "@fortawesome/free-solid-svg-icons";
 
 import { formatPrice } from "../../utils/formatters";
 const STATUS_MAP = {
-  available: { label: "Còn Hàng", color: "bg-emerald-500" },
   rented: { label: "Đang Thuê", color: "bg-red-500" },
   maintenance: { label: "Bảo Trì", color: "bg-amber-500" },
-  dry_cleaning: { label: "Bảo Trì", color: "bg-amber-500" },
 };
 
 const PLACEHOLDER_IMG =
@@ -42,7 +42,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       ? costume.images[0]
       : PLACEHOLDER_IMG;
 
-  const statusInfo = STATUS_MAP[costume.status] || STATUS_MAP.available;
+  const statusInfo = STATUS_MAP[costume.status];
   const categoryName =
     typeof costume.categoryId === "object"
       ? costume.categoryId?.name
@@ -62,14 +62,21 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
             onError={() => setImgError(true)}
           />
 
-          {/* Status badge */}
+          {/* Status badge: chỉ hiện khi sản phẩm không sẵn sàng (đang thuê/bảo trì).
+              Mặc định danh sách khách xem đã lọc sẵn hàng còn -> không cần ghi chữ, thay bằng icon nổi bật. */}
           <div className="absolute top-3 left-3">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white ${statusInfo.color} shadow-sm`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-              {statusInfo.label}
-            </span>
+            {statusInfo ? (
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white ${statusInfo.color} shadow-sm`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                {statusInfo.label}
+              </span>
+            ) : (
+              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-[#d9b578] to-[#b8935a] text-white shadow-md ring-2 ring-white/70">
+                <FontAwesomeIcon icon={faStar} className="text-[11px]" />
+              </span>
+            )}
           </div>
         </div>
 

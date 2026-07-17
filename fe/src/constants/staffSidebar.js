@@ -1,10 +1,10 @@
-import { 
-  faHouse, 
-  faRightLeft, 
-  faCalendarCheck, 
-  faUsers, 
-  faBox, 
-  faCircleExclamation 
+import {
+  faHouse,
+  faRightLeft,
+  faScrewdriverWrench,
+  faUsers,
+  faBox,
+  faCircleExclamation
 } from "@fortawesome/free-solid-svg-icons";
 
 const staffSidebar = [
@@ -30,12 +30,12 @@ const staffSidebar = [
     subtitle: "Quản lý quy trình cho thuê trang phục và trả đồ của khách hàng", 
     icon: faRightLeft 
   },
-  { 
-    path: "/staff/appointments", 
-    label: "Lịch hẹn", 
-    title: "Quản lý Lịch hẹn", 
-    subtitle: "Theo dõi và quản lý các lịch hẹn thử đồ của khách hàng", 
-    icon: faCalendarCheck 
+  {
+    path: "/staff/maintenance",
+    label: "Trang phục bảo trì",
+    title: "Trang phục bảo trì",
+    subtitle: "Quản lý các trang phục đang sửa chữa/giặt là sau khi khách trả đồ",
+    icon: faScrewdriverWrench
   },
   { 
     path: "/staff/customers", 
