@@ -3,19 +3,20 @@ import { useAuth } from "../../context/AuthContext";
 import issueService from "../../services/issue.service";
 import DataTable from "../../components/ui/DataTable";
 import Pagination from "../../components/ui/Pagination";
+import SearchInput from "../../components/ui/SearchInput";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faCircleExclamation,
-  faSearch,
   faCheck,
   faTimes,
   faArrowUp,
-  faEye,
   faImage,
   faVideo,
   faSpinner,
   faChevronLeft,
   faChevronRight,
+  faInfoCircle,
+  faGavel,
+  faCircleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 const STATUS_LABELS = {
@@ -311,8 +312,8 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                 <button
                   onClick={() => setAction("accept")}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "accept"
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                     }`}
                 >
                   <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
@@ -320,8 +321,8 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                 <button
                   onClick={() => setAction("reject")}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "reject"
-                      ? "bg-red-600 text-white border-red-600"
-                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                     }`}
                 >
                   <FontAwesomeIcon icon={faTimes} /> Từ chối
@@ -424,8 +425,8 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
             onClick={handleSubmit}
             disabled={submitting || !action}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${action === "escalate"
-                ? "bg-violet-600 hover:bg-violet-700 text-white"
-                : "bg-[#1a1a1a] hover:bg-[#333] text-white"
+              ? "bg-violet-600 hover:bg-violet-700 text-white"
+              : "bg-[#1a1a1a] hover:bg-[#333] text-white"
               }`}
           >
             {submitting && (
@@ -624,7 +625,7 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
               onClick={() => onAction(issue)}
               className="w-full py-3 bg-[#1a1a1a] text-white rounded-xl font-semibold text-sm hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
             >
-              <FontAwesomeIcon icon={faCircleExclamation} />
+              <FontAwesomeIcon icon={faGavel} />
               Xử lý khiếu nại này
             </button>
           </div>
@@ -711,43 +712,34 @@ export default function IssuesManagePage() {
         </div>
       )}
 
-      <div className="sticky top-0 z-20 bg-white pt-6 pb-4 -mx-6 px-6">
 
-        {/* Status filter tabs */}
-        <div className="flex gap-1.5 flex-wrap mb-3">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => {
-                setStatusFilter(tab.key);
-                setCurrentPage(1);
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${statusFilter === tab.key
-                ? "bg-[#1a1a1a] text-white"
-                : "bg-white text-[#555] border border-[#eaeaea] hover:border-[#ccc]"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setCurrentPage(1);
+        }}
+        placeholder="Tìm theo tên khách hàng hoặc mã đơn..."
+        wrapperClassName="w-full md:w-2/6"
+      />
 
-        {/* Search */}
-        <div className="relative">
-          <FontAwesomeIcon
-            icon={faSearch}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#aaa] text-xs"
-          />
-          <input
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
+      <div className="flex gap-1.5 flex-wrap my-3">
+        {FILTER_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => {
+              setStatusFilter(tab.key);
               setCurrentPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#eaeaea] rounded-xl focus:outline-none focus:border-[#1a1a1a] transition-colors"
-            placeholder="Tìm theo tên khách hàng hoặc mã đơn..."
-          />
-        </div>
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${statusFilter === tab.key
+              ? "bg-[#1a1a1a] text-white"
+              : "bg-white text-[#555] border border-[#eaeaea] hover:border-[#ccc]"
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Table using DataTable */}
@@ -834,19 +826,18 @@ export default function IssuesManagePage() {
                       <button
                         onClick={() => setSelectedIssue(iss)}
                         title="Xem chi tiết"
-                        className="w-8 h-8 rounded-lg border border-[#eaeaea] flex items-center justify-center text-[#888] hover:bg-[#f5f5f5] hover:text-[#1a1a1a] transition-colors"
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] transition-colors"
                       >
-                        <FontAwesomeIcon icon={faEye} size="xs" />
+                        <FontAwesomeIcon icon={faInfoCircle} />
                       </button>
                       {canHandle && (
                         <button
                           onClick={() => setHandleTarget(iss)}
                           title="Xử lý khiếu nại"
-                          className="w-8 h-8 rounded-lg border border-[#1a1a1a] bg-[#1a1a1a] flex items-center justify-center text-white hover:bg-[#333] transition-colors"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] transition-colors"
                         >
                           <FontAwesomeIcon
-                            icon={faCircleExclamation}
-                            size="xs"
+                            icon={faGavel}
                           />
                         </button>
                       )}
@@ -859,36 +850,36 @@ export default function IssuesManagePage() {
         </DataTable>
       </div>
 
-    {/* Detail Drawer */ }
-  {
-    selectedIssue && (
-      <DetailDrawer
-        issue={selectedIssue}
-        role={role}
-        onClose={() => setSelectedIssue(null)}
-        onAction={(iss) => {
-          setSelectedIssue(null);
-          setHandleTarget(iss);
-        }}
-      />
-    )
-  }
+      {/* Detail Drawer */}
+      {
+        selectedIssue && (
+          <DetailDrawer
+            issue={selectedIssue}
+            role={role}
+            onClose={() => setSelectedIssue(null)}
+            onAction={(iss) => {
+              setSelectedIssue(null);
+              setHandleTarget(iss);
+            }}
+          />
+        )
+      }
 
-  {/* Handle Modal */ }
-  {
-    handleTarget && (
-      <HandleModal
-        issue={handleTarget}
-        role={role}
-        onClose={() => setHandleTarget(null)}
-        onSuccess={() => {
-          setHandleTarget(null);
-          showToast("Xử lý khiếu nại thành công!");
-          fetchIssues();
-        }}
-      />
-    )
-  }
+      {/* Handle Modal */}
+      {
+        handleTarget && (
+          <HandleModal
+            issue={handleTarget}
+            role={role}
+            onClose={() => setHandleTarget(null)}
+            onSuccess={() => {
+              setHandleTarget(null);
+              showToast("Xử lý khiếu nại thành công!");
+              fetchIssues();
+            }}
+          />
+        )
+      }
     </div >
   );
 }
