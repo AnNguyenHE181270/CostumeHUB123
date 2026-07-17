@@ -50,7 +50,20 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
 
     const status = order.status
     const trackingSteps = getTrackingSteps(status)
-    const currentStepTitle = STEP_DEFINITIONS.find(s => s.status === status)?.title ?? "Đang xử lý"
+
+    let currentStepTitle = "Đang xử lý";
+    let statusSubtitle = "Dự kiến giao: Hôm nay, 14:00 - 18:00";
+
+    if (status === 'pending') {
+        currentStepTitle = "Đang chuẩn bị hàng";
+        statusSubtitle = "Trang phục đang được chuẩn bị và kiểm tra kỹ lưỡng";
+    } else if (status === 'delivering') {
+        currentStepTitle = "Đang vận chuyển";
+        statusSubtitle = "Dự kiến giao: Hôm nay, 14:00 - 18:00";
+    } else if (['renting', 'returning', 'completed', 'overdue'].includes(status)) {
+        currentStepTitle = "Giao hàng thành công";
+        statusSubtitle = "Đơn hàng đã được giao thành công";
+    }
 
     const items = Array.isArray(order.items)
         ? order.items
@@ -112,7 +125,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                     </div>
                     <div>
                         <p className="font-medium text-foreground">{currentStepTitle}</p>
-                        <p className="text-sm text-muted-foreground">Dự kiến giao: Hôm nay, 14:00 - 18:00</p>
+                        <p className="text-sm text-muted-foreground">{statusSubtitle}</p>
                     </div>
                 </div>
             </div>
