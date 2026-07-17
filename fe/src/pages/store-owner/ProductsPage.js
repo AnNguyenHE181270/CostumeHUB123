@@ -276,12 +276,12 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-6 gap-4 items-center">
-        {/* Search — đầu dòng, 1/6 */}
+        {/* Search — đầu dòng, 2/6 */}
         <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Tìm kiếm sản phẩm..."
-          wrapperClassName="col-span-1"
+          wrapperClassName="col-span-2"
         />
 
         {/* Category filter */}
@@ -322,9 +322,6 @@ export default function ProductsPage() {
             <option value="price_desc">Giá thuê: Cao đến Thấp</option>
           </select>
         </div>
-
-        {/* Spacer */}
-        <div className="col-span-1" />
 
         {/* Button — cuối dòng, 1/6 */}
         <div className="col-span-1">

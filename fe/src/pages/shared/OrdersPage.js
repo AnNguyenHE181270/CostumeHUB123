@@ -112,7 +112,7 @@ export default function OrdersPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Tìm mã đơn, tên khách hàng..."
-          wrapperClassName="w-full sm:w-72"
+          wrapperClassName="w-full md:w-2/6"
         />
 
         <select
