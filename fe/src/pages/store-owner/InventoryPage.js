@@ -5,22 +5,27 @@ import {
   faBoxOpen,
   faExclamationTriangle,
   faChevronRight,
+  faWarehouse,
+  faClockRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import Input from "../../components/ui/Input";
 import Pagination from "../../components/ui/Pagination";
 import Toast from "../../components/ui/Toast";
 import DataTable from "../../components/ui/DataTable";
 import InventoryDetailDrawer from "../../components/store-owner/InventoryDetailDrawer";
+import StockHistoryPanel from "../../components/store-owner/StockHistoryPanel";
 import costumeService from "../../services/costume.service";
 const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
+  const [tab, setTab] = useState("stock"); // "stock" | "history"
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStock, setFilterStock] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
 
   const showToast = (message, type = "success") =>
@@ -88,24 +93,38 @@ export default function InventoryPage() {
 
   const handleSaved = () => {
     fetchProducts(); // refresh; selectedProduct auto-updates via derivation above
+    setHistoryRefreshKey((k) => k + 1); // history tab refetches next time it's visible
   };
 
   return (
     <div className="space-y-6">
 
-      {/* ── Page header ──
-      <div>
-        <h2
-          className="text-2xl font-semibold tracking-tight text-[#1a1a1a]"
-          style={{ fontFamily: "'Cormorant Garamond', serif" }}
+      {/* ── Tabs ── */}
+      <div className="flex gap-2 border-b border-[#eaeaea]">
+        <button
+          onClick={() => setTab("stock")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "stock" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
         >
-          Quản lý Kho hàng
-        </h2>
-        <p className="text-[#999] text-sm mt-1">
-          Theo dõi tồn kho và cập nhật số lượng từng sản phẩm
-        </p>
-      </div> */}
+          <FontAwesomeIcon icon={faWarehouse} className="text-xs" />
+          Tồn kho
+        </button>
+        <button
+          onClick={() => setTab("history")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "history" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <FontAwesomeIcon icon={faClockRotateLeft} className="text-xs" />
+          Lịch sử Nhập/Xuất
+        </button>
+      </div>
 
+      {tab === "history" ? (
+        <StockHistoryPanel refreshKey={historyRefreshKey} />
+      ) : (
+      <>
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-[#f0f0f0] shadow-sm px-5 py-4">
@@ -290,6 +309,8 @@ export default function InventoryPage() {
         onSaved={handleSaved}
         showToast={showToast}
       />
+      </>
+      )}
 
       <Toast
         isVisible={toast.isVisible}

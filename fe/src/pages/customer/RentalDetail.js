@@ -267,7 +267,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
               </button>
             )}
 
-            {['renting', 'delivered', 'completed', 'returned'].includes(currentStatus) && (
+            {['renting', 'delivered', 'returning', 'completed'].includes(currentStatus) && (
               <button
                 onClick={() => onRequestIssue?.()}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue

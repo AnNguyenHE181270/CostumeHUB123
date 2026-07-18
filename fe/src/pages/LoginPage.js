@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEyeSlash, faArrowRight, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faArrowRight, faCheck, faEnvelope, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
@@ -68,7 +69,10 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <div className="w-full max-w-[420px]">
-        <div className="lg:hidden mb-10">
+        <div className="lg:hidden mb-10 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-warning-400 to-warning-600 flex items-center justify-center text-white font-bold text-xs">
+            LR
+          </div>
           <span className="text-text-primary text-[11px] font-medium tracking-[0.35em] uppercase">
             Luxe Rent
           </span>
@@ -92,6 +96,7 @@ export default function LoginPage() {
             onChange={handleChange}
             placeholder="name@example.com"
             required
+            leftIcon={<FontAwesomeIcon icon={faEnvelope} size="sm" />}
           />
 
           <Input
@@ -102,6 +107,7 @@ export default function LoginPage() {
             onChange={handleChange}
             placeholder="Nhập mật khẩu của bạn"
             required
+            leftIcon={<FontAwesomeIcon icon={faLock} size="sm" />}
             rightIcon={
               <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} size="sm" />
             }
@@ -116,8 +122,8 @@ export default function LoginPage() {
                 aria-checked={remember}
                 onClick={() => setRemember((prev) => !prev)}
                 className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${remember
-                  ? "bg-primary-600 border-primary-600"
-                  : "bg-surface border-borderorder hover:border-primary-500"
+                  ? "bg-gradient-to-br from-warning-400 to-warning-600 border-warning-500"
+                  : "bg-surface border-borderorder hover:border-warning-500"
                   }`}
               >
                 {remember && (
@@ -142,14 +148,39 @@ export default function LoginPage() {
 
           {error && <ErrorMessage message={error} />}
 
-          <div className="pt-2 mb-6">
+          <div className="pt-2">
             <Button
               type="submit"
-              variant="primary"
+              variant="gold"
               icon={faArrowRight}
               label="Đăng Nhập"
               loading={loading}
             />
+          </div>
+
+          <div className="flex items-center gap-4 py-2">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-text-muted text-[10px] tracking-[0.2em] uppercase">
+              Hoặc
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2.5 py-3 rounded-xl border border-border bg-background text-sm font-medium text-text-primary hover:bg-surface transition-colors"
+            >
+              <FontAwesomeIcon icon={faGoogle} className="text-[15px]" />
+              Google
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2.5 py-3 rounded-xl border border-border bg-background text-sm font-medium text-text-primary hover:bg-surface transition-colors"
+            >
+              <FontAwesomeIcon icon={faApple} className="text-[16px]" />
+              Apple
+            </button>
           </div>
 
           <p className="text-center text-sm text-text-secondary mt-8">
