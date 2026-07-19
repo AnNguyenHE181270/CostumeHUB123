@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSpinner, faChevronDown, faChevronRight, faHouse, faTag,
-  faTableCellsLarge, faList, faGift, faArrowRight,
-  faMagnifyingGlass, faXmark, faGem,
+  faTableCellsLarge, faList,
+  faMagnifyingGlass, faXmark, faGem, faCrown, faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "../../components/customer/ProductCard";
 import costumeService from "../../services/costume.service";
@@ -41,10 +42,9 @@ export default function CategoryPage() {
 
   // Sort Options
   const sortOptions = [
-    { label: "Mặc định", value: "newest" },
+    { label: "Mặc định (Mới nhất)", value: "newest" },
     { label: "Giá tăng dần", value: "price_asc" },
     { label: "Giá giảm dần", value: "price_desc" },
-    { label: "Theo mới nhất", value: "newest" },
     { label: "Theo cũ nhất", value: "oldest" },
   ];
 
@@ -69,12 +69,27 @@ export default function CategoryPage() {
     setSearchParams(newParams);
   };
 
-  // Sản phẩm bán chạy thật (theo số lượt thuê) — dùng để gắn badge BEST SELLER
+  const [rentalCountMap, setRentalCountMap] = useState(new Map());
+
+  // Sản phẩm bán chạy (theo số lượt thuê > 10) — dùng để gắn mác BEST SELLER
   useEffect(() => {
     (async () => {
       try {
-        const res = await rentalService.getTopRented(8);
-        setBestSellerIds(new Set((res.items || []).map((it) => it.costume._id)));
+        const res = await rentalService.getTopRented(50);
+        const map = new Map();
+        const bestSellerSet = new Set();
+        (res.items || []).forEach((it) => {
+          const costumeId = (it.costume?._id || it.costume || "").toString();
+          const count = it.rentalCount || it.count || 0;
+          if (costumeId) {
+            map.set(costumeId, count);
+            if (count > 10) {
+              bestSellerSet.add(costumeId);
+            }
+          }
+        });
+        setRentalCountMap(map);
+        setBestSellerIds(bestSellerSet);
       } catch (err) {
         console.error("Failed to fetch top rented:", err);
       }
@@ -143,77 +158,90 @@ export default function CategoryPage() {
     setSort(e.target.value);
   };
 
-  const heading = query ? `Kết quả tìm kiếm: "${query}"` : (category ? category.name : "Tất Cả Sản Phẩm");
-  const crumbLabel = query ? "Tìm kiếm" : (category ? category.name : "Tất cả sản phẩm");
+  const heading = query ? `Kết quả tìm kiếm: "${query}"` : (category ? category.name : "Tất Cả Bộ Sưu Tập");
+  const crumbLabel = query ? "Tìm kiếm" : (category ? category.name : "Tất cả bộ sưu tập");
 
   return (
-    <div className="bg-[#f9f5ed] min-h-screen pb-20">
+    <div className="bg-[#faf6f0] min-h-screen pb-20">
 
-      {/* ── Hero banner ── */}
-      <div className="relative min-h-[160px] lg:min-h-[185px] py-6 lg:py-8 overflow-hidden flex items-center border-b border-[#e8dfcd]">
+      {/* ── HERO BANNER SANG TRỌNG ── */}
+      <div className="relative min-h-[175px] lg:min-h-[200px] py-8 lg:py-10 overflow-hidden flex items-center border-b border-[#e8dfcd]">
         <img
           src={boutiqueImg}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none opacity-40"
           style={{ objectPosition: "50% 25%" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f7f2e8]/98 via-[#f5efe3]/90 to-[#f5efe3]/65 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f7f2e8]/98 via-[#f5efe3]/92 to-[#f5efe3]/75 backdrop-blur-[2px]" />
 
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-2 mb-1">
-              <FontAwesomeIcon icon={faGem} className="text-[10px] text-[#d4af37]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#b8935a]">
-                Bộ Sưu Tập
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-xl"
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <FontAwesomeIcon icon={faGem} className="text-[11px] text-[#d4af37]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#b8935a]">
+                Haute Couture Catalog
               </span>
             </div>
-            <h1 className="text-[#1a1a1a] text-[30px] lg:text-[38px] font-bold leading-tight" style={SERIF}>
-              {heading}
+            <h1 className="text-[#1a1a1a] text-[32px] lg:text-[42px] font-bold leading-tight" style={SERIF}>
+              <span className="text-shine-black">{heading}</span>
             </h1>
-            <p className="text-[#665a45] text-[13px] mt-1 font-light leading-relaxed">
-              Khám phá những thiết kế thời thượng — Tôn vinh phong cách của bạn
+            <p className="text-[#665a45] text-[13px] lg:text-[14px] mt-1 font-light leading-relaxed">
+              Khám phá những thiết kế thời thượng & kiêu sa — Tôn vinh khí chất riêng của bạn
             </p>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
 
-        {/* ── Breadcrumb ── */}
+        {/* ── BREADCRUMB ── */}
         <div className="flex items-center gap-2 text-[11px] text-[#8a7d63] uppercase tracking-widest py-4">
           <Link to="/" className="hover:text-[#1a1a1a] transition-colors flex items-center gap-1.5">
             <FontAwesomeIcon icon={faHouse} className="text-[10px]" />
           </Link>
           <FontAwesomeIcon icon={faChevronRight} className="text-[8px] text-[#c8ab7a]" />
-          <span>Bộ sưu tập</span>
+          <Link to="/collections" className="hover:text-[#1a1a1a] transition-colors">Bộ sưu tập</Link>
           <FontAwesomeIcon icon={faChevronRight} className="text-[8px] text-[#c8ab7a]" />
-          <span className="text-[#1a1a1a] font-semibold">{crumbLabel}</span>
+          <span className="text-[#1a1a1a] font-bold">{crumbLabel}</span>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8 pb-4">
 
-          {/* ── Sidebar ── */}
-          <aside className="w-full lg:w-[270px] flex-shrink-0 space-y-5">
-            <div className="bg-white border border-[#eee2c8] p-6 shadow-sm rounded-2xl">
+          {/* ── SIDEBAR CATEGORIES & GUARANTEE WIDGET ── */}
+          <aside className="w-full lg:w-[280px] flex-shrink-0 space-y-6">
+            {/* Category Tree Box */}
+            <div className="bg-white border border-[#e6dcab]/80 p-6 shadow-md rounded-3xl">
               <div className="flex items-center gap-2.5 mb-5 pb-3 border-b border-[#f0e9d5]">
-                <span className="w-7 h-7 rounded-full bg-[#faf1dd] flex items-center justify-center text-[#b8935a]">
+                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f8f3ea] to-[#efe5d3] flex items-center justify-center text-[#b8935a] shadow-sm">
                   <FontAwesomeIcon icon={faTag} className="text-[12px]" />
                 </span>
-                <h3 className="text-[13px] font-bold text-[#1a1a1a] uppercase tracking-widest">
-                  Danh mục dịch vụ
-                </h3>
+                <div>
+                  <h3 className="text-[13px] font-bold text-[#1a1a1a] uppercase tracking-wider">
+                    Danh mục sản phẩm
+                  </h3>
+                  <span className="text-[10px] text-[#b8935a] tracking-widest font-medium">Boutique Collection</span>
+                </div>
               </div>
 
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 <li>
                   <button
                     onClick={() => navigate("/collections")}
-                    className={`w-full text-left py-2.5 px-3 text-[13px] uppercase tracking-wider font-medium rounded-lg transition-colors ${!categoryId ? "bg-[#faf1dd] text-[#8a6a3c] border-l-2 border-[#b8935a]" : "text-gray-600 hover:bg-gray-50 hover:text-black"}`}
+                    className={`w-full text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${
+                      !categoryId && !query
+                        ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
+                        : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
+                    }`}
                   >
-                    Tất cả dịch vụ
+                    Tất cả sản phẩm
                   </button>
                 </li>
+
                 {categories.map((cat) => {
                   const isActiveParent = categoryId === cat._id;
                   return (
@@ -221,21 +249,29 @@ export default function CategoryPage() {
                       <div className="flex items-center">
                         <button
                           onClick={() => navigate(`/category/${cat._id}`)}
-                          className={`flex-1 text-left py-2.5 px-3 text-[13px] uppercase tracking-wider font-medium rounded-lg transition-colors ${isActiveParent ? "bg-[#faf1dd] text-[#8a6a3c] border-l-2 border-[#b8935a]" : "text-gray-600 hover:bg-gray-50 hover:text-black"}`}
+                          className={`flex-1 text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${
+                            isActiveParent
+                              ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
+                              : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
+                          }`}
                         >
                           {cat.name}
                         </button>
                       </div>
 
                       {cat.children && cat.children.length > 0 && (
-                        <ul className="pl-4 mt-1 mb-2 space-y-1 border-l border-gray-100 ml-3">
-                          {cat.children.map(child => (
+                        <ul className="pl-4 mt-1 mb-2 space-y-1 border-l-2 border-[#eee2c8] ml-4">
+                          {cat.children.map((child) => (
                             <li key={child._id}>
                               <button
                                 onClick={() => navigate(`/category/${child._id}`)}
-                                className={`w-full text-left py-2 px-3 text-[12px] uppercase tracking-widest transition-colors ${categoryId === child._id ? "text-[#8a6a3c] font-semibold" : "text-gray-500 hover:text-black"}`}
+                                className={`w-full text-left py-2 px-3 text-[11px] uppercase tracking-wider transition-all rounded-lg ${
+                                  categoryId === child._id
+                                    ? "text-[#8a6a3c] font-bold bg-[#faf1dd]/60"
+                                    : "text-gray-500 hover:text-[#b8935a] hover:bg-gray-50"
+                                }`}
                               >
-                                {child.name}
+                                {categoryId === child._id ? "✦ " : ""}{child.name}
                               </button>
                             </li>
                           ))}
@@ -247,39 +283,61 @@ export default function CategoryPage() {
               </ul>
             </div>
 
-            {/* Promo card */}
-            <div className="bg-gradient-to-br from-[#2e2a22] to-[#463c2c] rounded-2xl p-5 text-white relative overflow-hidden">
-              <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/5" />
-              <span className="w-10 h-10 rounded-full bg-[#c8ab7a] flex items-center justify-center mb-3">
-                <FontAwesomeIcon icon={faGift} className="text-[15px] text-white" />
-              </span>
-              <p className="text-[13px] font-semibold mb-1">Ưu đãi đặc biệt</p>
-              <p className="text-[12px] text-white/70 leading-relaxed mb-4">
-                Giảm lên đến 20% cho bộ sưu tập mới
-              </p>
+            {/* ── CAM KẾT CHẤT LƯỢNG (Thay thế cho Promo Card Giảm 20%) ── */}
+            <div className="bg-gradient-to-br from-[#1a1a1a] via-[#2d2d2d] to-[#121212] rounded-3xl p-6 text-white border border-[#c9a869]/40 shadow-xl relative overflow-hidden">
+              <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-[#c9a869]/10 blur-xl pointer-events-none" />
+              
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8a6a2f] flex items-center justify-center text-white text-xs shadow-md shrink-0">
+                  <FontAwesomeIcon icon={faCrown} />
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-bold text-[#f5e6ca] uppercase tracking-wider" style={SERIF}>
+                    Cam Kết Chất Lượng
+                  </h4>
+                  <span className="text-[10px] text-[#e8c471] uppercase tracking-widest block font-semibold">CostumeHUB Guarantee</span>
+                </div>
+              </div>
+
+              <ul className="space-y-2.5 text-[12px] text-gray-300 font-light mb-5 border-t border-[#c9a869]/20 pt-4">
+                <li className="flex items-center gap-2.5">
+                  <FontAwesomeIcon icon={faCheck} className="text-[#d4af37] text-[11px] shrink-0" />
+                  <span>100% Giặt khô & Khử trùng</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <FontAwesomeIcon icon={faCheck} className="text-[#d4af37] text-[11px] shrink-0" />
+                  <span>Chuẩn phom dáng nhà thiết kế</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <FontAwesomeIcon icon={faCheck} className="text-[#d4af37] text-[11px] shrink-0" />
+                  <span>Hỗ trợ đổi size & giao nhanh</span>
+                </li>
+              </ul>
+
               <button
-                onClick={() => navigate("/collections")}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                onClick={() => navigate("/about")}
+                className="w-full py-2.5 bg-gradient-to-r from-[#d4af37] via-[#c9a35f] to-[#8a6a2f] text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:brightness-110 transition-all text-center shadow-md luxury-btn-gold-shine border border-[#c9a869]/30"
               >
-                <FontAwesomeIcon icon={faArrowRight} className="text-[12px]" />
+                Chính sách minh bạch
               </button>
             </div>
           </aside>
 
-          {/* ── Main ── */}
+          {/* ── MAIN CONTENT ── */}
           <main className="flex-1">
 
-            <div className="flex flex-wrap items-center gap-3 bg-white p-3.5 border border-[#eee2c8] shadow-sm rounded-2xl">
-              {/* Search — trái */}
-              <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[220px]">
-                <div className="search-bar-luxury rounded-full pl-4 pr-1.5 py-1 flex items-center gap-2 border border-[#e6ddc9] bg-[#faf9f7] focus-within:border-[#c9a869] transition-colors">
-                  <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[#b8935a] text-[13px] shrink-0" />
+            {/* Top Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 border border-[#e6dcab]/80 shadow-md rounded-3xl mb-6">
+              {/* Search input inside toolbar */}
+              <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[240px]">
+                <div className="search-bar-luxury rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-2.5 border border-[#e2d5bd] bg-[#faf9f7] focus-within:border-[#c9a869] transition-colors">
+                  <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[#b8935a] text-[14px] shrink-0" />
                   <input
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     placeholder="Tìm kiếm trang phục trong bộ sưu tập..."
-                    className="flex-1 min-w-0 text-[13px] text-[#1a1a1a] placeholder-gray-400 bg-transparent border-none outline-none focus:ring-0"
+                    className="flex-1 min-w-0 text-[13px] text-[#1a1a1a] placeholder-gray-400 bg-transparent border-none outline-none focus:ring-0 font-medium"
                   />
                   {searchInput && (
                     <button
@@ -293,43 +351,49 @@ export default function CategoryPage() {
                   )}
                   <button
                     type="submit"
-                    className="shrink-0 bg-[#1a1a1a] text-[#f5e6ca] px-4 py-1.5 rounded-full font-bold text-[10px] uppercase tracking-[0.12em] luxury-btn-gold-shine hover:shadow-[0_4px_14px_rgba(184,147,90,0.3)] transition-all whitespace-nowrap"
+                    className="shrink-0 bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] px-5 py-2 rounded-full font-bold text-[10px] uppercase tracking-[0.12em] luxury-btn-gold-shine border border-[#c9a869]/30 shadow-sm hover:shadow-[0_4px_14px_rgba(184,147,90,0.3)] transition-all whitespace-nowrap"
                   >
                     Tìm kiếm
                   </button>
                 </div>
               </form>
 
-              {/* Sắp xếp + view toggle — phải */}
-              <div className="flex items-center gap-3 ml-auto">
-                <label className="text-[13px] text-gray-600 font-medium">Sắp xếp:</label>
-                <div className="relative">
-                  <select
-                    value={sort}
-                    onChange={handleSortChange}
-                    className="appearance-none bg-[#faf9f7] border border-[#e6ddc9] text-gray-700 text-[13px] py-1.5 pl-3 pr-8 rounded-lg focus:outline-none focus:border-[#b8935a] cursor-pointer"
-                  >
-                    {sortOptions.map(opt => (
-                      <option key={opt.value + opt.label} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
+              {/* Sắp xếp & View mode */}
+              <div className="flex items-center gap-4 ml-auto">
+                <div className="flex items-center gap-2">
+                  <label className="text-[12px] text-gray-500 font-semibold uppercase tracking-wider">Sắp xếp:</label>
+                  <div className="relative">
+                    <select
+                      value={sort}
+                      onChange={handleSortChange}
+                      className="appearance-none bg-[#faf9f7] border border-[#e2d5bd] text-[#1a1a1a] text-[12px] font-semibold py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:border-[#b8935a] cursor-pointer shadow-sm"
+                    >
+                      {sortOptions.map(opt => (
+                        <option key={opt.value + opt.label} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-[#faf9f7] border border-[#e6ddc9] rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-[#faf9f7] border border-[#e2d5bd] rounded-xl p-1 shadow-sm">
                   <button
                     onClick={() => setViewMode("grid")}
                     aria-label="Xem dạng lưới"
-                    className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${viewMode === "grid" ? "bg-[#b8935a] text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      viewMode === "grid" ? "bg-gradient-to-r from-[#d4af37] to-[#8a6a2f] text-white shadow-sm" : "text-gray-400 hover:bg-gray-100 hover:text-black"
+                    }`}
                   >
                     <FontAwesomeIcon icon={faTableCellsLarge} className="text-[12px]" />
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
                     aria-label="Xem dạng danh sách"
-                    className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${viewMode === "list" ? "bg-[#b8935a] text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      viewMode === "list" ? "bg-gradient-to-r from-[#d4af37] to-[#8a6a2f] text-white shadow-sm" : "text-gray-400 hover:bg-gray-100 hover:text-black"
+                    }`}
                   >
                     <FontAwesomeIcon icon={faList} className="text-[12px]" />
                   </button>
@@ -337,30 +401,47 @@ export default function CategoryPage() {
               </div>
             </div>
 
-            {/* Hiển thị N/M sản phẩm — nhỏ, ngoài khung, căn phải */}
-            <div className="flex justify-end pr-1 mt-1.5 mb-4">
-              <span className="text-[11px] text-[#8a7d63]">
-                Hiển thị <b className="text-[#5c5340]">{costumes.length}</b> / {paginationData.totalItems} sản phẩm
+            {/* Counter display */}
+            <div className="flex justify-end pr-2 mb-4">
+              <span className="text-[11px] text-[#8a7d63] font-medium tracking-wide">
+                Hiển thị <b className="text-[#1a1a1a] font-bold">{costumes.length}</b> / {paginationData.totalItems} sản phẩm
               </span>
             </div>
 
+            {/* Product Grid */}
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32 text-[#999]">
-                <FontAwesomeIcon icon={faSpinner} spin className="text-4xl mb-4" />
-                <p className="text-[13px] uppercase tracking-[0.1em]">Đang tải dữ liệu...</p>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-4xl mb-4 text-[#b8935a]" />
+                <p className="text-[12px] uppercase tracking-[0.15em] font-bold text-[#b8935a]">Đang tải bộ sưu tập...</p>
               </div>
             ) : costumes.length > 0 ? (
               <>
-                <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
-                  {costumes.map((costume) => (
-                    <div key={costume._id} className="h-full">
-                      <ProductCard costume={costume} hideRentButton={true} isBestSeller={bestSellerIds.has(costume._id)} />
-                    </div>
-                  ))}
-                </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}
+                >
+                  {costumes.map((costume, idx) => {
+                    const count = rentalCountMap.get(costume._id?.toString()) || costume.rentalCount || costume.rentCount || costume.totalRentals || 0;
+                    const costumeWithCount = { ...costume, rentalCount: count };
+                    const isBestSeller = count > 10 || bestSellerIds.has(costume._id?.toString());
+                    return (
+                      <motion.div
+                        key={costume._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: idx * 0.04 }}
+                        className="h-full"
+                      >
+                        <ProductCard costume={costumeWithCount} hideRentButton={true} isBestSeller={isBestSeller} />
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
 
                 {paginationData.totalPages > 1 && (
-                  <div className="mt-10 bg-white shadow-sm border border-[#eaeaea] rounded-2xl">
+                  <div className="mt-12 bg-white shadow-sm border border-[#e6dcab]/80 rounded-3xl p-2">
                     <Pagination
                       displayCount={costumes.length}
                       totalCount={paginationData.totalItems}
@@ -375,16 +456,25 @@ export default function CategoryPage() {
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 bg-white border border-[#eaeaea] rounded-2xl text-center">
-                <svg className="w-16 h-16 text-[#e8e8e8] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <h3 className="text-[18px] font-bold text-[#1a1a1a] mb-2" style={SERIF}>
-                  Chưa có sản phẩm
+              <div className="flex flex-col items-center justify-center py-24 bg-white border border-[#e6dcab] rounded-3xl text-center p-8 shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-[#faf6f0] border border-[#c9a869]/30 flex items-center justify-center mb-4 text-[#b8935a]">
+                  <FontAwesomeIcon icon={faGem} className="text-2xl" />
+                </div>
+                <h3 className="text-[20px] font-bold text-[#1a1a1a] mb-2" style={SERIF}>
+                  Không tìm thấy sản phẩm nào
                 </h3>
-                <p className="text-[13px] text-[#666]">
-                  Hiện tại chưa có sản phẩm nào trong danh mục này.
+                <p className="text-[13px] text-gray-500 font-light max-w-sm">
+                  Rất tiếc, hiện tại không tìm thấy sản phẩm nào khớp với tiêu chí lựa chọn của bạn.
                 </p>
+                <button
+                  onClick={() => {
+                    handleClearSearch();
+                    navigate("/collections");
+                  }}
+                  className="mt-6 px-6 py-2.5 bg-[#1a1a1a] text-[#f5e6ca] text-[11px] font-bold uppercase tracking-wider rounded-full hover:bg-[#b8935a] hover:text-white transition-all shadow-md"
+                >
+                  Xem tất cả bộ sưu tập
+                </button>
               </div>
             )}
 
@@ -394,3 +484,4 @@ export default function CategoryPage() {
     </div>
   );
 }
+

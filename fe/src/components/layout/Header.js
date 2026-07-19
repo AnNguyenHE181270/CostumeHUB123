@@ -67,7 +67,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-3" : "bg-white pt-4"}`}>
+    <header className={`fixed w-full top-0 z-50 transition-all duration-500 ease-in-out ${scrolled ? "bg-white/80 backdrop-blur-xl border-b border-[#c9a869]/40 shadow-[0_10px_30px_-10px_rgba(184,147,90,0.22)] pt-2.5" : "bg-white/95 backdrop-blur-md border-b border-transparent pt-4"}`}>
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-3">
 
         {/* Left: Mobile Menu Toggle or Desktop Links */}
