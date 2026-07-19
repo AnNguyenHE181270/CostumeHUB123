@@ -254,16 +254,33 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-6 border-t border-gray-100 pt-4">
               <div>
-                <p className="text-sm text-gray-500">Khách hàng</p>
-                <p className="font-semibold">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
-                <p className="text-sm">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Khách hàng</p>
+                <p className="font-semibold text-gray-800 mt-1">{selectedOrder.shippingAddress?.receiverName || selectedOrder.customerId?.fullName || "Khách vãng lai"}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{selectedOrder.shippingAddress?.receiverPhone || selectedOrder.customerId?.phone}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Thời gian thuê</p>
-                <p className="font-semibold">{selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"} {" -> "} {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thời gian thuê</p>
+                <p className="font-semibold text-gray-800 mt-1">
+                  {selectedOrder.startDate ? new Date(selectedOrder.startDate).toLocaleDateString('vi-VN') : "-"}
+                  {" → "}
+                  {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}
+                </p>
               </div>
+              {selectedOrder.shippingAddress && (
+                <div className="col-span-2 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Địa chỉ nhận hàng</p>
+                  <p className="text-sm font-medium text-gray-700 mt-1 leading-relaxed">
+                    {[
+                      selectedOrder.shippingAddress.addressDetail,
+                      selectedOrder.shippingAddress.ward,
+                      selectedOrder.shippingAddress.district,
+                      selectedOrder.shippingAddress.province
+                    ].filter(Boolean).join(', ') || "Chưa cập nhật địa chỉ"}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
