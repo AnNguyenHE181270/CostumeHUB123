@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faArrowRight, faCheck, faEnvelope, faLock } from "@fortawesome/free-solid-svg-icons";
-import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
@@ -169,31 +168,6 @@ export default function LoginPage() {
               label="Đăng Nhập"
               loading={loading}
             />
-          </div>
-
-          <div className="flex items-center gap-4 py-2">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-text-muted text-[10px] tracking-[0.2em] uppercase">
-              Hoặc
-            </span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2.5 py-3 rounded-2xl border border-[#e9e0cf] bg-white text-sm font-medium text-text-primary hover:bg-[#faf6ee] transition-colors"
-            >
-              <FontAwesomeIcon icon={faGoogle} className="text-[15px]" />
-              Google
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2.5 py-3 rounded-2xl border border-[#e9e0cf] bg-white text-sm font-medium text-text-primary hover:bg-[#faf6ee] transition-colors"
-            >
-              <FontAwesomeIcon icon={faApple} className="text-[16px]" />
-              Apple
-            </button>
           </div>
 
           <p className="text-center text-sm text-text-secondary mt-8">
