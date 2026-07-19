@@ -140,7 +140,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                     </div>
                     <div>
                         <p className="font-medium text-foreground">{currentStepTitle}</p>
-                        <p className="text-sm text-muted-foreground">Dự kiến giao: Hôm nay, 14:00 - 18:00</p>
+                        <p className="text-sm text-muted-foreground">{statusSubtitle}</p>
                     </div>
                 </div>
             </div>

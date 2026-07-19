@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
@@ -72,7 +73,7 @@ export default function Modal({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[9990] flex items-center justify-center p-4"
       role="dialog"
@@ -136,6 +137,7 @@ export default function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
