@@ -149,9 +149,19 @@ const getTopRentedCostumes = async (req, res, next) => {
   }
 };
 
+const createOfflineOrder = async (req, res, next) => {
+  try {
+    const order = await rentalService.createOfflineOrder(req.userData.id, req.body);
+    res.status(201).json({ message: 'Tạo đơn hàng offline thành công', order });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Creating offline order failed', 500));
+  }
+};
+
 module.exports = {
   confirmReceipt, checkAvailability, createOrder, getAllOrders, updateOrderStatus,
   confirmPreparation, getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, extendRental, getTopRentedCostumes,
+  createOfflineOrder,
 };
