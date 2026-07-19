@@ -24,6 +24,11 @@ export default function Header() {
     navigate("/login");
   };
 
+  const handleLoginClick = () => {
+    setMobileMenuOpen(false);
+    navigate("/login");
+  };
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
@@ -154,9 +159,13 @@ export default function Header() {
               </div>
             </div>
           ) : (
-            <Link to="/login" className="text-gray-700 hover:text-black transition-colors hidden sm:block p-1">
+            <button
+              type="button"
+              onClick={handleLoginClick}
+              className="text-gray-700 hover:text-black transition-colors hidden sm:block p-1"
+            >
               <FontAwesomeIcon icon={faUser} className="text-[20px] lg:text-[22px]" />
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -195,7 +204,11 @@ export default function Header() {
               </div>
             ))}
             <hr className="border-gray-100 my-2" />
-            <Link to={user ? "/my-profile" : "/login"} className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors">
+            <button
+              type="button"
+              onClick={handleLoginClick}
+              className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors text-left"
+            >
               {user ? (
                 user.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
@@ -208,7 +221,7 @@ export default function Header() {
                 <FontAwesomeIcon icon={faUser} className="text-gray-500 text-[15px]" />
               )}
               {user ? (user.fullName || "Tài khoản") : "Đăng nhập"}
-            </Link>
+            </button>
           </nav>
         </div>
       </div>

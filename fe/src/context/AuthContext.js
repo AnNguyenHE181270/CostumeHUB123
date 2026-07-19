@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import userService from "../services/user.service";
 
 const AuthContext = createContext();
 
@@ -6,33 +7,18 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState();
+  const [role, setRole] = useState(null);
+
   const getProfile = async (currentToken) => {
     if (!currentToken) return null;
 
     try {
-      const response = await fetch(
-        "http://localhost:9999/api/users/my-profile",
-        {
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + currentToken,
-          },
-          credentials: "include",
-          cache: "no-store",
-        },
-      );
-
-      if (!response.ok) {
-        logout();
-        throw new Error("Failed to fetch profile");
-      }
-
-      const data = await response.json();
+      const data = await userService.getMyProfile();
       const userData = data.user || data;
-      setRole(userData.role);
+      const userRole = userData.role?.name || userData.role || null;
+      setRole(userRole);
       setUser(userData);
-      return data;
+      return userData;
     } catch (error) {
       console.error("Lỗi lấy profile:", error);
       return null;
@@ -53,12 +39,13 @@ export function AuthProvider({ children }) {
   const login = async (newToken, remember) => {
     if (remember) {
       localStorage.setItem("token", newToken);
+      sessionStorage.removeItem("token");
     } else {
       sessionStorage.setItem("token", newToken);
+      localStorage.removeItem("token");
     }
 
     setToken(newToken);
-
     const profile = await getProfile(newToken);
     return profile;
   };
@@ -68,6 +55,7 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    setRole(null);
   };
 
   const refreshProfile = async () => {

@@ -66,7 +66,7 @@ const getRentalHistory = async (userId) => {
   await autoUpdateDeliveredStatus();
 
   const orders = await Rental.find({ customerId: userId })
-    .populate('items.costume', 'name images pricePerDay price')
+    .populate('items.costume', 'name images pricePerDay price minRentalDays maxRentalDays')
     .sort({ createdAt: -1 });
 
   return orders.map((order) => ({
@@ -76,6 +76,8 @@ const getRentalHistory = async (userId) => {
     rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24))} ngày`,
     startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
     endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
+    rawStartDate: order.startDate,
+    rawEndDate: order.endDate,
     status: order.status,
     totalPrice: order.totalAmount,
     address: order.shippingAddress.addressDetail,
@@ -86,6 +88,8 @@ const getRentalHistory = async (userId) => {
       size: item.size,
       quantity: item.quantity,
       rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || 0,
+      minRentalDays: item.costume?.minRentalDays || 1,
+      maxRentalDays: item.costume?.maxRentalDays || 7,
     })),
     createdAt: order.createdAt,
   }));
@@ -96,7 +100,7 @@ const getOrderDetail = async (orderId, customerId) => {
 
   const order = await Rental.findOne({ _id: orderId, customerId })
     .populate('customerId', 'fullName phone email')
-    .populate('items.costume', 'name images price pricePerDay');
+    .populate('items.costume', 'name images price pricePerDay minRentalDays maxRentalDays');
 
   if (!order) throw new HttpError('Orders not found.', 404);
 
@@ -128,12 +132,14 @@ const getOrderDetail = async (orderId, customerId) => {
     rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
-      costumeName: item.costume.name,
-      image: item.costume.images[0],
+      costumeName: item.costume?.name || 'Sản phẩm',
+      image: item.costume?.images?.[0] || '',
       size: item.size,
       quantity: item.quantity,
-      price: item.costume.price,
+      price: item.costume?.price || 0,
       rentalPerDay: item.rentalPricePerDay || item.costume?.pricePerDay || item.costume?.price || 0,
+      minRentalDays: item.costume?.minRentalDays || 1,
+      maxRentalDays: item.costume?.maxRentalDays || 7,
     })),
   };
 };
@@ -775,9 +781,21 @@ const extendRental = async (id, customerId, newEndDate) => {
 
   if (extendDays <= 0) throw new HttpError('Ngày gia hạn mới phải sau ngày trả hiện tại.', 400);
 
+  const startDay = new Date(rental.startDate);
+  const startDayZero = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate());
+  const totalDaysAfterExtend = Math.ceil((newEndDay.getTime() - startDayZero.getTime()) / (1000 * 60 * 60 * 24));
+
   for (const item of rental.items) {
     const costume = item.costume;
     if (!costume) throw new HttpError('Sản phẩm trong đơn hàng không tồn tại.', 404);
+
+    const maxDaysAllowed = costume.maxRentalDays || 7;
+    if (totalDaysAfterExtend > maxDaysAllowed) {
+      throw new HttpError(
+        `Sản phẩm "${costume.name}" giới hạn tối đa ${maxDaysAllowed} ngày thuê. Tổng số ngày sau gia hạn (${totalDaysAfterExtend} ngày) vượt quá hạn mức cho phép.`,
+        400
+      );
+    }
 
     const overlap = await Rental.findOne({
       _id: { $ne: rental._id },
@@ -792,8 +810,7 @@ const extendRental = async (id, customerId, newEndDate) => {
     }
   }
 
-  const oldRentalDays = Math.ceil((oldEndDay.getTime() - new Date(rental.startDate).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
-  const totalDaysAfterExtend = oldRentalDays + extendDays;
+  const oldRentalDays = Math.ceil((oldEndDay.getTime() - startDayZero.getTime()) / (1000 * 60 * 60 * 24));
   // Giá thuê là mức phí trọn gói cho 1-3 ngày đầu; gia hạn chỉ tính thêm phần phụ phí phát sinh
   // khi tổng số ngày vượt qua mốc đã tính trước đó (chênh lệch hệ số giá).
   const oldPriceFactor = getRentalPriceFactor(oldRentalDays);

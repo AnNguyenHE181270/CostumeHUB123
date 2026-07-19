@@ -3,7 +3,7 @@ import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortaweso
 import { statusOrder } from "../../constants/statusOrder"
 import { formatOrderId } from "../../utils/formatters"
 
-function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain }) {
+function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder }) {
     const status = statusOrder[order.status]
 
     return (
@@ -109,7 +109,8 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain }) 
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            onViewDetail(order);
+                                            if (onExtendOrder) onExtendOrder(order);
+                                            else onViewDetail(order);
                                         }}
                                         className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                     >
