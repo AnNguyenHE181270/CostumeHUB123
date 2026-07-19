@@ -41,7 +41,7 @@ export default function OrdersPage() {
     customerName: "",
     customerPhone: "",
     customerAddress: "",
-    items: [{ costume: "", size: "", quantity: 1, availableSizes: [] }]
+    items: [{ costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
   });
 
   // Fetch costumes list
@@ -60,12 +60,43 @@ export default function OrdersPage() {
     }
   }, [offlineModalOpen]);
 
-  const handleCostumeChange = (index, costumeId) => {
-    const selected = costumesList.find(c => c._id === costumeId);
+  const handleCostumeSearchChange = (index, value) => {
     const newItems = [...offlineData.items];
-    newItems[index].costume = costumeId;
+    newItems[index].searchInput = value;
+
+    // Reset costume and size selection when search query changes
+    newItems[index].costume = "";
     newItems[index].size = "";
-    newItems[index].availableSizes = selected ? selected.variants?.map(v => v.size) || [] : [];
+    newItems[index].availableSizes = [];
+
+    if (value.trim() === "") {
+      newItems[index].suggestions = [];
+      newItems[index].showSuggestions = false;
+    } else {
+      const filtered = costumesList.filter(c =>
+        removeAccents(c.name).toLowerCase().includes(removeAccents(value).toLowerCase())
+      );
+      newItems[index].suggestions = filtered.slice(0, 8);
+      newItems[index].showSuggestions = true;
+    }
+
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleSelectCostumeSuggestion = (index, costume) => {
+    const newItems = [...offlineData.items];
+    newItems[index].costume = costume._id;
+    newItems[index].searchInput = costume.name;
+    newItems[index].size = "";
+    newItems[index].availableSizes = costume.variants?.map(v => v.size) || [];
+    newItems[index].suggestions = [];
+    newItems[index].showSuggestions = false;
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleCloseSuggestions = (index) => {
+    const newItems = [...offlineData.items];
+    newItems[index].showSuggestions = false;
     setOfflineData({ ...offlineData, items: newItems });
   };
 
@@ -84,7 +115,7 @@ export default function OrdersPage() {
   const handleAddItem = () => {
     setOfflineData({
       ...offlineData,
-      items: [...offlineData.items, { costume: "", size: "", quantity: 1, availableSizes: [] }]
+      items: [...offlineData.items, { costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
     });
   };
 
@@ -126,7 +157,7 @@ export default function OrdersPage() {
         customerName: "",
         customerPhone: "",
         customerAddress: "",
-        items: [{ costume: "", size: "", quantity: 1, availableSizes: [] }]
+        items: [{ costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
       });
       fetchOrders();
     } catch (error) {
@@ -466,36 +497,9 @@ export default function OrdersPage() {
             </div>
 
             <form onSubmit={handleSubmitOfflineOrder} className="space-y-5">
-              {/* 1. Chọn thời gian */}
+              {/* 1. Thông tin khách thuê */}
               <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">1. Thời gian thuê</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày bắt đầu *</label>
-                    <input
-                      type="date"
-                      required
-                      value={offlineData.startDate}
-                      onChange={e => setOfflineData({ ...offlineData, startDate: e.target.value })}
-                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày kết thúc *</label>
-                    <input
-                      type="date"
-                      required
-                      value={offlineData.endDate}
-                      onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
-                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Thông tin khách thuê */}
-              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">2. Thông tin khách hàng</h3>
+                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">1. Thông tin khách hàng</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">Họ và tên khách *</label>
@@ -532,6 +536,33 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              {/* 2. Chọn thời gian */}
+              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">2. Thời gian thuê</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày bắt đầu *</label>
+                    <input
+                      type="date"
+                      required
+                      value={offlineData.startDate}
+                      onChange={e => setOfflineData({ ...offlineData, startDate: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày kết thúc *</label>
+                    <input
+                      type="date"
+                      required
+                      value={offlineData.endDate}
+                      onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* 3. Trang phục thuê */}
               <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
@@ -548,21 +579,51 @@ export default function OrdersPage() {
                 <div className="space-y-3">
                   {offlineData.items.map((item, index) => (
                     <div key={index} className="flex flex-wrap sm:flex-nowrap gap-3 items-end border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                      <div className="flex-1 min-w-[200px]">
+                      <div className="flex-1 min-w-[200px] relative">
                         <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Trang phục *</label>
-                        <select
+                        <input
+                          type="text"
                           required
-                          value={item.costume}
-                          onChange={e => handleCostumeChange(index, e.target.value)}
-                          className="w-full border border-[#eaeaea] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#1a1a1a] bg-white"
-                        >
-                          <option value="">-- Chọn trang phục --</option>
-                          {costumesList.map(c => (
-                            <option key={c._id} value={c._id}>
-                              {c.name} ({Math.round(c.pricePerDay).toLocaleString('vi-VN')}đ/ngày)
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Nhập tên trang phục để tìm..."
+                          value={item.searchInput || ""}
+                          onChange={e => handleCostumeSearchChange(index, e.target.value)}
+                          onFocus={() => {
+                            if (item.searchInput && item.searchInput.trim()) {
+                              handleCostumeSearchChange(index, item.searchInput);
+                            } else {
+                              const newItems = [...offlineData.items];
+                              newItems[index].suggestions = costumesList.slice(0, 8);
+                              newItems[index].showSuggestions = true;
+                              setOfflineData({ ...offlineData, items: newItems });
+                            }
+                          }}
+                          onBlur={() => setTimeout(() => handleCloseSuggestions(index), 200)}
+                          className="w-full border border-[#eaeaea] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-[#1a1a1a] bg-white"
+                        />
+
+                        {item.showSuggestions && item.suggestions && item.suggestions.length > 0 && (
+                          <div className="absolute top-full left-0 w-full mt-1 bg-white border border-[#eaeaea] rounded-lg shadow-xl overflow-hidden z-50 max-h-60 overflow-y-auto">
+                            <ul>
+                              {item.suggestions.map(s => (
+                                <li
+                                  key={s._id}
+                                  className="px-3 py-2 hover:bg-[#fafafa] cursor-pointer flex items-center gap-2 border-b border-[#f5f5f5] last:border-0"
+                                  onClick={() => handleSelectCostumeSuggestion(index, s)}
+                                >
+                                  <img 
+                                    src={s.images?.[0] || "https://via.placeholder.com/40"} 
+                                    alt={s.name} 
+                                    className="w-8 h-8 object-cover rounded bg-[#f5f5f5]" 
+                                  />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-semibold text-[#1a1a1a] truncate">{s.name}</span>
+                                    <span className="text-[10px] text-[#999]">{Math.round(s.pricePerDay).toLocaleString('vi-VN')} đ/ngày</span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
 
                       <div className="w-24">
