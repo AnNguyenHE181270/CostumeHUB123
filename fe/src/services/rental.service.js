@@ -19,6 +19,8 @@ const rentalService = {
 
   checkAvailability: (data) => axiosClient.post('/api/rentals/check', data),
 
+  getTopRented: (limit = 3) => axiosClient.get(`/api/rentals/top-rented?limit=${limit}`),
+
   // Staff / Owner
   getAllOrders: () => axiosClient.get('/api/rentals'),
 

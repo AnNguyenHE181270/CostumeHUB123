@@ -1,12 +1,19 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-solid-svg-icons";
+import { faStar, faFire } from "@fortawesome/free-solid-svg-icons";
 
 import { formatPrice } from "../../utils/formatters";
 const STATUS_MAP = {
   rented: { label: "Đang Thuê", color: "bg-red-500" },
   maintenance: { label: "Bảo Trì", color: "bg-amber-500" },
+};
+
+const NEW_WITHIN_DAYS = 14;
+const isRecentlyAdded = (createdAt) => {
+  if (!createdAt) return false;
+  const ageMs = Date.now() - new Date(createdAt).getTime();
+  return ageMs >= 0 && ageMs <= NEW_WITHIN_DAYS * 24 * 60 * 60 * 1000;
 };
 
 const PLACEHOLDER_IMG =
@@ -19,7 +26,7 @@ function StarRating({ rating = 0, count = 0 }) {
         {[1, 2, 3, 4, 5].map((star) => (
           <svg
             key={star}
-            className={`w-3.5 h-3.5 ${star <= Math.round(rating) ? "text-amber-400" : "text-gray-200"
+            className={`w-3.5 h-3.5 ${star <= Math.round(rating) ? "text-[#e8c471]" : "text-gray-200"
               }`}
             fill="currentColor"
             viewBox="0 0 20 20"
@@ -33,7 +40,7 @@ function StarRating({ rating = 0, count = 0 }) {
   );
 }
 
-export default function ProductCard({ costume, showToast, hideRentButton = false }) {
+export default function ProductCard({ costume, showToast, hideRentButton = false, isBestSeller = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
@@ -43,13 +50,14 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       : PLACEHOLDER_IMG;
 
   const statusInfo = STATUS_MAP[costume.status];
+  const isNew = isRecentlyAdded(costume.createdAt);
   const categoryName =
     typeof costume.categoryId === "object"
       ? costume.categoryId?.name
       : "";
 
   return (
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#f0ece8] hover:border-[#b8935a]/40 hover:shadow-[0_12px_30px_rgba(184,147,90,0.12)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#eae2d5] hover:border-[#c9a869] hover:shadow-[0_16px_36px_rgba(184,147,90,0.2)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col luxury-btn-shine">
         {/* Image */}
         <div
           className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
@@ -62,8 +70,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
             onError={() => setImgError(true)}
           />
 
-          {/* Status badge: chỉ hiện khi sản phẩm không sẵn sàng (đang thuê/bảo trì).
-              Mặc định danh sách khách xem đã lọc sẵn hàng còn -> không cần ghi chữ, thay bằng icon nổi bật. */}
+          {/* Badge góc trên-trái */}
           <div className="absolute top-3 left-3">
             {statusInfo ? (
               <span
@@ -72,11 +79,17 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
                 <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                 {statusInfo.label}
               </span>
-            ) : (
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-[#d9b578] to-[#b8935a] text-white shadow-md ring-2 ring-white/70">
-                <FontAwesomeIcon icon={faStar} className="text-[11px]" />
+            ) : isBestSeller ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-[#d9b578] to-[#b8935a] shadow-md ring-1 ring-white/70">
+                <FontAwesomeIcon icon={faFire} className="text-[10px]" />
+                BEST SELLER
               </span>
-            )}
+            ) : isNew ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white bg-[#1a1a1a] shadow-md">
+                <FontAwesomeIcon icon={faStar} className="text-[9px]" />
+                NEW
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -84,7 +97,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
         <div className="p-4 flex flex-col flex-1">
           {/* Category */}
           {categoryName && (
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#999] font-medium mb-1">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[#b8935a] font-semibold mb-1">
               {categoryName}
             </p>
           )}
@@ -101,7 +114,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
 
           {/* Price & Action */}
           <div className="mt-auto pt-4 flex flex-col gap-3">
-            <span className="text-[15px] font-bold text-[#1a1a1a]">
+            <span className="text-[16px] font-bold text-[#1a1a1a]">
               {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
             </span>
             {!hideRentButton && (
@@ -110,7 +123,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
                   e.stopPropagation();
                   navigate(`/product/${costume._id}`);
                 }}
-                className="w-full py-2.5 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded-lg hover:bg-[#b8935a] active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_4px_12px_rgba(184,147,90,0.25)]"
+                className="w-full py-2.5 bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] text-[11px] uppercase tracking-wider font-bold rounded-lg hover:from-[#c9a869] hover:to-[#b8935a] hover:text-white active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_6px_18px_rgba(184,147,90,0.35)] luxury-btn-gold-shine border border-[#c9a869]/30"
               >
                 Thuê ngay
               </button>
@@ -122,3 +135,4 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       </div>
   );
 }
+
