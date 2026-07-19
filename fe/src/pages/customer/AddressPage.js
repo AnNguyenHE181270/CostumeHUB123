@@ -1,26 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faXmark, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faXmark, faCheck, faTruckFast, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import GHNAddressSelect from "../../components/GHNAddressSelect";
 import userService from "../../services/user.service";
+import rentalService from "../../services/rental.service";
 
 export default function AddressPage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [phoneType, setPhoneType] = useState("my"); 
+  const [phoneType, setPhoneType] = useState("my");
   const [loadingPage, setLoadingPage] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [addresses, setAddresses] = useState([]);
+  const [deliveryEstimate, setDeliveryEstimate] = useState(null);
   const [form, setForm] = useState({
     receiverName: "", receiverPhone: "", province: "", provinceId: null, district: "", districtId: null, ward: "", wardCode: "", addressDetail: "", note: "", isDefault: false
   });
   const navigate = useNavigate();
+  const location = useLocation();
+  // Khách bấm "Thuê ngay" khi chưa có địa chỉ sẽ được điều hướng tới đây kèm ngày thuê đang chọn dở.
+  const pendingStartDate = location.state?.pendingStartDate || null;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,6 +64,27 @@ const handleSubmit = async (e) => {
       }
       setShowAddForm(false);
       setToast({ isVisible: true, type: "success", message: "Tạo địa chỉ thành công!" });
+      // Đồng bộ lại user.addresses trong AuthContext, nếu không trang thanh toán sẽ
+      // vẫn thấy danh sách địa chỉ cũ (không có địa chỉ vừa thêm) do lấy dữ liệu từ đó.
+      await refreshProfile();
+
+      // Báo ngay dự kiến ngày giao GHN cho địa chỉ vừa thêm, không đợi khách vào bước thanh toán mới biết.
+      // Nếu khách tới đây từ luồng "Thuê ngay" (có pendingStartDate), so sánh luôn và nhắc chỉnh lại ngày thuê nếu không kịp.
+      if (data.districtId && data.wardCode) {
+        setDeliveryEstimate(null);
+        rentalService
+          .estimateDelivery(data.districtId, data.wardCode)
+          .then((res) => {
+            const estimatedDate = new Date(res.estimatedDeliveryDate);
+            const isLate = pendingStartDate ? new Date(pendingStartDate) < estimatedDate : false;
+            setDeliveryEstimate({
+              addressLabel: `${data.ward}, ${data.district}, ${data.province}`,
+              date: estimatedDate,
+              isLate,
+            });
+          })
+          .catch(() => {});
+      }
     } catch (err) {
       setToast({ isVisible: true, type: "error", message: err.message || "Lỗi tạo địa chỉ." });
     } finally {
@@ -93,6 +119,7 @@ const handleSubmit = async (e) => {
       const data = await userService.deleteAddress(id);
       setToast({ isVisible: true, type: "success", message: data.message || "Delete address successfully!" });
       await getAllAddresses();
+      await refreshProfile();
     } catch (err) {
       setToast({ isVisible: true, type: "error", message: err.message || "Network error while deleting data." });
     } finally {
@@ -111,6 +138,40 @@ const handleSubmit = async (e) => {
         type={toast.type} 
         onClose={() => setToast({ ...toast, isVisible: false })} 
       />
+
+      {deliveryEstimate && (
+        <div
+          className={`mb-6 flex items-start gap-3 rounded-2xl border p-4 ${
+            deliveryEstimate.isLate ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50"
+          }`}
+        >
+          <FontAwesomeIcon
+            icon={deliveryEstimate.isLate ? faTriangleExclamation : faTruckFast}
+            className={`mt-0.5 text-lg shrink-0 ${deliveryEstimate.isLate ? "text-amber-500" : "text-emerald-600"}`}
+          />
+          <p className={`flex-1 text-[13px] leading-relaxed font-medium ${deliveryEstimate.isLate ? "text-amber-800" : "text-emerald-800"}`}>
+            {deliveryEstimate.isLate ? (
+              <>
+                Đơn hàng của bạn dự kiến được giao tới <strong>{deliveryEstimate.addressLabel}</strong> vào{" "}
+                {deliveryEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                , hãy chỉnh sửa lại ngày thuê cho phù hợp để được hỗ trợ tốt nhất.
+              </>
+            ) : (
+              <>
+                Dự kiến đơn hàng giao tới <strong>{deliveryEstimate.addressLabel}</strong> vào khoảng{" "}
+                {deliveryEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}.
+              </>
+            )}
+          </p>
+          <button
+            onClick={() => setDeliveryEstimate(null)}
+            className={`transition-colors shrink-0 ${deliveryEstimate.isLate ? "text-amber-500 hover:text-amber-700" : "text-emerald-500 hover:text-emerald-700"}`}
+            title="Đóng"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#eaeaea]">
         <h3 className="text-2xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>

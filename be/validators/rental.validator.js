@@ -11,6 +11,8 @@ const checkAvailabilityValidator = [
 const createOrderValidator = [
 ];
 
+
+
 const updateOrderStatusValidator = [
   param("id").isMongoId().withMessage("Invalid order ID"),
   body("status").notEmpty().withMessage("Status is required")

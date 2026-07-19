@@ -28,6 +28,16 @@ const createOrder = async (req, res, next) => {
   }
 };
 
+const estimateDelivery = async (req, res, next) => {
+  try {
+    const { districtId, wardCode } = req.body;
+    const result = await rentalService.getDeliveryEstimate(districtId, wardCode);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Estimating delivery date failed', 500));
+  }
+};
+
 const cancellOrrder = async (req, res, next) => {
   try {
     const order = await rentalService.cancelOrder(req.params.id, req.userData.id, req.body.cancelReason);
@@ -160,9 +170,19 @@ const updateRentalDates = async (req, res, next) => {
   }
 };
 
+const createOfflineOrder = async (req, res, next) => {
+  try {
+    const order = await rentalService.createOfflineOrder(req.userData.id, req.body);
+    res.status(201).json({ message: 'Tạo đơn hàng offline thành công', order });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Creating offline order failed', 500));
+  }
+};
+
 module.exports = {
   confirmReceipt, checkAvailability, createOrder, getAllOrders, updateOrderStatus,
   confirmPreparation, getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, extendRental, getTopRentedCostumes, updateRentalDates,
+  createOfflineOrder, estimateDelivery,
 };

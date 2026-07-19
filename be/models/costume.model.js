@@ -74,6 +74,11 @@ const costumeSchema = new mongoose.Schema(
       default: 1
     },
 
+    maxRentalDays: {
+      type: Number,
+      default: 7
+    },
+
     variants: [{
       status: {
         type: String,
