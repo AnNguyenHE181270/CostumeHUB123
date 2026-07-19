@@ -23,6 +23,9 @@ const rentalService = {
 
   getTopRented: (limit = 3) => axiosClient.get(`/api/rentals/top-rented?limit=${limit}`),
 
+  estimateDelivery: (districtId, wardCode) =>
+    axiosClient.post('/api/rentals/estimate-delivery', { districtId, wardCode }),
+
   // Staff / Owner
   getAllOrders: () => axiosClient.get('/api/rentals'),
 

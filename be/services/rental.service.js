@@ -145,6 +145,72 @@ const getOrderDetail = async (orderId, customerId) => {
   };
 };
 
+// Gọi GHN để lấy ngày dự kiến giao hàng tới 1 địa chỉ (không so sánh, không chặn đơn).
+// Dùng chung cho cả bước hiển thị sớm (ngay khi có địa chỉ) lẫn bước chặn đơn lúc tạo order.
+// Trả về null nếu thiếu districtId/wardCode hoặc GHN không phản hồi được — không throw.
+const estimateDeliveryDate = async (districtId, wardCode) => {
+  if (!districtId || !wardCode) return null;
+
+  try {
+    const services = await ghnService.getAvailableServices(ghnService.SHOP_ORIGIN.district_id, districtId);
+    const service = services.find((s) => s.service_type_id === 2) || services[0];
+    if (!service) return null;
+
+    const leadtime = await ghnService.getLeadTime({
+      fromDistrictId: ghnService.SHOP_ORIGIN.district_id,
+      fromWardCode: ghnService.SHOP_ORIGIN.ward_code,
+      toDistrictId: districtId,
+      toWardCode: wardCode,
+      serviceId: service.service_id,
+    });
+
+    return leadtime?.leadtime_order?.to_estimate_date ? new Date(leadtime.leadtime_order.to_estimate_date) : null;
+  } catch (error) {
+    console.error('[GHN Estimate Error]', error.message);
+    return null;
+  }
+};
+
+// So sánh ngày khách chọn nhận hàng với ngày GHN dự kiến giao được tới địa chỉ đó.
+// Chỉ áp dụng cho đơn giao hàng (có districtId/wardCode); đơn nhận tại cửa hàng bỏ qua.
+// Lỗi kết nối GHN không chặn luồng đặt đơn — chỉ chặn khi xác định rõ ngày chọn không khả thi.
+const checkDeliveryFeasibility = async (shippingAddress, startDate) => {
+  if (!shippingAddress?.districtId || !shippingAddress?.wardCode) return;
+
+  try {
+    const estimatedDeliveryDate = await estimateDeliveryDate(shippingAddress.districtId, shippingAddress.wardCode);
+    if (!estimatedDeliveryDate) return;
+
+    if (new Date(startDate) < estimatedDeliveryDate) {
+      const formattedDate = estimatedDeliveryDate.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+      throw new HttpError(
+        `Đơn hàng của bạn dự kiến được giao vào ${formattedDate}, hãy lựa chọn lại thời gian nhận cho phù hợp để được hỗ trợ tốt nhất.`,
+        400,
+        { estimatedDeliveryDate: estimatedDeliveryDate.toISOString() }
+      );
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    console.error('[GHN Feasibility Check Error]', error.message);
+  }
+};
+
+// API công khai cho FE: hiển thị ngày dự kiến giao ngay khi khách có địa chỉ (chưa cần chọn ngày thuê).
+const getDeliveryEstimate = async (districtId, wardCode) => {
+  if (!districtId || !wardCode) {
+    throw new HttpError('Thiếu thông tin quận/huyện hoặc phường/xã.', 400);
+  }
+  const estimatedDeliveryDate = await estimateDeliveryDate(districtId, wardCode);
+  if (!estimatedDeliveryDate) {
+    throw new HttpError('Không thể lấy thông tin dự kiến giao hàng lúc này.', 502);
+  }
+  return { estimatedDeliveryDate: estimatedDeliveryDate.toISOString() };
+};
+
 const createOrder = async (customerId, body) => {
   const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod } = body;
 
@@ -162,6 +228,8 @@ const createOrder = async (customerId, body) => {
   if (rentalDays <= 0) {
     throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
   }
+
+  await checkDeliveryFeasibility(shippingAddress, startDate);
 
   let totalRentalPrice = 0;
   let totalDeposit = 0;
@@ -223,35 +291,45 @@ const createOrder = async (customerId, body) => {
     costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
   }
 
-  for (const update of costumesToUpdate) {
-    update.variant.availableStock -= update.quantityToDeduct;
-    await update.costume.save();
-  }
-
   const totalAmount = totalRentalPrice + totalDeposit + shippingFee;
 
-  const user = await User.findById(customerId);
-  if (!user) throw new HttpError('Người dùng không tồn tại', 404);
-  if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
+  // Trừ kho, trừ ví và tạo đơn phải nguyên tử: nếu số dư không đủ hoặc lưu đơn lỗi
+  // giữa chừng, phải rollback kho/ví — tránh trừ tiền/trừ kho mà không có đơn nào được tạo.
+  const session = await mongoose.startSession();
+  let newOrder;
+  try {
+    await session.withTransaction(async () => {
+      for (const update of costumesToUpdate) {
+        update.variant.availableStock -= update.quantityToDeduct;
+        await update.costume.save({ session });
+      }
 
-  user.balance -= totalAmount;
-  await user.save();
+      const user = await User.findById(customerId).session(session);
+      if (!user) throw new HttpError('Người dùng không tồn tại', 404);
+      if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
 
-  const newOrder = new Rental({
-    customerId,
-    items: formattedItems,
-    startDate,
-    endDate,
-    shippingFee,
-    paymentMethod: 'WALLET',
-    paymentStatus: 'paid',
-    shippingAddress,
-    totalRentalPrice,
-    totalDeposit,
-    totalAmount,
-    status: 'pending',
-  });
-  await newOrder.save();
+      user.balance -= totalAmount;
+      await user.save({ session });
+
+      newOrder = new Rental({
+        customerId,
+        items: formattedItems,
+        startDate,
+        endDate,
+        shippingFee,
+        paymentMethod: 'WALLET',
+        paymentStatus: 'paid',
+        shippingAddress,
+        totalRentalPrice,
+        totalDeposit,
+        totalAmount,
+        status: 'pending',
+      });
+      await newOrder.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
 
   try {
     await notificationService.createNotification({
