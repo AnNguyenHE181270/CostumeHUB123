@@ -6,10 +6,13 @@ import Input from "../../components/ui/Input";
 import Toast from "../../components/ui/Toast";
 import GHNAddressSelect from "../../components/GHNAddressSelect";
 import userService from "../../services/user.service";
+import rentalService from "../../services/rental.service";
+import { useAuth } from "../../context/AuthContext";
 
 export default function DetailAddressPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -77,12 +80,29 @@ export default function DetailAddressPage() {
     try {
       setSubmitting(true);
       setToast({ isVisible: false, message: "", type: "success" });
-      await userService.updateAddress(id, form);
-      setToast({ isVisible: true, type: "success", message: "Cập nhật tài khoản thành công!" });
+      const result = await userService.updateAddress(id, form);
+      // Đồng bộ lại user.addresses trong AuthContext để trang thanh toán lấy đúng địa chỉ mới nhất.
+      await refreshProfile();
+
+      // Báo ngay dự kiến ngày giao GHN cho địa chỉ vừa cập nhật, không đợi tới bước thanh toán.
+      let successMessage = "Cập nhật địa chỉ thành công!";
+      const updated = result?.address;
+      if (updated?.districtId && updated?.wardCode) {
+        try {
+          const estimate = await rentalService.estimateDelivery(updated.districtId, updated.wardCode);
+          const formattedDate = new Date(estimate.estimatedDeliveryDate).toLocaleDateString("vi-VN", {
+            day: "2-digit", month: "2-digit", year: "numeric",
+          });
+          successMessage = `Cập nhật địa chỉ thành công! Dự kiến giao hàng tới địa chỉ này vào khoảng ${formattedDate}.`;
+        } catch {
+          // Không lấy được ước tính GHN — vẫn báo cập nhật thành công bình thường.
+        }
+      }
+      setToast({ isVisible: true, type: "success", message: successMessage });
       setTimeout(() => {
         setToast(prev => ({ ...prev, isVisible: false }));
         navigate(-1);
-      }, 1500);
+      }, 2500);
     } catch (err) {
       setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {

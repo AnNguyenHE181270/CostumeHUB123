@@ -65,6 +65,7 @@ app.use((error, req, res, next) => {
   res.status(statusCode).json({
     success: false,
     message: error.message || "Internal Server Error",
+    ...(error.extra ? { extra: error.extra } : {}),
   });
 });
 // Mạng cục bộ đôi khi timeout DNS/kết nối tới MongoDB Atlas — thử lại vài lần thay vì bỏ cuộc ngay.

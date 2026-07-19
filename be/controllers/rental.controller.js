@@ -149,9 +149,20 @@ const getTopRentedCostumes = async (req, res, next) => {
   }
 };
 
+const estimateDelivery = async (req, res, next) => {
+  try {
+    const { districtId, wardCode } = req.body;
+    const result = await rentalService.getDeliveryEstimate(districtId, wardCode);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError('Lỗi lấy ngày dự kiến giao hàng', 500));
+  }
+};
+
 module.exports = {
   confirmReceipt, checkAvailability, createOrder, getAllOrders, updateOrderStatus,
   confirmPreparation, getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, extendRental, getTopRentedCostumes,
+  estimateDelivery,
 };

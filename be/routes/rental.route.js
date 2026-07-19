@@ -3,7 +3,7 @@ const {
     checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
     getRentalHistory, orderDetail, cancellOrrder,
     getTotalRevenue, getActiveRentals, getInventoryUtilization,
-    requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes
+    requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes, estimateDelivery
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
 const upload = require('../middlewares/upload.middleware');
@@ -18,6 +18,7 @@ const {
 const router = express.Router();
 
 router.post('/check', checkAvailabilityValidator, validate, checkAvailability);
+router.post('/estimate-delivery', checkAuth, estimateDelivery); // Ước tính ngày giao GHN ngay khi có địa chỉ
 router.get('/top-rented', getTopRentedCostumes); // Công khai — dùng cho trang chủ
 router.post('/create', checkAuth, createOrderValidator, validate, createOrder); // Khách phải login mới được đặt
 router.get('/', checkAuth, getAllOrders); // Staff/Owner lấy danh sách
