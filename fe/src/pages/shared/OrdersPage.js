@@ -135,6 +135,40 @@ export default function OrdersPage() {
       return;
     }
 
+    const start = new Date(offlineData.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(offlineData.endDate);
+    end.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      setToast({ show: true, message: "Ngày bắt đầu thuê không được ở trong quá khứ.", type: "error" });
+      return;
+    }
+
+    const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (rentalDays <= 0) {
+      setToast({ show: true, message: "Ngày kết thúc thuê phải sau ngày bắt đầu thuê.", type: "error" });
+      return;
+    }
+
+    for (const item of offlineData.items) {
+      const costume = costumesList.find(c => c._id === item.costume);
+      if (costume) {
+        const minDays = costume.minRentalDays || 1;
+        if (rentalDays < minDays) {
+          setToast({ show: true, message: `Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`, type: "error" });
+          return;
+        }
+        const maxDays = costume.maxRentalDays || 7;
+        if (rentalDays > maxDays) {
+          setToast({ show: true, message: `Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`, type: "error" });
+          return;
+        }
+      }
+    }
+
     try {
       setLoading(true);
       await rentalService.createOfflineOrder({
@@ -483,7 +517,7 @@ export default function OrdersPage() {
       {/* MODAL THUÊ OFFLINE TẠI CỬA HÀNG */}
       {offlineModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 overflow-y-auto py-10">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#eaeaea] max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto flex flex-col gap-6 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#eaeaea] max-w-4xl w-full p-6 relative max-h-[90vh] overflow-y-auto flex flex-col gap-6 animate-in fade-in zoom-in duration-200">
             <button
               onClick={() => setOfflineModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"

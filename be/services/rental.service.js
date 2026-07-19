@@ -957,6 +957,12 @@ const createOfflineOrder = async (staffId, body) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (start < today) {
+    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
   const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   if (rentalDays <= 0) {
     throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
@@ -988,7 +994,11 @@ const createOfflineOrder = async (staffId, body) => {
 
     const minDays = costume.minRentalDays || 1;
     if (rentalDays < minDays) {
-      throw new HttpError(`Phải thuê tối thiểu ${minDays} ngày.`, 400);
+      throw new HttpError(`Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
+    }
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) {
+      throw new HttpError(`Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`, 400);
     }
 
     const variant = costume.variants.find((v) => v.size === item.size);
