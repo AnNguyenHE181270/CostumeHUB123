@@ -121,12 +121,10 @@ export default function CategoryPage() {
     fetchCategories();
   }, [categoryId]);
 
-  // Reset page when category, sort, or query changes
   useEffect(() => {
     setCurrentPage(1);
   }, [categoryId, sort, query]);
 
-  // Fetch Costumes
   useEffect(() => {
     const fetchCostumes = async () => {
       setLoading(true);
@@ -159,7 +157,6 @@ export default function CategoryPage() {
   };
 
   const heading = query ? `Kết quả tìm kiếm: "${query}"` : (category ? category.name : "Tất Cả Bộ Sưu Tập");
-  const crumbLabel = query ? "Tìm kiếm" : (category ? category.name : "Tất cả bộ sưu tập");
 
   return (
     <div className="bg-[#faf6f0] min-h-screen pb-20">
@@ -198,19 +195,7 @@ export default function CategoryPage() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-
-        {/* ── BREADCRUMB ── */}
-        <div className="flex items-center gap-2 text-[11px] text-[#8a7d63] uppercase tracking-widest py-4">
-          <Link to="/" className="hover:text-[#1a1a1a] transition-colors flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faHouse} className="text-[10px]" />
-          </Link>
-          <FontAwesomeIcon icon={faChevronRight} className="text-[8px] text-[#c8ab7a]" />
-          <Link to="/collections" className="hover:text-[#1a1a1a] transition-colors">Bộ sưu tập</Link>
-          <FontAwesomeIcon icon={faChevronRight} className="text-[8px] text-[#c8ab7a]" />
-          <span className="text-[#1a1a1a] font-bold">{crumbLabel}</span>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-8 pb-4">
+        <div className="flex flex-col lg:flex-row gap-8 mt-6 pb-4">
 
           {/* ── SIDEBAR CATEGORIES & GUARANTEE WIDGET ── */}
           <aside className="w-full lg:w-[280px] flex-shrink-0 space-y-6">
@@ -232,11 +217,10 @@ export default function CategoryPage() {
                 <li>
                   <button
                     onClick={() => navigate("/collections")}
-                    className={`w-full text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${
-                      !categoryId && !query
-                        ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
-                        : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
-                    }`}
+                    className={`w-full text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${!categoryId && !query
+                      ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
+                      : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
+                      }`}
                   >
                     Tất cả sản phẩm
                   </button>
@@ -249,11 +233,10 @@ export default function CategoryPage() {
                       <div className="flex items-center">
                         <button
                           onClick={() => navigate(`/category/${cat._id}`)}
-                          className={`flex-1 text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${
-                            isActiveParent
-                              ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
-                              : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
-                          }`}
+                          className={`flex-1 text-left py-2.5 px-3.5 text-[12px] uppercase tracking-wider font-bold rounded-xl transition-all ${isActiveParent
+                            ? "bg-gradient-to-r from-[#faf1dd] to-[#f7ebd4] text-[#8a6a3c] border-l-3 border-[#b8935a] shadow-sm"
+                            : "text-gray-600 hover:bg-[#faf6f0] hover:text-[#b8935a]"
+                            }`}
                         >
                           {cat.name}
                         </button>
@@ -265,11 +248,10 @@ export default function CategoryPage() {
                             <li key={child._id}>
                               <button
                                 onClick={() => navigate(`/category/${child._id}`)}
-                                className={`w-full text-left py-2 px-3 text-[11px] uppercase tracking-wider transition-all rounded-lg ${
-                                  categoryId === child._id
-                                    ? "text-[#8a6a3c] font-bold bg-[#faf1dd]/60"
-                                    : "text-gray-500 hover:text-[#b8935a] hover:bg-gray-50"
-                                }`}
+                                className={`w-full text-left py-2 px-3 text-[11px] uppercase tracking-wider transition-all rounded-lg ${categoryId === child._id
+                                  ? "text-[#8a6a3c] font-bold bg-[#faf1dd]/60"
+                                  : "text-gray-500 hover:text-[#b8935a] hover:bg-gray-50"
+                                  }`}
                               >
                                 {categoryId === child._id ? "✦ " : ""}{child.name}
                               </button>
@@ -286,7 +268,7 @@ export default function CategoryPage() {
             {/* ── CAM KẾT CHẤT LƯỢNG (Thay thế cho Promo Card Giảm 20%) ── */}
             <div className="bg-gradient-to-br from-[#1a1a1a] via-[#2d2d2d] to-[#121212] rounded-3xl p-6 text-white border border-[#c9a869]/40 shadow-xl relative overflow-hidden">
               <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-[#c9a869]/10 blur-xl pointer-events-none" />
-              
+
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8a6a2f] flex items-center justify-center text-white text-xs shadow-md shrink-0">
                   <FontAwesomeIcon icon={faCrown} />
@@ -327,7 +309,7 @@ export default function CategoryPage() {
           <main className="flex-1">
 
             {/* Top Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 border border-[#e6dcab]/80 shadow-md rounded-3xl mb-6">
+            <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
               {/* Search input inside toolbar */}
               <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[240px]">
                 <div className="search-bar-luxury rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-2.5 border border-[#e2d5bd] bg-[#faf9f7] focus-within:border-[#c9a869] transition-colors">
@@ -359,53 +341,23 @@ export default function CategoryPage() {
               </form>
 
               {/* Sắp xếp & View mode */}
-              <div className="flex items-center gap-4 ml-auto">
-                <div className="flex items-center gap-2">
-                  <label className="text-[12px] text-gray-500 font-semibold uppercase tracking-wider">Sắp xếp:</label>
-                  <div className="relative">
-                    <select
-                      value={sort}
-                      onChange={handleSortChange}
-                      className="appearance-none bg-[#faf9f7] border border-[#e2d5bd] text-[#1a1a1a] text-[12px] font-semibold py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:border-[#b8935a] cursor-pointer shadow-sm"
-                    >
-                      {sortOptions.map(opt => (
-                        <option key={opt.value + opt.label} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 bg-[#faf9f7] border border-[#e2d5bd] rounded-xl p-1 shadow-sm">
-                  <button
-                    onClick={() => setViewMode("grid")}
-                    aria-label="Xem dạng lưới"
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                      viewMode === "grid" ? "bg-gradient-to-r from-[#d4af37] to-[#8a6a2f] text-white shadow-sm" : "text-gray-400 hover:bg-gray-100 hover:text-black"
-                    }`}
+              <div className="flex items-center gap-2 ml-auto">
+                <label className="text-[12px] text-gray-500 font-semibold uppercase tracking-wider">Sắp xếp:</label>
+                <div className="relative">
+                  <select
+                    value={sort}
+                    onChange={handleSortChange}
+                    className="appearance-none bg-[#faf9f7] p-6 border-2 border-[#e2d5bd] text-[#1a1a1a] text-[12px] font-semibold py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:border-[#b8935a] cursor-pointer shadow-sm"
                   >
-                    <FontAwesomeIcon icon={faTableCellsLarge} className="text-[12px]" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode("list")}
-                    aria-label="Xem dạng danh sách"
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                      viewMode === "list" ? "bg-gradient-to-r from-[#d4af37] to-[#8a6a2f] text-white shadow-sm" : "text-gray-400 hover:bg-gray-100 hover:text-black"
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faList} className="text-[12px]" />
-                  </button>
+                    {sortOptions.map(opt => (
+                      <option key={opt.value + opt.label} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
                 </div>
               </div>
-            </div>
-
-            {/* Counter display */}
-            <div className="flex justify-end pr-2 mb-4">
-              <span className="text-[11px] text-[#8a7d63] font-medium tracking-wide">
-                Hiển thị <b className="text-[#1a1a1a] font-bold">{costumes.length}</b> / {paginationData.totalItems} sản phẩm
-              </span>
             </div>
 
             {/* Product Grid */}
@@ -441,7 +393,7 @@ export default function CategoryPage() {
                 </motion.div>
 
                 {paginationData.totalPages > 1 && (
-                  <div className="mt-12 bg-white shadow-sm border border-[#e6dcab]/80 rounded-3xl p-2">
+                  <div className="mt-12 bg-white shadow-sm rounded-3xl">
                     <Pagination
                       displayCount={costumes.length}
                       totalCount={paginationData.totalItems}
