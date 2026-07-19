@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 import DataTable from "../../components/ui/DataTable";
@@ -7,6 +7,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
+import { ChangeRentalDatesModal } from "./ChangeRentalDatesModal"; // NEW IMPORT
 
 const removeAccents = (str) => {
   return str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D') : "";
@@ -14,7 +15,8 @@ const removeAccents = (str) => {
 
 export default function OrdersPage() {
   const { role } = useAuth(); // Lấy role (owner hoặc staff) từ Context
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Get navigate function
+  const location = useLocation(); // Get current location
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -30,6 +32,8 @@ export default function OrdersPage() {
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+  // const navigate = useNavigate(); // This line was a duplicate and has been removed
+  const [changeRequestTarget, setChangeRequestTarget] = useState(null); // NEW STATE
 
   const fetchOrders = async () => {
     try {
@@ -103,7 +107,28 @@ export default function OrdersPage() {
       setToast({ show: true, message: error.response?.data?.message || "Cập nhật thất bại", type: "error" });
     }
   };
-
+  const handleUpdateRentalDates = async (orderId, newStartDate, newEndDate) => {
+    try {
+      const data = await rentalService.updateRentalDates(orderId, { startDate: newStartDate, endDate: newEndDate });
+      setToast({ show: true, message: "Cập nhật ngày thuê thành công!", type: "success" });
+      setChangeRequestTarget(null); // Close modal
+      
+      // Update selectedOrder if it's the one being modified
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder(prev => ({
+          ...prev, 
+          startDate: newStartDate, 
+          endDate: newEndDate,
+          totalRentalPrice: data?.order?.totalRentalPrice || prev.totalRentalPrice,
+          totalAmount: data?.order?.totalAmount || prev.totalAmount
+        }));
+      }
+      
+      await fetchOrders(); // Refresh orders list
+    } catch (error) {
+      setToast({ show: true, message: error.message || "Cập nhật ngày thuê thất bại", type: "error" });
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Filters & Search */}
@@ -200,6 +225,12 @@ export default function OrdersPage() {
                       }}
                     >
                       Xác nhận
+                    </button>
+                    <button
+                      className="py-1.5 px-3 border border-transparent bg-blue-100 text-blue-700 font-semibold rounded-lg hover:bg-blue-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
+                      onClick={() => setChangeRequestTarget(row)} // NEW: Open change request modal
+                    >
+                      Yêu cầu thay đổi
                     </button>
                     <button
                       className="py-1.5 px-3 border border-transparent bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
@@ -309,8 +340,18 @@ export default function OrdersPage() {
         />
       )}
 
+      {/* NEW: Change Rental Dates Modal */}
+      {changeRequestTarget && (
+        <ChangeRentalDatesModal
+          order={changeRequestTarget}
+          onClose={() => setChangeRequestTarget(null)}
+          location={location} // Pass location object
+          navigate={navigate} // Pass navigate function as a prop
+          onUpdate={handleUpdateRentalDates}
+        />
+      )}
       {toast.show && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+        <Toast message={toast.message} type={toast.type} isVisible={true} onClose={() => setToast({ ...toast, show: false })} />
       )}
     </div>
   );

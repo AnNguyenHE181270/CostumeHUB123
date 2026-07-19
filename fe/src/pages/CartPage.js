@@ -16,6 +16,7 @@ export default function CartPage() {
   const { cartItems, removeFromCart, clearCart, updateCartItem } = useCart();
   const navigate = useNavigate();
   const pendingStartRef = useRef({});
+  const pendingEndRef = useRef({});
   const [cartErrors, setCartErrors] = useState({}); // { [itemId]: "error message" }
 
   const setItemError = (id, msg) => setCartErrors(prev => ({ ...prev, [id]: msg }));
@@ -239,27 +240,53 @@ export default function CartPage() {
                   <div onClick={(e) => e.stopPropagation()} className="mt-2">
 
                     <DatePickerGroup
-                      startDate={item.startDate}
+                      startDate={pendingStartRef.current[itemId] || item.startDate}
                       disabled={itemOutOfStock}
                       minRentalDays={item.minRentalDays}
-                      setStartDate={async (newStart) => {
-                        const newEnd = newStart > item.endDate ? newStart : item.endDate;
+                      setStartDate={(newStart) => {
                         pendingStartRef.current[itemId] = newStart;
-                        if (updateCartItem) {
-                          const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, newStart, newEnd);
-                          if (result?.error) setItemError(itemId, result.error);
-                          else clearItemError(itemId);
-                        }
+                        // Force re-render to update UI immediately
+                        clearItemError(itemId); 
+                        
+                        // Clear any existing timeout
+                        if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
+                        
+                        pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
+                          const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
+                          const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
+                          if (updateCartItem) {
+                            const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
+                            if (result?.error) setItemError(itemId, result.error);
+                            else {
+                                clearItemError(itemId);
+                                delete pendingStartRef.current[itemId];
+                                delete pendingEndRef.current[itemId];
+                            }
+                          }
+                        }, 400);
                       }}
-                      endDate={item.endDate}
-                      setEndDate={async (newEnd) => {
-                        const effectiveStart = pendingStartRef.current[itemId] ?? item.startDate;
-                        delete pendingStartRef.current[itemId];
-                        if (updateCartItem) {
-                          const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, newEnd);
-                          if (result?.error) setItemError(itemId, result.error);
-                          else clearItemError(itemId);
-                        }
+                      endDate={pendingEndRef.current[itemId] || item.endDate}
+                      setEndDate={(newEnd) => {
+                        pendingEndRef.current[itemId] = newEnd;
+                        // Force re-render to update UI immediately
+                        clearItemError(itemId); 
+                        
+                        // Clear any existing timeout
+                        if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
+                        
+                        pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
+                          const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
+                          const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
+                          if (updateCartItem) {
+                            const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
+                            if (result?.error) setItemError(itemId, result.error);
+                            else {
+                                clearItemError(itemId);
+                                delete pendingStartRef.current[itemId];
+                                delete pendingEndRef.current[itemId];
+                            }
+                          }
+                        }, 400);
                       }}
                     />
                   </div>

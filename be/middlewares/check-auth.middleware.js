@@ -25,7 +25,7 @@ const checkAuth = (req, res, next) => {
     req.userData = {
       id: decodedToken.id,
       email: decodedToken.email,
-      role: decodedToken.role 
+      role: decodedToken.role
     };
 
     next();
@@ -67,9 +67,21 @@ const isOwner = (req, res, next) => {
   }
 };
 
+const isStaffOrOwner = (req, res, next) => {
+  try {
+    if (!["staff", "owner"].includes(req.userData.role)) {
+      return next(new HttpError("Access denied: Staff or Owner role required!", 403));
+    }
+    next();
+  } catch (err) {
+    return next(new HttpError("Authorization failed!", 403));
+  }
+};
+
 module.exports = {
   checkAuth,
   isOnlineCustomer,
   isStaff,
-  isOwner
+  isOwner,
+  isStaffOrOwner // NEW EXPORT
 };

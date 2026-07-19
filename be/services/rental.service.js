@@ -166,41 +166,15 @@ const createOrder = async (customerId, body) => {
     if (!costume) throw new HttpError('Costume not found.', 404);
 
     const minDays = costume.minRentalDays || 1;
-    if (rentalDays < minDays) {
+    if (rentalDays > minDays) {
       throw new HttpError(
-        `Phải thuê tối thiểu ${minDays} ngày.`,
+        `Chỉ được thuê tối đa ${minDays} ngày.`,
         400
       );
     }
 
     const variant = costume.variants.find((v) => v.size === item.size);
     if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
-
-    // Tính tổng số lượng đã được đặt (đơn đang hoạt động) trùng khoảng ngày yêu cầu,
-    // thay vì chặn tuyệt đối chỉ vì trùng costume+size+khoảng ngày.
-    const overlappingOrders = await Rental.find({
-      'items.costume': item.costume,
-      'items.size': item.size,
-      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
-      startDate: { $lte: new Date(endDate) },
-      endDate: { $gte: new Date(startDate) },
-    });
-    let bookedQty = 0;
-    overlappingOrders.forEach((order) => {
-      order.items.forEach((oi) => {
-        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
-          bookedQty += oi.quantity;
-        }
-      });
-    });
-
-    if (bookedQty + item.quantity > variant.totalStock) {
-      throw new HttpError(
-        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
-        400
-      );
-    }
-
     const depositPrice = costume.deposit || costume.price || 0;
     const priceFactor = getRentalPriceFactor(rentalDays);
     totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
@@ -388,7 +362,7 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
 const getAllOrders = async (startDate, endDate) => {
   return Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
-    .populate('items.costume', 'name images')
+    .populate('items.costume', 'name images minRentalDays')
     .sort({ createdAt: -1 });
 };
 
@@ -830,8 +804,6 @@ const extendRental = async (id, customerId, newEndDate) => {
   return { success: true, message: 'Gia hạn thuê và thanh toán thành công.', order: rental };
 };
 
-// Top N sản phẩm được thuê nhiều nhất, tính từ số liệu đơn thuê thực tế (không tính đơn đã hủy)
-// — dùng cho mục "Khoảnh Khắc Tỏa Sáng" ở trang chủ.
 const getTopRentedCostumes = async (limit = 3) => {
   const limitNum = Math.max(1, Math.min(10, parseInt(limit) || 3));
 
@@ -855,6 +827,72 @@ const getTopRentedCostumes = async (limit = 3) => {
     .filter(Boolean);
 };
 
+const updateRentalDates = async (id, { startDate, endDate }) => {
+  const rental = await Rental.findById(id).populate('items.costume');
+  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
+
+  if (rental.status !== 'pending') {
+    throw new HttpError('Chỉ có thể thay đổi ngày thuê cho đơn hàng đang chờ xử lý.', 400);
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const originalStart = new Date(rental.startDate);
+  originalStart.setHours(0, 0, 0, 0);
+
+  if (start < today && start.getTime() !== originalStart.getTime()) {
+    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (rentalDays <= 0) {
+    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
+  }
+
+  for (const item of rental.items) {
+    const costume = item.costume;
+    if (!costume) throw new HttpError('Sản phẩm trong đơn hàng không tồn tại.', 404);
+
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays > minDays) {
+      throw new HttpError(`Sản phẩm ${costume.name} chỉ cho phép thuê tối đa ${minDays} ngày.`, 400);
+    }
+
+  }
+
+  // Recalculate price
+  let totalRentalPrice = 0;
+  for (const item of rental.items) {
+    const priceFactor = getRentalPriceFactor(rentalDays);
+    totalRentalPrice += (item.rentalPricePerDay * priceFactor) * item.quantity;
+  }
+
+  const difference = totalRentalPrice - rental.totalRentalPrice;
+  const totalAmount = rental.totalAmount + difference;
+
+  if (difference !== 0) {
+    const user = await User.findById(rental.customerId);
+    if (!user) throw new HttpError('Người dùng không tồn tại', 404);
+
+    if (difference < 0) {
+      // Hoàn tiền thừa về ví
+      user.balance = (user.balance || 0) + Math.abs(difference);
+      await user.save();
+    }
+    // Nếu difference > 0 (cần thanh toán thêm), luồng này sẽ xử lý sau.
+  }
+
+  rental.startDate = start;
+  rental.endDate = end;
+  rental.totalRentalPrice = totalRentalPrice;
+  rental.totalAmount = totalAmount;
+
+  await rental.save();
+  return rental;
+};
+
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -873,4 +911,5 @@ module.exports = {
   extendRental,
   notifyOrderStatus,
   getTopRentedCostumes,
+  updateRentalDates,
 };

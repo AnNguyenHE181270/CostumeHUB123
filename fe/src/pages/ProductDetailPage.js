@@ -232,9 +232,8 @@ export default function ProductDetailPage() {
                   <button
                     key={idx}
                     onClick={() => setActiveImage(idx)}
-                    className={`relative w-20 aspect-[3/4] flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-200 shadow-sm ${
-                      activeImage === idx ? "border-[#c9a869] ring-2 ring-[#c9a869]/30 opacity-100" : "border-transparent opacity-60 hover:opacity-100"
-                    }`}
+                    className={`relative w-20 aspect-[3/4] flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-200 shadow-sm ${activeImage === idx ? "border-[#c9a869] ring-2 ring-[#c9a869]/30 opacity-100" : "border-transparent opacity-60 hover:opacity-100"
+                      }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -314,13 +313,12 @@ export default function ProductDetailPage() {
                               key={v._id || v.size}
                               disabled={isOutOfStock}
                               onClick={() => setSelectedVariant(v)}
-                              className={`min-w-[42px] px-3 py-1.5 text-[12px] font-bold uppercase rounded-xl transition-all ${
-                                isSelected
+                              className={`min-w-[42px] px-3 py-1.5 text-[12px] font-bold uppercase rounded-xl transition-all ${isSelected
                                   ? "bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] border border-[#c9a869] shadow-md"
                                   : isOutOfStock
-                                  ? "border border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
-                                  : "border border-[#e2d5bd] bg-[#faf9f7] text-[#1a1a1a] hover:border-[#b8935a]"
-                              }`}
+                                    ? "border border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                    : "border border-[#e2d5bd] bg-[#faf9f7] text-[#1a1a1a] hover:border-[#b8935a]"
+                                }`}
                               title={isMaintenance ? "Kích thước này đang bảo trì / giặt là" : ""}
                             >
                               {v.size} {isMaintenance && <span className="text-[9px] text-amber-600 font-normal lowercase block">(bảo trì)</span>}
@@ -440,8 +438,8 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays < (costume.minRentalDays || 1)) {
-                        showToast(`Phải thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Chỉ được phép thuê tối đa ${costume.minRentalDays || 1} ngày.`, "error");
                         return;
                       }
                       setIsBuying(true);
@@ -468,11 +466,10 @@ export default function ProductDetailPage() {
                       });
                     }
                   }}
-                  className={`flex-1 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 shadow-md ${
-                    costume.status === "available"
+                  className={`flex-1 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 shadow-md ${costume.status === "available"
                       ? "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 luxury-btn-gold-shine border border-[#c9a869]/40"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={costume.status !== "available" || !selectedVariant || isBuying}
                 >
                   {isBuying ? "Đang xử lý..." : "Thuê Ngay Trực Tiếp"}
@@ -481,8 +478,8 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays < (costume.minRentalDays || 1)) {
-                        showToast(`Phải thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
+                      if (rentalDays > (costume.minRentalDays || 1)) {
+                        showToast(`Chỉ được phép thuê tối đa ${costume.minRentalDays || 1} ngày.`, "error");
                         return;
                       }
                       const available = await verifyAvailability();
@@ -495,11 +492,10 @@ export default function ProductDetailPage() {
                       }
                     }
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 border-2 ${
-                    costume.status === "available"
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 border-2 ${costume.status === "available"
                       ? "border-[#b8935a] bg-white text-[#8a6a3c] hover:bg-[#faf1dd] shadow-sm"
                       : "border-gray-200 bg-white text-gray-300 cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={costume.status !== "available"}
                 >
                   <FontAwesomeIcon icon={faCartPlus} className="text-[14px]" />

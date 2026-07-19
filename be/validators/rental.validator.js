@@ -45,6 +45,12 @@ const extendRentalValidator = [
   body("newEndDate").isISO8601().withMessage("Invalid new end date")
 ];
 
+const updateRentalDatesValidator = [
+  param("id").isMongoId().withMessage("Invalid order ID"),
+  body("startDate").isISO8601().withMessage("Invalid start date"),
+  body("endDate").isISO8601().withMessage("Invalid end date")
+];
+
 module.exports = {
   checkAvailabilityValidator,
   createOrderValidator,
@@ -55,5 +61,6 @@ module.exports = {
   requestReturnValidator,
   inspectReturnValidator,
   confirmReceiptValidator,
-  extendRentalValidator
+  extendRentalValidator,
+  updateRentalDatesValidator // NEW EXPORT
 };

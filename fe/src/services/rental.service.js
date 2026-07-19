@@ -41,4 +41,11 @@ const rentalService = {
   getInventoryUtilization: () => axiosClient.get('/api/rentals/dashboard/inventory-utilization'),
 };
 
+
+
+rentalService.updateRentalDates = async (orderId, { startDate, endDate }) => {
+  const response = await axiosClient.put(`/api/rentals/${orderId}/update-dates`, { startDate, endDate });
+  return response.data;
+};
+
 export default rentalService;

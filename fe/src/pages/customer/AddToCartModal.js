@@ -34,26 +34,31 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
         size: availableSizes.length > 0 ? availableSizes[0] : "",
         quantity: 1,
         startDate: tomorrowStr,
-        endDate: dayAfterStr
+        endDate: tomorrowStr // Will be overwritten in useEffect
     })
     const [selectedPackage, setSelectedPackage] = useState(null)
     const [dateRange, setDateRange] = useState([{
         startDate: new Date(tomorrowStr),
-        endDate: new Date(dayAfterStr),
+        endDate: new Date(tomorrowStr),
         key: 'selection'
     }])
 
     useEffect(() => {
-        if (open) {
+        if (open && costume) {
+            const minDays = costume?.minRentalDays || 1;
+            const end = new Date();
+            end.setDate(end.getDate() + 1 + minDays);
+            const defaultEndStr = end.toISOString().split('T')[0];
+
             setFormData({
                 size: availableSizes.length > 0 ? availableSizes[0] : "",
                 quantity: 1,
                 startDate: tomorrowStr,
-                endDate: dayAfterStr
+                endDate: defaultEndStr
             })
             setDateRange([{
                 startDate: new Date(tomorrowStr),
-                endDate: new Date(dayAfterStr),
+                endDate: new Date(defaultEndStr),
                 key: 'selection'
             }])
             setSelectedPackage(null)
@@ -73,8 +78,15 @@ export function AddToCartModal({ open, onOpenChange, costume, showToast }) {
 
     const handleSubmit = async () => {
         if (!formData.size || !formData.startDate || !formData.endDate) return
-        setIsSubmitting(true)
+        
         let diffDays = getRentalDays(formData.startDate, formData.endDate)
+        const minDays = costume?.minRentalDays || 1;
+        if (diffDays > minDays) {
+            alert(`Sản phẩm này chỉ cho phép thuê tối đa ${minDays} ngày.`);
+            return;
+        }
+
+        setIsSubmitting(true)
         const res = await addToCart(
             costume,
             { size: formData.size },

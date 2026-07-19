@@ -1,18 +1,19 @@
 const express = require('express');
 const {
-    checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
-    getRentalHistory, orderDetail, cancellOrrder,
-    getTotalRevenue, getActiveRentals, getInventoryUtilization,
-    requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes
+  checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
+  getRentalHistory, orderDetail, cancellOrrder,
+  getTotalRevenue, getActiveRentals, getInventoryUtilization,
+  requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes,
+  updateRentalDates
 } = require('../controllers/rental.controller');
-const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
+const { checkAuth, isOwner, isStaffOrOwner } = require('../middlewares/check-auth.middleware'); // Assuming isStaffOrOwner exists or needs to be added
 const upload = require('../middlewares/upload.middleware');
 const validate = require('../middlewares/validate.middleware');
-const { 
-  checkAvailabilityValidator, createOrderValidator, updateOrderStatusValidator, 
-  confirmPreparationValidator, getOrderDetailValidator, cancelOrderValidator, 
-  requestReturnValidator, inspectReturnValidator, confirmReceiptValidator, 
-  extendRentalValidator 
+const {
+  checkAvailabilityValidator, createOrderValidator, updateOrderStatusValidator,
+  confirmPreparationValidator, getOrderDetailValidator, cancelOrderValidator,
+  requestReturnValidator, inspectReturnValidator, confirmReceiptValidator,
+  extendRentalValidator, updateRentalDatesValidator // NEW IMPORT
 } = require('../validators/rental.validator');
 
 const router = express.Router();
@@ -30,6 +31,7 @@ router.put('/:id/request-return', checkAuth, requestReturnValidator, validate, r
 router.put('/:id/inspect-return', checkAuth, upload.uploadReturnEvidence, inspectReturnValidator, validate, inspectReturn); // KAN-125: Staff kiểm tra đồ trả và chốt đơn
 router.put('/:id/confirm-receipt', checkAuth, confirmReceiptValidator, validate, confirmReceipt); // Khách hàng xác nhận nhận hàng
 router.put('/:id/extend', checkAuth, extendRentalValidator, validate, extendRental); // Khách hàng yêu cầu gia hạn thuê và thanh toán ví
+router.put('/:id/update-dates', checkAuth, isStaffOrOwner, updateRentalDatesValidator, validate, updateRentalDates); // NEW ROUTE
 
 // Dashboard APIs
 router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);
