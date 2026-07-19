@@ -12,13 +12,14 @@ export default function Button({
   children,
   ...props
 }) {
-  const baseClasses = "w-full group py-3.5 px-6 rounded-none text-[12px] tracking-[0.1em] uppercase font-semibold flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed";
-  
+  const baseClasses = "w-full group py-3.5 px-6 text-[12px] tracking-[0.1em] uppercase font-semibold flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed";
+
   const variants = {
-    primary: "bg-[#1a1a1a] text-white hover:bg-[#333] shadow-sm",
-    secondary: "bg-[#faf9f7] text-[#1a1a1a] border border-[#eaeaea] hover:bg-[#eaeaea]",
-    outline: "bg-transparent border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#faf9f7]",
-    ghost: "bg-transparent text-[#555] hover:text-[#1a1a1a] hover:bg-[#faf9f7]"
+    primary: "rounded-none bg-[#1a1a1a] text-white hover:bg-[#333] shadow-sm",
+    secondary: "rounded-none bg-[#faf9f7] text-[#1a1a1a] border border-[#eaeaea] hover:bg-[#eaeaea]",
+    outline: "rounded-none bg-transparent border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#faf9f7]",
+    ghost: "rounded-none bg-transparent text-[#555] hover:text-[#1a1a1a] hover:bg-[#faf9f7]",
+    gold: "rounded-xl bg-gradient-to-r from-[#d6b47c] to-[#b08d55] text-white hover:brightness-105 shadow-md shadow-[#b08d55]/30"
   };
 
   return (

@@ -814,6 +814,31 @@ const extendRental = async (id, customerId, newEndDate) => {
   return { success: true, message: 'Gia hạn thuê và thanh toán thành công.', order: rental };
 };
 
+// Top N sản phẩm được thuê nhiều nhất, tính từ số liệu đơn thuê thực tế (không tính đơn đã hủy)
+// — dùng cho mục "Khoảnh Khắc Tỏa Sáng" ở trang chủ.
+const getTopRentedCostumes = async (limit = 3) => {
+  const limitNum = Math.max(1, Math.min(10, parseInt(limit) || 3));
+
+  const rows = await Rental.aggregate([
+    { $match: { status: { $ne: 'cancelled' } } },
+    { $unwind: '$items' },
+    { $group: { _id: '$items.costume', rentalCount: { $sum: '$items.quantity' } } },
+    { $sort: { rentalCount: -1 } },
+    { $limit: limitNum },
+  ]);
+
+  const costumes = await Costume.find({ _id: { $in: rows.map((r) => r._id) }, status: { $ne: 'hidden' } })
+    .populate('categoryId', 'name');
+
+  const costumeMap = new Map(costumes.map((c) => [c._id.toString(), c]));
+  return rows
+    .map((r) => {
+      const costume = costumeMap.get(r._id.toString());
+      return costume ? { costume, rentalCount: r.rentalCount } : null;
+    })
+    .filter(Boolean);
+};
+
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -831,4 +856,5 @@ module.exports = {
   inspectReturn,
   extendRental,
   notifyOrderStatus,
+  getTopRentedCostumes,
 };

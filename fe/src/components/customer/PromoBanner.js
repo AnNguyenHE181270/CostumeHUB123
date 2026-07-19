@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faGem } from "@fortawesome/free-solid-svg-icons";
 
 const EVENING_IMG = "/images/homepage/promo_evening.png";
 const PURE_WHITE_IMG = "/images/homepage/promo_white.png";
@@ -29,85 +29,96 @@ export default function PromoBanner() {
   const navigate = useNavigate();
 
   return (
-    <section className="px-6 py-14">
+    <section className="px-6 py-16">
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 35 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7 }}
-        className="max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 items-stretch"
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-10 items-stretch"
       >
         {/* LEFT TEXT */}
         <div className="flex flex-col justify-center">
-          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#b8935a] mb-3">
-            Bộ Sưu Tập Mới
-          </span>
+          <div className="flex items-center gap-2 mb-3">
+            <FontAwesomeIcon icon={faGem} className="text-[10px] text-[#d4af37]" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#b8935a]">
+              Bộ Sưu Tập Mới
+            </span>
+          </div>
           <h2
-            className="text-4xl lg:text-5xl font-bold text-[#1a1a1a] leading-[1.05]"
+            className="text-4xl lg:text-5xl font-bold leading-[1.05]"
             style={{ fontFamily: "'Cormorant Garamond', serif" }}
           >
-            Timeless<br />Elegance
+            <span className="text-shine-black">Timeless</span><br />
+            <span className="text-shine-gold-animated">Elegance</span>
           </h2>
-          <p className="text-gray-500 mt-4 text-[14px] leading-relaxed max-w-xs">
-            Thanh lịch vượt thời gian, cho những khoảnh khắc đáng nhớ.
+          <p className="text-gray-500 mt-4 text-[15px] leading-relaxed max-w-xs font-light">
+            Thanh lịch vượt thời gian, cho những khoảnh khắc quý phái và đáng nhớ nhất.
           </p>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => navigate("/collections")}
-            className="mt-8 self-start flex items-center gap-2 bg-[#1a1a1a] text-white px-7 py-3.5 rounded-xl font-semibold text-[12px] uppercase tracking-[0.12em] hover:bg-[#b8935a] active:scale-[0.98] transition-all duration-300 shadow-md hover:shadow-[0_8px_20px_rgba(184,147,90,0.25)]"
+            className="mt-8 self-start flex items-center gap-2.5 bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#1a1a1a] text-[#f5e6ca] px-8 py-4 rounded-xl font-bold text-[12px] uppercase tracking-[0.14em] luxury-btn-gold-shine border border-[#c9a869]/40 shadow-lg hover:shadow-[0_10px_25px_rgba(184,147,90,0.3)] transition-all duration-300"
           >
             Khám Phá Ngay
-            <FontAwesomeIcon icon={faArrowRight} className="text-[11px]" />
-          </button>
+            <FontAwesomeIcon icon={faArrowRight} className="text-[11px] text-[#e8c471]" />
+          </motion.button>
         </div>
 
         {/* RIGHT: lưới 3 ảnh — 1 ảnh lớn + 2 ảnh nhỏ xếp chồng */}
-        <div className="grid grid-cols-2 gap-4 h-[440px] lg:h-[460px]">
-          <button
+        <div className="grid grid-cols-2 gap-5 h-[440px] lg:h-[470px]">
+          <motion.button
             type="button"
+            whileHover={{ y: -6, scale: 1.01 }}
+            transition={{ duration: 0.4 }}
             onClick={() => navigate(`/collections?q=${encodeURIComponent("Váy Dạ Hội")}`)}
-            className="group relative rounded-2xl overflow-hidden text-left"
+            className="group relative rounded-2xl overflow-hidden text-left border border-[#c9a869]/30 hover:border-[#e8c471] shadow-md hover:shadow-[0_18px_40px_rgba(184,147,90,0.25)] transition-all duration-500 luxury-btn-gold-shine"
           >
             <img
               src={EVENING_IMG}
               alt="Evening Glow"
-              className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-108"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <h3 className="text-white font-bold text-2xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-7">
+              <span className="text-[#e8c471] text-[10px] uppercase tracking-widest font-semibold block mb-1">Couture</span>
+              <h3 className="text-white font-bold text-3xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 Evening Glow
               </h3>
-              <p className="text-white/80 text-[12px] mt-1">Dạ hội lấp lánh</p>
-              <span className="inline-flex items-center gap-1.5 text-white text-[11px] font-semibold uppercase tracking-wider mt-3 group-hover:gap-2.5 transition-all">
-                Khám phá <FontAwesomeIcon icon={faArrowRight} className="text-[10px]" />
+              <p className="text-white/80 text-[13px] mt-1 font-light">Dạ hội lấp lánh kiêu sa</p>
+              <span className="inline-flex items-center gap-2 text-[#f1d77e] text-[11px] font-bold uppercase tracking-wider mt-4 group-hover:gap-3 transition-all">
+                Khám phá ngay <FontAwesomeIcon icon={faArrowRight} className="text-[10px]" />
               </span>
             </div>
-          </button>
+          </motion.button>
 
-          <div className="grid grid-rows-2 gap-4">
+          <div className="grid grid-rows-2 gap-5">
             {TILES.map((tile) => (
-              <button
+              <motion.button
                 key={tile.key}
                 type="button"
+                whileHover={{ y: -4, scale: 1.01 }}
+                transition={{ duration: 0.4 }}
                 onClick={() => navigate(`/collections?q=${encodeURIComponent(tile.keyword)}`)}
-                className="group relative rounded-2xl overflow-hidden text-left"
+                className="group relative rounded-2xl overflow-hidden text-left border border-[#c9a869]/30 hover:border-[#e8c471] shadow-md hover:shadow-[0_12px_30px_rgba(184,147,90,0.2)] transition-all duration-500 luxury-btn-gold-shine"
               >
                 <img
                   src={tile.image}
                   alt={tile.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="text-white font-bold text-[16px]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="text-white font-bold text-[18px]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                     {tile.title}
                   </h3>
-                  <p className="text-white/80 text-[11px]">{tile.desc}</p>
-                  <span className="inline-flex items-center gap-1.5 text-white text-[10px] font-semibold uppercase tracking-wider mt-1.5">
+                  <p className="text-white/85 text-[12px] font-light">{tile.desc}</p>
+                  <span className="inline-flex items-center gap-1.5 text-[#f1d77e] text-[10px] font-semibold uppercase tracking-wider mt-2 group-hover:gap-2.5 transition-all">
                     Khám phá <FontAwesomeIcon icon={faArrowRight} className="text-[9px]" />
                   </span>
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -115,3 +126,4 @@ export default function PromoBanner() {
     </section>
   );
 }
+

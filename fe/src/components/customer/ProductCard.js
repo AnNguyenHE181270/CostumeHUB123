@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-solid-svg-icons";
+import { faStar, faFire } from "@fortawesome/free-solid-svg-icons";
 
 import { formatPrice } from "../../utils/formatters";
 const STATUS_MAP = {
@@ -9,31 +9,17 @@ const STATUS_MAP = {
   maintenance: { label: "Bảo Trì", color: "bg-amber-500" },
 };
 
+const NEW_WITHIN_DAYS = 14;
+const isRecentlyAdded = (createdAt) => {
+  if (!createdAt) return false;
+  const ageMs = Date.now() - new Date(createdAt).getTime();
+  return ageMs >= 0 && ageMs <= NEW_WITHIN_DAYS * 24 * 60 * 60 * 1000;
+};
+
 const PLACEHOLDER_IMG =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect fill='%23f0ece8' width='400' height='500'/%3E%3Ctext fill='%23c4bdb5' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EHình Ảnh Sản Phẩm%3C/text%3E%3C/svg%3E";
 
-function StarRating({ rating = 0, count = 0 }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <svg
-            key={star}
-            className={`w-3.5 h-3.5 ${star <= Math.round(rating) ? "text-amber-400" : "text-gray-200"
-              }`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-      </div>
-      <span className="text-[11px] text-[#999]">({count})</span>
-    </div>
-  );
-}
-
-export default function ProductCard({ costume, showToast, hideRentButton = false }) {
+export default function ProductCard({ costume, showToast, hideRentButton = false, isBestSeller = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
@@ -43,13 +29,15 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       : PLACEHOLDER_IMG;
 
   const statusInfo = STATUS_MAP[costume.status];
+  const isNew = isRecentlyAdded(costume.createdAt);
   const categoryName =
     typeof costume.categoryId === "object"
       ? costume.categoryId?.name
       : "";
+  const rentalCount = costume.rentalCount || costume.rentCount || costume.rentedCount || costume.totalRentals || 0;
 
   return (
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#f0ece8] hover:border-[#b8935a]/40 hover:shadow-[0_12px_30px_rgba(184,147,90,0.12)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#eae2d5] hover:border-[#c9a869] hover:shadow-[0_16px_36px_rgba(184,147,90,0.2)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col luxury-btn-shine">
         {/* Image */}
         <div
           className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
@@ -62,8 +50,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
             onError={() => setImgError(true)}
           />
 
-          {/* Status badge: chỉ hiện khi sản phẩm không sẵn sàng (đang thuê/bảo trì).
-              Mặc định danh sách khách xem đã lọc sẵn hàng còn -> không cần ghi chữ, thay bằng icon nổi bật. */}
+          {/* Badge góc trên-trái */}
           <div className="absolute top-3 left-3">
             {statusInfo ? (
               <span
@@ -72,11 +59,17 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
                 <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                 {statusInfo.label}
               </span>
-            ) : (
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-[#d9b578] to-[#b8935a] text-white shadow-md ring-2 ring-white/70">
-                <FontAwesomeIcon icon={faStar} className="text-[11px]" />
+            ) : isBestSeller && rentalCount > 10 ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-[#d9b578] to-[#b8935a] shadow-md ring-1 ring-white/70">
+                <FontAwesomeIcon icon={faFire} className="text-[10px]" />
+                BEST SELLER
               </span>
-            )}
+            ) : isNew ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white bg-[#1a1a1a] shadow-md">
+                <FontAwesomeIcon icon={faStar} className="text-[9px]" />
+                NEW
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -84,7 +77,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
         <div className="p-4 flex flex-col flex-1">
           {/* Category */}
           {categoryName && (
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#999] font-medium mb-1">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[#b8935a] font-semibold mb-1">
               {categoryName}
             </p>
           )}
@@ -97,11 +90,16 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
             {costume.name || "Tên sản phẩm"}
           </h3>
 
-          <StarRating rating={costume.rating || 5} count={costume.reviewsCount || 0} />
+          <div className="flex items-center gap-1.5 text-[11px] text-[#7a6e59] font-medium my-0.5">
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#faf1dd] text-[#b8935a] text-[9px] border border-[#e8dfcd]">
+              <FontAwesomeIcon icon={faFire} className="text-[8px]" />
+            </span>
+            <span>Đã cho thuê <b className="text-[#1a1a1a] font-bold">{rentalCount}</b> lượt</span>
+          </div>
 
           {/* Price & Action */}
           <div className="mt-auto pt-4 flex flex-col gap-3">
-            <span className="text-[15px] font-bold text-[#1a1a1a]">
+            <span className="text-[16px] font-bold text-[#1a1a1a]">
               {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
             </span>
             {!hideRentButton && (
@@ -110,7 +108,7 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
                   e.stopPropagation();
                   navigate(`/product/${costume._id}`);
                 }}
-                className="w-full py-2.5 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded-lg hover:bg-[#b8935a] active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_4px_12px_rgba(184,147,90,0.25)]"
+                className="w-full py-2.5 bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] text-[11px] uppercase tracking-wider font-bold rounded-lg hover:from-[#c9a869] hover:to-[#b8935a] hover:text-white active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_6px_18px_rgba(184,147,90,0.35)] luxury-btn-gold-shine border border-[#c9a869]/30"
               >
                 Thuê ngay
               </button>
@@ -122,3 +120,4 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
       </div>
   );
 }
+

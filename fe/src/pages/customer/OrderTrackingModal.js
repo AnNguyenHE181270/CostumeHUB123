@@ -22,13 +22,41 @@ const STEP_DEFINITIONS = [
         title: "Giao hàng thành công",
         description: "Đơn hàng đã được giao đến địa chỉ của bạn",
     },
+    {
+        id: 4,
+        status: "returning",
+        title: "Đã gửi yêu cầu trả hàng",
+        description: "Đang chờ cửa hàng nhận lại và kiểm tra trang phục",
+    },
+    {
+        id: 5,
+        status: "completed",
+        title: "Hoàn tất trả hàng",
+        description: "Cửa hàng đã kiểm tra xong, đơn thuê đã hoàn tất",
+    },
 ]
+
+// Nhãn hiển thị ở banner trạng thái hiện tại — tách riêng khỏi các mốc trên timeline
+// vì renting/overdue không có mốc riêng (vẫn coi là "đã giao hàng, đang dùng") nhưng cần
+// dòng chữ khác nhau để khách phân biệt được đang thuê hay đã quá hạn trả.
+const CURRENT_STATUS_LABEL = {
+    pending: "Đang chuẩn bị hàng",
+    delivering: "Đang vận chuyển",
+    delivered: "Giao hàng thành công",
+    renting: "Đang sử dụng dịch vụ",
+    overdue: "Đã quá hạn trả — vui lòng trả sớm",
+    returning: "Đã gửi yêu cầu trả hàng",
+    completed: "Hoàn tất trả hàng",
+    cancelled: "Đơn hàng đã hủy",
+}
 
 function getTrackingSteps(status) {
     let currentStep = 0;
     if (status === 'pending') currentStep = 1;
     else if (status === 'delivering') currentStep = 2;
-    else if (['renting', 'returning', 'completed', 'overdue'].includes(status)) currentStep = 4;
+    else if (['delivered', 'renting', 'overdue'].includes(status)) currentStep = 3;
+    else if (status === 'returning') currentStep = 4;
+    else if (status === 'completed') currentStep = 5;
 
     return STEP_DEFINITIONS.map((step) => ({
         ...step,
@@ -50,20 +78,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
 
     const status = order.status
     const trackingSteps = getTrackingSteps(status)
-
-    let currentStepTitle = "Đang xử lý";
-    let statusSubtitle = "Dự kiến giao: Hôm nay, 14:00 - 18:00";
-
-    if (status === 'pending') {
-        currentStepTitle = "Đang chuẩn bị hàng";
-        statusSubtitle = "Trang phục đang được chuẩn bị và kiểm tra kỹ lưỡng";
-    } else if (status === 'delivering') {
-        currentStepTitle = "Đang vận chuyển";
-        statusSubtitle = "Dự kiến giao: Hôm nay, 14:00 - 18:00";
-    } else if (['renting', 'returning', 'completed', 'overdue'].includes(status)) {
-        currentStepTitle = "Giao hàng thành công";
-        statusSubtitle = "Đơn hàng đã được giao thành công";
-    }
+    const currentStepTitle = CURRENT_STATUS_LABEL[status] ?? "Đang xử lý"
 
     const items = Array.isArray(order.items)
         ? order.items

@@ -13,6 +13,8 @@ const DEFAULT_CATEGORIES = [
   { _id: "default-5", name: "Phụ Kiện" }
 ];
 
+import logoImg from "../../assets/logo.png";
+
 export default function Footer() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
@@ -49,16 +51,12 @@ export default function Footer() {
 
         {/* Brand */}
         <div className="flex flex-col items-center lg:items-start">
-          <Link to="/" className="mb-6 flex flex-col items-center lg:items-start group">
-            <div className="flex items-center gap-1">
-              <span className="text-[28px] font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Costume</span>
-              <span className="text-[28px] font-bold text-[#BFA888]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>HUB</span>
-            </div>
-            <div className="flex items-center justify-center lg:justify-start w-full gap-2 mt-1">
-              <div className="h-[1px] bg-[#EAE3D8] w-8"></div>
-              <span className="text-[9px] tracking-[0.3em] uppercase text-gray-500 font-medium whitespace-nowrap">LUXE RENTAL</span>
-              <div className="h-[1px] bg-[#EAE3D8] w-8"></div>
-            </div>
+          <Link to="/" className="mb-6 block group">
+            <img
+              src={logoImg}
+              alt="CostumeHUB"
+              className="h-16 lg:h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
           </Link>
           <p className="text-[13px] leading-relaxed text-gray-600 max-w-[280px]">
             CostumeHUB mang đến cho bạn những bộ trang phục cao cấp nhất, giúp bạn tự tin tỏa sáng trong mọi khoảnh khắc quan trọng.

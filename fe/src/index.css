@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -29,6 +29,7 @@
     font-family: 'Playfair Display', 'Cormorant Garamond', serif;
   }
 
+  /* Text Shimmer Effects */
   .text-shine-black {
     background: linear-gradient(115deg, #0d0d0d 20%, #4a4a4a 45%, #0d0d0d 65%);
     -webkit-background-clip: text;
@@ -43,9 +44,137 @@
     color: transparent;
     text-shadow: 0 2px 18px rgba(212, 175, 90, 0.4);
   }
+
+  .text-shine-gold-animated {
+    background: linear-gradient(110deg, #8a6a2f 0%, #d4af37 25%, #fff8e1 45%, #f1d77e 60%, #8a6a2f 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: goldShimmer 5s linear infinite;
+    filter: drop-shadow(0 4px 16px rgba(212, 175, 55, 0.25));
+  }
+
+  /* Luxury Light Sweep Button */
+  .luxury-btn-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .luxury-btn-shine::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -75%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.45),
+      transparent
+    );
+    transform: rotate(25deg);
+    transition: all 0.75s ease-in-out;
+    pointer-events: none;
+  }
+  .luxury-btn-shine:hover::before {
+    left: 125%;
+  }
+
+  /* Luxury Gold Sweep Button */
+  .luxury-btn-gold-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .luxury-btn-gold-shine::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -75%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(232, 196, 113, 0.5),
+      rgba(255, 246, 217, 0.8),
+      transparent
+    );
+    transform: rotate(25deg);
+    transition: all 0.75s ease-in-out;
+    pointer-events: none;
+  }
+  .luxury-btn-gold-shine:hover::before {
+    left: 125%;
+  }
+
+  /* Search Bar Luxury Glow & Shimmer */
+  .search-bar-luxury {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 35px -5px rgba(184, 147, 90, 0.15), 0 0 0 1px rgba(201, 168, 105, 0.25);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .search-bar-luxury:hover,
+  .search-bar-luxury:focus-within {
+    box-shadow: 0 16px 45px -8px rgba(184, 147, 90, 0.3), 0 0 0 2px rgba(201, 168, 105, 0.6), 0 0 25px rgba(212, 175, 55, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Shimmer Border for Luxury Cards */
+  .luxury-card-border {
+    position: relative;
+    border: 1px solid rgba(201, 168, 105, 0.3);
+    transition: all 0.4s ease;
+  }
+  .luxury-card-border:hover {
+    border-color: rgba(201, 168, 105, 0.8);
+    box-shadow: 0 16px 40px -10px rgba(184, 147, 90, 0.25), 0 0 15px rgba(201, 168, 105, 0.15);
+  }
+
+  /* Floating luxury animation */
+  .animate-float-gentle {
+    animation: floatGentle 4s ease-in-out infinite;
+  }
+
+  /* Gold Pulse Glow */
+  .animate-gold-pulse {
+    animation: goldPulse 3s ease-in-out infinite;
+  }
+
+  /* Sparkle Rotation */
+  .animate-sparkle-spin {
+    animation: sparkleSpin 8s linear infinite;
+  }
 }
 
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes goldPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(184, 147, 90, 0.25), 0 0 30px rgba(201, 168, 105, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(184, 147, 90, 0.5), 0 0 45px rgba(232, 196, 113, 0.35);
+  }
+}
+
+@keyframes sparkleSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
