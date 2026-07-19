@@ -17,7 +17,7 @@ export default function Footer() {
             <img
               src={logoImg}
               alt="CostumeHUB"
-              className="h-11 lg:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-16 lg:h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
             />
           </Link>
           <p className="text-[13px] leading-relaxed text-gray-500 max-w-[280px]">

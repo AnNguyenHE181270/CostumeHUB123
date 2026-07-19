@@ -59,7 +59,7 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
                 alt="CostumeHUB"
                 onClick={() => navigate("/")}
                 title="Về trang chủ"
-                className="h-9 w-auto object-contain cursor-pointer hover:scale-105 transition-transform"
+                className="h-14 w-auto object-contain cursor-pointer hover:scale-105 transition-transform"
               />
               <p className="text-[9px] uppercase tracking-[0.2em] text-[#858585] mt-1 font-medium">{user?.fullName || "Admin"}</p>
             </div>
