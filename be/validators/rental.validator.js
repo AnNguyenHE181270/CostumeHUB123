@@ -3,6 +3,13 @@ const { body, param } = require("express-validator");
 const createOrderValidator = [
 ];
 
+const checkAvailabilityValidator = [
+  body("costumeId").isMongoId().withMessage("Invalid costume ID"),
+  body("startDate").isISO8601().withMessage("Invalid start date"),
+  body("endDate").isISO8601().withMessage("Invalid end date"),
+  body("quantity").isInt({ min: 1 }).withMessage("Quantity must be at least 1")
+];
+
 const updateOrderStatusValidator = [
   param("id").isMongoId().withMessage("Invalid order ID"),
   body("status").notEmpty().withMessage("Status is required")
@@ -38,6 +45,7 @@ const extendRentalValidator = [
 ];
 
 module.exports = {
+  checkAvailabilityValidator,
   createOrderValidator,
   updateOrderStatusValidator,
   confirmPreparationValidator,
