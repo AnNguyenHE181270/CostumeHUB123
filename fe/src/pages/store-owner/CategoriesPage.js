@@ -109,7 +109,8 @@ const CategoriesPage = () => {
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
     setFormData({ name: cat.name, description: cat.description, parentId: cat.parentId || "" });
-    setIsRootMode(false);
+    // If the category has no parent, it's a root category — hide the parent selector
+    setIsRootMode(!cat.parentId);
     setIsFormOpen(true);
   };
 
@@ -283,7 +284,7 @@ const CategoriesPage = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm theo tên danh mục..."
-            wrapperClassName="col-span-1"
+            wrapperClassName="col-span-2"
           />
           <div className="col-start-6 col-span-1">
             <Button icon={faPlus} label="Thêm danh mục gốc" variant="primary" onClick={handleOpenAddRoot} />

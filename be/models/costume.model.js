@@ -51,7 +51,6 @@ const costumeSchema = new mongoose.Schema(
         "available",
         "rented",
         "maintenance",
-        "dry_cleaning",
         "hidden",
         "out_of_stock",
       ],
@@ -75,6 +74,11 @@ const costumeSchema = new mongoose.Schema(
       default: 1
     },
 
+    maxRentalDays: {
+      type: Number,
+      default: 7
+    },
+
     variants: [{
       status: {
         type: String,
@@ -82,7 +86,6 @@ const costumeSchema = new mongoose.Schema(
           "available",
           "rented",
           "maintenance",
-          "dry_cleaning",
           "hidden",
           "out_of_stock",
         ],

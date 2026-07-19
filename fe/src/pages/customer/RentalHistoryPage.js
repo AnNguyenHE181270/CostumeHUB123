@@ -1,25 +1,35 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useNavigate } from "react-router-dom"
+import { useCart } from "../../context/CartContext"
+import Toast from "../../components/ui/Toast"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
+import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
 import { faBox } from '@fortawesome/free-solid-svg-icons'
 import rentalService from '../../services/rental.service'
 
 function RentalHistory() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { addToCart } = useCart();
     const initialTab = searchParams.get("status") || "all";
     const [activeTab, setActiveTab] = useState(initialTab);
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [extendOrderTarget, setExtendOrderTarget] = useState(null);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isIssuesOpen, setIsIssuesOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+    const showToast = (message, type = "success") => {
+        setToast({ isVisible: true, message, type });
+    };
 
     useEffect(() => {
         const status = searchParams.get("status");
@@ -98,11 +108,11 @@ function RentalHistory() {
         if (!window.confirm("Bạn có chắc muốn gửi yêu cầu trả hàng?")) return;
         try {
             await rentalService.requestReturn(order.id);
-            alert("Đã gửi yêu cầu trả hàng thành công!");
+            showToast("Đã gửi yêu cầu trả hàng thành công!", "success");
             fetchOrders();
             handleCloseDetail();
         } catch (err) {
-            alert(err.message || "Lỗi yêu cầu trả hàng.");
+            showToast(err.message || "Lỗi yêu cầu trả hàng.", "error");
         }
     };
 
@@ -110,10 +120,46 @@ function RentalHistory() {
         if (!window.confirm("Bạn có chắc chắn đã nhận được hàng?")) return;
         try {
             await rentalService.confirmReceipt(order.id);
-            alert("Xác nhận đã nhận hàng thành công!");
+            showToast("Xác nhận đã nhận hàng thành công!", "success");
             fetchOrders();
         } catch (err) {
-            alert(err.message || "Lỗi xác nhận nhận hàng.");
+            showToast(err.message || "Lỗi xác nhận nhận hàng.", "error");
+        }
+    };
+
+    const handleRentAgain = async (items) => {
+        if (items && items.length > 0) {
+            try {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const startDateStr = tomorrow.toISOString().split('T')[0];
+
+                const dayAfter = new Date();
+                dayAfter.setDate(dayAfter.getDate() + 2);
+                const endDateStr = dayAfter.toISOString().split('T')[0];
+
+                for (const item of items) {
+                    if (item.costumeId) {
+                        await addToCart(
+                            { _id: item.costumeId },
+                            { size: item.size || 'M' },
+                            item.quantity || 1,
+                            startDateStr,
+                            endDateStr,
+                            1
+                        );
+                    }
+                }
+                showToast("Đã thêm trang phục vào giỏ hàng thành công! Đang chuyển hướng...", "success");
+                setTimeout(() => {
+                    navigate('/cart');
+                }, 1500);
+            } catch (err) {
+                console.error("Lỗi khi thuê lại:", err);
+                showToast("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng.", "error");
+            }
+        } else {
+            showToast("Không tìm thấy thông tin trang phục để thuê lại.", "error");
         }
     };
 
@@ -183,6 +229,8 @@ function RentalHistory() {
                                         onViewDetail={handleViewDetail}
                                         isSelected={selectedOrder?.id === order.id}
                                         isCompact={isDetailOpen}
+                                        onRentAgain={handleRentAgain}
+                                        onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                                     />
                                 ))}
                             </div>
@@ -205,6 +253,8 @@ function RentalHistory() {
                                     onConfirmReceipt={handleConfirmReceipt}
                                     onRequestIssue={() => setIsIssuesOpen(true)}
                                     onExtendSuccess={fetchOrders}
+                                    onRentAgain={handleRentAgain}
+                                    onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                                 />
                             </div>
                         )}
@@ -231,6 +281,8 @@ function RentalHistory() {
                             onConfirmReceipt={handleConfirmReceipt}
                             onRequestIssue={() => setIsIssuesOpen(true)}
                             onExtendSuccess={fetchOrders}
+                            onRentAgain={handleRentAgain}
+                            onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                         />
                     </div>
                 </div>
@@ -244,11 +296,28 @@ function RentalHistory() {
                 onConfirm={handleConfirmCancel}
             />
 
+            <ExtendRentalModal
+                open={!!extendOrderTarget}
+                onOpenChange={(val) => { if (!val) setExtendOrderTarget(null); }}
+                order={extendOrderTarget}
+                onConfirm={() => {
+                    fetchOrders();
+                    setExtendOrderTarget(null);
+                }}
+            />
+
             <IssuesModal
                 open={isIssuesOpen}
                 onOpenChange={setIsIssuesOpen}
                 order={selectedOrder}
                 onSuccess={fetchOrders}
+            />
+
+            <Toast
+                isVisible={toast.isVisible}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
             />
         </div>
     )

@@ -74,12 +74,12 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="relative text-gray-600 hover:text-black transition-colors"
+        className="relative text-gray-700 hover:text-black transition-colors p-1 flex items-center justify-center"
         aria-label="Thông báo"
       >
-        <FontAwesomeIcon icon={faBell} className="text-[15px] lg:text-[16px]" />
+        <FontAwesomeIcon icon={faBell} className="text-[20px] lg:text-[22px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md border-2 border-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

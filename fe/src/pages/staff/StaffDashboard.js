@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faClipboardList,
   faClock,
   faTruck,
   faKey,
@@ -10,6 +9,7 @@ import {
   faSpinner,
   faCalendarAlt,
   faChartPie,
+  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import staffService from "../../services/staff.service";
 
@@ -21,6 +21,7 @@ const STATUS_MAP = {
   delivering: { label: "Đang giao", bg: "bg-indigo-100", text: "text-indigo-800", color: "#6366f1" },
   delivered: { label: "Đã giao", bg: "bg-teal-100", text: "text-teal-800", color: "#0d9488" },
   renting: { label: "Đang thuê", bg: "bg-emerald-100", text: "text-emerald-800", color: "#10b981" },
+  returning: { label: "Đang trả", bg: "bg-purple-100", text: "text-purple-800", color: "#a855f7" },
   completed: { label: "Hoàn tất", bg: "bg-gray-100", text: "text-gray-800", color: "#6b7280" },
   cancelled: { label: "Đã hủy", bg: "bg-red-100", text: "text-red-800", color: "#ef4444" },
   overdue: { label: "Quá hạn", bg: "bg-red-100", text: "text-red-800", color: "#dc2626" },
@@ -49,10 +50,56 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Date Filter State giống bên owner
+  const [dateRange, setDateRange] = useState("Tất cả thời gian");
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
+  const getDateParams = useCallback(() => {
+    const now = new Date();
+    let start = null;
+    let end = new Date();
+
+    if (dateRange === "Hôm nay") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (dateRange === "7 ngày qua") {
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "30 ngày qua") {
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "Tháng này") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (dateRange === "Tất cả thời gian") {
+      start = null;
+      end = null;
+    } else if (dateRange.startsWith("Từ")) {
+      if (customStartDate && customEndDate) {
+        start = new Date(customStartDate);
+        end = new Date(customEndDate);
+      }
+    }
+
+    return {
+      startDate: start ? start.toISOString() : "",
+      endDate: end ? end.toISOString() : ""
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const handleApplyCustomDate = () => {
+    if (customStartDate && customEndDate) {
+      const startStr = new Date(customStartDate).toLocaleDateString("vi-VN");
+      const endStr = new Date(customEndDate).toLocaleDateString("vi-VN");
+      setDateRange(`Từ ${startStr} đến ${endStr}`);
+      setShowDateMenu(false);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const json = await staffService.getDashboard();
+        setLoading(true);
+        const { startDate, endDate } = getDateParams();
+        const json = await staffService.getDashboard({ startDate, endDate });
         if (json.success) {
           setData(json.data);
         } else {
@@ -65,7 +112,7 @@ export default function StaffDashboard() {
       }
     };
     fetchDashboard();
-  }, []);
+  }, [dateRange, getDateParams]);
 
   if (loading) {
     return (
@@ -106,9 +153,15 @@ export default function StaffDashboard() {
     .map((seg) => `${seg.color} ${seg.offset}% ${seg.offset + seg.percent}%`)
     .join(", ");
 
+  const getKpiTitle = () => {
+    if (dateRange === "Hôm nay") return "Đơn hôm nay";
+    if (dateRange === "Tất cả thời gian") return "Tổng đơn hàng";
+    return "Đơn phát sinh";
+  };
+
   // KPI cards config
   const kpiCards = [
-    { title: "Đơn hôm nay", value: kpi.todayOrders, icon: faCalendarAlt, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
+    { title: getKpiTitle(), value: kpi.todayOrders, icon: faCalendarAlt, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
     { title: "Chờ duyệt", value: kpi.pendingCount, icon: faClock, iconBg: "bg-yellow-50", iconColor: "text-yellow-600" },
     { title: "Đang giao", value: kpi.deliveringCount, icon: faTruck, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
     { title: "Đang thuê", value: kpi.rentingCount, icon: faKey, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
@@ -117,27 +170,83 @@ export default function StaffDashboard() {
   return (
     <div className="bg-[#faf9f7] min-h-screen flex flex-col">
 
-      {/* === 1. GLOBAL TOOLBAR === */}
-      <div className="bg-white border-b border-[#eaeaea] px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Tổng Quan
-          </h1>
-          <span className="text-xs bg-[#f5f5f5] text-[#555] px-2 py-1 rounded">Staff</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[#999]">
-            {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
-          </span>
-        </div>
-      </div>
-
       {/* === 2. DASHBOARD CANVAS === */}
       <div className="flex-1 p-6 overflow-y-auto">
 
-        <h2 className="text-sm font-semibold text-[#999] uppercase tracking-wider mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-          Quản lý đơn hàng
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-sm font-semibold text-[#999] uppercase tracking-wider" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Quản lý đơn hàng
+          </h2>
+
+          {/* Date Filter Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowDateMenu(!showDateMenu);
+              }}
+              className="flex items-center gap-2 border border-[#eaeaea] rounded-xl bg-white px-4 py-2 text-sm text-[#555] hover:bg-[#faf9f7] transition-colors min-h-[40px] shadow-sm font-medium"
+            >
+              <FontAwesomeIcon icon={faCalendarAlt} className="text-[#999] text-xs" />
+              <span className="text-[#1a1a1a]">{dateRange}</span>
+              <FontAwesomeIcon icon={faChevronDown} className="text-[#bbb] text-xs ml-1" />
+            </button>
+
+            {showDateMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-[#eaeaea] rounded-lg shadow-xl py-2 z-50 animate-fade-in">
+                <div className="mb-2">
+                  {["Tất cả thời gian", "Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"].map((range) => (
+                    <button
+                      key={range}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setDateRange(range);
+                        setShowDateMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-sm text-gray-700 hover:bg-[#faf9f7] block font-medium"
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="px-4 py-3 border-t border-[#eaeaea] bg-gray-50/50">
+                  <p className="text-xs text-[#999] mb-2 font-medium">Tùy chọn khoảng ngày:</p>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-8">Từ:</span>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="border border-[#eaeaea] rounded px-2 py-1 text-sm text-[#555] flex-1 focus:outline-none focus:border-[#1a1a1a]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-8">Đến:</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="border border-[#eaeaea] rounded px-2 py-1 text-sm text-[#555] flex-1 focus:outline-none focus:border-[#1a1a1a]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomDate}
+                      disabled={!customStartDate || !customEndDate}
+                      className="mt-2 w-full bg-[#1a1a1a] text-white rounded py-1.5 text-xs font-semibold hover:bg-[#333] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {/* === KPI CARDS === */}

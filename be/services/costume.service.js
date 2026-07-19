@@ -55,6 +55,9 @@ const getAllCostumes = async (query) => {
       if (statuses.length > 0) filter.status = { $in: statuses };
     }
   } else {
+    // Không truyền status (khách duyệt web mặc định) -> chỉ hiện sản phẩm sẵn sàng cho thuê,
+    // không dựa vào availableStock đơn thuần vì sản phẩm đang bảo trì/giặt là vẫn có thể còn availableStock > 0.
+    filter.status = 'available';
     filter['variants.availableStock'] = { $gt: 0 };
   }
 
@@ -162,7 +165,7 @@ const updateCostume = async (id, data) => {
 
     if (data.status === undefined) {
       const totalAvailable = newVariants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
-      const lockedStatuses = ['hidden', 'maintenance', 'dry_cleaning', 'rented'];
+      const lockedStatuses = ['hidden', 'maintenance', 'rented'];
       if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
         costume.status = 'out_of_stock';
       } else if (totalAvailable > 0 && costume.status === 'out_of_stock') {
@@ -182,4 +185,60 @@ const deleteCostume = async (id) => {
   await costume.save();
 };
 
-module.exports = { getAllCostumes, getCostumeById, createCostume, updateCostume, deleteCostume };
+// Staff xác nhận đã bảo trì/giặt là xong -> sản phẩm sẵn sàng cho thuê lại.
+const getMaintenanceCostumes = async () => {
+  return Costume.find({
+    $or: [
+      { status: 'maintenance' },
+      { 'variants.status': 'maintenance' }
+    ]
+  })
+    .populate('categoryId', 'name')
+    .sort({ updatedAt: -1 });
+};
+
+const completeMaintenance = async (id, size) => {
+  const costume = await Costume.findById(id);
+  if (!costume) throw new HttpError('Không tìm thấy sản phẩm.', 404);
+
+  if (size) {
+    const variant = costume.variants.find((v) => v.size === size);
+    if (variant) {
+      variant.status = 'available';
+    }
+  } else {
+    // Hoàn tất tất cả các biến thể đang ở trạng thái bảo trì của trang phục này
+    costume.variants.forEach((v) => {
+      if (v.status === 'maintenance') {
+        v.status = 'available';
+      }
+    });
+  }
+
+  // Cập nhật lại status costume tổng thể
+  const hasMaintenance = costume.variants.some((v) => v.status === 'maintenance');
+  const hasAvailable = costume.variants.some(
+    (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
+  );
+
+  if (hasAvailable) {
+    costume.status = 'available';
+  } else if (hasMaintenance) {
+    costume.status = 'maintenance';
+  } else {
+    costume.status = 'out_of_stock';
+  }
+
+  await costume.save();
+  return costume;
+};
+
+module.exports = {
+  getAllCostumes,
+  getCostumeById,
+  createCostume,
+  updateCostume,
+  deleteCostume,
+  getMaintenanceCostumes,
+  completeMaintenance,
+};

@@ -3,7 +3,7 @@ const {
     checkAvailability, createOrder, getAllOrders, updateOrderStatus, confirmPreparation,
     getRentalHistory, orderDetail, cancellOrrder,
     getTotalRevenue, getActiveRentals, getInventoryUtilization,
-    requestReturn, inspectReturn, confirmReceipt, extendRental
+    requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
 const upload = require('../middlewares/upload.middleware');
@@ -18,6 +18,7 @@ const {
 const router = express.Router();
 
 router.post('/check', checkAvailabilityValidator, validate, checkAvailability);
+router.get('/top-rented', getTopRentedCostumes); // Công khai — dùng cho trang chủ
 router.post('/create', checkAuth, createOrderValidator, validate, createOrder); // Khách phải login mới được đặt
 router.get('/', checkAuth, getAllOrders); // Staff/Owner lấy danh sách
 router.put('/:id/status', checkAuth, updateOrderStatusValidator, validate, updateOrderStatus); // Đổi trạng thái

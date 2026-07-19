@@ -2,7 +2,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { statusOrder } from "../../constants/statusOrder"
 import { formatOrderId } from "../../utils/formatters"
-function OrderCard({ order, onViewDetail, isSelected, isCompact }) {
+
+function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder }) {
     const status = statusOrder[order.status]
 
     return (
@@ -104,17 +105,24 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact }) {
                     {!isCompact && (
                         <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
                             <div className="flex gap-2">
-                                {order.status === "rented" && (
+                                {order.status === "renting" && (
                                     <button
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onExtendOrder) onExtendOrder(order);
+                                            else onViewDetail(order);
+                                        }}
                                         className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                     >
                                         Gia hạn thuê
                                     </button>
                                 )}
-                                {order.status === "completed" && (
+                                {["completed", "cancelled"].includes(order.status) && (
                                     <button
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRentAgain?.(order.items);
+                                        }}
                                         className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                     >
                                         Thuê lại

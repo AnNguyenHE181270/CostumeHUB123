@@ -35,5 +35,6 @@ export const ROUTES = {
   STAFF_ORDERS: "orders",
   STAFF_PRODUCTS: "products",
   STAFF_ISSUES: "issues",
+  STAFF_MAINTENANCE: "maintenance",
   // STAFF_DASHBOARD: "/staff/dashboard",
 };

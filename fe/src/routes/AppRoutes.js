@@ -31,6 +31,7 @@ import IssuesManagePage from "../pages/shared/IssuesManagePage";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffProductsPage from "../pages/staff/StaffProductsPage";
 import InspectReturnPage from "../pages/staff/InspectReturnPage";
+import MaintenancePage from "../pages/staff/MaintenancePage";
 
 // Trang Customer
 import RentCostumePage from "../pages/customer/RentCostumePage";
@@ -96,6 +97,7 @@ function AppRoutes() {
           <Route path={ROUTES.STAFF_PRODUCTS} element={<StaffProductsPage />} />
           <Route path={ROUTES.STAFF_ORDERS} element={<OrdersPage />} />
           <Route path={ROUTES.STAFF_ISSUES} element={<IssuesManagePage />} />
+          <Route path={ROUTES.STAFF_MAINTENANCE} element={<MaintenancePage />} />
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />
           <Route path="rentals/:orderId/inspect-return" element={<InspectReturnPage />} />

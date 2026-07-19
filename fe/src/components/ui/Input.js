@@ -8,6 +8,7 @@ export default function Input({
   onChange,
   placeholder,
   required = false,
+  leftIcon,
   rightIcon,
   onRightIconClick,
   className = "",
@@ -15,12 +16,13 @@ export default function Input({
   ...props
 }) {
   const baseInputClasses = `
-    w-full bg-surface border border-borderorder rounded-xl 
-    px-4 py-3 text-sm text-text-primary outline-none 
-    transition-all duration-200 
+    w-full bg-surface border border-borderorder rounded-xl
+    px-4 py-3 text-sm text-text-primary outline-none
+    transition-all duration-200
     focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500
     placeholder:text-text-muted
-    ${rightIcon ? "pr-10" : ""} 
+    ${leftIcon ? "pl-10" : ""}
+    ${rightIcon ? "pr-10" : ""}
     ${className}
   `;
 
@@ -34,6 +36,12 @@ export default function Input({
       )}
 
       <div className="relative">
+        {leftIcon && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+            {leftIcon}
+          </span>
+        )}
+
         {children || (
           <input
             id={name}

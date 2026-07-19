@@ -7,6 +7,8 @@ import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-
 import { formatPrice } from "../../utils/formatters";
 import NotificationBell from "./NotificationBell";
 
+import logoImg from "../../assets/logo.png";
+
 export default function Header() {
   const { user, role, logout } = useAuth();
   const { cartCount } = useCart();
@@ -19,6 +21,11 @@ export default function Header() {
 
   const handleLogout = () => {
     logout();
+    navigate("/login");
+  };
+
+  const handleLoginClick = () => {
+    setMobileMenuOpen(false);
     navigate("/login");
   };
 
@@ -67,8 +74,8 @@ export default function Header() {
   }, []);
 
   return (
-    <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] pt-3" : "bg-white pt-4"}`}>
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between pb-3">
+    <header className={`fixed w-full top-0 z-50 transition-all duration-500 ease-in-out ${scrolled ? "bg-white/85 backdrop-blur-xl border-b border-[#c9a869]/40 shadow-[0_8px_25px_-10px_rgba(184,147,90,0.22)] py-1.5 lg:py-2" : "bg-white/95 backdrop-blur-md border-b border-transparent py-2.5 lg:py-3"}`}>
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between py-1">
 
         {/* Left: Mobile Menu Toggle or Desktop Links */}
         <div className="flex-1 flex items-center">
@@ -86,13 +93,12 @@ export default function Header() {
 
         {/* Center: Logo */}
         <div className="flex-shrink-0 text-center">
-          <Link to="/" className="flex flex-col items-center">
-            <h1 className="text-2xl lg:text-3xl font-semibold text-black leading-none tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              CostumeHUB
-            </h1>
-            <span className="text-[8px] tracking-[0.3em] uppercase text-gray-400 mt-1.5 font-medium">
-              LUXE RENTAL
-            </span>
+          <Link to="/" className="flex items-center justify-center group py-0">
+            <img
+              src={logoImg}
+              alt="CostumeHUB"
+              className="h-16 sm:h-20 lg:h-24 w-auto max-w-[240px] sm:max-w-[300px] lg:max-w-[360px] object-contain transition-all duration-300 group-hover:scale-105 -my-3 sm:-my-4 lg:-my-5 relative z-10"
+            />
           </Link>
         </div>
 
@@ -100,10 +106,10 @@ export default function Header() {
         <div className="flex-1 flex items-center justify-end gap-6 lg:gap-8 relative z-[60]">
           <NotificationBell />
 
-          <Link to="/cart" className="relative text-gray-600 hover:text-black transition-colors">
-            <FontAwesomeIcon icon={faShoppingBag} className="text-[15px] lg:text-[16px]" />
+          <Link to="/cart" className="relative text-gray-700 hover:text-black transition-colors p-1 flex items-center justify-center">
+            <FontAwesomeIcon icon={faShoppingBag} className="text-[20px] lg:text-[22px]" />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-black text-white text-[10px] font-bold w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm">
+              <span className="absolute -top-1 -right-1.5 bg-black text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md border-2 border-white">
                 {cartCount}
               </span>
             )}
@@ -116,15 +122,18 @@ export default function Header() {
               onMouseLeave={() => setProfileDropdownOpen(false)}
             >
               <button
-                className="text-gray-600 hover:text-black transition-colors flex items-center gap-2 outline-none focus:outline-none"
+                className="text-gray-700 hover:text-black transition-colors flex items-center gap-2.5 outline-none focus:outline-none group py-1"
               >
                 {user.avatar ? (
-                  <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                  <img src={user.avatar} alt="Avatar" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover shrink-0" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1a1a1a] text-[#f5e6ca] flex items-center justify-center text-[12px] font-bold shrink-0">
                     {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
                   </div>
                 )}
+                <span className="text-[13px] font-semibold text-[#1a1a1a] group-hover:text-[#b8935a] transition-colors max-w-[130px] truncate">
+                  {user.fullName || user.username || "Tài khoản"}
+                </span>
               </button>
 
               {/* Invisible bridge prevents onMouseLeave firing in the gap between icon and panel */}
@@ -150,9 +159,13 @@ export default function Header() {
               </div>
             </div>
           ) : (
-            <Link to="/login" className="text-gray-600 hover:text-black transition-colors hidden sm:block">
-              <FontAwesomeIcon icon={faUser} className="text-[15px] lg:text-[16px]" />
-            </Link>
+            <button
+              type="button"
+              onClick={handleLoginClick}
+              className="text-gray-700 hover:text-black transition-colors hidden sm:block p-1"
+            >
+              <FontAwesomeIcon icon={faUser} className="text-[20px] lg:text-[22px]" />
+            </button>
           )}
         </div>
       </div>
@@ -191,7 +204,11 @@ export default function Header() {
               </div>
             ))}
             <hr className="border-gray-100 my-2" />
-            <Link to={user ? "/my-profile" : "/login"} className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors">
+            <button
+              type="button"
+              onClick={handleLoginClick}
+              className="text-[13px] font-medium tracking-[0.1em] text-gray-800 hover:text-black uppercase flex items-center gap-3 transition-colors text-left"
+            >
               {user ? (
                 user.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-gray-200" />
@@ -204,7 +221,7 @@ export default function Header() {
                 <FontAwesomeIcon icon={faUser} className="text-gray-500 text-[15px]" />
               )}
               {user ? (user.fullName || "Tài khoản") : "Đăng nhập"}
-            </Link>
+            </button>
           </nav>
         </div>
       </div>

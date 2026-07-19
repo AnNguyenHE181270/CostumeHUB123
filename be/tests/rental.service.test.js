@@ -3,13 +3,8 @@ const assert = require('node:assert/strict');
 const mock = require('mock-require');
 const mongoose = require('mongoose');
 
-// ============================
-// Mock State
-// ============================
-
 let mockData = {};
 
-// ---- Date helpers ----
 const getFutureDateStr = (daysFromToday) => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -20,7 +15,6 @@ const getFutureDateStr = (daysFromToday) => {
 const tomorrowStr = getFutureDateStr(1);
 const fourDaysLaterStr = getFutureDateStr(4);
 
-// ---- RentalMock ----
 const RentalMock = function (data) {
     Object.assign(this, data);
     this.save = async function () { this._saved = true; return this; };
@@ -128,10 +122,6 @@ mock('../services/ghn.service', ghnMock);
 const rentalService = require('../services/rental.service');
 const HttpError = require('../models/http-error.model');
 
-// ============================
-// Shared beforeEach setup
-// ============================
-
 function buildMockRental() {
     const r = new RentalMock({
         _id: 'rental_123',
@@ -201,12 +191,9 @@ beforeEach(() => {
     RentalMock.findOne = defaultRentalFindOne;
 });
 
-// ============================
-// describe: createOrder
-// ============================
 
 describe('createOrder', () => {
-    test('Create order successfully → deduct wallet, reduce stock, delete cart', async () => {
+    test('Create order successfully', async () => {
         const mockBody = {
             startDate: tomorrowStr,
             endDate: fourDaysLaterStr,
@@ -216,7 +203,6 @@ describe('createOrder', () => {
             paymentMethod: 'WALLET',
         };
 
-        // No duplicate rental
         mockData._rentalFindOneQueue = [null];
 
         const result = await rentalService.createOrder('user_123', mockBody);

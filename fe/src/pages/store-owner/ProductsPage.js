@@ -43,8 +43,15 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden" });
-      setProducts(data.costumes || []);
+      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,rented,hidden" });
+      const nextProducts = data.costumes || [];
+      setProducts(nextProducts);
+
+      setDetailProduct((prev) => {
+        if (!prev?._id) return prev;
+        const refreshed = nextProducts.find((item) => item._id === prev._id);
+        return refreshed || prev;
+      });
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -265,7 +272,6 @@ export default function ProductsPage() {
     switch (status) {
       case 'available':    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'maintenance':  return 'bg-[#faf9f7] text-orange-700 border-orange-200';
-      case 'dry_cleaning': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'rented':       return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'out_of_stock': return 'bg-gray-100 text-gray-500 border-gray-300';
       case 'hidden':       return 'bg-red-50 text-red-700 border-red-200';
@@ -276,12 +282,12 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-6 gap-4 items-center">
-        {/* Search — đầu dòng, 1/6 */}
+        {/* Search — đầu dòng, 2/6 */}
         <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Tìm kiếm sản phẩm..."
-          wrapperClassName="col-span-1"
+          wrapperClassName="col-span-2"
         />
 
         {/* Category filter */}
@@ -304,7 +310,6 @@ export default function ProductsPage() {
             <option value="available">Sẵn sàng</option>
             <option value="out_of_stock">Hết hàng</option>
             <option value="maintenance">Bảo trì</option>
-            <option value="dry_cleaning">Bảo trì</option>
             <option value="rented">Đang thuê</option>
             <option value="hidden">Đã ẩn</option>
           </select>
@@ -322,9 +327,6 @@ export default function ProductsPage() {
             <option value="price_desc">Giá thuê: Cao đến Thấp</option>
           </select>
         </div>
-
-        {/* Spacer */}
-        <div className="col-span-1" />
 
         {/* Button — cuối dòng, 1/6 */}
         <div className="col-span-1">
@@ -451,7 +453,6 @@ export default function ProductsPage() {
                     >
                       <option value="available">Sẵn sàng</option>
                       <option value="maintenance">Bảo trì</option>
-                      <option value="dry_cleaning">Bảo trì</option>
                       <option value="rented" disabled>Đang thuê</option>
                     </select>
                   )}

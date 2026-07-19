@@ -9,7 +9,7 @@ import { OrderTrackingModal } from "./OrderTrackingModal"
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import rentalService from "../../services/rental.service"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess, onRentAgain, onExtendOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
@@ -259,15 +259,18 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
             {['renting'].includes(currentStatus) && (
               <button
-                onClick={() => setIsExtendOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600"
+                onClick={() => {
+                  if (onExtendOrder) onExtendOrder(detailedOrder || order);
+                  else setIsExtendOpen(true);
+                }}
+                className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600 cursor-pointer"
               >
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
               </button>
             )}
 
-            {['renting', 'delivered', 'completed'].includes(currentStatus) && (
+            {['renting', 'delivered', 'returning', 'completed'].includes(currentStatus) && (
               <button
                 onClick={() => onRequestIssue?.()}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
@@ -282,7 +285,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
             {["completed", "cancelled"].includes(currentStatus) && (
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => onRentAgain?.(detailedOrder?.items)}
                 className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
               >
                 <FontAwesomeIcon icon={faBox} className="h-4 w-4" />

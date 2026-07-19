@@ -21,7 +21,6 @@ const COSTUME_STATUSES = [
   { value: "available", label: "Còn trống", bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
   { value: "rented", label: "Đang thuê", bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-500" },
   { value: "maintenance", label: "Bảo trì", bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-500" },
-  { value: "dry_cleaning", label: "Giặt hấp", bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-500" },
   { value: "out_of_stock", label: "Hết hàng", bg: "bg-red-100", text: "text-red-700", dot: "bg-red-500" },
   { value: "hidden", label: "Ẩn", bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
 ];

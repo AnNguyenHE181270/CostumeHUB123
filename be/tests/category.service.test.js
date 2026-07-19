@@ -52,7 +52,7 @@ describe('getAllCategories', () => {
     CategoryMock.findById = defaultFindById;
   });
 
-  test('Get all categories when queryAll=true → filter {}', async () => {
+  test('Get all categories', async () => {
     mockCategoryData.categories = [
       { name: 'Anime', isActive: false },
       { name: 'Fantasy', isActive: true }
@@ -64,7 +64,7 @@ describe('getAllCategories', () => {
     assert.strictEqual(result.length, 2);
   });
 
-  test('Get only active categories when queryAll=false → filter { isActive: true }', async () => {
+  test('Get only active categories', async () => {
     await getAllCategories('false');
     assert.deepStrictEqual(mockCategoryData.findFilter, { isActive: true });
   });
@@ -82,7 +82,7 @@ describe('createCategory', () => {
     CategoryMock.findById = defaultFindById;
   });
 
-  test('Category name already exists → throws 422', async () => {
+  test('Category name already exists', async () => {
     mockCategoryData.existing = { name: 'Anime' };
 
     await assert.rejects(
@@ -96,7 +96,7 @@ describe('createCategory', () => {
     );
   });
 
-  test('Subcategory name same with another parent category name → throws 422', async () => {
+  test('Subcategory name same with another parent category name', async () => {
     mockCategoryData.existing = { name: 'Anime' };
 
     await assert.rejects(
@@ -133,7 +133,7 @@ describe('createCategory', () => {
     assert.strictEqual(result.saved, true);
   });
 
-  test('Create category with empty parentId → parentId becomes null', async () => {
+  test('Create category with empty parentId', async () => {
     mockCategoryData.existing = null;
 
     const result = await createCategory({ name: 'Fantasy', description: '', parentId: '' });
@@ -150,7 +150,7 @@ describe('updateCategory', () => {
     CategoryMock.findById = defaultFindById;
   });
 
-  test('Category not found → throws 404', async () => {
+  test('Category not found', async () => {
     mockCategoryData.category = null;
 
     await assert.rejects(
@@ -158,13 +158,13 @@ describe('updateCategory', () => {
       (error) => {
         assert.ok(error instanceof HttpError);
         assert.strictEqual(error.statusCode, 404);
-        assert.strictEqual(error.message, 'Category not found.');
+        assert.strictEqual(error.message, 'Không tìm thấy danh mục.');
         return true;
       }
     );
   });
 
-  test('New name already exists elsewhere → throws 422', async () => {
+  test('New name already exists', async () => {
     mockCategoryData.category = {
       _id: 'cat_1',
       name: 'Original',
@@ -177,7 +177,7 @@ describe('updateCategory', () => {
       (error) => {
         assert.ok(error instanceof HttpError);
         assert.strictEqual(error.statusCode, 422);
-        assert.strictEqual(error.message, 'Category name already exists.');
+        assert.strictEqual(error.message, 'Tên danh mục đã tồn tại.');
         return true;
       }
     );
@@ -205,12 +205,12 @@ describe('updateCategory', () => {
     assert.strictEqual(result.saved, true);
   });
 
-  test('Update category that has inactive status → isActive stays false', async () => {
+  test('Update category that has inactive status', async () => {
     mockCategoryData.category = {
       _id: 'cat_1',
       name: 'Old Name',
       description: 'Old Desc',
-      isActive: false,                // category đang inactive
+      isActive: false,
       save: async function () { this.saved = true; }
     };
     mockCategoryData.existing = null;
@@ -218,17 +218,15 @@ describe('updateCategory', () => {
     const result = await updateCategory('cat_1', {
       name: 'New Name Inactive',
       description: 'New Desc Inactive'
-      // isActive KHÔNG được truyền vào → service không đụng tới isActive
     });
 
     assert.strictEqual(result.name, 'New Name Inactive');
     assert.strictEqual(result.description, 'New Desc Inactive');
-    assert.strictEqual(result.isActive, false); // isActive KHÔNG thay đổi
+    assert.strictEqual(result.isActive, false);
     assert.strictEqual(result.saved, true);
   });
 
-  test('Update subcategory whose parent has inactive status → only name/parentId updated', async () => {
-    // updateCategory không check trạng thái của parent → chỉ update tên và parentId
+  test('Update subcategory whose parent has inactive status', async () => {
     mockCategoryData.category = {
       _id: 'cat_1',
       name: 'Subcategory',
@@ -256,7 +254,7 @@ describe('toggleCategoryStatus', () => {
     CategoryMock.findById = defaultFindById; // reset về mặc định
   });
 
-  test('Category not found → throws 404', async () => {
+  test('Category not found', async () => {
     mockCategoryData.category = null;
 
     await assert.rejects(
@@ -264,16 +262,16 @@ describe('toggleCategoryStatus', () => {
       (error) => {
         assert.ok(error instanceof HttpError);
         assert.strictEqual(error.statusCode, 404);
-        assert.strictEqual(error.message, 'Category not found.');
+        assert.strictEqual(error.message, 'Không tìm thấy danh mục.');
         return true;
       }
     );
   });
 
-  test('Disable parent category (parentId=null) → isActive becomes false', async () => {
+  test('Disable parent category', async () => {
     mockCategoryData.category = {
       isActive: true,
-      parentId: null,         // là parent category, không có cha
+      parentId: null,
       save: async function () { this.saved = true; }
     };
 
@@ -283,7 +281,7 @@ describe('toggleCategoryStatus', () => {
     assert.strictEqual(result.saved, true);
   });
 
-  test('Restore child category when parent is inactive → throws 400', async () => {
+  test('Restore child category when parent is inactive', async () => {
     const childCat = {
       _id: '123',
       isActive: false,
@@ -350,7 +348,7 @@ describe('toggleCategoryStatus', () => {
     assert.strictEqual(result.saved, true);
   });
 
-  test('Parent converts to active but subcategory still inactive → toggling to active is allowed', async () => {
+  test('Parent converts to active but subcategory still inactive', async () => {
     const childCat = {
       _id: '123',
       isActive: false,
