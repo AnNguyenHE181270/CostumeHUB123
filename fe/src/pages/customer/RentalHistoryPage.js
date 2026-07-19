@@ -9,6 +9,7 @@ import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
+import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
 import { faBox } from '@fortawesome/free-solid-svg-icons'
 import rentalService from '../../services/rental.service'
@@ -21,6 +22,7 @@ function RentalHistory() {
     const [activeTab, setActiveTab] = useState(initialTab);
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [extendOrderTarget, setExtendOrderTarget] = useState(null);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isIssuesOpen, setIsIssuesOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -228,6 +230,7 @@ function RentalHistory() {
                                         isSelected={selectedOrder?.id === order.id}
                                         isCompact={isDetailOpen}
                                         onRentAgain={handleRentAgain}
+                                        onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                                     />
                                 ))}
                             </div>
@@ -251,6 +254,7 @@ function RentalHistory() {
                                     onRequestIssue={() => setIsIssuesOpen(true)}
                                     onExtendSuccess={fetchOrders}
                                     onRentAgain={handleRentAgain}
+                                    onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                                 />
                             </div>
                         )}
@@ -278,6 +282,7 @@ function RentalHistory() {
                             onRequestIssue={() => setIsIssuesOpen(true)}
                             onExtendSuccess={fetchOrders}
                             onRentAgain={handleRentAgain}
+                            onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
                         />
                     </div>
                 </div>
@@ -289,6 +294,16 @@ function RentalHistory() {
                 onOpenChange={setIsCancelOpen}
                 orderId={selectedOrder?.id}
                 onConfirm={handleConfirmCancel}
+            />
+
+            <ExtendRentalModal
+                open={!!extendOrderTarget}
+                onOpenChange={(val) => { if (!val) setExtendOrderTarget(null); }}
+                order={extendOrderTarget}
+                onConfirm={() => {
+                    fetchOrders();
+                    setExtendOrderTarget(null);
+                }}
             />
 
             <IssuesModal

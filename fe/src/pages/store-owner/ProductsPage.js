@@ -44,7 +44,14 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,rented,hidden" });
-      setProducts(data.costumes || []);
+      const nextProducts = data.costumes || [];
+      setProducts(nextProducts);
+
+      setDetailProduct((prev) => {
+        if (!prev?._id) return prev;
+        const refreshed = nextProducts.find((item) => item._id === prev._id);
+        return refreshed || prev;
+      });
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {

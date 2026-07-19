@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
-  const { login, role } = useAuth();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,33 +33,31 @@ export default function LoginPage() {
     try {
       setError("");
 
-      let data;
-      try {
-        data = await userService.login(form.email, form.password);
-      } catch (err) {
-        setError(err.message || "Đăng nhập thất bại.");
-        return;
-      }
+      const data = await userService.login(form.email, form.password);
 
       if (data.isPending) {
         navigate(`/verify-otp/${encodeURIComponent(data.email)}`, { state: { fromRegister: true } });
         return;
       }
 
-      const profile = await login(data.token, remember);
-      const role = profile?.user?.role
+      if (!data.token) {
+        setError("Đăng nhập không thành công. Vui lòng thử lại.");
+        return;
+      }
 
-      if (role == "owner") {
+      const userProfile = await login(data.token, remember);
+      const userRole = userProfile?.role?.name || userProfile?.role || data?.user?.role?.name || data?.user?.role;
+
+      if (userRole === "owner" || userRole === "storeowner") {
         navigate("/owner");
-      } else if (
-        role == "staff"
-      ) {
+      } else if (userRole === "staff") {
         navigate("/staff");
       } else {
-        navigate("/", { state: { showPolicies: true } });
+        navigate("/");
       }
-    } catch (error) {
-      setError("Lỗi kết nối. Vui lòng thử lại.");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.message || err?.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.");
     } finally {
       setLoading(false);
     }
@@ -73,10 +71,7 @@ export default function LoginPage() {
             className="text-[#a8834f] text-2xl leading-none font-medium"
             style={{ fontFamily: "'Cormorant Garamond', serif" }}
           >
-            LR
-          </span>
-          <span className="text-text-primary text-[11px] font-semibold tracking-[0.35em] uppercase">
-            Luxe Rent
+            CostumeHUB
           </span>
         </div>
 
@@ -85,7 +80,7 @@ export default function LoginPage() {
             Chào mừng trở lại
           </p>
           <h2
-            className="text-[#2e2a22] text-[42px] leading-tight"
+            className="text-[#2e2a22] text-[42px] leading-tight font-bold"
             style={{ fontFamily: "'Cormorant Garamond', serif" }}
           >
             Đăng Nhập
@@ -133,17 +128,18 @@ export default function LoginPage() {
                 role="checkbox"
                 aria-checked={remember}
                 onClick={() => setRemember((prev) => !prev)}
-                className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${remember
-                  ? "bg-gradient-to-br from-[#d6b47c] to-[#b08d55] border-[#b08d55]"
-                  : "bg-white border-[#dccdaf] hover:border-[#b08d55]"
-                  }`}
+                className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 ${
+                  remember
+                    ? "bg-gradient-to-br from-[#d6b47c] to-[#b08d55] border-[#b08d55]"
+                    : "bg-white border-[#dccdaf] hover:border-[#b08d55]"
+                }`}
               >
                 {remember && (
                   <FontAwesomeIcon icon={faCheck} className="text-white text-[10px]" />
                 )}
               </button>
               <span
-                className="text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors"
+                className="text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors"
                 onClick={() => setRemember((prev) => !prev)}
               >
                 Ghi nhớ đăng nhập
@@ -170,12 +166,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <p className="text-center text-sm text-text-secondary mt-8">
+          <p className="text-center text-sm text-slate-500 mt-8">
             Chưa có tài khoản?{" "}
             <button
               type="button"
               onClick={() => navigate(ROUTES.REGISTER)}
-              className="text-[#a8834f] font-medium hover:text-[#8a6a3c] transition-colors"
+              className="text-[#a8834f] font-bold hover:text-[#8a6a3c] transition-colors"
             >
               Đăng ký ngay
             </button>

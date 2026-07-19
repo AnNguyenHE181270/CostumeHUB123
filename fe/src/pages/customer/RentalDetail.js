@@ -9,7 +9,7 @@ import { OrderTrackingModal } from "./OrderTrackingModal"
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import rentalService from "../../services/rental.service"
 
-export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess, onRentAgain }) {
+export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess, onRentAgain, onExtendOrder }) {
   const [detailedOrder, setDetailedOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isTrackingOpen, setIsTrackingOpen] = useState(false)
@@ -259,8 +259,11 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
             {['renting'].includes(currentStatus) && (
               <button
-                onClick={() => setIsExtendOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600"
+                onClick={() => {
+                  if (onExtendOrder) onExtendOrder(detailedOrder || order);
+                  else setIsExtendOpen(true);
+                }}
+                className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600 cursor-pointer"
               >
                 <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
                 Gia hạn thuê
