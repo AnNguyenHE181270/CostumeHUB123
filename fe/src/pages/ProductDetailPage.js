@@ -122,7 +122,7 @@ export default function ProductDetailPage() {
         setCostume(costumeData);
 
         if (costumeData && costumeData.variants && costumeData.variants.length > 0) {
-          const firstAvailable = costumeData.variants.find(v => (v.availableStock || 0) > 0);
+          const firstAvailable = costumeData.variants.find(v => (v.availableStock || 0) > 0 && v.status !== 'maintenance');
           setSelectedVariant(firstAvailable || costumeData.variants[0]);
         }
 
@@ -306,7 +306,8 @@ export default function ProductDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       {costume.variants && costume.variants.length > 0 ? (
                         costume.variants.map((v) => {
-                          const isOutOfStock = (v.availableStock || 0) === 0;
+                          const isMaintenance = v.status === "maintenance";
+                          const isOutOfStock = (v.availableStock || 0) === 0 || isMaintenance;
                           const isSelected = selectedVariant && selectedVariant._id === v._id;
                           return (
                             <button
@@ -320,8 +321,9 @@ export default function ProductDetailPage() {
                                   ? "border border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
                                   : "border border-[#e2d5bd] bg-[#faf9f7] text-[#1a1a1a] hover:border-[#b8935a]"
                               }`}
+                              title={isMaintenance ? "Kích thước này đang bảo trì / giặt là" : ""}
                             >
-                              {v.size}
+                              {v.size} {isMaintenance && <span className="text-[9px] text-amber-600 font-normal lowercase block">(bảo trì)</span>}
                             </button>
                           );
                         })

@@ -729,14 +729,30 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
     if (item.costume) {
-      await CostumeModel.findByIdAndUpdate(item.costume._id, { status: 'maintenance' });
       const costumeToUpdate = await CostumeModel.findById(item.costume._id || item.costume);
       if (costumeToUpdate) {
         const variant = costumeToUpdate.variants.find((v) => v.size === item.size);
         if (variant) {
+          // Chỉ chuyển trạng thái bảo trì cho size/biến thể cụ thể được hoàn trả này
+          variant.status = 'maintenance';
           variant.availableStock += item.quantity;
-          await costumeToUpdate.save();
         }
+
+        // Cập nhật trạng thái costume tổng thể:
+        // Nếu còn ít nhất 1 biến thể sẵn sàng -> costume.status = 'available'
+        // Nếu tất cả biến thể đều bảo trì -> costume.status = 'maintenance'
+        const hasAvailableVariant = costumeToUpdate.variants.some(
+          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
+        );
+
+        if (hasAvailableVariant) {
+          costumeToUpdate.status = 'available';
+        } else {
+          const allMaintenance = costumeToUpdate.variants.every((v) => v.status === 'maintenance');
+          costumeToUpdate.status = allMaintenance ? 'maintenance' : 'out_of_stock';
+        }
+
+        await costumeToUpdate.save();
       }
     }
   }
