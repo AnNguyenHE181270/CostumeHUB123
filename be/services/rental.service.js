@@ -566,10 +566,10 @@ const confirmPreparation = async (id) => {
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
-    order.status = 'delivering';
+    order.status = 'renting';
     await order.save();
-    await notifyOrderStatus(order, 'delivering');
-    return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
+    await notifyOrderStatus(order, 'renting');
+    return { message: 'Đơn nhận tại cửa hàng đã chuyển sang trạng thái đang thuê.', order };
   }
 };
 
