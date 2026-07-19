@@ -1,3 +1,4 @@
+const dns = require("dns");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -7,13 +8,27 @@ const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
 require("dotenv").config();
 
+// DNS của router/ISP đôi khi không trả lời đúng truy vấn SRV mà Node cần để
+// resolve "mongodb+srv://..." (ECONNREFUSED khi query _mongodb._tcp...).
+// Ép Node dùng DNS công cộng để tránh phụ thuộc DNS cục bộ.
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
+
 const HttpError = require("./models/http-error.model"); // chỉnh path nếu khác
 
 const app = express();
 app.disable("etag");
+// Cho phép cả "localhost" và "127.0.0.1" — trình duyệt coi hai origin này khác nhau,
+// mở FE bằng địa chỉ không khớp với origin cấu hình cứng sẽ bị CORS chặn.
+const allowedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
