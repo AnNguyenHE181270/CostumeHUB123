@@ -4,7 +4,7 @@ const {
     getRentalHistory, orderDetail, cancellOrrder,
     getTotalRevenue, getActiveRentals, getInventoryUtilization,
     requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes,
-    createOfflineOrder
+    createOfflineOrder, estimateDelivery
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner } = require('../middlewares/check-auth.middleware');
 const upload = require('../middlewares/upload.middleware');

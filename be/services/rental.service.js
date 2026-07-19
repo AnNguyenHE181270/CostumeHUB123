@@ -1082,4 +1082,5 @@ module.exports = {
   notifyOrderStatus,
   getTopRentedCostumes,
   createOfflineOrder,
+  getDeliveryEstimate,
 };
