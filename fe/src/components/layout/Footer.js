@@ -4,6 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFacebookF, faInstagram, faTiktok } from "@fortawesome/free-brands-svg-icons";
 import { faPhone, faEnvelope, faLocationDot } from "@fortawesome/free-solid-svg-icons";
 
+import logoImg from "../../assets/logo.png";
+
 export default function Footer() {
   return (
     <footer className="bg-white pt-24 pb-12 border-t border-gray-100 text-center lg:text-left">
@@ -11,13 +13,12 @@ export default function Footer() {
 
         {/* Brand */}
         <div className="flex flex-col items-center lg:items-start">
-          <Link to="/" className="mb-6">
-            <h2 className="text-3xl font-semibold text-black leading-none" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              CostumeHUB
-            </h2>
-            <span className="block text-[9px] tracking-[0.3em] uppercase text-gray-400 mt-2 font-medium">
-              LUXE RENTAL
-            </span>
+          <Link to="/" className="mb-6 block group">
+            <img
+              src={logoImg}
+              alt="CostumeHUB"
+              className="h-11 lg:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
           </Link>
           <p className="text-[13px] leading-relaxed text-gray-500 max-w-[280px]">
             CostumeHUB mang đến cho bạn những bộ trang phục cao cấp nhất, giúp bạn tự tin tỏa sáng trong mọi khoảnh khắc quan trọng.

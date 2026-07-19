@@ -7,6 +7,8 @@ import { faUser, faShoppingBag, faBars, faTimes } from "@fortawesome/free-solid-
 import { formatPrice } from "../../utils/formatters";
 import NotificationBell from "./NotificationBell";
 
+import logoImg from "../../assets/logo.png";
+
 export default function Header() {
   const { user, role, logout } = useAuth();
   const { cartCount } = useCart();
@@ -86,13 +88,12 @@ export default function Header() {
 
         {/* Center: Logo */}
         <div className="flex-shrink-0 text-center">
-          <Link to="/" className="flex flex-col items-center">
-            <h1 className="text-2xl lg:text-3xl font-semibold text-black leading-none tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              CostumeHUB
-            </h1>
-            <span className="text-[8px] tracking-[0.3em] uppercase text-gray-400 mt-1.5 font-medium">
-              LUXE RENTAL
-            </span>
+          <Link to="/" className="flex items-center justify-center group">
+            <img
+              src={logoImg}
+              alt="CostumeHUB"
+              className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
           </Link>
         </div>
 

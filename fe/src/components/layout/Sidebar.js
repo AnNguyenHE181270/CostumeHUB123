@@ -1,9 +1,10 @@
-import { useMemo, useState, useRef, useEffect } from "react"; // Thêm useRef, useEffect
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faChevronLeft, faSignOutAlt, faSearch, faUser } from "@fortawesome/free-solid-svg-icons";
 import NavLinkSideBar from "../ui/NavLinkSideBar";
+import logoImg from "../../assets/logo.png";
 
 export default function Sidebar({ menuItems }) { // Nhận props menuItems
   const { user, logout } = useAuth();
@@ -53,15 +54,14 @@ export default function Sidebar({ menuItems }) { // Nhận props menuItems
         <div className="flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1
+              <img
+                src={logoImg}
+                alt="CostumeHUB"
                 onClick={() => navigate("/")}
                 title="Về trang chủ"
-                className="font-semibold text-[24px] text-[#1a1a1a] tracking-[0.06em] cursor-pointer hover:text-[#b8935a] transition-colors w-fit"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
-              >
-                CostumeHUB
-              </h1>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-[#858585] mt-0.5 font-medium">{user?.fullName || "Admin"}</p>
+                className="h-9 w-auto object-contain cursor-pointer hover:scale-105 transition-transform"
+              />
+              <p className="text-[9px] uppercase tracking-[0.2em] text-[#858585] mt-1 font-medium">{user?.fullName || "Admin"}</p>
             </div>
           )}
 

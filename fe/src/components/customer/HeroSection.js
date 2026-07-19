@@ -1,18 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faGem, faCrown } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faGem } from "@fortawesome/free-solid-svg-icons";
+import categoryService from "../../services/category.service";
 
 // Ảnh do chủ shop cung cấp, đã upload lên Cloudinary (homepage/hero-model)
 const HERO_IMAGE =
   "https://res.cloudinary.com/du0xdjnrx/image/upload/q_auto,f_auto/v1783964454/homepage/hero-model.png";
 
-const QUICK_FILTERS = ["Dạ hội", "Áo dài", "Váy dạ tiệc", "Đầm trắng"];
-
 export default function HeroSection() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickCategories, setQuickCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchQuickCats = async () => {
+      try {
+        const data = await categoryService.getAll();
+        const cats = (data.categories || []).filter(c => c.isActive !== false);
+        const parentCats = cats.filter(c => !c.parentId);
+        const displayCats = parentCats.length > 0 ? parentCats : cats;
+        setQuickCategories(displayCats.slice(0, 5));
+      } catch (err) {
+        console.error("Failed to fetch quick categories:", err);
+      }
+    };
+    fetchQuickCats();
+  }, []);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -46,23 +61,6 @@ export default function HeroSection() {
             WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,1) 34%)",
           }}
         />
-        {/* Floating luxury badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className="absolute bottom-16 right-16 bg-white/85 backdrop-blur-md px-5 py-3 rounded-2xl shadow-xl border border-[#e8c471]/40 flex items-center gap-3 animate-float-gentle"
-        >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8a6a2f] flex items-center justify-center text-white text-[13px] shadow-md">
-            <FontAwesomeIcon icon={faCrown} />
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[#b8935a] font-bold">Bộ sưu tập độc quyền</p>
-            <p className="text-[13px] font-semibold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Haute Couture 2026
-            </p>
-          </div>
-        </motion.div>
       </div>
 
       {/* Ảnh dạng card cho mobile/tablet */}
@@ -145,26 +143,28 @@ export default function HeroSection() {
             </div>
 
             {/* QUICK FILTERS */}
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              <span className="text-[11px] text-[#8c764e] font-semibold uppercase tracking-wider mr-1">
-                Gợi ý:
-              </span>
-              {QUICK_FILTERS.map((f, idx) => (
-                <motion.button
-                  key={f}
-                  type="button"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 + idx * 0.08 }}
-                  whileHover={{ scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(`/collections?q=${encodeURIComponent(f)}`)}
-                  className="px-5 py-2 bg-white/90 backdrop-blur-sm border border-[#e2d5c3] rounded-full text-[13px] font-medium text-[#2d2519] hover:border-[#c9a869] hover:bg-white hover:text-[#b8935a] hover:shadow-[0_6px_18px_rgba(201,168,105,0.2)] transition-all duration-300"
-                >
-                  {f}
-                </motion.button>
-              ))}
-            </div>
+            {quickCategories.length > 0 && (
+              <div className="mt-5 flex flex-wrap items-center gap-2.5">
+                <span className="text-[11px] text-[#8c764e] font-semibold uppercase tracking-wider mr-1">
+                  Gợi ý:
+                </span>
+                {quickCategories.map((cat, idx) => (
+                  <motion.button
+                    key={cat._id || cat.name}
+                    type="button"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.6 + idx * 0.08 }}
+                    whileHover={{ scale: 1.06, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(`/category/${cat._id}`)}
+                    className="px-5 py-2 bg-white/90 backdrop-blur-sm border border-[#e2d5c3] rounded-full text-[13px] font-medium text-[#2d2519] hover:border-[#c9a869] hover:bg-white hover:text-[#b8935a] hover:shadow-[0_6px_18px_rgba(201,168,105,0.2)] transition-all duration-300"
+                  >
+                    {cat.name}
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 
