@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faScrewdriverWrench, faCircleCheck, faSpinner, faBoxOpen } from "@fortawesome/free-solid-svg-icons";
+import { faScrewdriverWrench, faCircleCheck, faSpinner, faBoxOpen, faBox } from "@fortawesome/free-solid-svg-icons";
 import costumeService from "../../services/costume.service";
 import Modal from "../../components/Modal";
 import Toast from "../../components/ui/Toast";
+import DataTable from "../../components/ui/DataTable";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price || 0);
@@ -73,41 +74,54 @@ export default function MaintenancePage() {
           <p className="text-[#999] text-sm mt-1">Mọi sản phẩm đều đã sẵn sàng cho thuê.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-          {costumes.map((costume) => (
-            <div
-              key={costume._id}
-              className="bg-white rounded-2xl overflow-hidden border border-[#f0ece8] hover:shadow-[0_12px_30px_rgba(0,0,0,0.06)] transition-shadow duration-300 flex flex-col"
-            >
-              <div className="relative aspect-[3/4] bg-[#f5f3f0]">
-                {costume.images?.[0] ? (
-                  <img src={costume.images[0]} alt={costume.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#ccc]">
-                    <FontAwesomeIcon icon={faBoxOpen} className="text-3xl" />
+        <DataTable isLoading={false} isEmpty={false}>
+          <thead>
+            <tr className="border-border border-[#f0f0f0] bg-gray-50/50">
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left w-[40%]">Trang phục</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left w-[20%]">Kích thước bảo trì</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left w-[15%]">Ngày cập nhật</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left w-[15%]">Giá thuê/ngày</th>
+              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {costumes.map((costume) => (
+              <tr
+                key={costume._id}
+                className="border-b border-[#eaeaea] hover:bg-[#faf9f7] transition-colors"
+              >
+                {/* Trang phục (Ảnh + Tên + Danh mục) */}
+                <td className="py-4 px-6 text-sm text-[#555] text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-16 rounded bg-[#f5f5f5] overflow-hidden flex-shrink-0 border border-[#eaeaea]">
+                      {costume.images?.[0] ? (
+                        <img
+                          src={costume.images[0]}
+                          alt={costume.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#ccc]">
+                          <FontAwesomeIcon icon={faBox} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      {costume.categoryId?.name && (
+                        <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-medium mb-1">
+                          {costume.categoryId.name}
+                        </p>
+                      )}
+                      <h3 className="font-semibold text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "16px" }}>
+                        {costume.name}
+                      </h3>
+                      <p className="text-xs text-[#999] mt-1">{costume.sku || "N/A"}</p>
+                    </div>
                   </div>
-                )}
-                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-amber-500 shadow-sm">
-                  <FontAwesomeIcon icon={faScrewdriverWrench} className="text-[9px]" />
-                  Đang Bảo Trì
-                </span>
-              </div>
+                </td>
 
-              <div className="p-3.5 flex flex-col flex-1">
-                {costume.categoryId?.name && (
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] font-medium mb-1">
-                    {costume.categoryId.name}
-                  </p>
-                )}
-                <h3 className="text-[13px] font-semibold text-[#1a1a1a] mb-1 line-clamp-2 min-h-[32px]">
-                  {costume.name}
-                </h3>
-                <p className="text-[12px] text-[#999] mb-2">
-                  Cập nhật: {formatDate(costume.updatedAt)} · {formatPrice(costume.pricePerDay || costume.price)}/ngày
-                </p>
-
-                <div className="mb-3">
-                  <span className="text-[10px] text-[#666] font-bold uppercase tracking-wider block mb-1">Kích thước bảo trì:</span>
+                {/* Kích thước bảo trì */}
+                <td className="py-4 px-6 text-sm text-[#555] text-left">
                   <div className="flex flex-wrap gap-1">
                     {costume.variants?.filter(v => v.status === 'maintenance').length > 0 ? (
                       costume.variants.filter(v => v.status === 'maintenance').map(v => (
@@ -121,20 +135,35 @@ export default function MaintenancePage() {
                       </span>
                     )}
                   </div>
-                </div>
+                </td>
 
-                <button
-                  onClick={() => setConfirmTarget(costume)}
-                  disabled={processingId === costume._id}
-                  className="mt-auto w-full py-2 bg-[#1a1a1a] text-white text-[11px] uppercase tracking-wider font-semibold rounded-lg hover:bg-emerald-600 active:scale-[0.97] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  <FontAwesomeIcon icon={faCircleCheck} />
-                  Hoàn tất bảo trì
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                {/* Ngày cập nhật */}
+                <td className="py-4 px-6 text-sm text-[#555] text-left">
+                  {formatDate(costume.updatedAt)}
+                </td>
+
+                {/* Giá thuê/ngày */}
+                <td className="py-4 px-6 text-sm text-[#555] text-left">
+                  <span className="font-semibold text-[#1a1a1a]">
+                    {formatPrice(costume.pricePerDay || costume.price)}
+                  </span>
+                </td>
+
+                {/* Thao tác */}
+                <td className="py-4 px-6 text-sm text-center">
+                  <button
+                    onClick={() => setConfirmTarget(costume)}
+                    disabled={processingId === costume._id}
+                    className="py-1.5 px-3 border border-transparent bg-emerald-100 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm inline-flex items-center gap-1 disabled:opacity-60"
+                  >
+                    <FontAwesomeIcon icon={faCircleCheck} />
+                    Hoàn tất
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
       )}
 
       <Modal
