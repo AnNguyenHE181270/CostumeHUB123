@@ -50,6 +50,17 @@ const CURRENT_STATUS_LABEL = {
     cancelled: "Đơn hàng đã hủy",
 }
 
+const CURRENT_STATUS_SUBTITLE = {
+    pending: "Trang phục đang được chuẩn bị và kiểm tra kỹ lưỡng",
+    delivering: "Dự kiến giao: Hôm nay, 14:00 - 18:00",
+    delivered: "Đơn hàng đã được giao thành công",
+    renting: "Đơn hàng đã được giao thành công",
+    overdue: "Vui lòng hoàn trả trang phục cho cửa hàng",
+    returning: "Đang chờ cửa hàng nhận lại và kiểm tra trang phục",
+    completed: "Giao dịch đã hoàn tất thành công",
+    cancelled: "Đơn hàng đã bị hủy",
+}
+
 function getTrackingSteps(status) {
     let currentStep = 0;
     if (status === 'pending') currentStep = 1;
@@ -79,6 +90,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
     const status = order.status
     const trackingSteps = getTrackingSteps(status)
     const currentStepTitle = CURRENT_STATUS_LABEL[status] ?? "Đang xử lý"
+    const statusSubtitle = CURRENT_STATUS_SUBTITLE[status] ?? "Đang cập nhật hành trình"
 
     const items = Array.isArray(order.items)
         ? order.items

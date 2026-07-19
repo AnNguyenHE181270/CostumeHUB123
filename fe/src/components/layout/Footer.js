@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFacebookF, faInstagram, faTiktok } from "@fortawesome/free-brands-svg-icons";
 import { faPhone, faEnvelope, faLocationDot, faChevronRight, faShirt, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import categoryService from "../../services/category.service";
+import logoImg from "../../assets/logo.png";
 
 const DEFAULT_CATEGORIES = [
   { _id: "default-1", name: "Váy Dạ Hội" },
@@ -12,8 +13,6 @@ const DEFAULT_CATEGORIES = [
   { _id: "default-4", name: "Vest & Set" },
   { _id: "default-5", name: "Phụ Kiện" }
 ];
-
-import logoImg from "../../assets/logo.png";
 
 export default function Footer() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
