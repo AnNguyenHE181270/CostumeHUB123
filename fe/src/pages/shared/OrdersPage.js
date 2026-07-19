@@ -7,6 +7,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
+import costumeService from "../../services/costume.service";
 
 const removeAccents = (str) => {
   return str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D') : "";
@@ -30,6 +31,110 @@ export default function OrdersPage() {
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+
+  // Offline Order States
+  const [costumesList, setCostumesList] = useState([]);
+  const [offlineModalOpen, setOfflineModalOpen] = useState(false);
+  const [offlineData, setOfflineData] = useState({
+    startDate: "",
+    endDate: "",
+    customerName: "",
+    customerPhone: "",
+    customerAddress: "",
+    items: [{ costume: "", size: "", quantity: 1, availableSizes: [] }]
+  });
+
+  // Fetch costumes list
+  useEffect(() => {
+    if (offlineModalOpen) {
+      const loadCostumes = async () => {
+        try {
+          const res = await costumeService.getAll({ limit: 1000, status: "available" });
+          const list = res.costumes || res.data || [];
+          setCostumesList(list);
+        } catch (e) {
+          console.error("Lỗi tải danh sách trang phục", e);
+        }
+      };
+      loadCostumes();
+    }
+  }, [offlineModalOpen]);
+
+  const handleCostumeChange = (index, costumeId) => {
+    const selected = costumesList.find(c => c._id === costumeId);
+    const newItems = [...offlineData.items];
+    newItems[index].costume = costumeId;
+    newItems[index].size = "";
+    newItems[index].availableSizes = selected ? selected.variants?.map(v => v.size) || [] : [];
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleSizeChange = (index, size) => {
+    const newItems = [...offlineData.items];
+    newItems[index].size = size;
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleQuantityChange = (index, qty) => {
+    const newItems = [...offlineData.items];
+    newItems[index].quantity = Math.max(1, parseInt(qty) || 1);
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleAddItem = () => {
+    setOfflineData({
+      ...offlineData,
+      items: [...offlineData.items, { costume: "", size: "", quantity: 1, availableSizes: [] }]
+    });
+  };
+
+  const handleRemoveItem = (index) => {
+    const newItems = offlineData.items.filter((_, idx) => idx !== index);
+    setOfflineData({ ...offlineData, items: newItems });
+  };
+
+  const handleSubmitOfflineOrder = async (e) => {
+    e.preventDefault();
+    if (!offlineData.startDate || !offlineData.endDate || !offlineData.customerName || !offlineData.customerPhone) {
+      setToast({ show: true, message: "Vui lòng điền đầy đủ thông tin bắt buộc!", type: "error" });
+      return;
+    }
+    if (offlineData.items.some(item => !item.costume || !item.size || item.quantity <= 0)) {
+      setToast({ show: true, message: "Vui lòng chọn trang phục và size hợp lệ!", type: "error" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await rentalService.createOfflineOrder({
+        startDate: offlineData.startDate,
+        endDate: offlineData.endDate,
+        customerName: offlineData.customerName,
+        customerPhone: offlineData.customerPhone,
+        customerAddress: offlineData.customerAddress,
+        items: offlineData.items.map(item => ({
+          costume: item.costume,
+          size: item.size,
+          quantity: item.quantity
+        }))
+      });
+      setToast({ show: true, message: "Tạo đơn hàng offline thành công!", type: "success" });
+      setOfflineModalOpen(false);
+      setOfflineData({
+        startDate: "",
+        endDate: "",
+        customerName: "",
+        customerPhone: "",
+        customerAddress: "",
+        items: [{ costume: "", size: "", quantity: 1, availableSizes: [] }]
+      });
+      fetchOrders();
+    } catch (error) {
+      setToast({ show: true, message: error.response?.data?.message || "Tạo đơn hàng offline thất bại", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -85,7 +190,15 @@ export default function OrdersPage() {
   let processedOrders = orders.filter((order) => {
     const nameStr = removeAccents(order.shippingAddress?.receiverName || order.customerId?.fullName || "").toLowerCase();
     const searchStr = removeAccents(searchTerm).toLowerCase();
-    const searchMatch = (order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase())) || nameStr.includes(searchStr);
+    
+    const idMatch = order._id && order._id.toLowerCase().includes(searchTerm.toLowerCase());
+    const customerMatch = nameStr.includes(searchStr);
+    const costumeMatch = order.items && order.items.some((item) => {
+      const costumeName = removeAccents(item.costume?.name || item.costumeName || "").toLowerCase();
+      return costumeName.includes(searchStr);
+    });
+
+    const searchMatch = idMatch || customerMatch || costumeMatch;
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
     return searchMatch && statusMatch;
   });
@@ -107,28 +220,38 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center">
-        <SearchInput
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Tìm mã đơn, tên khách hàng..."
-          wrapperClassName="w-full md:w-2/6"
-        />
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center w-full sm:w-auto">
+          <SearchInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm mã đơn, tên khách hàng..."
+            wrapperClassName="w-full md:w-80"
+          />
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555] w-full sm:w-48 cursor-pointer"
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555] w-full sm:w-48 cursor-pointer"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="delivered">Đã giao hàng</option>
+            <option value="renting">Đang thuê</option>
+            <option value="returning">Đang trả hàng</option>
+            <option value="completed">Hoàn tất</option>
+            <option value="cancelled">Đã hủy</option>
+            <option value="overdue">Quá hạn</option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOfflineModalOpen(true)}
+          className="px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#333] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm w-full sm:w-auto text-center"
         >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="pending">Chờ xử lý</option>
-          <option value="delivered">Đã giao hàng</option>
-          <option value="renting">Đang thuê</option>
-          <option value="returning">Đang trả hàng</option>
-          <option value="completed">Hoàn tất</option>
-          <option value="cancelled">Đã hủy</option>
-          <option value="overdue">Quá hạn</option>
-        </select>
+          Thuê Offline tại cửa hàng
+        </button>
       </div>
 
       {/* Table Data styled exactly like AccountsPage */}
@@ -324,6 +447,185 @@ export default function OrdersPage() {
           onOpenChange={setIsTrackingOpen}
           order={selectedOrder}
         />
+      )}
+
+      {/* MODAL THUÊ OFFLINE TẠI CỬA HÀNG */}
+      {offlineModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 overflow-y-auto py-10">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#eaeaea] max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto flex flex-col gap-6 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setOfflineModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+            >
+              ✕
+            </button>
+            
+            <div>
+              <h2 className="text-xl font-bold text-[#1a1a1a]">Tạo Đơn Thuê Offline Tại Cửa Hàng</h2>
+              <p className="text-xs text-[#777] mt-1">Ghi nhận thông tin khách thuê trực tiếp tại quầy và trừ tồn kho tự động.</p>
+            </div>
+
+            <form onSubmit={handleSubmitOfflineOrder} className="space-y-5">
+              {/* 1. Chọn thời gian */}
+              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">1. Thời gian thuê</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày bắt đầu *</label>
+                    <input
+                      type="date"
+                      required
+                      value={offlineData.startDate}
+                      onChange={e => setOfflineData({ ...offlineData, startDate: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày kết thúc *</label>
+                    <input
+                      type="date"
+                      required
+                      value={offlineData.endDate}
+                      onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Thông tin khách thuê */}
+              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">2. Thông tin khách hàng</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Họ và tên khách *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nguyễn Văn A"
+                      value={offlineData.customerName}
+                      onChange={e => setOfflineData({ ...offlineData, customerName: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Số điện thoại *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="09xxxxxxxx"
+                      value={offlineData.customerPhone}
+                      onChange={e => setOfflineData({ ...offlineData, customerPhone: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Địa chỉ khách hàng</label>
+                    <input
+                      type="text"
+                      placeholder="Số nhà, Tên đường, Quận/Huyện, Tỉnh/TP"
+                      value={offlineData.customerAddress}
+                      onChange={e => setOfflineData({ ...offlineData, customerAddress: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Trang phục thuê */}
+              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">3. Danh sách trang phục thuê</h3>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  >
+                    + Thêm trang phục
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {offlineData.items.map((item, index) => (
+                    <div key={index} className="flex flex-wrap sm:flex-nowrap gap-3 items-end border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Trang phục *</label>
+                        <select
+                          required
+                          value={item.costume}
+                          onChange={e => handleCostumeChange(index, e.target.value)}
+                          className="w-full border border-[#eaeaea] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#1a1a1a] bg-white"
+                        >
+                          <option value="">-- Chọn trang phục --</option>
+                          {costumesList.map(c => (
+                            <option key={c._id} value={c._id}>
+                              {c.name} ({Math.round(c.pricePerDay).toLocaleString('vi-VN')}đ/ngày)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="w-24">
+                        <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Size *</label>
+                        <select
+                          required
+                          value={item.size}
+                          disabled={!item.costume}
+                          onChange={e => handleSizeChange(index, e.target.value)}
+                          className="w-full border border-[#eaeaea] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#1a1a1a] bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">Size</option>
+                          {item.availableSizes.map(sz => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="w-20">
+                        <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">SL *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          value={item.quantity}
+                          onChange={e => handleQuantityChange(index, e.target.value)}
+                          className="w-full border border-[#eaeaea] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#1a1a1a]"
+                        />
+                      </div>
+
+                      {offlineData.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-500 hover:text-red-700 text-sm font-semibold py-1.5 px-2.5 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                        >
+                          Xóa
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setOfflineModalOpen(false)}
+                  className="px-4 py-2 border border-[#eaeaea] hover:bg-[#faf9f7] rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                >
+                  Xác nhận đặt đơn
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {toast.show && (

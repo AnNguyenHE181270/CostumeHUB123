@@ -149,13 +149,12 @@ const getTopRentedCostumes = async (req, res, next) => {
   }
 };
 
-const estimateDelivery = async (req, res, next) => {
+const createOfflineOrder = async (req, res, next) => {
   try {
-    const { districtId, wardCode } = req.body;
-    const result = await rentalService.getDeliveryEstimate(districtId, wardCode);
-    res.status(200).json(result);
+    const order = await rentalService.createOfflineOrder(req.userData.id, req.body);
+    res.status(201).json({ message: 'Tạo đơn hàng offline thành công', order });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError('Lỗi lấy ngày dự kiến giao hàng', 500));
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Creating offline order failed', 500));
   }
 };
 
@@ -164,5 +163,5 @@ module.exports = {
   confirmPreparation, getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, extendRental, getTopRentedCostumes,
-  estimateDelivery,
+  createOfflineOrder,
 };

@@ -1,6 +1,7 @@
 const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
 const User = require('../models/user.model');
+const Role = require('../models/role.model');
 const Issue = require('../models/issue.model');
 const Cart = require('../models/cart.model');
 const HttpError = require('../models/http-error.model');
@@ -950,6 +951,118 @@ const getTopRentedCostumes = async (limit = 3) => {
     .filter(Boolean);
 };
 
+const createOfflineOrder = async (staffId, body) => {
+  const { startDate, endDate, items, customerName, customerPhone, customerAddress } = body;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (rentalDays <= 0) {
+    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
+  }
+
+  // Find or create dummy offline customer user
+  let offlineCustomer = await User.findOne({ email: 'offline-customer@costumehub.com' });
+  if (!offlineCustomer) {
+    let roleCust = await Role.findOne({ name: 'online-customer' });
+    offlineCustomer = new User({
+      fullName: 'Khách mua Offline',
+      email: 'offline-customer@costumehub.com',
+      password: 'offline-dummy-password-hash',
+      role: roleCust ? roleCust._id : null,
+      status: 'active',
+      isEmailVerified: true
+    });
+    await offlineCustomer.save();
+  }
+
+  let totalRentalPrice = 0;
+  let totalDeposit = 0;
+  const formattedItems = [];
+  const costumesToUpdate = [];
+
+  for (const item of items) {
+    const costume = await Costume.findById(item.costume);
+    if (!costume) throw new HttpError('Costume not found.', 404);
+
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays < minDays) {
+      throw new HttpError(`Phải thuê tối thiểu ${minDays} ngày.`, 400);
+    }
+
+    const variant = costume.variants.find((v) => v.size === item.size);
+    if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
+
+    const overlappingOrders = await Rental.find({
+      'items.costume': item.costume,
+      'items.size': item.size,
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      startDate: { $lte: new Date(endDate) },
+      endDate: { $gte: new Date(startDate) },
+    });
+    let bookedQty = 0;
+    overlappingOrders.forEach((order) => {
+      order.items.forEach((oi) => {
+        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
+          bookedQty += oi.quantity;
+        }
+      });
+    });
+
+    if (bookedQty + item.quantity > variant.totalStock) {
+      throw new HttpError(
+        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
+        400
+      );
+    }
+
+    const depositPrice = costume.deposit || costume.price || 0;
+    const priceFactor = getRentalPriceFactor(rentalDays);
+    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
+    totalDeposit += depositPrice * item.quantity;
+
+    formattedItems.push({
+      costume: costume._id,
+      size: item.size,
+      quantity: item.quantity,
+      rentalPricePerDay: costume.pricePerDay,
+      depositPrice,
+    });
+    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
+  }
+
+  for (const update of costumesToUpdate) {
+    update.variant.availableStock -= update.quantityToDeduct;
+    await update.costume.save();
+  }
+
+  const totalAmount = totalRentalPrice + totalDeposit;
+
+  const newOrder = new Rental({
+    customerId: offlineCustomer._id,
+    items: formattedItems,
+    startDate,
+    endDate,
+    shippingFee: 0,
+    paymentMethod: 'Cash',
+    paymentStatus: 'paid',
+    shippingAddress: {
+      receiverName: customerName,
+      receiverPhone: customerPhone,
+      addressDetail: customerAddress || 'Mua trực tiếp tại cửa hàng',
+    },
+    totalRentalPrice,
+    totalDeposit,
+    totalAmount,
+    status: 'renting',
+    rentingAt: new Date(),
+  });
+
+  await newOrder.save();
+  return newOrder;
+};
+
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -968,5 +1081,5 @@ module.exports = {
   extendRental,
   notifyOrderStatus,
   getTopRentedCostumes,
-  getDeliveryEstimate,
+  createOfflineOrder,
 };

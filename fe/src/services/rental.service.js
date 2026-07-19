@@ -7,6 +7,8 @@ const rentalService = {
 
   createOrder: (orderData) => axiosClient.post('/api/rentals/create', orderData),
 
+  createOfflineOrder: (orderData) => axiosClient.post('/api/rentals/create-offline', orderData),
+
   cancelOrder: (orderId, cancelReason) =>
     axiosClient.put(`/api/rentals/${orderId}/cancel`, { cancelReason }),
 
