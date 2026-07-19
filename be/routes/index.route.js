@@ -11,8 +11,7 @@ const ghnRoute = require('./ghn.route');
 const vnpayRoute = require('./vnpay.route')
 const issueRoute = require('./issue.route');
 const notificationRoute = require('./notification.route');
-const reportRoute = require('./report.route');
-const stockTransactionRoute = require('./stockTransaction.route');
+const chatRoute = require('./chat.route');
 
 router.use("/users", userRoute);
 router.use("/costumes", costumeRoute);
@@ -25,7 +24,6 @@ router.use("/vnpays", vnpayRoute)
 router.use("/ghn", ghnRoute);
 router.use("/issues", issueRoute);
 router.use("/notifications", notificationRoute);
-router.use("/reports", reportRoute);
-router.use("/stock-transactions", stockTransactionRoute);
+router.use("/chat", chatRoute);
 
 module.exports = router;
