@@ -63,7 +63,8 @@ const completeMaintenance = async (req, res, next) => {
     if (!['staff', 'owner'].includes(req.userData.role)) {
       throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
     }
-    const costume = await costumeService.completeMaintenance(req.params.id);
+    const size = req.body?.size || req.query?.size;
+    const costume = await costumeService.completeMaintenance(req.params.id, size);
     res.status(200).json({ success: true, message: 'Đã cập nhật sản phẩm về trạng thái sẵn sàng cho thuê.', costume });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message || 'Cập nhật trạng thái bảo trì thất bại.', 500));

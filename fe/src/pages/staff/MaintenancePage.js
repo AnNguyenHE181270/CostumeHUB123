@@ -102,9 +102,26 @@ export default function MaintenancePage() {
                 <h3 className="text-[13px] font-semibold text-[#1a1a1a] mb-1 line-clamp-2 min-h-[32px]">
                   {costume.name}
                 </h3>
-                <p className="text-[12px] text-[#999] mb-3">
+                <p className="text-[12px] text-[#999] mb-2">
                   Cập nhật: {formatDate(costume.updatedAt)} · {formatPrice(costume.pricePerDay || costume.price)}/ngày
                 </p>
+
+                <div className="mb-3">
+                  <span className="text-[10px] text-[#666] font-bold uppercase tracking-wider block mb-1">Kích thước bảo trì:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {costume.variants?.filter(v => v.status === 'maintenance').length > 0 ? (
+                      costume.variants.filter(v => v.status === 'maintenance').map(v => (
+                        <span key={v.size} className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-md">
+                          Size {v.size}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-md">
+                        Toàn bộ sản phẩm
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 <button
                   onClick={() => setConfirmTarget(costume)}
