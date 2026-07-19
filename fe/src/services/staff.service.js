@@ -1,7 +1,7 @@
 import axiosClient from '../api/axiosClient';
 
 const staffService = {
-  getDashboard: () => axiosClient.get('/api/staff/dashboard'),
+  getDashboard: (params) => axiosClient.get('/api/staff/dashboard', { params }),
 };
 
 export default staffService;

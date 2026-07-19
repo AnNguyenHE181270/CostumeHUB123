@@ -9,6 +9,15 @@ const Costume = require("../models/costume.model");
 const getStaffDashboard = async (req, res) => {
   try {
     const now = new Date();
+    const { startDate, endDate } = req.query;
+
+    // === Xây dựng filter theo ngày tạo (createdAt) ===
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+    }
 
     // === Mốc thời gian hôm nay ===
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -20,16 +29,23 @@ const getStaffDashboard = async (req, res) => {
     threeDaysLater.setDate(threeDaysLater.getDate() + 3);
 
     // === 1. KPI Cards ===
-    const [todayOrders, pendingCount, deliveringCount, rentingCount, totalOrders] = await Promise.all([
-      Rental.countDocuments({ createdAt: { $gte: todayStart, $lt: todayEnd } }),
-      Rental.countDocuments({ status: "pending" }),
-      Rental.countDocuments({ status: "delivering" }),
-      Rental.countDocuments({ status: "renting" }),
-      Rental.countDocuments({}),
+    const [todayOrders, pendingCount, deliveringCount, rentingCount, totalOrders, overdueCount] = await Promise.all([
+      Rental.countDocuments(dateFilter),
+      Rental.countDocuments({ status: "pending", ...dateFilter }),
+      Rental.countDocuments({ status: "delivering", ...dateFilter }),
+      Rental.countDocuments({ status: "renting", ...dateFilter }),
+      Rental.countDocuments({}), // Tổng đơn hàng thực tế qua mọi thời gian
+      Rental.countDocuments({
+        $or: [
+          { status: "overdue" },
+          { status: "renting", endDate: { $lt: now } }
+        ]
+      }), // Đơn quá hạn thực tế (hiện tại)
     ]);
 
     // === 2. Phân bổ đơn theo trạng thái (cho Donut Chart) ===
     const statusDistribution = await Rental.aggregate([
+      { $match: dateFilter },
       { $group: { _id: "$status", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
@@ -45,19 +61,14 @@ const getStaffDashboard = async (req, res) => {
       .limit(10)
       .lean();
 
-    // === 4. Đơn hàng gần đây (10 đơn mới nhất) ===
-    const recentOrders = await Rental.find({})
+    // === 4. Đơn hàng gần đây (10 đơn mới nhất trong kỳ) ===
+    const recentOrders = await Rental.find(dateFilter)
       .populate("customerId", "fullName email phone avatar")
       .populate("items.costume", "name images")
       .sort({ createdAt: -1 })
       .limit(10)
       .lean();
 
-    // === 5. Đơn quá hạn (đang thuê + endDate đã qua) ===
-    const overdueCount = await Rental.countDocuments({
-      status: "renting",
-      endDate: { $lt: now },
-    });
 
     // === Format response ===
     res.status(200).json({
