@@ -58,8 +58,10 @@ YÊU CẦU QUAN TRỌNG:
 3. Nếu bạn giới thiệu hoặc nhắc đến một sản phẩm cụ thể, HÃY LUÔN chèn mã sau vào cuối câu trả lời của bạn: [PRODUCT:id_của_sản_phẩm] (ví dụ: [PRODUCT:60d...123]). Hệ thống sẽ dùng mã này để hiển thị thẻ sản phẩm cho khách.
 4. NẾU KHÁCH YÊU CẦU THUÊ ĐỒ (hoặc thuê lại đồ cũ):
    - Nếu khách chưa cung cấp đủ 4 thông tin (tên sản phẩm, size, ngày nhận đồ, ngày trả đồ), hãy lịch sự hỏi thêm thông tin còn thiếu.
-   - Nếu khách ĐÃ cung cấp đủ 4 thông tin trên (hoặc bạn đã suy ra được dựa trên câu hỏi của khách), HÃY CHÈN MÃ SAU VÀO CUỐI: [RENT_NOW:costumeId,size,YYYY-MM-DD,YYYY-MM-DD] (Ví dụ: [RENT_NOW:64abc...,M,2024-05-01,2024-05-03]). Mã costumeId lấy từ dữ liệu bên dưới.
-   - Kèm theo câu nhắn ngắn gọn: "Mình đã chuẩn bị đơn thuê cho bạn, vui lòng kiểm tra thông tin và xác nhận bên dưới nhé!"
+   - Nếu khách ĐÃ cung cấp đủ 4 thông tin trên, HÃY CHÈN MÃ SAU VÀO CUỐI: [RENT_NOW:costumeId,size,YYYY-MM-DD,YYYY-MM-DD]
+   - Nếu khách yêu cầu đổi/sửa TÊN hoặc SĐT người nhận trên đơn tự động, hãy chèn thêm thông tin đó vào mã: [RENT_NOW:costumeId,size,YYYY-MM-DD,YYYY-MM-DD,Tên_Khách,SĐT] (Ví dụ: [RENT_NOW:123..,M,2024-05-01,2024-05-03,Bảo,0987654321]). Nếu khách chỉ đổi tên thì SĐT để trống và ngược lại.
+   - Nếu khách yêu cầu sửa ĐỊA CHỈ nhận hàng, hãy bảo khách: "Bạn vui lòng ấn nút 'Chỉnh sửa' trên thẻ Xác nhận đơn thuê dưới đây để tự chọn lại Tỉnh/Thành cho địa chỉ giao hàng nhé!". Đừng tự chèn địa chỉ vào mã.
+   - Kèm theo câu nhắn ngắn gọn: "Mình đã cập nhật đơn thuê cho bạn, vui lòng kiểm tra thông tin và xác nhận bên dưới nhé!"
 
 Dữ liệu hệ thống cung cấp (bao gồm ID sản phẩm, tổng số lượng trong kho và các lịch khách ĐÃ đặt thuê):
 ${catalogInfo}
@@ -95,8 +97,8 @@ Nếu vẫn còn dư so với "Tổng kho", hãy báo khách là CÒN TRỐNG.`;
     let recommendedProductId = null;
     let rentNowData = null;
 
-    // Parse RENT_NOW tag
-    const rentRegex = /\[RENT_NOW:([a-zA-Z0-9_]+),([^,]+),([^,]+),([^\]]+)\]/g;
+    // Parse RENT_NOW tag (Support optional receiverName and receiverPhone)
+    const rentRegex = /\[RENT_NOW:([^,]+),([^,]+),([^,]+),([^,\]]+)(?:,([^,\]]*))?(?:,([^\]]*))?\]/g;
     const rentMatches = [...finalReply.matchAll(rentRegex)];
     if (rentMatches.length > 0) {
        rentNowData = {
@@ -104,6 +106,8 @@ Nếu vẫn còn dư so với "Tổng kho", hãy báo khách là CÒN TRỐNG.`;
           size: rentMatches[0][2],
           startDate: rentMatches[0][3],
           endDate: rentMatches[0][4],
+          receiverName: rentMatches[0][5] ? rentMatches[0][5].trim() : null,
+          receiverPhone: rentMatches[0][6] ? rentMatches[0][6].trim() : null,
        };
        finalReply = finalReply.replace(rentRegex, '').trim();
        recommendedProductId = rentNowData.costumeId;
