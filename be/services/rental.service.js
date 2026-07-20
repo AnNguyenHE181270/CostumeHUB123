@@ -280,7 +280,34 @@ const createOrder = async (customerId, body) => {
   let newOrder;
   try {
     await session.withTransaction(async () => {
+      // Kiểm tra tồn kho THEO KHOẢNG NGÀY (không chỉ availableStock tĩnh) ngay trong transaction,
+      // ngay trước khi trừ kho — tránh oversell khi nhiều khách đặt trùng ngày cùng lúc (race condition),
+      // và tránh từ chối nhầm khi sản phẩm chỉ đang bận ở khoảng ngày khác. Cùng thuật toán với createOfflineOrder.
       for (const update of costumesToUpdate) {
+        const overlappingOrders = await Rental.find({
+          'items.costume': update.costume._id,
+          'items.size': update.variant.size,
+          status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+          startDate: { $lte: new Date(endDate) },
+          endDate: { $gte: new Date(startDate) },
+        }).session(session);
+
+        let bookedQty = 0;
+        overlappingOrders.forEach((order) => {
+          order.items.forEach((oi) => {
+            if (oi.costume.toString() === update.costume._id.toString() && oi.size === update.variant.size) {
+              bookedQty += oi.quantity;
+            }
+          });
+        });
+
+        if (bookedQty + update.quantityToDeduct > update.variant.totalStock) {
+          throw new HttpError(
+            `Sản phẩm ${update.costume.name} (Size ${update.variant.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, update.variant.totalStock - bookedQty)}.`,
+            400
+          );
+        }
+
         update.variant.availableStock -= update.quantityToDeduct;
         await update.costume.save({ session });
       }
