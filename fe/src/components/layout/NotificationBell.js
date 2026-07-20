@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faBoxOpen, faTruck, faWallet, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import notificationService from "../../services/notification.service";
 import { formatTime } from "../../utils/formatters";
 
 const POLL_INTERVAL_MS = 30000;
+
+// Icon riêng theo loại thông báo — để nội dung (VD: hoàn tiền) đi kèm icon đúng ý nghĩa,
+// thay vì chỉ hiện chấm tròn chung chung như trước.
+const NOTIFICATION_ICON_MAP = {
+  order_created: { icon: faBoxOpen, className: "bg-blue-50 text-blue-600" },
+  order_status: { icon: faTruck, className: "bg-amber-50 text-amber-600" },
+  wallet_topup: { icon: faWallet, className: "bg-emerald-50 text-emerald-600" },
+  issue_refund_accepted: { icon: faCircleCheck, className: "bg-emerald-50 text-emerald-600" },
+  refund_completed: { icon: faWallet, className: "bg-emerald-50 text-emerald-600" },
+};
+const DEFAULT_NOTIFICATION_ICON = { icon: faBell, className: "bg-gray-100 text-gray-500" };
 
 export default function NotificationBell() {
   const { user } = useAuth();
@@ -104,23 +115,31 @@ export default function NotificationBell() {
             {notifications.length === 0 ? (
               <p className="text-[12px] text-gray-400 text-center py-8">Chưa có thông báo nào.</p>
             ) : (
-              notifications.map((n) => (
-                <button
-                  key={n._id}
-                  type="button"
-                  onClick={() => handleItemClick(n)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.isRead ? "bg-[#faf6f0]" : ""}`}
-                >
-                  <div className="flex items-start gap-2">
-                    {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-[#b8935a] mt-1.5 shrink-0" />}
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-[#1a1a1a] truncate">{n.title}</p>
-                      <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">{formatTime(n.createdAt)}</p>
+              notifications.map((n) => {
+                const { icon, className } = NOTIFICATION_ICON_MAP[n.type] || DEFAULT_NOTIFICATION_ICON;
+                return (
+                  <button
+                    key={n._id}
+                    type="button"
+                    onClick={() => handleItemClick(n)}
+                    className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.isRead ? "bg-[#faf6f0]" : ""}`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] shrink-0 ${className}`}>
+                        <FontAwesomeIcon icon={icon} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-1.5">
+                          {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-[#b8935a] mt-1.5 shrink-0" />}
+                          <p className="text-[12px] font-semibold text-[#1a1a1a] truncate">{n.title}</p>
+                        </div>
+                        <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{formatTime(n.createdAt)}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
