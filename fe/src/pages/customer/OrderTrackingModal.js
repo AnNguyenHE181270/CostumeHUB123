@@ -1,7 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTruck, faBox, faCheckCircle, faMapMarkerAlt, faPhone } from '@fortawesome/free-solid-svg-icons'
+import { faTruck, faBox, faCheckCircle, faMapMarkerAlt, faCircleXmark } from '@fortawesome/free-solid-svg-icons'
 import Modal from "../../components/Modal"
+import rentalService from "../../services/rental.service"
+import { formatPrice } from "../../utils/formatters"
 
 const STEP_DEFINITIONS = [
     {
@@ -52,7 +54,7 @@ const CURRENT_STATUS_LABEL = {
 
 const CURRENT_STATUS_SUBTITLE = {
     pending: "Trang phục đang được chuẩn bị và kiểm tra kỹ lưỡng",
-    delivering: "Dự kiến giao: Hôm nay, 14:00 - 18:00",
+    delivering: "Đơn hàng đang trên đường giao đến bạn",
     delivered: "Đơn hàng đã được giao thành công",
     renting: "Đơn hàng đã được giao thành công",
     overdue: "Vui lòng hoàn trả trang phục cho cửa hàng",
@@ -77,20 +79,36 @@ function getTrackingSteps(status) {
 }
 
 
-const shipperInfo = {
-    name: "Nguyễn Văn Minh",
-    phone: "0901 234 567",
-    vehicle: "59-X1 12345",
-}
-
 export function OrderTrackingModal({ open, onOpenChange, order }) {
     const [showAllItems, setShowAllItems] = useState(false)
+    const [estimatedDate, setEstimatedDate] = useState(null)
+
+    const status = order?.status
+    const districtId = order?.shippingAddress?.districtId
+    const wardCode = order?.shippingAddress?.wardCode
+    const isPickupAtStore = order?.shippingAddress?.addressDetail === "Nhận tại cửa hàng"
+
+    // Gọi API ước tính giao hàng thật (GHN) thay vì hiển thị khung giờ bịa cố định —
+    // chỉ cần thiết khi đơn còn CHƯA giao tới (pending/delivering) và có địa chỉ giao thật.
+    useEffect(() => {
+        if (!open || isPickupAtStore || !districtId || !wardCode || !['pending', 'delivering'].includes(status)) {
+            setEstimatedDate(null);
+            return;
+        }
+        let cancelled = false;
+        rentalService.estimateDelivery(districtId, wardCode)
+            .then((res) => { if (!cancelled) setEstimatedDate(res?.estimatedDeliveryDate || null); })
+            .catch(() => { if (!cancelled) setEstimatedDate(null); });
+        return () => { cancelled = true; };
+    }, [open, isPickupAtStore, districtId, wardCode, status]);
+
     if (!order) return null
 
-    const status = order.status
     const trackingSteps = getTrackingSteps(status)
     const currentStepTitle = CURRENT_STATUS_LABEL[status] ?? "Đang xử lý"
-    const statusSubtitle = CURRENT_STATUS_SUBTITLE[status] ?? "Đang cập nhật hành trình"
+    const statusSubtitle = ['pending', 'delivering'].includes(status) && estimatedDate
+        ? `Dự kiến giao: ${new Date(estimatedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+        : CURRENT_STATUS_SUBTITLE[status] ?? "Đang cập nhật hành trình"
 
     const items = Array.isArray(order.items)
         ? order.items
@@ -157,30 +175,6 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                 </div>
             </div>
 
-            {/* Shipper Info */}
-            <div className="rounded-lg border border-border p-3 my-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Nhân viên giao hàng
-                </p>
-                <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                            <span className="text-sm font-medium text-foreground">NM</span>
-                        </div>
-                        <div>
-                            <p className="font-medium text-foreground">{shipperInfo.name}</p>
-                            <p className="text-sm text-muted-foreground">{shipperInfo.vehicle}</p>
-                        </div>
-                    </div>
-                    <a
-                        href={`tel:${shipperInfo.phone.replace(/\s/g, "")}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
-                    >
-                        <FontAwesomeIcon icon={faPhone} className="h-4 w-4" />
-                    </a>
-                </div>
-            </div>
-
             {/* Delivery Address */}
             <div className="flex items-start gap-3 rounded-lg border border-border p-3">
                 <FontAwesomeIcon icon={faMapMarkerAlt} className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -197,7 +191,22 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                 </div>
             </div>
 
-            {/* Tracking Timeline */}
+            {/* Đơn đã hủy: không hiển thị timeline tuyến tính (vốn thiết kế cho luồng thành công) —
+                thay bằng khối trạng thái kết thúc riêng, tránh hai vùng trong cùng modal nói hai điều trái ngược. */}
+            {status === 'cancelled' ? (
+                <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                    <FontAwesomeIcon icon={faCircleXmark} className="h-8 w-8 text-red-500 mb-2" />
+                    <p className="font-semibold text-red-700">Đơn hàng đã bị hủy</p>
+                    {order.cancelReason && (
+                        <p className="mt-1 text-sm text-red-600">Lý do: {order.cancelReason}</p>
+                    )}
+                    {order.refundAmount > 0 && (
+                        <p className="mt-2 text-sm text-foreground">
+                            Số tiền đã hoàn: <span className="font-semibold">{formatPrice(order.refundAmount)}</span>
+                        </p>
+                    )}
+                </div>
+            ) : (
             <div className="mt-6">
                 <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Hành trình đơn hàng
@@ -267,6 +276,7 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
                     ))}
                 </div>
             </div>
+            )}
         </Modal>
     )
 }

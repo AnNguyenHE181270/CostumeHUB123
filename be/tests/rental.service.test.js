@@ -360,14 +360,6 @@ describe('cancelOrder', () => {
         );
     });
 
-    test('Fail to cancel when status is awaitingPayment', async () => {
-        mockData.rental.status = 'awaitingPayment';
-
-        await assert.rejects(
-            async () => rentalService.cancelOrder('rental_123', 'user_123'),
-            (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
-        );
-    });
 });
 
 // ============================

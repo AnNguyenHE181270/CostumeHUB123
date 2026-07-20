@@ -154,6 +154,8 @@ const getOrderDetail = async (orderId, customerId) => {
     hasIssue: !!issue,
     issueStatus: issue?.status || null,
     deliveredAt: order.deliveredAt,
+    cancelReason: order.cancelReason,
+    refundAmount: order.refundAmount,
     startDate: order.startDate,
     endDate: order.endDate,
     customer: {
@@ -432,6 +434,7 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
   order.status = 'cancelled';
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
   order.paymentStatus = 'refunded';
+  order.refundAmount = order.totalAmount;
   await order.save();
   await notifyOrderStatus(order, 'cancelled');
 
@@ -576,6 +579,7 @@ const updateOrderStatus = async (id, status) => {
     order.status = 'cancelled';
     order.cancelReason = 'Cửa hàng hủy đơn';
     order.paymentStatus = 'refunded';
+    order.refundAmount = order.totalAmount;
     await order.save();
 
     // 4. Gửi email thông báo cho khách hàng

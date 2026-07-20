@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faLocationDot } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
+import { PAYMENT_METHOD_LABELS } from "../../constants/paymentMethod"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
@@ -176,7 +177,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-foreground">
-                            {detailedOrder.payment?.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : detailedOrder.payment?.paymentMethod || 'COD'}
+                            {PAYMENT_METHOD_LABELS[detailedOrder.payment?.paymentMethod] || detailedOrder.payment?.paymentMethod || 'Chưa xác định'}
                         </p>
 
                         <div className="mt-4 space-y-2 border-t border-border pt-4">
@@ -216,7 +217,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                         )}
 
                         {/* Hủy đơn hàng */}
-                        {["pending", "awaitingPayment"].includes(currentStatus) && onCancelOrder && (
+                        {currentStatus === "pending" && onCancelOrder && (
                             <button
                                 onClick={() => onCancelOrder(order)}
                                 className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
@@ -302,7 +303,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
             <OrderTrackingModal
                 open={isTrackingOpen}
                 onOpenChange={setIsTrackingOpen}
-                order={order}
+                order={detailedOrder || order}
             />
 
             <ExtendRentalModal
@@ -314,26 +315,6 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                     fetchDetail();
                 }}
             />
-            {/* Nếu đơn ở trạng thái delivered và trong vòng 5 tiếng */}
-            {currentStatus === "delivered" && isWithin5Hours && (
-                <>
-                    <button
-                        onClick={() => onRequestReturn && onRequestReturn(order)}
-                        className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
-                    >
-                        <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                        Hoàn trả hàng
-                    </button>
-                    <button
-                        onClick={() => onConfirmReceipt && onConfirmReceipt(order)}
-                        className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
-                    >
-                        <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
-                        Đã nhận hàng
-                    </button>
-                </>
-            )}
-
         </div>
     )
 }
