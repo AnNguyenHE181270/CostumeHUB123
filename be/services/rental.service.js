@@ -241,9 +241,16 @@ const createOrder = async (customerId, body) => {
     if (!costume) throw new HttpError('Costume not found.', 404);
 
     const minDays = costume.minRentalDays || 1;
-    if (rentalDays > minDays) {
+    if (rentalDays < minDays) {
       throw new HttpError(
-        `Chỉ được thuê tối đa ${minDays} ngày.`,
+        `Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`,
+        400
+      );
+    }
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) {
+      throw new HttpError(
+        `Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`,
         400
       );
     }
@@ -953,8 +960,12 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
     if (!costume) throw new HttpError('Sản phẩm trong đơn hàng không tồn tại.', 404);
 
     const minDays = costume.minRentalDays || 1;
-    if (rentalDays > minDays) {
-      throw new HttpError(`Sản phẩm ${costume.name} chỉ cho phép thuê tối đa ${minDays} ngày.`, 400);
+    if (rentalDays < minDays) {
+      throw new HttpError(`Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
+    }
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) {
+      throw new HttpError(`Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`, 400);
     }
   }
 
