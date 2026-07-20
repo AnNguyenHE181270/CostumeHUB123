@@ -8,6 +8,84 @@ import { useAuth } from '../context/AuthContext';
 import rentalService from '../services/rental.service';
 import { getRentalDays, getRentalPriceFactor, formatDateNoHours } from '../utils/formatters';
 
+const RentConfirmCard = ({ rentNowData, product, user, handleConfirmRent, navigate }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+  
+  // Use rentNowData if available, otherwise default address
+  const [editName, setEditName] = useState(rentNowData.receiverName || defaultAddress?.receiverName || user?.fullName || "");
+  const [editPhone, setEditPhone] = useState(rentNowData.receiverPhone || defaultAddress?.receiverPhone || user?.phone || "");
+
+  const addressString = defaultAddress ? `${defaultAddress.addressDetail}, ${defaultAddress.ward}, ${defaultAddress.district}, ${defaultAddress.province}` : "Nhận tại cửa hàng";
+
+  const onSave = () => {
+    rentNowData.receiverName = editName;
+    rentNowData.receiverPhone = editPhone;
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-white rounded-xl border border-[#c9a869]/30 shadow-md flex flex-col w-full text-[13px] text-gray-700">
+      <div className="font-bold text-[#b8935a] mb-2 text-[14px] flex items-center gap-1.5 border-b border-gray-100 pb-2">
+        Xác nhận đơn thuê tự động
+      </div>
+      <div className="flex gap-3 items-center mb-3">
+        <img src={product.images?.[0] || 'https://via.placeholder.com/150'} alt={product.name} className="w-16 h-16 object-cover rounded-md border border-gray-100" />
+        <div className="flex-1">
+          <p className="font-bold text-gray-900 leading-tight mb-1">{product.name}</p>
+          <p>Size: <b>{rentNowData.size}</b></p>
+        </div>
+      </div>
+      <div className="bg-gray-50 p-2 rounded-lg mb-3">
+        <p className="flex justify-between mb-1"><span>Thời gian:</span> <b>{formatDateNoHours(rentNowData.startDate)} - {formatDateNoHours(rentNowData.endDate)}</b></p>
+        <p className="flex justify-between"><span>Số ngày thuê:</span> <b>{getRentalDays(rentNowData.startDate, rentNowData.endDate)} ngày</b></p>
+      </div>
+
+      <div className="bg-gray-50 p-2 rounded-lg mb-3">
+        <div className="flex justify-between items-center mb-1">
+           <p className="font-semibold text-gray-800">Thông tin nhận hàng:</p>
+           {!isEditing && (
+             <button onClick={() => setIsEditing(true)} className="text-[#b8935a] hover:underline text-[11px] font-bold">Sửa Tên/SĐT</button>
+           )}
+        </div>
+        {isEditing ? (
+          <div className="flex flex-col gap-2 mt-2">
+            <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full text-xs p-1.5 border border-gray-300 rounded outline-none focus:border-[#c9a869]" placeholder="Tên người nhận" />
+            <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full text-xs p-1.5 border border-gray-300 rounded outline-none focus:border-[#c9a869]" placeholder="Số điện thoại" />
+            <p className="line-clamp-2 text-xs text-gray-500 mt-1">{addressString}</p>
+            <div className="flex justify-end gap-2 mt-1">
+               <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-gray-200 rounded text-xs font-bold hover:bg-gray-300 transition-colors">Hủy</button>
+               <button onClick={onSave} className="px-3 py-1 bg-[#c9a869] text-white rounded text-xs font-bold hover:brightness-110 transition-colors">Lưu</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p>{rentNowData.receiverName || editName}</p>
+            <p>{rentNowData.receiverPhone || editPhone}</p>
+            <p className="line-clamp-2 text-xs text-gray-500 mt-0.5">{addressString}</p>
+          </>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center mb-4 border-t border-gray-100 pt-3">
+        <span className="font-semibold text-gray-800">Tổng thanh toán:</span>
+        <span className="font-bold text-red-500 text-[15px]">
+          {((product.pricePerDay || product.price) * getRentalPriceFactor(getRentalDays(rentNowData.startDate, rentNowData.endDate)) + product.deposit).toLocaleString('vi-VN')}đ
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={() => navigate('/checkout', { state: { buyNow: rentNowData }})} className="flex-1 py-2 border border-gray-300 text-gray-700 font-bold text-[11px] rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1">
+          <FontAwesomeIcon icon={faEdit} /> Đổi Địa Chỉ
+        </button>
+        <button onClick={() => handleConfirmRent(rentNowData)} className="flex-[1.5] py-2 bg-gradient-to-r from-[#d4af37] to-[#b8935a] text-white font-bold text-xs rounded-lg hover:brightness-110 shadow-md transition-all flex items-center justify-center gap-1">
+          <FontAwesomeIcon icon={faCheckCircle} /> T.Toán Ngay
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -96,8 +174,8 @@ const ChatWidget = () => {
         shippingFee: 0,
         paymentMethod: "WALLET",
         shippingAddress: {
-          receiverName: defaultAddress?.receiverName || user?.fullName || "Khách",
-          receiverPhone: defaultAddress?.receiverPhone || user?.phone || "",
+          receiverName: rentData.receiverName || defaultAddress?.receiverName || user?.fullName || "Khách",
+          receiverPhone: rentData.receiverPhone || defaultAddress?.receiverPhone || user?.phone || "",
           addressDetail: addressDetail,
           provinceId: defaultAddress?.provinceId || null,
           districtId: defaultAddress?.districtId || null,
@@ -157,46 +235,13 @@ const ChatWidget = () => {
                 }`}>
                   <div dangerouslySetInnerHTML={{ __html: formatMessageText(msg.text) }} />
                   {msg.rentNowData && msg.product ? (
-                    <div className="mt-4 p-4 bg-white rounded-xl border border-[#c9a869]/30 shadow-md flex flex-col w-full text-[13px] text-gray-700">
-                       <div className="font-bold text-[#b8935a] mb-2 text-[14px] flex items-center gap-1.5 border-b border-gray-100 pb-2">
-                         Xác nhận đơn thuê tự động
-                       </div>
-                       <div className="flex gap-3 items-center mb-3">
-                         <img src={msg.product.images?.[0] || 'https://via.placeholder.com/150'} alt={msg.product.name} className="w-16 h-16 object-cover rounded-md border border-gray-100" />
-                         <div className="flex-1">
-                           <p className="font-bold text-gray-900 leading-tight mb-1">{msg.product.name}</p>
-                           <p>Size: <b>{msg.rentNowData.size}</b></p>
-                         </div>
-                       </div>
-                       
-                       <div className="bg-gray-50 p-2 rounded-lg mb-3">
-                         <p className="flex justify-between mb-1"><span>Thời gian:</span> <b>{formatDateNoHours(msg.rentNowData.startDate)} - {formatDateNoHours(msg.rentNowData.endDate)}</b></p>
-                         <p className="flex justify-between"><span>Số ngày thuê:</span> <b>{getRentalDays(msg.rentNowData.startDate, msg.rentNowData.endDate)} ngày</b></p>
-                       </div>
-
-                       <div className="bg-gray-50 p-2 rounded-lg mb-3">
-                         <p className="font-semibold text-gray-800 mb-1">Thông tin nhận hàng:</p>
-                         <p>{(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0])?.receiverName || user?.fullName}</p>
-                         <p>{(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0])?.receiverPhone || user?.phone}</p>
-                         <p className="line-clamp-2 text-xs">{(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]) ? `${(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]).addressDetail}, ${(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]).ward}, ${(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]).district}, ${(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]).province}` : "Nhận tại cửa hàng"}</p>
-                       </div>
-
-                       <div className="flex justify-between items-center mb-4 border-t border-gray-100 pt-3">
-                         <span className="font-semibold text-gray-800">Tổng thanh toán:</span>
-                         <span className="font-bold text-red-500 text-[15px]">
-                           {((msg.product.pricePerDay || msg.product.price) * getRentalPriceFactor(getRentalDays(msg.rentNowData.startDate, msg.rentNowData.endDate)) + msg.product.deposit).toLocaleString('vi-VN')}đ
-                         </span>
-                       </div>
-
-                       <div className="flex gap-2">
-                         <button onClick={() => navigate('/checkout', { state: { buyNow: msg.rentNowData }})} className="flex-1 py-2 border border-gray-300 text-gray-700 font-bold text-xs rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1">
-                           <FontAwesomeIcon icon={faEdit} /> Chỉnh sửa
-                         </button>
-                         <button onClick={() => handleConfirmRent(msg.rentNowData)} className="flex-[1.5] py-2 bg-gradient-to-r from-[#d4af37] to-[#b8935a] text-white font-bold text-xs rounded-lg hover:brightness-110 shadow-md transition-all flex items-center justify-center gap-1">
-                           <FontAwesomeIcon icon={faCheckCircle} /> T.Toán Ngay
-                         </button>
-                       </div>
-                    </div>
+                    <RentConfirmCard 
+                      rentNowData={msg.rentNowData} 
+                      product={msg.product} 
+                      user={user} 
+                      handleConfirmRent={handleConfirmRent} 
+                      navigate={navigate} 
+                    />
                   ) : msg.product && (
                     <div className="mt-4 p-3 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center transform hover:scale-[1.02] transition-transform duration-200">
                        <img src={msg.product.images?.[0] || 'https://via.placeholder.com/150'} alt={msg.product.name} className="w-28 h-28 object-cover rounded-lg mb-3 shadow-sm border border-gray-50" />
