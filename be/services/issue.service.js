@@ -173,10 +173,8 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
 
   if (action === 'accept') {
     // 1. Hoàn tiền cọc và tiền thuê vào ví
-    const user = await User.findById(rental.customerId);
+    const user = await User.findByIdAndUpdate(rental.customerId, { $inc: { balance: rental.totalAmount } }, { new: true });
     if (user) {
-      user.balance = (user.balance || 0) + rental.totalAmount;
-      await user.save();
     }
 
     // 2. Hoàn trả tồn kho trang phục

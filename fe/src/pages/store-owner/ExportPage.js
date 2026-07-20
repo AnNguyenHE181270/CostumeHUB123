@@ -109,7 +109,7 @@ export default function ExportPage() {
         ["Thời gian thuê trung bình", `${lifecycle?.avgRentalDays || 0} ngày`, ""],
         ["Tổng phí trễ hạn (lateFee)", lifecycle?.totalLateFee || 0, fmtVND(lifecycle?.totalLateFee)],
         ["Tổng phí hư hỏng (damageFee)", lifecycle?.totalDamageFee || 0, fmtVND(lifecycle?.totalDamageFee)],
-        ["Tổng nạp ví", wallet?.totalTopUp || 0, fmtVND(wallet?.totalTopUp)],
+        ["Tổng nạp ví", wallet?.totalTransaction || 0, fmtVND(wallet?.totalTransaction)],
         ["Giao dịch nạp thành công", wallet?.successCount || 0, `${wallet?.successRate || 0}%`],
         ["Giao dịch nạp thất bại", wallet?.failedCount || 0, ""],
         ["Tổng đơn có khiếu nại", issues?.total || 0, `Tỷ lệ: ${issues?.issueRate || 0}%`],
@@ -281,7 +281,7 @@ export default function ExportPage() {
           ["Thành công", wallet.successCount, `${wallet.successRate}%`],
           ["Thất bại", wallet.failedCount, ""],
           ["Đang chờ", wallet.pendingCount, ""],
-          ["Tổng tiền nạp thành công", wallet.totalTopUp, fmtVND(wallet.totalTopUp)],
+          ["Tổng tiền nạp thành công", wallet.totalTransaction, fmtVND(wallet.totalTransaction)],
         ]);
         wsWallet["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 16 }];
         XLSX.utils.book_append_sheet(wb, wsWallet, "Vi dien tu");
@@ -425,7 +425,7 @@ export default function ExportPage() {
       { label: "Tổng giao dịch", value: `${fmtNum(wallet?.total)} lần` },
       { label: "Thành công", value: `${fmtNum(wallet?.successCount)} (${wallet?.successRate || 0}%)` },
       { label: "Thất bại", value: `${fmtNum(wallet?.failedCount)} lần` },
-      { label: "Tổng tiền nạp", value: fmtVND(wallet?.totalTopUp) },
+      { label: "Tổng tiền nạp", value: fmtVND(wallet?.totalTransaction) },
     ])}
 
     <table class="sig-table">
@@ -657,7 +657,7 @@ export default function ExportPage() {
 
               {/* KPI Row 3: Ví & Thanh toán */}
               <KpiGrid items={[
-                { icon: faWallet, label: "Tổng nạp ví", value: fmtVND(r?.wallet?.totalTopUp), color: "text-teal-600", bg: "bg-teal-50" },
+                { icon: faWallet, label: "Tổng nạp ví", value: fmtVND(r?.wallet?.totalTransaction), color: "text-teal-600", bg: "bg-teal-50" },
                 { icon: faCheckCircle, label: "GD nạp thành công", value: `${fmtNum(r?.wallet?.successCount)} (${r?.wallet?.successRate || 0}%)`, color: "text-emerald-600", bg: "bg-emerald-50" },
                 { icon: faCreditCard, label: "VNPAY", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "VNPAY")?.total), color: "text-blue-500", bg: "bg-blue-50" },
                 { icon: faCreditCard, label: "WALLET / Cash", value: fmtVND((r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "WALLET")?.total || 0) + (r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "Cash")?.total || 0)), color: "text-violet-600", bg: "bg-violet-50" },

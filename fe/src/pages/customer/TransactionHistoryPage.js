@@ -7,7 +7,7 @@ import { faWallet, faMoneyBillWave, faArrowRightArrowLeft, faClock, faCheckCircl
 export default function TransactionHistoryPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [topUps, setTopUps] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [rentals, setRentals] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -16,15 +16,15 @@ export default function TransactionHistoryPage() {
     const fetchTransactions = async () => {
       setLoading(true);
       try {
-        const [topUpRes, rentalRes] = await Promise.all([
-          axiosClient.get(`/api/vnpays/topup-history`).catch(() => ({ data: [] })),
+        const [transactionRes, rentalRes] = await Promise.all([
+          axiosClient.get(`/api/vnpays/transaction-history`).catch(() => ({ data: [] })),
           axiosClient.get(`/api/rentals/rental-history`).catch(() => [])
         ]);
 
-        const topUpData = topUpRes.data || [];
+        const transactionData = transactionRes.data || [];
         const rentalData = Array.isArray(rentalRes) ? rentalRes : [];
 
-        setTopUps(topUpData);
+        setTransactions(transactionData);
         setRentals(rentalData);
       } catch (error) {
         console.error("Failed to fetch transactions:", error);
@@ -53,9 +53,9 @@ export default function TransactionHistoryPage() {
   };
 
   const allActivities = [
-    ...topUps.map(t => ({
+    ...transactions.map(t => ({
       id: t._id,
-      type: "topup",
+      type: "transaction",
       title: "Nạp tiền vào ví (VNPay)",
       amount: t.amount,
       status: t.status,
@@ -112,9 +112,9 @@ export default function TransactionHistoryPage() {
             Tất cả
           </button>
           <button
-            onClick={() => setActiveTab("topup")}
+            onClick={() => setActiveTab("transaction")}
             className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
-              activeTab === "topup" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              activeTab === "transaction" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
             }`}
           >
             <FontAwesomeIcon icon={faMoneyBillWave} className="mr-2" />
@@ -176,8 +176,8 @@ export default function TransactionHistoryPage() {
           {filteredActivities.map((activity) => (
             <div key={activity.id} className="flex items-center justify-between p-4 sm:p-5 border border-gray-100 rounded-lg hover:shadow-md transition-shadow bg-white group">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'topup' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                  <FontAwesomeIcon icon={activity.type === 'topup' ? faMoneyBillWave : faArrowRightArrowLeft} className="text-lg" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'transaction' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <FontAwesomeIcon icon={activity.type === 'transaction' ? faMoneyBillWave : faArrowRightArrowLeft} className="text-lg" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-800 text-sm sm:text-base group-hover:text-black transition-colors">{activity.title}</h3>

@@ -326,7 +326,7 @@ export default function FrappeStyleDashboard() {
           {label:"Tổng giao dịch nạp",value:`${fmtNum(wallet?.total)} lần`},
           {label:"Thành công",value:`${fmtNum(wallet?.successCount)} lần (${wallet?.successRate||0}%)`},
           {label:"Thất bại",value:`${fmtNum(wallet?.failedCount)} lần`},
-          {label:"Tổng tiền nạp thành công",value:fmtVND(wallet?.totalTopUp)}
+          {label:"Tổng tiền nạp thành công",value:fmtVND(wallet?.totalTransaction)}
         ])}
       `;
     }
@@ -609,7 +609,7 @@ export default function FrappeStyleDashboard() {
             ["Tổng giao dịch nạp", wallet.total || 0, "lần"],
             ["Thành công", wallet.successCount || 0, `${wallet.successRate || 0}%`],
             ["Thất bại", wallet.failedCount || 0, ""],
-            ["Tổng nạp ví thành công", wallet.totalTopUp || 0, fmtVND(wallet.totalTopUp)]
+            ["Tổng nạp ví thành công", wallet.totalTransaction || 0, fmtVND(wallet.totalTransaction)]
           ]);
           ws["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 16 }];
           XLSX.utils.book_append_sheet(wb, ws, "Vi dien tu");
@@ -1086,7 +1086,7 @@ export default function FrappeStyleDashboard() {
               <StatCard icon={faChartBar}    label="Tổng giao dịch nạp"      value={`${fmtNum(r?.wallet?.total)} lần`}          color="teal" />
               <StatCard icon={faCheckCircle} label="Thành công"               value={`${fmtNum(r?.wallet?.successCount)} lần`}   color="emerald" sub={`Tỷ lệ: ${r?.wallet?.successRate || 0}%`} />
               <StatCard icon={faTimesCircle} label="Thất bại"                 value={`${fmtNum(r?.wallet?.failedCount)} lần`}    color="rose" />
-              <StatCard icon={faChartLine}   label="Tổng tiền nạp thành công" value={fmtVND(r?.wallet?.totalTopUp)}             color="blue" />
+              <StatCard icon={faChartLine}   label="Tổng tiền nạp thành công" value={fmtVND(r?.wallet?.totalTransaction)}             color="blue" />
             </div>
           </div>
         )}

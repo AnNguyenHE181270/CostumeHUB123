@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faWallet } from "@fortawesome/free-solid-svg-icons";
 
-export default function TopupSuccessPage() {
+export default function TransactionSuccessPage() {
   const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
 
