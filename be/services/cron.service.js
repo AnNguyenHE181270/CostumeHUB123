@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const User = require('../models/user.model');
 const Rental = require('../models/rental.model');
 const notificationService = require('./notification.service');
+const { autoUpdateDeliveredStatus, sendAutoConfirmReminders } = require('./rental.service');
 
 const cleanupPendingUsers = async () => {
   console.log(" Đang chạy dọn dẹp tài khoản rác...");
@@ -65,10 +66,20 @@ const checkOverdueRentals = async () => {
 
 const startCronJobs = () => {
   cleanupPendingUsers();
-  checkOverdueRentals(); 
+  checkOverdueRentals();
+  autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
+  sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
 
   cron.schedule('0 0 * * *', cleanupPendingUsers);
-  cron.schedule('0 0 * * *', checkOverdueRentals);
+  // Quét đơn quá hạn và đơn đã giao mỗi 15 phút thay vì chỉ 1 lần/ngày lúc 0h — tránh đơn quá hạn
+  // buổi sáng phải chờ tới nửa đêm hôm sau mới được đánh dấu, và tự xác nhận "đã nhận hàng" đúng giờ hơn.
+  cron.schedule('*/15 * * * *', checkOverdueRentals);
+  cron.schedule('*/15 * * * *', () => {
+    autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
+  });
+  cron.schedule('*/15 * * * *', () => {
+    sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
+  });
 
   console.log("Cron jobs initialized.");
 };

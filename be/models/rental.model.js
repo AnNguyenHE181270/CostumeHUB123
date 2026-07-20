@@ -27,6 +27,7 @@ const rentalSchema = new mongoose.Schema(
 
         totalRentalPrice: { type: Number, required: true },
         totalDeposit: { type: Number, required: true },
+        shippingFee: { type: Number, default: 0 },
         totalAmount: { type: Number, required: true },
 
         lateFee: { type: Number, default: 0 },
@@ -99,6 +100,13 @@ const rentalSchema = new mongoose.Schema(
         },
         rentingAt: {
             type: Date
+        },
+
+        // Đánh dấu đã gửi thông báo nhắc khách trước khi hệ thống tự động xác nhận đã nhận hàng,
+        // tránh cron job gửi lặp lại nhắc nhở nhiều lần trong cùng 1 khung giờ chờ.
+        autoConfirmReminderSent: {
+            type: Boolean,
+            default: false,
         },
     },
     {
