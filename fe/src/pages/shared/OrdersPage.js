@@ -135,6 +135,36 @@ export default function OrdersPage() {
     setOfflineData({ ...offlineData, items: newItems });
   };
 
+  // Ngày hôm nay ở local time (không dùng toISOString() để tránh lệch ngày do múi giờ UTC).
+  const getTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  // Khoảng số ngày thuê hợp lệ, tính giao của minRentalDays/maxRentalDays của TẤT CẢ trang phục đã chọn —
+  // giống cách trang chi tiết sản phẩm ở trang chủ giới hạn ngày thuê theo từng sản phẩm.
+  const getRentalDayConstraints = () => {
+    const selectedCostumes = offlineData.items
+      .filter(item => item.costume)
+      .map(item => costumesList.find(c => c._id === item.costume))
+      .filter(Boolean);
+    if (selectedCostumes.length === 0) return null;
+    const minDays = Math.max(...selectedCostumes.map(c => c.minRentalDays || 1));
+    const maxDays = Math.min(...selectedCostumes.map(c => c.maxRentalDays || 7));
+    return { minDays, maxDays, valid: minDays <= maxDays };
+  };
+
+  const hasSelectedItem = offlineData.items.some(item => item.costume && item.size);
+  const dayConstraints = getRentalDayConstraints();
+  const currentRentalDays = offlineData.startDate && offlineData.endDate
+    ? Math.ceil((new Date(offlineData.endDate) - new Date(offlineData.startDate)) / (1000 * 60 * 60 * 24))
+    : null;
+  const rentalDaysOutOfRange = !!(
+    dayConstraints?.valid &&
+    currentRentalDays !== null &&
+    (currentRentalDays < dayConstraints.minDays || currentRentalDays > dayConstraints.maxDays)
+  );
+
   const resetOfflineForm = () => {
     setOfflineData({
       startDate: "",
@@ -662,37 +692,10 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              {/* 2. Chọn thời gian */}
-              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">2. Thời gian thuê</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày bắt đầu *</label>
-                    <input
-                      type="date"
-                      required
-                      value={offlineData.startDate}
-                      onChange={e => setOfflineData({ ...offlineData, startDate: e.target.value })}
-                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày kết thúc *</label>
-                    <input
-                      type="date"
-                      required
-                      value={offlineData.endDate}
-                      onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
-                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Trang phục thuê */}
+              {/* 2. Trang phục thuê — chọn trước để biết giới hạn số ngày thuê cho phép */}
               <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">3. Danh sách trang phục thuê</h3>
+                  <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">2. Danh sách trang phục thuê</h3>
                   <button
                     type="button"
                     onClick={handleAddItem}
@@ -794,6 +797,61 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              {/* 3. Chọn thời gian — chỉ mở sau khi đã chọn trang phục, giới hạn theo số ngày cho phép của trang phục đó */}
+              <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">3. Thời gian thuê</h3>
+
+                {!hasSelectedItem ? (
+                  <p className="text-xs text-amber-600 font-medium">Vui lòng chọn trang phục ở bước 2 trước khi chọn ngày thuê.</p>
+                ) : dayConstraints && !dayConstraints.valid ? (
+                  <p className="text-xs text-red-600 font-medium">
+                    Các trang phục đã chọn có khoảng ngày thuê tối thiểu/tối đa không giao nhau — vui lòng bỏ bớt hoặc đổi trang phục.
+                  </p>
+                ) : dayConstraints ? (
+                  <p className="text-xs text-blue-600 font-medium">
+                    Khoảng thời gian thuê hợp lệ theo trang phục đã chọn: từ {dayConstraints.minDays} đến {dayConstraints.maxDays} ngày.
+                  </p>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày bắt đầu *</label>
+                    <input
+                      type="date"
+                      required
+                      disabled={!hasSelectedItem}
+                      min={getTodayStr()}
+                      value={offlineData.startDate}
+                      onChange={e => {
+                        const newStart = e.target.value;
+                        // Nếu ngày kết thúc đang trước ngày bắt đầu mới thì đẩy theo luôn, tránh khoảng ngày âm.
+                        const newEnd = offlineData.endDate && offlineData.endDate < newStart ? newStart : offlineData.endDate;
+                        setOfflineData({ ...offlineData, startDate: newStart, endDate: newEnd });
+                      }}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Ngày kết thúc *</label>
+                    <input
+                      type="date"
+                      required
+                      disabled={!hasSelectedItem || !offlineData.startDate}
+                      min={offlineData.startDate || getTodayStr()}
+                      value={offlineData.endDate}
+                      onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
+                      className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                {rentalDaysOutOfRange && (
+                  <p className="text-xs text-red-600 font-medium">
+                    Đang chọn {currentRentalDays} ngày — cần trong khoảng {dayConstraints.minDays}-{dayConstraints.maxDays} ngày theo trang phục đã chọn.
+                  </p>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 justify-end pt-4 border-t">
                 <button
@@ -805,7 +863,8 @@ export default function OrdersPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                  disabled={rentalDaysOutOfRange || (dayConstraints ? !dayConstraints.valid : false)}
+                  className="px-5 py-2 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Tiếp Tục — Xem Hoá Đơn
                 </button>
