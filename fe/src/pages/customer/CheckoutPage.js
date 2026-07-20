@@ -42,7 +42,7 @@ export function Checkout() {
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [deliveryEstimate, setDeliveryEstimate] = useState({ loading: false, date: null, isLate: false });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       let defaultAddress = user.addresses?.find((a) => a.isDefault);
       if (!defaultAddress && user.addresses?.length > 0) {
