@@ -204,8 +204,8 @@ export default function CartPage() {
                 <input
                   type="checkbox"
                   checked={
-                    cartItems.filter((item) => (item.variant?.availableStock || 0) > 0).length > 0 &&
-                    cartItems.filter((item) => (item.variant?.availableStock || 0) > 0).every((item) => selectedIds.includes(item._id))
+                    cartItems.filter((item) => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors)).length > 0 &&
+                    cartItems.filter((item) => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors)).every((item) => selectedIds.includes(item._id))
                   }
                   onChange={handleSelectAll}
                   className="w-5 h-5 cursor-pointer accent-[#b8935a] border-[#e2d5bd] rounded-md transition-all"
