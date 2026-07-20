@@ -14,7 +14,7 @@ export default function ProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [avatarFile, setAvatarFile] = useState(null);
-  const [topUpAmount, setTopUpAmount] = useState("");
+  const [transactionAmount, setTransactionAmount] = useState("");
   const [isToppingUp, setIsToppingUp] = useState(false);
   
   const [form, setForm] = useState({
@@ -90,15 +90,15 @@ export default function ProfilePage() {
     }
   };
 
-  const handleTopUp = async () => {
-    if (!topUpAmount || isNaN(topUpAmount) || Number(topUpAmount) < 10000) {
+  const handleTransaction = async () => {
+    if (!transactionAmount || isNaN(transactionAmount) || Number(transactionAmount) < 10000) {
       setToast({ isVisible: true, type: "error", message: "Số tiền nạp tối thiểu là 10.000 VNĐ" });
       return;
     }
     
     try {
       setIsToppingUp(true);
-      const data = await paymentService.createPaymentUrl(Number(topUpAmount));
+      const data = await paymentService.createPaymentUrl(Number(transactionAmount));
       if (data.success && data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
@@ -240,13 +240,13 @@ export default function ProfilePage() {
             <input 
               type="number" 
               placeholder="Nhập số tiền" 
-              value={topUpAmount}
-              onChange={(e) => setTopUpAmount(e.target.value)}
+              value={transactionAmount}
+              onChange={(e) => setTransactionAmount(e.target.value)}
               className="w-full md:w-48 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-[#1a1a1a] outline-none focus:border-black focus:ring-1 focus:ring-black placeholder:text-gray-400"
             />
             <Button 
               type="button"
-              onClick={handleTopUp} 
+              onClick={handleTransaction} 
               disabled={isToppingUp}
               className="!rounded-lg whitespace-nowrap px-6 py-3.5 bg-[#1b1b1b] text-white font-semibold text-[11px] uppercase tracking-wider hover:bg-black shadow-sm"
             >

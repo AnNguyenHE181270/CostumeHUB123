@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const qs = require("qs");
 const moment = require("moment");
 const User = require("../models/user.model");
-const TopUpTransaction = require("../models/topup.model");
+const TransactionHistory = require("../models/transactionHistory.model");
 const notificationService = require("../services/notification.service");
 
 require("dotenv").config();
@@ -38,7 +38,7 @@ const createPaymentUrl = async (req, res) => {
         const txnRef = `TOPUP_${userId}_${Date.now()}`;
 
         // Lưu transaction pending
-        const newTopUp = new TopUpTransaction({
+        const newTopUp = new TransactionHistory({
             user: userId,
             txnRef,
             amount,
@@ -112,7 +112,7 @@ const vnpayIpn = async (req, res) => {
         const txnRef = vnp_Params["vnp_TxnRef"];
         const responseCode = vnp_Params["vnp_ResponseCode"];
 
-        const topUp = await TopUpTransaction.findOneAndUpdate(
+        const topUp = await TransactionHistory.findOneAndUpdate(
             { txnRef, status: "pending" },
             { 
                 status: "success",
@@ -132,12 +132,21 @@ const vnpayIpn = async (req, res) => {
             });
         }
 
+        // Bổ sung: Kiểm tra số tiền
+        const vnp_Amount = vnp_Params["vnp_Amount"];
+        if (topUp.amount !== vnp_Amount / 100) {
+            topUp.status = "failed";
+            await topUp.save();
+            return res.status(200).json({
+                RspCode: "04",
+                Message: "Invalid amount",
+            });
+        }
+
         if (responseCode === "00") {
             // Cộng tiền vào ví user
-            const user = await User.findById(topUp.user);
+            const user = await User.findByIdAndUpdate(topUp.user, { $inc: { balance: topUp.amount } }, { new: true });
             if (user) {
-                user.balance = (user.balance || 0) + topUp.amount;
-                await user.save();
 
                 try {
                     await notificationService.createNotification({
@@ -196,7 +205,7 @@ const vnpayReturn = async (req, res) => {
             const responseCode = vnp_Params["vnp_ResponseCode"];
             
             if (responseCode === "00") {
-                const topUp = await TopUpTransaction.findOneAndUpdate(
+                const topUp = await TransactionHistory.findOneAndUpdate(
                     { txnRef, status: "pending" },
                     { 
                         status: "success",
@@ -210,10 +219,16 @@ const vnpayReturn = async (req, res) => {
                 );
                 
                 if (topUp) {
-                    const user = await User.findById(topUp.user);
+                    // Bổ sung: Kiểm tra số tiền
+                    const vnp_Amount = vnp_Params["vnp_Amount"];
+                    if (topUp.amount !== vnp_Amount / 100) {
+                        topUp.status = "failed";
+                        await topUp.save();
+                        return res.redirect(`${process.env.CLIENT_URL}/user/transaction-success`); // Trả về frontend (bạn có thể đổi thành route lỗi sau)
+                    }
+
+                    const user = await User.findByIdAndUpdate(topUp.user, { $inc: { balance: topUp.amount } }, { new: true });
                     if (user) {
-                        user.balance = (user.balance || 0) + topUp.amount;
-                        await user.save();
 
                         try {
                             await notificationService.createNotification({
@@ -232,10 +247,10 @@ const vnpayReturn = async (req, res) => {
             }
         }
 
-        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/transaction-success`);
     } catch (error) {
         console.error(error);
-        return res.redirect(`${process.env.CLIENT_URL}/user/topup-success`);
+        return res.redirect(`${process.env.CLIENT_URL}/user/transaction-success`);
     }
 };
 
@@ -256,10 +271,10 @@ function sortObject(obj) {
     return sorted;
 }
 
-const getTopUpHistory = async (req, res) => {
+const getTransactionHistory = async (req, res) => {
     try {
         const userId = req.userData.id;
-        const topUps = await TopUpTransaction.find({ user: userId }).sort({ createdAt: -1 });
+        const topUps = await TransactionHistory.find({ user: userId }).sort({ createdAt: -1 });
         return res.status(200).json({
             success: true,
             data: topUps,
@@ -277,5 +292,5 @@ module.exports = {
     createPaymentUrl,
     vnpayIpn,
     vnpayReturn,
-    getTopUpHistory,
+    getTransactionHistory,
 };

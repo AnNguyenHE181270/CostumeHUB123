@@ -11,6 +11,6 @@ router.get("/vnpay-ipn", vnpayController.vnpayIpn);
 
 router.get("/vnpay-return", vnpayController.vnpayReturn);
 
-router.get("/topup-history", checkAuth, vnpayController.getTopUpHistory);
+router.get("/transaction-history", checkAuth, vnpayController.getTransactionHistory);
 
 module.exports = router;

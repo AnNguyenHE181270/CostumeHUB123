@@ -233,8 +233,7 @@ const createOrder = async (customerId, body) => {
   if (!user) throw new HttpError('Người dùng không tồn tại', 404);
   if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
 
-  user.balance -= totalAmount;
-  await user.save();
+  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalAmount } });
 
   const newOrder = new Rental({
     customerId,
@@ -301,11 +300,7 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
   await order.save();
   await notifyOrderStatus(order, 'cancelled');
 
-  const user = await User.findById(customerId);
-  if (user) {
-    user.balance = (user.balance || 0) + order.totalAmount;
-    await user.save();
-  }
+  await User.updateOne({ _id: customerId }, { $inc: { balance: order.totalAmount } });
 
   for (const item of order.items) {
     const costume = await Costume.findById(item.costume);
@@ -408,11 +403,7 @@ const updateOrderStatus = async (id, status) => {
     }
 
     // 1. Hoàn tiền ví
-    const user = await User.findById(order.customerId);
-    if (user) {
-      user.balance = (user.balance || 0) + order.totalAmount;
-      await user.save();
-    }
+    await User.updateOne({ _id: order.customerId }, { $inc: { balance: order.totalAmount } });
 
     // 2. Hoàn trả tồn kho trang phục
     for (const item of order.items) {
@@ -726,11 +717,7 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
 
-  const user = await User.findById(rental.customerId);
-  if (user) {
-    user.balance = (user.balance || 0) + refundAmount - replacementFee;
-    await user.save();
-  }
+  await User.updateOne({ _id: rental.customerId }, { $inc: { balance: refundAmount - replacementFee } });
 
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
@@ -836,8 +823,7 @@ const extendRental = async (id, customerId, newEndDate) => {
     };
   }
 
-  user.balance -= totalExtendCost;
-  await user.save();
+  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalExtendCost } });
 
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
