@@ -238,11 +238,10 @@ export default function CartPage() {
                 <div
                   key={itemId}
                   onClick={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
-                  className={`bg-white rounded-3xl border p-5 sm:p-6 flex flex-col sm:flex-row gap-6 relative group shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer items-stretch ${
-                    isSelected
+                  className={`bg-white rounded-3xl border p-5 sm:p-6 flex flex-col sm:flex-row gap-6 relative group shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer items-stretch ${isSelected
                       ? "border-[#c9a869] ring-2 ring-[#c9a869]/20 bg-[#fffdf9]"
                       : "border-[#e6dcab]/80"
-                  } ${itemOutOfStock ? "bg-[#faf9f7] opacity-75" : ""}`}
+                    } ${itemOutOfStock ? "bg-[#faf9f7] opacity-75" : ""}`}
                 >
                   {/* Delete Button */}
                   <button
@@ -256,7 +255,9 @@ export default function CartPage() {
                     <FontAwesomeIcon icon={faTrash} className="text-[12px]" />
                   </button>
 
-                  {/* Checkbox */}
+                  <div className="flex flex-col flex-1 min-w-0 gap-4 sm:gap-2">
+                    <div className="flex flex-col sm:flex-row gap-6 items-stretch w-full">
+                      {/* Checkbox */}
                   <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
@@ -349,12 +350,8 @@ export default function CartPage() {
                         minRentalDays={item.minRentalDays}
                         setStartDate={(newStart) => {
                           pendingStartRef.current[itemId] = newStart;
-                          // Force re-render to update UI immediately
-                          clearItemError(itemId); 
-                          
-                          // Clear any existing timeout
+                          clearItemError(itemId);
                           if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
-                          
                           pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
                             const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
                             const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
@@ -362,9 +359,9 @@ export default function CartPage() {
                               const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
                               if (result?.error) setItemError(itemId, result.error);
                               else {
-                                  clearItemError(itemId);
-                                  delete pendingStartRef.current[itemId];
-                                  delete pendingEndRef.current[itemId];
+                                clearItemError(itemId);
+                                delete pendingStartRef.current[itemId];
+                                delete pendingEndRef.current[itemId];
                               }
                             }
                           }, 400);
@@ -373,11 +370,11 @@ export default function CartPage() {
                         setEndDate={(newEnd) => {
                           pendingEndRef.current[itemId] = newEnd;
                           // Force re-render to update UI immediately
-                          clearItemError(itemId); 
-                          
+                          clearItemError(itemId);
+
                           // Clear any existing timeout
                           if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
-                          
+
                           pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
                             const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
                             const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
@@ -385,35 +382,37 @@ export default function CartPage() {
                               const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
                               if (result?.error) setItemError(itemId, result.error);
                               else {
-                                  clearItemError(itemId);
-                                  delete pendingStartRef.current[itemId];
-                                  delete pendingEndRef.current[itemId];
+                                clearItemError(itemId);
+                                delete pendingStartRef.current[itemId];
+                                delete pendingEndRef.current[itemId];
                               }
                             }
                           }, 400);
                         }}
                       />
                     </div>
-
-                    {itemDateInvalidMessage && (
-                      <div className="flex items-center gap-2 mt-2 px-3.5 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
-                        <span>⚠️ {itemDateInvalidMessage}</span>
-                      </div>
-                    )}
-
-                    {!itemDateInvalidMessage && addressEstimate.date && new Date(item.startDate) < addressEstimate.date && (
-                      <div className="flex items-start gap-2 mt-2 px-3.5 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
-                        <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 shrink-0" />
-                        <span>
-                          Đơn hàng dự kiến được giao tới địa chỉ mặc định của bạn vào{" "}
-                          {addressEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                          , hãy nới ngày nhận cho phù hợp để được hỗ trợ tốt nhất.
-                        </span>
-                      </div>
-                    )}
+                  </div>
                   </div>
 
-                  {/* Pricing Summary For Item */}
+                  {itemDateInvalidMessage && (
+                    <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
+                      <span>⚠️ {itemDateInvalidMessage}</span>
+                    </div>
+                  )}
+
+                  {!itemDateInvalidMessage && addressEstimate.date && new Date(item.startDate) < addressEstimate.date && (
+                    <div className="flex items-start gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
+                      <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 shrink-0" />
+                      <span className="flex-1">
+                        Đơn hàng dự kiến được giao tới địa chỉ mặc định của bạn vào{" "}
+                        {addressEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        , hãy nới ngày nhận cho phù hợp để được hỗ trợ tốt nhất.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pricing Summary For Item */}
                   <div className="w-full sm:w-[210px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0e9d5] pt-4 sm:pt-0 sm:pl-6 shrink-0">
                     {(() => {
                       const factor = getRentalPriceFactor(rentalDays);
@@ -499,11 +498,10 @@ export default function CartPage() {
               <button
                 onClick={() => navigate("/checkout", { state: { selectedIds } })}
                 disabled={selectedIds.length === 0}
-                className={`w-full py-4 rounded-2xl text-[12px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${
-                  selectedIds.length === 0
+                className={`w-full py-4 rounded-2xl text-[12px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${selectedIds.length === 0
                     ? "bg-[#e5e0d8] text-[#a0988a] cursor-not-allowed shadow-none"
                     : "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 border border-[#c9a869]/40 luxury-btn-gold-shine"
-                }`}
+                  }`}
               >
                 Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
                 <FontAwesomeIcon icon={faArrowRight} className="text-[12px] text-[#d4af37]" />

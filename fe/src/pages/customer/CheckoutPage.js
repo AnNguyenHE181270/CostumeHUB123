@@ -41,7 +41,6 @@ export function Checkout() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
-  const [currentStep, setCurrentStep] = useState(1);
   const [deliveryEstimate, setDeliveryEstimate] = useState({ loading: false, date: null, isLate: false });
   const [showTopUpModal, setShowTopUpModal] = useState(false);
 
@@ -81,15 +80,15 @@ export function Checkout() {
 
   const checkoutItems = buyNow
     ? cartItems.filter(
-        (item) =>
-          (item.costumeId === buyNow.costumeId || item.costume?._id === buyNow.costumeId) &&
-          (item.size === buyNow.size || item.variant?.size === buyNow.size) &&
-          (item.startDate || "").substring(0, 10) === (buyNow.startDate || "").substring(0, 10) &&
-          (item.endDate || "").substring(0, 10) === (buyNow.endDate || "").substring(0, 10)
-      )
+      (item) =>
+        (item.costumeId === buyNow.costumeId || item.costume?._id === buyNow.costumeId) &&
+        (item.size === buyNow.size || item.variant?.size === buyNow.size) &&
+        (item.startDate || "").substring(0, 10) === (buyNow.startDate || "").substring(0, 10) &&
+        (item.endDate || "").substring(0, 10) === (buyNow.endDate || "").substring(0, 10)
+    )
     : selectedIds.length > 0
-    ? cartItems.filter((item) => selectedIds.includes(item._id))
-    : cartItems;
+      ? cartItems.filter((item) => selectedIds.includes(item._id))
+      : cartItems;
 
   const orderStartDate = checkoutItems[0]?.startDate;
   const orderEndDate = checkoutItems[0]?.endDate;
@@ -163,7 +162,6 @@ export function Checkout() {
       return;
     }
     setIsLoading(true);
-    setCurrentStep(2);
     try {
       const payload = {
         startDate: new Date(orderStartDate).toISOString(),
@@ -207,13 +205,11 @@ export function Checkout() {
         }
       }
       await refreshProfile();
-      setCurrentStep(3);
       showToast("Thanh toán thành công! Đơn hàng đã được tạo.", "success");
       setTimeout(() => {
         navigate("/rental-history");
       }, 1800);
     } catch (err) {
-      setCurrentStep(1);
       if (err.extra?.estimatedDeliveryDate) {
         navigate("/cart", { state: { checkoutError: err.message } });
         return;
@@ -253,7 +249,7 @@ export function Checkout() {
       {/* Khung duy nhất bao bọc toàn bộ màn hình Checkout */}
       <div className="mx-auto max-w-[1280px] bg-white rounded-3xl border border-[#e6dcab] p-6 sm:p-8 lg:p-10 shadow-[0_15px_50px_rgba(0,0,0,0.04)]">
         {/* Header & Stepper */}
-        <div className="mb-10 border-b border-[#e6dcab]/80 pb-8 text-center">
+        <div className="pb-8 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] bg-black text-[#f5e6ca] mb-3 shadow-sm">
             <FontAwesomeIcon icon={faGem} className="text-[9px] text-[#d4af37]" />
             XÁC NHẬN & THANH TOÁN ĐƠN THUÊ
@@ -264,63 +260,6 @@ export function Checkout() {
           >
             Thanh Toán Đơn Thuê
           </h1>
-
-          {/* Stepper */}
-          <div className="flex items-center w-full max-w-xl mx-auto">
-            {/* Step 1 */}
-            <div className="relative flex flex-col items-center z-10 shrink-0">
-              <div className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1a1a1a] text-[#d4af37] font-bold text-sm shadow-md">
-                {currentStep > 1 ? <FontAwesomeIcon icon={faCheck} className="text-white text-xs" /> : "1"}
-              </div>
-              <p className="absolute top-11 whitespace-nowrap text-[12px] font-bold text-[#1a1a1a]">
-                Đơn thuê
-              </p>
-            </div>
-
-            <div className={`flex-1 h-[2px] mx-3 ${currentStep >= 2 ? "bg-[#1a1a1a]" : "bg-[#e2d5bd]"}`} />
-
-            {/* Step 2 */}
-            <div className="relative flex flex-col items-center z-10 shrink-0">
-              <div
-                className={`w-9 h-9 flex items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm ${
-                  currentStep >= 2
-                    ? "bg-[#1a1a1a] border-[#1a1a1a] text-[#d4af37]"
-                    : "bg-white border-[#e2d5bd] text-[#8a7d63]"
-                }`}
-              >
-                {currentStep > 2 ? <FontAwesomeIcon icon={faCheck} className="text-white text-xs" /> : "2"}
-              </div>
-              <p
-                className={`absolute top-11 whitespace-nowrap text-[12px] ${
-                  currentStep >= 2 ? "font-bold text-[#1a1a1a]" : "font-medium text-[#8a7d63]"
-                }`}
-              >
-                Thanh toán
-              </p>
-            </div>
-
-            <div className={`flex-1 h-[2px] mx-3 ${currentStep >= 3 ? "bg-[#1a1a1a]" : "bg-[#e2d5bd]"}`} />
-
-            {/* Step 3 */}
-            <div className="relative flex flex-col items-center z-10 shrink-0">
-              <div
-                className={`w-9 h-9 flex items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm ${
-                  currentStep >= 3
-                    ? "bg-[#1a1a1a] border-[#1a1a1a] text-[#d4af37]"
-                    : "bg-white border-[#e2d5bd] text-[#8a7d63]"
-                }`}
-              >
-                3
-              </div>
-              <p
-                className={`absolute top-11 whitespace-nowrap text-[12px] ${
-                  currentStep >= 3 ? "font-bold text-[#1a1a1a]" : "font-medium text-[#8a7d63]"
-                }`}
-              >
-                Hoàn tất
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Content Layout Grid */}
@@ -384,20 +323,18 @@ export function Checkout() {
             </div>
 
             {/* Delivery Option Card */}
-            <div className="bg-[#faf6f0]/60 rounded-3xl border border-[#e6dcab] p-6 shadow-sm">
-              <h3 className="text-[20px] font-bold text-[#1a1a1a] mb-4 flex items-center gap-2" style={SERIF}>
-                <FontAwesomeIcon icon={faTruck} className="text-[#b8935a] text-[16px]" />
-                Phương Thức Nhận Hàng
-              </h3>
-
+            <h3 className="text-[20px] font-bold text-[#1a1a1a] flex items-center gap-2" style={SERIF}>
+              <FontAwesomeIcon icon={faTruck} className="text-[#b8935a] text-[16px]" />
+              Phương Thức Nhận Hàng
+            </h3>
+            <div className="bg-[#faf6f0]/60 rounded-3xl border border-[#e6dcab] p-4 shadow-sm">
               <div className="space-y-3 mb-5">
                 <label
                   htmlFor="delivery"
-                  className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
-                    deliveryOption === "delivery"
-                      ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
-                      : "border-[#e2d5bd] bg-white/70 hover:bg-white"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${deliveryOption === "delivery"
+                    ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
+                    : "border-[#e2d5bd] bg-white/70 hover:bg-white"
+                    }`}
                 >
                   <Radio
                     value="delivery"
@@ -422,11 +359,10 @@ export function Checkout() {
 
                 <label
                   htmlFor="pickup"
-                  className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
-                    deliveryOption === "pickup"
-                      ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
-                      : "border-[#e2d5bd] bg-white/70 hover:bg-white"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${deliveryOption === "pickup"
+                    ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
+                    : "border-[#e2d5bd] bg-white/70 hover:bg-white"
+                    }`}
                 >
                   <Radio
                     value="pickup"
@@ -511,9 +447,8 @@ export function Checkout() {
                       )}
                       {!deliveryEstimate.loading && deliveryEstimate.date && (
                         <div
-                          className={`mt-3 pt-3 border-t border-[#eee] flex items-start gap-2 text-[12px] font-medium ${
-                            deliveryEstimate.isLate ? "text-amber-700" : "text-emerald-700"
-                          }`}
+                          className={`mt-3 pt-3 border-t border-[#eee] flex items-start gap-2 text-[12px] font-medium ${deliveryEstimate.isLate ? "text-amber-700" : "text-emerald-700"
+                            }`}
                         >
                           <FontAwesomeIcon
                             icon={deliveryEstimate.isLate ? faTriangleExclamation : faTruckFast}
@@ -559,63 +494,44 @@ export function Checkout() {
             </div>
 
             {/* Payment Method Card */}
-            <div className="bg-[#faf6f0]/60 rounded-3xl border border-[#e6dcab] p-6 shadow-sm">
-              <h3 className="text-[20px] font-bold text-[#1a1a1a] mb-4 flex items-center gap-2" style={SERIF}>
-                <FontAwesomeIcon icon={faCreditCard} className="text-[#b8935a] text-[16px]" />
-                Phương Thức Thanh Toán
-              </h3>
+            <h3 className="text-[20px] font-bold text-[#1a1a1a] flex items-center gap-2" style={SERIF}>
+              <FontAwesomeIcon icon={faCreditCard} className="text-[#b8935a] text-[16px]" />
+              Phương Thức Thanh Toán
+            </h3>
 
-              <div className="space-y-3">
-                <label
-                  htmlFor="wallet"
-                  className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
-                    paymentMethod === "WALLET"
-                      ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
-                      : "border-[#e2d5bd] bg-white/70 hover:bg-white"
+            <div className="space-y-3">
+              <label
+                htmlFor="wallet"
+                className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${paymentMethod === "WALLET"
+                  ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
+                  : "border-[#e2d5bd] bg-white/70 hover:bg-white"
                   }`}
-                >
-                  <Radio
-                    value="WALLET"
-                    id="wallet"
-                    name="paymentMethod"
-                    checked={paymentMethod === "WALLET"}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mt-1 accent-[#b8935a]"
-                  />
-                  <div className="flex-1 flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faWallet} className="text-[#d4af37]" />
-                        <span className="font-bold text-[#1a1a1a] text-[14px]">Thanh toán bằng Số Dư Ví CostumeHUB</span>
-                      </div>
-                      <p className="text-[12px] text-[#8a7d63] mt-1">
-                        Thanh toán tức thì, tự động hoàn cọc trực tiếp về ví khi hoàn trả sản phẩm
-                      </p>
+              >
+                <Radio
+                  value="WALLET"
+                  id="wallet"
+                  name="paymentMethod"
+                  checked={paymentMethod === "WALLET"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="mt-1 accent-[#b8935a]"
+                />
+                <div className="flex-1 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faWallet} className="text-[#d4af37]" />
+                      <span className="font-bold text-[#1a1a1a] text-[14px]">Thanh toán bằng Số Dư Ví CostumeHUB</span>
                     </div>
-                    {user?.balance !== undefined && (
-                      <span className="text-[13px] font-extrabold text-[#1a1a1a] bg-[#faf6f0] border border-[#e2d5bd] px-3 py-1 rounded-xl shrink-0">
-                        Số dư: {formatPrice(user.balance)}
-                      </span>
-                    )}
+                    <p className="text-[12px] text-[#8a7d63] mt-1">
+                      Thanh toán tức thì, tự động hoàn cọc trực tiếp về ví khi hoàn trả sản phẩm
+                    </p>
                   </div>
-                </label>
-              </div>
-
-              {walletShortfall > 0 && (
-                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                  <FontAwesomeIcon icon={faTriangleExclamation} className="text-amber-500 text-lg shrink-0" />
-                  <p className="flex-1 text-[13px] text-amber-800 leading-relaxed font-medium">
-                    Số dư ví không đủ, bạn cần nạp thêm <strong>{formatPrice(walletShortfall)}</strong> để đặt
-                    thuê đơn này.
-                  </p>
-                  <Button
-                    onClick={() => setShowTopUpModal(true)}
-                    className="rounded-xl w-auto shrink-0 bg-[#1a1a1a] text-[#f5e6ca] hover:brightness-125 px-5"
-                  >
-                    Nạp Nhanh {formatPrice(walletShortfall)}
-                  </Button>
+                  {user?.balance !== undefined && (
+                    <span className="text-[13px] font-extrabold text-[#1a1a1a] bg-[#faf6f0] border border-[#e2d5bd] px-3 py-1 rounded-xl shrink-0">
+                      Số dư: {formatPrice(user.balance)}
+                    </span>
+                  )}
                 </div>
-              )}
+              </label>
             </div>
           </div>
 
@@ -630,7 +546,7 @@ export function Checkout() {
           />
 
           {/* RIGHT: Order Summary Box */}
-          <div className="w-full lg:w-1/3 bg-[#faf6f0]/90 rounded-3xl border border-[#e6dcab] p-6 lg:p-8 shadow-md sticky top-[100px] space-y-6">
+          <div className="w-full lg:w-1/3 bg-[#faf6f0]/90 rounded-3xl border border-[#e6dcab] p-6 mt-12 lg:p-8 shadow-md sticky top-[100px] space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <FontAwesomeIcon icon={faGem} className="text-[12px] text-[#d4af37]" />

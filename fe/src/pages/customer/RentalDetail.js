@@ -334,53 +334,6 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                 </>
             )}
 
-            {/* Trả hàng sau khi sử dụng (renting, overdue) hoặc sau 5 tiếng từ lúc delivered */}
-            {(['renting', 'overdue'].includes(currentStatus) || (currentStatus === 'delivered' && !isWithin5Hours)) && onRequestReturn && (
-                <button
-                    onClick={() => onRequestReturn(order)}
-                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                    <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                    Trả hàng
-                </button>
-            )}
-
-            {['renting'].includes(currentStatus) && (
-                <button
-                    onClick={() => {
-                        if (onExtendOrder) onExtendOrder(detailedOrder || order);
-                        else setIsExtendOpen(true);
-                    }}
-                    className="flex items-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-600 cursor-pointer"
-                >
-                    <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
-                    Gia hạn thuê
-                </button>
-            )}
-
-            {['renting', 'delivered', 'returning', 'completed'].includes(currentStatus) && (
-                <button
-                    onClick={() => onRequestIssue?.()}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
-                        ? "bg-slate-700 hover:bg-slate-800"
-                        : "bg-red-500 hover:bg-red-600"
-                        }`}
-                >
-                    <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
-                    {detailedOrder?.hasIssue ? "Xem khiếu nại" : "Khiếu nại"}
-                </button>
-            )}
-
-            {["completed", "cancelled"].includes(currentStatus) && (
-                <button
-                    onClick={() => onRentAgain?.(detailedOrder?.items)}
-                    className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
-                >
-                    <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
-                    Thuê lại
-                </button>
-            )}
-
         </div>
     )
 }
