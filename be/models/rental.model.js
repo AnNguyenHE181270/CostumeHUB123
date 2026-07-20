@@ -18,6 +18,9 @@ const rentalSchema = new mongoose.Schema(
             quantity: { type: Number, required: true, min: 1 },
             rentalPricePerDay: { type: Number, required: true },
             depositPrice: { type: Number, required: true },
+            // Mã các unit vật lý cụ thể được gán cho dòng đơn này (độ dài = quantity) —
+            // dùng để chỉ đánh dấu bảo trì đúng những cái đã trả, không phải cả size.
+            instanceCodes: { type: [String], default: [] },
         }, { _id: false }],
 
         startDate: { type: Date, required: true },

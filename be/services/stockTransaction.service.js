@@ -1,6 +1,7 @@
 const StockTransaction = require('../models/stockTransaction.model');
 const Costume = require('../models/costume.model');
 const HttpError = require('../models/http-error.model');
+const { backfillInstancesFromCounts, addInstances, syncVariantFromInstances } = require('./costume.service');
 
 const REASONS_BY_TYPE = {
   in: ['purchase_new', 'stock_correction_in'],
@@ -19,13 +20,16 @@ const createStockTransaction = async ({ costumeId, size, type, reason, quantity,
   const variant = costume.variants.find((v) => v.size === size);
   if (!variant) throw new HttpError(`Sản phẩm không có size ${size}.`, 404);
 
+  backfillInstancesFromCounts(variant);
+
   const beforeStock = variant.totalStock || 0;
   const rentedCount = Math.max(0, beforeStock - (variant.availableStock || 0));
 
   let afterStock;
   if (type === 'in') {
+    // Nhập thêm hàng mới -> sinh thêm unit vật lý mới (available) — Case restock.
+    addInstances(variant, qty);
     afterStock = beforeStock + qty;
-    variant.availableStock = (variant.availableStock || 0) + qty;
   } else {
     afterStock = beforeStock - qty;
     if (afterStock < rentedCount) {
@@ -34,9 +38,14 @@ const createStockTransaction = async ({ costumeId, size, type, reason, quantity,
         400
       );
     }
-    variant.availableStock = Math.max(0, (variant.availableStock || 0) - qty);
+    // Xuất kho (hỏng/mất/điều chỉnh giảm) -> loại vĩnh viễn (retired) đúng N unit đang rảnh, cũ nhất trước.
+    variant.instances
+      .filter((i) => i.status === 'available')
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(0, qty)
+      .forEach((inst) => { inst.status = 'retired'; });
   }
-  variant.totalStock = afterStock;
+  syncVariantFromInstances(variant);
 
   // Đồng bộ trạng thái sản phẩm nếu vừa hết/vừa có hàng trở lại (giữ nguyên các trạng thái đang bị khoá thủ công)
   const lockedStatuses = ['hidden', 'maintenance', 'rented'];
