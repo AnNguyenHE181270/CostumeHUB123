@@ -9,6 +9,7 @@ import rentalService from "../../services/rental.service";
 import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
 import { ChangeRentalDatesModal } from "./ChangeRentalDatesModal"; // NEW IMPORT
+import InspectReturnModal from "../staff/InspectReturnModal"; // NEW IMPORT
 import costumeService from "../../services/costume.service";
 import { formatPrice, getRentalPriceFactor } from "../../utils/formatters";
 
@@ -35,8 +36,8 @@ export default function OrdersPage() {
   // View Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
-  // const navigate = useNavigate(); // This line was a duplicate and has been removed
   const [changeRequestTarget, setChangeRequestTarget] = useState(null); // NEW STATE
+  const [inspectReturnOrder, setInspectReturnOrder] = useState(null); // NEW STATE
 
   // Offline Order States
   const [costumesList, setCostumesList] = useState([]);
@@ -607,7 +608,10 @@ export default function OrdersPage() {
                   {selectedOrder.status === 'returning' && (
                     <button
                       className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
-                      onClick={() => navigate(`/staff/rentals/${selectedOrder._id}/inspect-return`, { state: { order: selectedOrder } })}
+                      onClick={() => {
+                        setInspectReturnOrder(selectedOrder);
+                        setSelectedOrder(null);
+                      }}
                     >
                       Kiểm tra đồ trả
                     </button>
@@ -633,6 +637,17 @@ export default function OrdersPage() {
           order={changeRequestTarget}
           onClose={() => setChangeRequestTarget(null)}
           onUpdate={handleUpdateRentalDates}
+        />
+      )}
+
+      {inspectReturnOrder && (
+        <InspectReturnModal
+          order={inspectReturnOrder}
+          onClose={() => setInspectReturnOrder(null)}
+          onSuccess={() => {
+            setInspectReturnOrder(null);
+            fetchOrders();
+          }}
         />
       )}
 
