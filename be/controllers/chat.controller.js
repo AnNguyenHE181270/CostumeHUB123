@@ -9,9 +9,9 @@ const processChat = async (req, res, next) => {
       return next(new HttpError("Message is required", 400));
     }
 
-    const reply = await chatService.processChat(message, history || []);
+    const result = await chatService.processChat(message, history || []);
     
-    res.status(200).json({ reply });
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }

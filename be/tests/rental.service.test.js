@@ -24,6 +24,7 @@ RentalMock.find = (filter) => {
     mockData.rentalFindFilter = filter;
     return {
         populate: function () { return this; },
+        session: function () { return this; },
         sort: async (s) => {
             mockData.rentalSortCalledWith = s;
             return mockData.rentalList || [];
@@ -84,10 +85,15 @@ CostumeMock.findById = async (id) => {
 };
 
 // ---- UserMock ----
+// findById phải vừa await trực tiếp được (User.findById(id)) vừa chain .session() được
+// (User.findById(id).session(session), dùng trong transaction của createOrder).
 const UserMock = function (data) { Object.assign(this, data); };
-UserMock.findById = async (id) => {
+UserMock.findById = (id) => {
     mockData.userFindByIdCalledWith = id;
-    return mockData.user || null;
+    return {
+        session: function () { return this; },
+        then: function (resolve, reject) { resolve(mockData.user || null); },
+    };
 };
 
 // ---- CartMock ----
@@ -118,6 +124,14 @@ mock('../models/cart.model', CartMock);
 mock('../models/issue.model', { findOne: async () => null });
 mock('../services/email.service', sendEmailMock);
 mock('../services/ghn.service', ghnMock);
+
+// createOrder chạy trong mongoose transaction (session.withTransaction) — không có DB thật/replica set
+// trong môi trường test nên mongoose.startSession() thật sẽ treo rồi timeout. Toàn bộ model trong
+// transaction đã được mock ở trên (không thao tác DB thật), nên chỉ cần session giả chạy callback trực tiếp.
+mongoose.startSession = async () => ({
+    withTransaction: async (fn) => fn(),
+    endSession: async () => {},
+});
 
 const rentalService = require('../services/rental.service');
 const HttpError = require('../models/http-error.model');

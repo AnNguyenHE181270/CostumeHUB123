@@ -7,6 +7,8 @@ const rentalService = {
 
   createOrder: (orderData) => axiosClient.post('/api/rentals/create', orderData),
 
+  createOfflineOrder: (orderData) => axiosClient.post('/api/rentals/create-offline', orderData),
+
   cancelOrder: (orderId, cancelReason) =>
     axiosClient.put(`/api/rentals/${orderId}/cancel`, { cancelReason }),
 
@@ -20,6 +22,9 @@ const rentalService = {
   checkAvailability: (data) => axiosClient.post('/api/rentals/check', data),
 
   getTopRented: (limit = 3) => axiosClient.get(`/api/rentals/top-rented?limit=${limit}`),
+
+  estimateDelivery: (districtId, wardCode) =>
+    axiosClient.post('/api/rentals/estimate-delivery', { districtId, wardCode }),
 
   // Staff / Owner
   getAllOrders: () => axiosClient.get('/api/rentals'),
@@ -39,6 +44,13 @@ const rentalService = {
   getActiveRentals: () => axiosClient.get('/api/rentals/dashboard/active-rentals'),
 
   getInventoryUtilization: () => axiosClient.get('/api/rentals/dashboard/inventory-utilization'),
+};
+
+
+
+rentalService.updateRentalDates = async (orderId, { startDate, endDate }) => {
+  const response = await axiosClient.put(`/api/rentals/${orderId}/update-dates`, { startDate, endDate });
+  return response.data;
 };
 
 export default rentalService;

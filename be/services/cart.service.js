@@ -39,8 +39,11 @@ const getAllCarts = async (userId) => {
           } else {
             const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
             const minDays = item.costume?.minRentalDays || 1;
+            const maxDays = item.costume?.maxRentalDays || 7;
             if (rentalDays < minDays) {
-              dateError = `Phải thuê tối thiểu ${minDays} ngày.`;
+              dateError = `Sản phẩm yêu cầu thuê tối thiểu ${minDays} ngày.`;
+            } else if (rentalDays > maxDays) {
+              dateError = `Sản phẩm giới hạn thuê tối đa ${maxDays} ngày.`;
             }
           }
         }
@@ -227,9 +230,13 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải sau ngày nhận đồ', 400);
 
   const minDays = costume.minRentalDays || 1;
+  const maxDays = costume.maxRentalDays || 7;
   const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24));
   if (rentalDaysDiff < minDays) {
-    throw new HttpError(`Phải thuê tối thiểu ${minDays} ngày.`, 400);
+    throw new HttpError(`Sản phẩm yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
+  }
+  if (rentalDaysDiff > maxDays) {
+    throw new HttpError(`Sản phẩm giới hạn thuê tối đa ${maxDays} ngày.`, 400);
   }
 
   const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;

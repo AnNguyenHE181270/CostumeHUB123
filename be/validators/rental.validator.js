@@ -9,6 +9,15 @@ const checkAvailabilityValidator = [
 ];
 
 const createOrderValidator = [
+  body("startDate").isISO8601().withMessage("Invalid start date"),
+  body("endDate").isISO8601().withMessage("Invalid end date"),
+  body("items").isArray({ min: 1 }).withMessage("Đơn hàng phải có ít nhất 1 sản phẩm"),
+  body("items.*.costume").isMongoId().withMessage("Invalid costume ID"),
+  body("items.*.size").notEmpty().withMessage("Size is required"),
+  body("items.*.quantity").isInt({ min: 1 }).withMessage("Quantity must be at least 1"),
+  body("shippingFee").isFloat({ min: 0 }).withMessage("Invalid shipping fee"),
+  body("shippingAddress.receiverName").notEmpty().withMessage("Receiver name is required"),
+  body("shippingAddress.receiverPhone").notEmpty().withMessage("Receiver phone is required"),
 ];
 
 
@@ -47,6 +56,12 @@ const extendRentalValidator = [
   body("newEndDate").isISO8601().withMessage("Invalid new end date")
 ];
 
+const updateRentalDatesValidator = [
+  param("id").isMongoId().withMessage("Invalid order ID"),
+  body("startDate").isISO8601().withMessage("Invalid start date"),
+  body("endDate").isISO8601().withMessage("Invalid end date")
+];
+
 module.exports = {
   checkAvailabilityValidator,
   createOrderValidator,
@@ -57,5 +72,6 @@ module.exports = {
   requestReturnValidator,
   inspectReturnValidator,
   confirmReceiptValidator,
-  extendRentalValidator
+  extendRentalValidator,
+  updateRentalDatesValidator // NEW EXPORT
 };

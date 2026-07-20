@@ -19,7 +19,9 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const message = error.response?.data?.message || error.message || 'Lỗi không xác định';
-    return Promise.reject(new Error(message));
+    const normalizedError = new Error(message);
+    normalizedError.extra = error.response?.data?.extra;
+    return Promise.reject(normalizedError);
   }
 );
 

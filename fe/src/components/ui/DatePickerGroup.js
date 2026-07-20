@@ -28,11 +28,13 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+    const maxEndDate = new Date(start);
+    maxEndDate.setDate(maxEndDate.getDate() + requiredDays); // MAXIMUM logic
 
     return (
         <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 " ref={pickerRef}>
-                {/* Ngày Nhận */}
+                {/* Ngày Lấy */}
                 <div className="relative">
                     <label className="block text-[11px] uppercase tracking-[0.05em] text-[#999] font-medium mb-1.5">
                         Ngày nhận đồ
@@ -58,17 +60,26 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                             >
                                 <Calendar
                                     onChange={(date) => {
-                                        const startStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-                                        setStartDate(startStr);
-                                        const newStart = new Date(date);
-                                        const existingEnd = new Date(endDate);
-                                        const diffDays = Math.ceil((existingEnd - newStart) / (1000 * 60 * 60 * 24));
-                                        if (diffDays < requiredDays) {
-                                            const defaultEnd = new Date(newStart);
-                                            defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
-                                            setEndDate(defaultEnd.toISOString().split("T")[0]);
+                                        const newStart = date.getTime();
+                                        const newStartStr = new Date(newStart - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+                                        setStartDate(newStartStr);
+                                        setActivePicker(null);
+
+                                        if (endDate) {
+                                            const existingEnd = new Date(endDate).getTime();
+                                            if (existingEnd < newStart) {
+                                                const defaultEnd = new Date(newStart);
+                                                defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
+                                                setEndDate(defaultEnd.toISOString().split("T")[0]);
+                                            } else {
+                                                const diffDays = Math.ceil((existingEnd - newStart) / (1000 * 60 * 60 * 24));
+                                                if (diffDays > requiredDays) {
+                                                    const defaultEnd = new Date(newStart);
+                                                    defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
+                                                    setEndDate(defaultEnd.toISOString().split("T")[0]);
+                                                }
+                                            }
                                         }
-                                        setActivePicker('end'); // Tự động chuyển sang chọn ngày trả
                                     }}
                                     value={new Date(startDate)}
                                     minDate={tomorrow}
@@ -107,10 +118,11 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                     onChange={(date) => {
                                         const endStr = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
                                         setEndDate(endStr);
-                                        setActivePicker(null); // Chọn xong thì đóng lịch
+                                        setActivePicker(null);
                                     }}
                                     value={new Date(endDate)}
-                                    minDate={minEndDate}
+                                    minDate={new Date(startDate)}
+                                    maxDate={maxEndDate}
                                     className="border-none text-[13px] font-sans w-full"
                                 />
                             </motion.div>
