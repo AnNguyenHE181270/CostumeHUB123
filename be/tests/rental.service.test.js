@@ -95,6 +95,15 @@ UserMock.findById = (id) => {
         then: function (resolve, reject) { resolve(mockData.user || null); },
     };
 };
+// updateOne({_id}, {$inc: {balance: X}}) — mô phỏng đúng semantics $inc mà code thật đang dùng
+// (thay cho findById().save()) để trừ/hoàn tiền ví nguyên tử.
+UserMock.updateOne = async (filter, update) => {
+    mockData.userUpdateOneCalledWith = { filter, update };
+    if (mockData.user && update?.$inc?.balance !== undefined) {
+        mockData.user.balance = (mockData.user.balance || 0) + update.$inc.balance;
+    }
+    return { acknowledged: true, modifiedCount: mockData.user ? 1 : 0 };
+};
 
 // ---- CartMock ----
 const CartMock = function (data) { Object.assign(this, data); };
@@ -335,8 +344,7 @@ describe('cancelOrder', () => {
         assert.strictEqual(result.status, 'cancelled');
         assert.strictEqual(result.paymentStatus, 'refunded');
         assert.strictEqual(result.cancelReason, 'Changed my mind');
-        assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k
-        assert.ok(mockData.user._saved);
+        assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k — hoàn tiền qua User.updateOne($inc), không còn dùng .save()
         assert.strictEqual(mockData.costume.variants[0].availableStock, 6); // 5+1
         assert.ok(mockData.costume._saved);
         assert.ok(sendEmailCalledWith);
@@ -801,8 +809,7 @@ describe('extendRental', () => {
 
         const result = await rentalService.extendRental('rental_123', 'user_123', newEndDateStr);
 
-        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày)
-        assert.ok(mockData.user._saved);
+        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày) — trừ qua User.updateOne($inc)
         assert.ok(mockData.rental._saved);
         assert.strictEqual(result.success, true);
         assert.ok(result.message.includes('Gia hạn thuê'));

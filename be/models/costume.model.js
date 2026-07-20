@@ -95,6 +95,9 @@ const costumeSchema = new mongoose.Schema(
       sku: {
         type: String,
       },
+      // totalStock/availableStock/status ở trên là giá trị DẪN XUẤT từ instances[] bên dưới
+      // (đồng bộ qua costumeService.syncVariantFromInstances) — giữ lại để mọi chỗ đang đọc
+      // 2 field này (giỏ hàng, checkout, dashboard, danh sách sản phẩm) không cần sửa gì.
       availableStock: {
         type: Number,
         min: 0,
@@ -107,6 +110,18 @@ const costumeSchema = new mongoose.Schema(
       },
       bustSize: String,
       waistSize: String,
+      // Từng cái vật lý cụ thể của size này — cho phép đánh dấu bảo trì/xuất kho đúng 1 cái,
+      // không chặn nhầm cả lô khi chỉ có 1 trong N cái cần bảo trì.
+      instances: [{
+        unitCode: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ["available", "rented", "maintenance", "retired"],
+          default: "available",
+        },
+        note: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      }],
     }],
     specifications: {
       material: String,
