@@ -873,7 +873,23 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
 
-  await User.updateOne({ _id: rental.customerId }, { $inc: { balance: refundAmount - replacementFee } });
+  const netRefund = refundAmount - replacementFee;
+  await User.updateOne({ _id: rental.customerId }, { $inc: { balance: netRefund } });
+
+  if (netRefund > 0) {
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'refund_completed',
+        title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: `Bạn đã được hoàn tiền thành công ${netRefund.toLocaleString('vi-VN')}đ vào ví.`,
+        link: '/user/transactions',
+        relatedId: rental._id,
+      });
+    } catch (notifyError) {
+      console.error('[Notification Error]', notifyError);
+    }
+  }
 
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {

@@ -72,6 +72,7 @@ const ProductFormModal = ({
           size: v.size || "",
           totalStock: v.totalStock || 1,
           availableStock: v.availableStock ?? 0,
+          lowStockThreshold: v.lowStockThreshold ?? 3,
         })),
       });
     } else {
@@ -113,7 +114,7 @@ const ProductFormModal = ({
   const handleAddVariant = () => {
     setFormData(prev => ({
       ...prev,
-      variants: [...prev.variants, { size: "", totalStock: 1 }]
+      variants: [...prev.variants, { size: "", totalStock: 1, lowStockThreshold: 3 }]
     }));
     setErrors(prev => ({ ...prev, variants: "" }));
   };
@@ -202,6 +203,7 @@ const ProductFormModal = ({
         ...(v._id ? { _id: v._id } : {}),
         size: v.size,
         totalStock: Number(v.totalStock) || 0,
+        lowStockThreshold: Number(v.lowStockThreshold) || 0,
       })),
     };
 
@@ -390,6 +392,19 @@ const ProductFormModal = ({
                         value={variant.totalStock}
                         onChange={(e) => handleVariantChange(index, "totalStock", e.target.value)}
                         placeholder="VD: 3"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:border-[#1a1a1a] outline-none text-sm bg-white"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1 flex-1">
+                      <label className="text-xs font-medium text-gray-600">Ngưỡng cảnh báo hết hàng</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={variant.lowStockThreshold ?? 3}
+                        onChange={(e) => handleVariantChange(index, "lowStockThreshold", e.target.value)}
+                        placeholder="VD: 3"
+                        title="Khi xuất kho, nếu số lượng sẵn sàng còn lại sau khi xuất <= ngưỡng này, hệ thống sẽ cảnh báo"
                         className="px-3 py-2 border border-gray-300 rounded-md focus:border-[#1a1a1a] outline-none text-sm bg-white"
                       />
                     </div>
