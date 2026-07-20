@@ -108,6 +108,13 @@ const costumeSchema = new mongoose.Schema(
         min: 0,
         default: 0
       },
+      // Ngưỡng cảnh báo tồn kho thấp riêng cho size này — dùng khi xuất kho để nhắc staff
+      // trước khi số lượng sẵn sàng còn lại xuống quá thấp. Staff tự đặt theo độ "hot" của sản phẩm.
+      lowStockThreshold: {
+        type: Number,
+        min: 0,
+        default: 3
+      },
       bustSize: String,
       waistSize: String,
       // Từng cái vật lý cụ thể của size này — cho phép đánh dấu bảo trì/xuất kho đúng 1 cái,

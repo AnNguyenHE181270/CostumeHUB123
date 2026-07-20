@@ -218,6 +218,7 @@ const updateCostume = async (id, data) => {
         const diff = safeNewTotal - oldTotal;
 
         const variant = { ...existingData, instances: existingData.instances || [] };
+        if (incoming.lowStockThreshold !== undefined) variant.lowStockThreshold = Number(incoming.lowStockThreshold) || 0;
         backfillInstancesFromCounts(variant); // dữ liệu cũ chưa có instances -> sinh trước khi áp diff
         if (diff > 0) {
           addInstances(variant, diff);
