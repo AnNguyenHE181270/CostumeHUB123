@@ -89,18 +89,18 @@ export default function HomePage() {
           </div>
         </motion.div>
 
-        <motion.div variants={container} className="px-6 pb-6 max-w-[1340px] mx-auto">
+        <motion.div variants={container} className="px-6 pb-10 max-w-[1400px] mx-auto">
           <Swiper
             modules={[Autoplay]}
-            spaceBetween={24}
+            spaceBetween={32}
             slidesPerView="auto"
-            speed={800}
-            autoplay={{ delay: 2800, disableOnInteraction: false }}
-            className="w-full px-2"
+            speed={1000}
+            autoplay={{ delay: 3500, disableOnInteraction: false }}
+            className="w-full px-4 py-4"
           >
             {recentProducts.map((p) => (
-              <SwiperSlide key={p._id} style={{ width: "240px" }} className="!h-auto pb-4 pt-4 flex">
-                <motion.div variants={item} className="w-full h-full transition-all duration-300">
+              <SwiperSlide key={p._id} style={{ width: "290px" }} className="!h-auto pb-10 pt-4 flex">
+                <motion.div variants={item} className="w-full h-full">
                   <ProductCard costume={p} isBestSeller={true} />
                 </motion.div>
               </SwiperSlide>

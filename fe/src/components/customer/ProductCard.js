@@ -37,18 +37,20 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
   const rentalCount = costume.rentalCount || costume.rentCount || costume.rentedCount || costume.totalRentals || 0;
 
   return (
-      <div className="group bg-white rounded-2xl overflow-hidden border border-[#eae2d5] hover:border-[#c9a869] hover:shadow-[0_16px_36px_rgba(184,147,90,0.2)] hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col luxury-btn-shine">
+      <div className="group bg-white rounded-[20px] overflow-hidden border border-[#f0ece5] hover:border-[#d4af37]/40 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-10px_rgba(201,168,105,0.25)] hover:-translate-y-2 transition-all duration-500 h-full flex flex-col relative">
         {/* Image */}
         <div
-          className="relative aspect-[3/4] overflow-hidden bg-[#f5f3f0] cursor-pointer"
+          className="relative aspect-[3/4] overflow-hidden bg-[#f8f6f2] cursor-pointer"
           onClick={() => navigate(`/product/${costume._id}`)}
         >
           <img
             src={imgSrc}
             alt={costume.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            className="w-full h-full object-cover group-hover:scale-[1.08] transition-transform duration-700 ease-in-out"
             onError={() => setImgError(true)}
           />
+          {/* Subtle gradient overlay at bottom of image for a premium look */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/20 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           {/* Badge góc trên-trái */}
           <div className="absolute top-3 left-3">
@@ -85,7 +87,8 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
           {/* Name */}
           <h3
             onClick={() => navigate(`/product/${costume._id}`)}
-            className="text-[15px] font-semibold text-[#1a1a1a] mb-2 cursor-pointer hover:text-[#b8935a] transition-colors line-clamp-2"
+            className="text-[17px] font-bold text-[#1a1a1a] mb-2 cursor-pointer hover:text-[#b8935a] transition-colors line-clamp-2"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
           >
             {costume.name || "Tên sản phẩm"}
           </h3>
@@ -98,19 +101,22 @@ export default function ProductCard({ costume, showToast, hideRentButton = false
           </div>
 
           {/* Price & Action */}
-          <div className="mt-auto pt-4 flex flex-col gap-3">
-            <span className="text-[16px] font-bold text-[#1a1a1a]">
-              {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-normal text-gray-500">/ngày</span>
-            </span>
+          <div className="mt-auto pt-4 flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-[18px] font-bold text-[#c9a869]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                {formatPrice(costume.pricePerDay || costume.price || 0)}<span className="text-[12px] font-sans text-gray-500 font-normal">/ngày</span>
+              </span>
+            </div>
+            
             {!hideRentButton && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`/product/${costume._id}`);
                 }}
-                className="w-full py-2.5 bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] text-[11px] uppercase tracking-wider font-bold rounded-lg hover:from-[#c9a869] hover:to-[#b8935a] hover:text-white active:scale-[0.97] transition-all duration-300 text-center shadow-md hover:shadow-[0_6px_18px_rgba(184,147,90,0.35)] luxury-btn-gold-shine border border-[#c9a869]/30"
+                className="px-5 py-2 bg-[#1a1a1a] text-[#f5e6ca] text-[11px] uppercase tracking-[0.15em] font-bold rounded-xl hover:bg-[#c9a869] hover:text-white transition-all duration-300 shadow-md hover:shadow-[0_6px_15px_rgba(201,168,105,0.4)]"
               >
-                Thuê ngay
+                Thuê
               </button>
             )}
           </div>
