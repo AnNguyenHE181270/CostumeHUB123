@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
+import { QRCodeSVG } from "qrcode.react";
 import Toast from "../../components/ui/Toast";
 import Pagination from "../../components/ui/Pagination";
 import DataTable from "../../components/ui/DataTable";
@@ -9,6 +10,7 @@ import { OrderTrackingModal } from "../customer/OrderTrackingModal";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth để phân quyền
 import { ChangeRentalDatesModal } from "./ChangeRentalDatesModal"; // NEW IMPORT
 import costumeService from "../../services/costume.service";
+import { formatPrice, getRentalPriceFactor } from "../../utils/formatters";
 
 const removeAccents = (str) => {
   return str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D') : "";
@@ -47,6 +49,11 @@ export default function OrdersPage() {
     customerAddress: "",
     items: [{ costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
   });
+  // Bước xác nhận thanh toán (QR) trước khi thực sự tạo đơn offline — khách xem hoá đơn + quét QR,
+  // staff bấm "Đã thanh toán" thì mới gọi API tạo đơn (lúc đó BE tự đánh dấu đã thanh toán + Đang thuê).
+  const [paymentPreviewOpen, setPaymentPreviewOpen] = useState(false);
+  const [paymentPreview, setPaymentPreview] = useState(null);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   // Fetch costumes list
   useEffect(() => {
@@ -128,7 +135,53 @@ export default function OrdersPage() {
     setOfflineData({ ...offlineData, items: newItems });
   };
 
-  const handleSubmitOfflineOrder = async (e) => {
+  const resetOfflineForm = () => {
+    setOfflineData({
+      startDate: "",
+      endDate: "",
+      customerName: "",
+      customerPhone: "",
+      customerAddress: "",
+      items: [{ costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
+    });
+    setPaymentPreview(null);
+    setPaymentPreviewOpen(false);
+  };
+
+  // Tính lại giá hiển thị ở màn xác nhận thanh toán — dùng đúng công thức backend đang tính
+  // (getRentalPriceFactor) để số hiển thị khớp với số tiền thực sự được lưu vào đơn.
+  const buildOfflinePreview = (rentalDays) => {
+    const factor = getRentalPriceFactor(rentalDays);
+    let totalRentalPrice = 0;
+    let totalDeposit = 0;
+    const items = offlineData.items.map((item) => {
+      const costume = costumesList.find(c => c._id === item.costume);
+      const pricePerDay = costume?.pricePerDay || 0;
+      const deposit = costume?.deposit || costume?.price || 0;
+      const lineRental = pricePerDay * factor * item.quantity;
+      const lineDeposit = deposit * item.quantity;
+      totalRentalPrice += lineRental;
+      totalDeposit += lineDeposit;
+      return {
+        name: costume?.name || item.searchInput || "Sản phẩm",
+        size: item.size,
+        quantity: item.quantity,
+        pricePerDay,
+        lineRental,
+        lineDeposit,
+      };
+    });
+    return {
+      rentalDays,
+      items,
+      totalRentalPrice,
+      totalDeposit,
+      totalAmount: totalRentalPrice + totalDeposit,
+    };
+  };
+
+  // Bước 1: validate form + tính hoá đơn, mở màn xác nhận thanh toán (QR) — CHƯA gọi API tạo đơn.
+  const handleReviewOfflineOrder = (e) => {
     e.preventDefault();
     if (!offlineData.startDate || !offlineData.endDate || !offlineData.customerName || !offlineData.customerPhone) {
       setToast({ show: true, message: "Vui lòng điền đầy đủ thông tin bắt buộc!", type: "error" });
@@ -173,8 +226,15 @@ export default function OrdersPage() {
       }
     }
 
+    setPaymentPreview(buildOfflinePreview(rentalDays));
+    setPaymentPreviewOpen(true);
+  };
+
+  // Bước 2: staff bấm "Đã thanh toán" trên màn QR -> mới thực sự tạo đơn. BE tự đánh dấu
+  // paymentStatus 'paid' + status 'renting' ngay khi tạo (không cần thêm bước xử lý nào khác).
+  const handleConfirmOfflinePayment = async () => {
     try {
-      setLoading(true);
+      setConfirmingPayment(true);
       await rentalService.createOfflineOrder({
         startDate: offlineData.startDate,
         endDate: offlineData.endDate,
@@ -187,21 +247,14 @@ export default function OrdersPage() {
           quantity: item.quantity
         }))
       });
-      setToast({ show: true, message: "Tạo đơn hàng offline thành công!", type: "success" });
+      setToast({ show: true, message: "Thanh toán thành công! Đơn hàng đã được tạo và chuyển sang trạng thái Đang thuê.", type: "success" });
       setOfflineModalOpen(false);
-      setOfflineData({
-        startDate: "",
-        endDate: "",
-        customerName: "",
-        customerPhone: "",
-        customerAddress: "",
-        items: [{ costume: "", size: "", quantity: 1, availableSizes: [], searchInput: "", suggestions: [], showSuggestions: false }]
-      });
+      resetOfflineForm();
       fetchOrders();
     } catch (error) {
-      setToast({ show: true, message: error.response?.data?.message || "Tạo đơn hàng offline thất bại", type: "error" });
+      setToast({ show: true, message: error.message || "Tạo đơn hàng offline thất bại", type: "error" });
     } finally {
-      setLoading(false);
+      setConfirmingPayment(false);
     }
   };
 
@@ -553,12 +606,12 @@ export default function OrdersPage() {
         />
       )}
 
-      {/* MODAL THUÊ OFFLINE TẠI CỬA HÀNG */}
-      {offlineModalOpen && (
+      {/* MODAL THUÊ OFFLINE TẠI CỬA HÀNG — Bước 1: chọn sản phẩm */}
+      {offlineModalOpen && !paymentPreviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 overflow-y-auto py-10">
           <div className="bg-white rounded-2xl shadow-2xl border border-[#eaeaea] max-w-4xl w-full p-6 relative max-h-[90vh] overflow-y-auto flex flex-col gap-6 animate-in fade-in zoom-in duration-200">
             <button
-              onClick={() => setOfflineModalOpen(false)}
+              onClick={() => { setOfflineModalOpen(false); resetOfflineForm(); }}
               className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
             >
               ✕
@@ -569,7 +622,7 @@ export default function OrdersPage() {
               <p className="text-xs text-[#777] mt-1">Ghi nhận thông tin khách thuê trực tiếp tại quầy và trừ tồn kho tự động.</p>
             </div>
 
-            <form onSubmit={handleSubmitOfflineOrder} className="space-y-5">
+            <form onSubmit={handleReviewOfflineOrder} className="space-y-5">
               {/* 1. Thông tin khách thuê */}
               <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-3">
                 <h3 className="text-xs font-bold text-[#999] uppercase tracking-wider">1. Thông tin khách hàng</h3>
@@ -745,7 +798,7 @@ export default function OrdersPage() {
               <div className="flex gap-3 justify-end pt-4 border-t">
                 <button
                   type="button"
-                  onClick={() => setOfflineModalOpen(false)}
+                  onClick={() => { setOfflineModalOpen(false); resetOfflineForm(); }}
                   className="px-4 py-2 border border-[#eaeaea] hover:bg-[#faf9f7] rounded-xl text-sm font-semibold transition-colors"
                 >
                   Hủy bỏ
@@ -754,10 +807,105 @@ export default function OrdersPage() {
                   type="submit"
                   className="px-5 py-2 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
                 >
-                  Xác nhận đặt đơn
+                  Tiếp Tục — Xem Hoá Đơn
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL THUÊ OFFLINE TẠI CỬA HÀNG — Bước 2: xác nhận thanh toán bằng QR */}
+      {offlineModalOpen && paymentPreviewOpen && paymentPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 overflow-y-auto py-10">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#eaeaea] max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto flex flex-col gap-5 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setPaymentPreviewOpen(false)}
+              disabled={confirmingPayment}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-40"
+            >
+              ✕
+            </button>
+
+            <div>
+              <h2 className="text-xl font-bold text-[#1a1a1a]">Xác Nhận Thanh Toán</h2>
+              <p className="text-xs text-[#777] mt-1">
+                Khách quét mã QR bên dưới để thanh toán. Sau khi khách thanh toán xong, bấm "Xác nhận đã thanh toán".
+              </p>
+            </div>
+
+            <div className="bg-gray-50/50 border border-[#eaeaea] rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Khách hàng</span>
+                <span className="font-semibold text-[#1a1a1a]">{offlineData.customerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Số điện thoại</span>
+                <span className="font-semibold text-[#1a1a1a]">{offlineData.customerPhone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Thời gian thuê</span>
+                <span className="font-semibold text-[#1a1a1a]">{paymentPreview.rentalDays} ngày</span>
+              </div>
+            </div>
+
+            <div className="border border-[#eaeaea] rounded-xl divide-y divide-[#f0f0f0]">
+              {paymentPreview.items.map((item, idx) => (
+                <div key={idx} className="p-3 flex items-center justify-between text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#1a1a1a] truncate">{item.name}</p>
+                    <p className="text-xs text-gray-500">Size {item.size} • SL {item.quantity} • {formatPrice(item.pricePerDay)}/ngày</p>
+                  </div>
+                  <span className="font-semibold text-[#1a1a1a] shrink-0 ml-3">{formatPrice(item.lineRental + item.lineDeposit)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col items-center gap-3 py-3">
+              <div className="p-3 bg-white border border-[#eaeaea] rounded-xl shadow-sm">
+                <QRCodeSVG
+                  value={`COSTUMEHUB-OFFLINE|${offlineData.customerPhone}|${paymentPreview.totalAmount}`}
+                  size={168}
+                  level="M"
+                  marginSize={2}
+                />
+              </div>
+              <p className="text-[11px] text-gray-400">Mã QR minh hoạ — dùng cho ghi nhận thanh toán tại quầy</p>
+            </div>
+
+            <div className="bg-[#faf9f7] border border-[#eaeaea] rounded-xl p-4 space-y-1.5">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Tiền thuê</span>
+                <span>{formatPrice(paymentPreview.totalRentalPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Tiền cọc</span>
+                <span>{formatPrice(paymentPreview.totalDeposit)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-[#eaeaea]">
+                <span className="font-bold text-[#1a1a1a]">Tổng tiền cần thanh toán</span>
+                <span className="font-bold text-lg text-[#1a1a1a]">{formatPrice(paymentPreview.totalAmount)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setPaymentPreviewOpen(false)}
+                disabled={confirmingPayment}
+                className="px-4 py-2 border border-[#eaeaea] hover:bg-[#faf9f7] rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                Quay Lại Chỉnh Sửa
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmOfflinePayment}
+                disabled={confirmingPayment}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm disabled:opacity-60"
+              >
+                {confirmingPayment ? "Đang xử lý..." : "Xác Nhận Đã Thanh Toán"}
+              </button>
+            </div>
           </div>
         </div>
       )}

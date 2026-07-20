@@ -23,9 +23,9 @@ router.post('/check', checkAvailabilityValidator, validate, checkAvailability);
 router.post('/estimate-delivery', checkAuth, estimateDelivery); // Ước tính ngày giao GHN ngay khi có địa chỉ
 router.get('/top-rented', getTopRentedCostumes); // Công khai — dùng cho trang chủ
 router.post('/create', checkAuth, createOrderValidator, validate, createOrder); // Khách phải login mới được đặt
-router.post('/create-offline', checkAuth, createOfflineOrder);
+router.post('/create-offline', checkAuth, isStaffOrOwner, createOfflineOrder); // Chỉ Staff/Owner được tạo đơn tại quầy
 router.get('/', checkAuth, getAllOrders); // Staff/Owner lấy danh sách
-router.put('/:id/status', checkAuth, updateOrderStatusValidator, validate, updateOrderStatus); // Đổi trạng thái
+router.put('/:id/status', checkAuth, isStaffOrOwner, updateOrderStatusValidator, validate, updateOrderStatus); // Đổi trạng thái — chỉ Staff/Owner
 router.put('/:id/confirm', checkAuth, confirmPreparationValidator, validate, confirmPreparation); // Staff xác nhận chuẩn bị đồ xong -> Đang giao
 router.get('/rental-history', checkAuth, getRentalHistory); // Đã thêm checkAuth
 router.get('/order-detail/:orderId', checkAuth, getOrderDetailValidator, validate, orderDetail);

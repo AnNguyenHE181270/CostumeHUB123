@@ -49,18 +49,58 @@ async function notifyOrderStatus(rental, status) {
   }
 }
 
+// Sau ngần này kể từ lúc GHN báo giao thành công, hệ thống coi như khách đã nhận hàng
+// và tự động chuyển đơn sang "đang thuê" nếu khách không tự xác nhận trước.
+const AUTO_CONFIRM_DELAY_MS = 5 * 60 * 60 * 1000; // 5 giờ
+const AUTO_CONFIRM_REMINDER_LEAD_MS = 60 * 60 * 1000; // Nhắc khách trước 1 giờ so với mốc tự động xác nhận
+
 const autoUpdateDeliveredStatus = async () => {
-  const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - AUTO_CONFIRM_DELAY_MS);
   const expiredRentals = await Rental.find({
     status: 'delivered',
-    deliveredAt: { $lte: fiveHoursAgo },
+    deliveredAt: { $lte: cutoff },
   });
   for (const rental of expiredRentals) {
     rental.status = 'renting';
-    rental.rentingAt = new Date(rental.deliveredAt.getTime() + 5 * 60 * 60 * 1000);
+    rental.rentingAt = new Date(rental.deliveredAt.getTime() + AUTO_CONFIRM_DELAY_MS);
     await rental.save();
     await notifyOrderStatus(rental, 'renting');
   }
+  return expiredRentals.length;
+};
+
+// Nhắc khách trước khi hệ thống tự động xác nhận đã nhận hàng, để khách chủ động xác nhận đúng lúc
+// hoặc báo ngay cho cửa hàng nếu thực tế chưa nhận được — tránh khiếu nại sau khi đơn tự chuyển trạng thái.
+const sendAutoConfirmReminders = async () => {
+  const now = Date.now();
+  const reminderCutoff = new Date(now - (AUTO_CONFIRM_DELAY_MS - AUTO_CONFIRM_REMINDER_LEAD_MS));
+  const autoConfirmCutoff = new Date(now - AUTO_CONFIRM_DELAY_MS);
+
+  const dueRentals = await Rental.find({
+    status: 'delivered',
+    autoConfirmReminderSent: { $ne: true },
+    deliveredAt: { $lte: reminderCutoff, $gt: autoConfirmCutoff },
+  });
+
+  for (const rental of dueRentals) {
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'order_status',
+        title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message:
+          'Đơn hàng của bạn sẽ được hệ thống tự động xác nhận đã nhận trong khoảng 1 giờ nữa. Nếu bạn đã nhận hàng, hãy xác nhận ngay; nếu chưa nhận được, vui lòng liên hệ cửa hàng để được hỗ trợ kịp thời.',
+        link: '/rental-history',
+        relatedId: rental._id,
+      });
+    } catch (err) {
+      console.error('[Notification Error]', err);
+    }
+    rental.autoConfirmReminderSent = true;
+    await rental.save();
+  }
+
+  return dueRentals.length;
 };
 
 const getRentalHistory = async (userId) => {
@@ -1171,4 +1211,6 @@ module.exports = {
   updateRentalDates,
   createOfflineOrder,
   getDeliveryEstimate,
+  autoUpdateDeliveredStatus,
+  sendAutoConfirmReminders,
 };
