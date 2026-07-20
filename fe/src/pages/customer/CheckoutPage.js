@@ -533,6 +533,24 @@ export function Checkout() {
                 </div>
               </label>
             </div>
+
+            {walletShortfall > 0 && (
+              <div className="mt-4 p-4 rounded-2xl border border-red-200 bg-red-50 flex items-center justify-between">
+                <div className="text-red-700 text-[13px]">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <FontAwesomeIcon icon={faTriangleExclamation} className="text-red-600" />
+                    Số dư ví không đủ
+                  </div>
+                  Bạn cần nạp thêm <span className="font-bold">{formatPrice(walletShortfall)}</span> để có thể đặt thuê.
+                </div>
+                <Button
+                  onClick={() => setShowTopUpModal(true)}
+                  className="bg-red-600 text-white text-[12px] h-9 px-4 rounded-xl font-bold hover:bg-red-700 transition-colors"
+                >
+                  Nạp Nhanh
+                </Button>
+              </div>
+            )}
           </div>
 
           <QuickTopUpModal
