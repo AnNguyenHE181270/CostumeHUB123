@@ -180,8 +180,9 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     if (user) {
     }
 
-    // 2. Hoàn trả tồn kho trang phục — giải phóng đúng (các) unit vật lý đã gán cho đơn này,
-    // không cộng thẳng vào availableStock để tránh lệch với instances[] (nguồn sự thật).
+    // 2. Thu hồi unit vật lý đã gán cho đơn này — khiếu nại đã được chấp nhận nghĩa là sản phẩm
+    // có vấn đề (hư hỏng/khiếu nại), nên đưa vào 'maintenance' để staff kiểm tra trước khi cho thuê lại,
+    // không trả thẳng về 'available' như luồng trả hàng bình thường không có khiếu nại.
     for (const item of rental.items) {
       const costume = await Costume.findById(item.costume);
       if (costume) {
@@ -191,7 +192,7 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
           if (item.instanceCodes && item.instanceCodes.length > 0) {
             variant.instances.forEach((inst) => {
               if (item.instanceCodes.includes(inst.unitCode) && inst.status === 'rented') {
-                inst.status = 'available';
+                inst.status = 'maintenance';
               }
             });
           } else {
@@ -199,11 +200,26 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
               .filter((i) => i.status === 'rented')
               .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
               .slice(0, item.quantity)
-              .forEach((inst) => { inst.status = 'available'; });
+              .forEach((inst) => { inst.status = 'maintenance'; });
           }
           syncVariantFromInstances(variant);
-          await costume.save();
         }
+
+        // Cập nhật lại status costume tổng thể: còn ít nhất 1 biến thể sẵn sàng -> available;
+        // nếu không, còn biến thể đang bảo trì -> maintenance; ngược lại -> out_of_stock.
+        const hasAvailableVariant = costume.variants.some(
+          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
+        );
+        const hasMaintenanceVariant = costume.variants.some((v) => v.status === 'maintenance');
+        if (hasAvailableVariant) {
+          costume.status = 'available';
+        } else if (hasMaintenanceVariant) {
+          costume.status = 'maintenance';
+        } else {
+          costume.status = 'out_of_stock';
+        }
+
+        await costume.save();
       }
     }
 
