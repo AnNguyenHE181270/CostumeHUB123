@@ -352,16 +352,12 @@ describe('Forgot Password', () => {
             resetPasswordExpire: null,
             save: async function () { this._saved = true; },
         };
-        UserMock.findOne = (filter) => ({
-            select: async () => mockData.user,
-        });
+
+        UserMock.findOne = () => ({ select: async () => mockData.user });
     });
 
     test('Email not found', async () => {
-        UserMock.findOne = (filter) => ({
-            select: async () => null,
-        });
-
+        UserMock.findOne = () => ({ select: async () => null });
         await assert.rejects(
             async () => userService.forgotPassword('nonexistent@example.com'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 200); return true; }
