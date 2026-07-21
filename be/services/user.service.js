@@ -258,14 +258,20 @@ const getMyProfile = async (email) => {
 };
 
 const forgotPassword = async (email) => {
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email }).select('+resetPasswordCooldownUntil');
   if (!user) throw new HttpError('Nếu tài khoản với email này tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.', 200);
   if (!user.isEmailVerified) throw new HttpError('Email chưa được xác thực. Vui lòng xác thực email trước khi đặt lại mật khẩu.', 403);
   if (user.status === 'blocked') throw new HttpError('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được trợ giúp.', 403);
 
+  const now = new Date();
+  if (user.resetPasswordCooldownUntil && user.resetPasswordCooldownUntil > now) {
+    throw new HttpError('Vui lòng chờ trước khi yêu cầu gửi lại email đặt lại mật khẩu.', 429);
+  }
+
   const resetToken = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
   user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+  user.resetPasswordCooldownUntil = new Date(now.getTime() + 60 * 1000);
   await user.save();
 
   const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
@@ -281,6 +287,7 @@ const resetPassword = async (token, password) => {
   user.password = await bcrypt.hash(password, salt);
   user.resetPasswordToken = null;
   user.resetPasswordExpire = null;
+  user.resetPasswordCooldownUntil = null;
   await user.save();
 };
 

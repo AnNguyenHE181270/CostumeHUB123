@@ -22,8 +22,9 @@ const transactionHistorySchema = new mongoose.Schema(
       default: "pending",
     },
     vnpayInfo: {
-      type: Object,
-      default: {},
+      type: String,
+      default: "",
+      select: false,
     },
   },
   {
