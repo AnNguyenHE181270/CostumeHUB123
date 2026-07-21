@@ -15,18 +15,36 @@ import DataTable from "../../components/ui/DataTable";
 import costumeService from "../../services/costume.service";
 import categoryService from "../../services/category.service";
 
-// Trạng thái sản phẩm
+// Trạng thái lọc sản phẩm cho Staff
 const COSTUME_STATUSES = [
-  { value: "", label: "Tất cả trạng thái" },
-  { value: "available", label: "Còn trống", bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
-  { value: "rented", label: "Đang thuê", bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-500" },
-  { value: "maintenance", label: "Bảo trì", bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-500" },
+  { value: "", label: "Tất cả sản phẩm" },
+  { value: "available", label: "Còn hàng", bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
   { value: "out_of_stock", label: "Hết hàng", bg: "bg-red-100", text: "text-red-700", dot: "bg-red-500" },
-  { value: "hidden", label: "Ẩn", bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
 ];
 
 const getStatusStyle = (status) => {
-  return COSTUME_STATUSES.find((s) => s.value === status) || { bg: "bg-gray-100", text: "text-gray-600", label: status, dot: "bg-gray-400" };
+  return COSTUME_STATUSES.find((s) => s.value === status) || { bg: "bg-emerald-100", text: "text-emerald-700", label: "Còn hàng", dot: "bg-emerald-500" };
+};
+
+// Tính toán số lượng từng trạng thái của 1 variant
+const getVariantStatusBreakdown = (v) => {
+  if (v.instances && v.instances.length > 0) {
+    const total = v.instances.filter((i) => i.status !== "retired").length;
+    const available = v.instances.filter((i) => i.status === "available").length;
+    const maintenance = v.instances.filter((i) => i.status === "maintenance").length;
+    const rented = v.instances.filter((i) => i.status === "rented").length;
+    return { total, available, maintenance, rented };
+  }
+  const total = v.totalStock || 0;
+  const available = v.availableStock || 0;
+  let maintenance = 0;
+  let rented = 0;
+  if (v.status === "maintenance") {
+    maintenance = Math.max(0, total - available);
+  } else {
+    rented = Math.max(0, total - available);
+  }
+  return { total, available, maintenance, rented };
 };
 
 // Format tiền VNĐ
@@ -80,7 +98,13 @@ export default function StaffProductsPage() {
       if (sort) params.sort = sort;
 
       const data = await costumeService.getAll(params);
-      setCostumes(data.costumes || []);
+      let activeCostumes = (data.costumes || []).filter((c) => c.status !== "hidden");
+      if (selectedStatus === "available") {
+        activeCostumes = activeCostumes.filter((c) => getTotalStock(c) > 0);
+      } else if (selectedStatus === "out_of_stock") {
+        activeCostumes = activeCostumes.filter((c) => getTotalStock(c) === 0);
+      }
+      setCostumes(activeCostumes);
       setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
     } catch (err) {
       console.error("Lỗi tải sản phẩm:", err);
@@ -120,7 +144,8 @@ export default function StaffProductsPage() {
       setIsSearching(true);
       try {
         const data = await costumeService.getAll({ search: encodeURIComponent(searchInput), limit: 5 });
-        setSuggestions(data.costumes || []);
+        const activeSuggestions = (data.costumes || []).filter((c) => c.status !== "hidden");
+        setSuggestions(activeSuggestions);
       } catch (err) {
         console.error("Lỗi lấy gợi ý:", err);
       } finally {
@@ -319,12 +344,10 @@ export default function StaffProductsPage() {
               <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Danh mục</th>
               <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Giá thuê</th>
               <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-left">Tồn kho</th>
-              <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {costumes.map((costume) => {
-              const statusStyle = getStatusStyle(costume.status);
               const available = getTotalStock(costume);
               const total = getTotalCapacity(costume);
 
@@ -389,14 +412,6 @@ export default function StaffProductsPage() {
                         />
                       </div>
                     </div>
-                  </td>
-
-                  {/* Trạng thái */}
-                  <td className="py-4 px-6 text-sm text-center">
-                    <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusStyle.bg} ${statusStyle.text} border-transparent`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                      {statusStyle.label}
-                    </span>
                   </td>
                 </tr>
               );
@@ -464,13 +479,14 @@ export default function StaffProductsPage() {
                     </h3>
                   </div>
 
-                  {/* Status */}
+                  {/* Status badge based on availability */}
                   {(() => {
-                    const s = getStatusStyle(selectedCostume.status);
+                    const availableSum = getTotalStock(selectedCostume);
+                    const isAvail = availableSum > 0;
                     return (
-                      <span className={`${s.bg} ${s.text} px-3 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1.5`}>
-                        <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                        {s.label}
+                      <span className={`${isAvail ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"} px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5`}>
+                        <span className={`w-2 h-2 rounded-full ${isAvail ? "bg-emerald-500" : "bg-red-500"}`} />
+                        {isAvail ? "Còn hàng" : "Hết hàng"}
                       </span>
                     );
                   })()}
@@ -495,39 +511,88 @@ export default function StaffProductsPage() {
                     </div>
                   )}
 
-                  {/* Variants table */}
-                  {selectedCostume.variants?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">Biến thể & Tồn kho</p>
-                      <div className="border border-[#eaeaea] rounded-lg overflow-hidden">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-[#faf9f7] text-[#999] text-xs uppercase tracking-wider">
-                              <th className="px-3 py-2 text-left">Size</th>
-                              <th className="px-3 py-2 text-center">Còn</th>
-                              <th className="px-3 py-2 text-center">Tổng</th>
-                              <th className="px-3 py-2 text-center">Trạng thái</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-[#555]">
-                            {selectedCostume.variants.map((v, i) => {
-                              const vs = getStatusStyle(v.status);
-                              return (
-                                <tr key={i} className="border-t border-[#f0f0f0]">
-                                  <td className="px-3 py-2.5 font-medium text-[#1a1a1a]">{v.size}</td>
-                                  <td className="px-3 py-2.5 text-center font-semibold">{v.availableStock || 0}</td>
-                                  <td className="px-3 py-2.5 text-center">{v.totalStock || 0}</td>
-                                  <td className="px-3 py-2.5 text-center">
-                                    <span className={`${vs.bg} ${vs.text} px-2 py-0.5 rounded-full text-[10px] font-medium`}>{vs.label}</span>
-                                  </td>
+                  {/* Detailed Status Breakdown Table for Product Line */}
+                  {selectedCostume.variants?.length > 0 && (() => {
+                    const costumeTotals = selectedCostume.variants.reduce(
+                      (acc, v) => {
+                        const b = getVariantStatusBreakdown(v);
+                        acc.total += b.total;
+                        acc.available += b.available;
+                        acc.maintenance += b.maintenance;
+                        acc.rented += b.rented;
+                        return acc;
+                      },
+                      { total: 0, available: 0, maintenance: 0, rented: 0 }
+                    );
+
+                    return (
+                      <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-[#555] uppercase tracking-wider">Trạng thái dòng sản phẩm</p>
+                        </div>
+
+                        {/* Summary Badges */}
+                        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                          <div className="bg-gray-100 rounded-lg p-2 border border-gray-200">
+                            <p className="text-[#888] text-[11px] mb-0.5 font-medium">Tổng số lượng</p>
+                            <p className="text-base font-bold text-[#1a1a1a]">{costumeTotals.total}</p>
+                          </div>
+                          <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200">
+                            <p className="text-emerald-700 text-[11px] mb-0.5 font-medium">Tồn kho</p>
+                            <p className="text-base font-bold text-emerald-700">{costumeTotals.available}</p>
+                          </div>
+                          <div className="bg-amber-50 rounded-lg p-2 border border-amber-200">
+                            <p className="text-amber-700 text-[11px] mb-0.5 font-medium">Bảo trì</p>
+                            <p className="text-base font-bold text-amber-700">{costumeTotals.maintenance}</p>
+                          </div>
+                          <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
+                            <p className="text-blue-700 text-[11px] mb-0.5 font-medium">Đang cho thuê</p>
+                            <p className="text-base font-bold text-blue-700">{costumeTotals.rented}</p>
+                          </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="border border-[#eaeaea] rounded-lg overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-[#faf9f7] text-[#777] uppercase tracking-wider border-b border-[#eaeaea]">
+                                <th className="px-3 py-2 text-left font-semibold">Size</th>
+                                <th className="px-3 py-2 text-center font-semibold">Tổng</th>
+                                <th className="px-3 py-2 text-center font-semibold text-emerald-700">Tồn kho</th>
+                                <th className="px-3 py-2 text-center font-semibold text-amber-700">Bảo trì</th>
+                                <th className="px-3 py-2 text-center font-semibold text-blue-700">Đang thuê</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#f0f0f0]">
+                              {selectedCostume.variants.map((v, i) => {
+                                const b = getVariantStatusBreakdown(v);
+                                return (
+                                  <tr key={i} className="hover:bg-gray-50/50">
+                                    <td className="px-3 py-2 font-bold text-[#1a1a1a]">{v.size}</td>
+                                    <td className="px-3 py-2 text-center font-medium text-[#555]">{b.total}</td>
+                                    <td className="px-3 py-2 text-center font-bold text-emerald-600">{b.available}</td>
+                                    <td className="px-3 py-2 text-center font-bold text-amber-600">{b.maintenance}</td>
+                                    <td className="px-3 py-2 text-center font-bold text-blue-600">{b.rented}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            {selectedCostume.variants.length > 1 && (
+                              <tfoot>
+                                <tr className="bg-gray-50 font-bold border-t border-[#eaeaea] text-[#1a1a1a]">
+                                  <td className="px-3 py-2 text-left">TỔNG CỘNG</td>
+                                  <td className="px-3 py-2 text-center">{costumeTotals.total}</td>
+                                  <td className="px-3 py-2 text-center text-emerald-700">{costumeTotals.available}</td>
+                                  <td className="px-3 py-2 text-center text-amber-700">{costumeTotals.maintenance}</td>
+                                  <td className="px-3 py-2 text-center text-blue-700">{costumeTotals.rented}</td>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              </tfoot>
+                            )}
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Specs */}
                   {selectedCostume.specifications && (

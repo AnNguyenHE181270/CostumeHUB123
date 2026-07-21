@@ -102,11 +102,21 @@ const getAllCostumes = async (query) => {
   }
 
   if (status) {
-    if (status === 'all') {
-      delete filter.status;
+    if (status === 'all' || status === '') {
+      filter.status = { $ne: 'hidden' };
+    } else if (status === 'available') {
+      filter.status = { $ne: 'hidden' };
+      filter['variants.availableStock'] = { $gt: 0 };
+    } else if (status === 'out_of_stock') {
+      filter.status = { $ne: 'hidden' };
+      filter['variants'] = { $not: { $elemMatch: { availableStock: { $gt: 0 } } } };
     } else {
-      const statuses = status.split(',').filter(Boolean);
-      if (statuses.length > 0) filter.status = { $in: statuses };
+      const statuses = status.split(',').filter(Boolean).filter((s) => s !== 'hidden');
+      if (statuses.length > 0) {
+        filter.status = { $in: statuses, $ne: 'hidden' };
+      } else {
+        filter.status = { $ne: 'hidden' };
+      }
     }
   } else {
     // Không truyền status (khách duyệt web mặc định) -> chỉ hiện sản phẩm sẵn sàng cho thuê,
