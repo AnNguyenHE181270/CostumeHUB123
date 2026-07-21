@@ -410,7 +410,6 @@ export default function OrdersPage() {
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="pending">Chờ xử lý</option>
-            <option value="delivered">Đã giao hàng</option>
             <option value="renting">Đang thuê</option>
             <option value="returning">Đang trả hàng</option>
             <option value="completed">Hoàn tất</option>
@@ -645,7 +644,8 @@ export default function OrdersPage() {
           order={inspectReturnOrder}
           onClose={() => setInspectReturnOrder(null)}
           onSuccess={() => {
-            setInspectReturnOrder(null);
+            // Không đóng modal ngay — để staff thấy rõ kết quả (đã hoàn bao nhiêu tiền, đã báo khách)
+            // trước khi tự bấm "Đóng và quay lại". Chỉ làm mới danh sách đơn ở nền.
             fetchOrders();
           }}
         />

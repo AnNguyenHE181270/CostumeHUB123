@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faCloudUploadAlt, faTrash, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import rentalService from "../../services/rental.service";
 import Toast from "../../components/ui/Toast";
+import ConfirmModal from "../../components/ui/ConfirmModal";
 import { formatDate } from "../../utils/formatters";
 
 const DAMAGE_TIERS = [
@@ -22,6 +23,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const selectedTier = DAMAGE_TIERS.find((t) => t.value === damageTier);
 
@@ -48,6 +50,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
 
   const handleSubmit = async () => {
     if (!order) return;
+    setConfirmOpen(false);
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -59,7 +62,14 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
 
       const res = await rentalService.inspectReturn(order._id, formData);
       setResult(res.data);
-      setToast({ show: true, message: "Đã hoàn tất kiểm tra đồ trả!", type: "success" });
+      const netRefund = Math.max(0, (res.data?.refundAmount || 0) - (res.data?.replacementFee || 0));
+      setToast({
+        show: true,
+        message: netRefund > 0
+          ? `Đã chốt đơn và hoàn ${netRefund.toLocaleString("vi-VN")}đ vào ví khách hàng!`
+          : "Đã chốt đơn thành công!",
+        type: "success",
+      });
       if (onSuccess) onSuccess();
     } catch (error) {
       setToast({ show: true, message: error.response?.data?.message || error.message || "Lỗi khi kiểm tra đồ trả", type: "error" });
@@ -147,6 +157,11 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                 )}
                 <div className="flex justify-between pt-1"><span>Số tiền hoàn cọc cho khách:</span> <strong className="text-emerald-600 text-xl font-extrabold">{(result.refundAmount || 0).toLocaleString("vi-VN")} đ</strong></div>
               </div>
+              {Math.max(0, (result.refundAmount || 0) - (result.replacementFee || 0)) > 0 && (
+                <p className="text-emerald-600 font-medium text-sm -mt-4 mb-6">
+                  Đã cộng tiền vào ví khách hàng và gửi thông báo hoàn tất cho khách.
+                </p>
+              )}
               <div>
                 <button
                   onClick={onClose}
@@ -288,7 +303,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                   Hủy bỏ
                 </button>
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => setConfirmOpen(true)}
                   disabled={submitting}
                   className="flex-[2] px-4 py-3.5 bg-gradient-to-r from-[#1a1a1a] to-[#333] text-white rounded-xl text-sm font-bold hover:brightness-110 disabled:opacity-50 transition-all shadow flex items-center justify-center gap-2"
                 >
@@ -299,6 +314,23 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmOpen}
+        zIndex="z-[70]"
+        title="Xác nhận kiểm tra đồ trả"
+        message={
+          <div className="space-y-1.5 text-left">
+            <p>Mức độ hư hỏng đã chọn: <strong>{selectedTier?.title}</strong> ({damagePercent}% cọc)</p>
+            <p>Phí hư hỏng ước tính: <strong>{estimatedDamageFee.toLocaleString("vi-VN")} đ</strong> (chưa gồm phí trễ hạn nếu có)</p>
+            <p className="text-red-600 font-medium pt-1">
+              Sau khi xác nhận, đơn sẽ được chốt hoàn tất và số tiền cọc còn lại sẽ được cộng ngay vào ví khách hàng — không thể hoàn tác.
+            </p>
+          </div>
+        }
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleSubmit}
+      />
+
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       )}

@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCloudUploadAlt, faTrash, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import rentalService from "../../services/rental.service";
 import Toast from "../../components/ui/Toast";
+import ConfirmModal from "../../components/ui/ConfirmModal";
 
 const DAMAGE_TIERS = [
   {
@@ -61,6 +62,7 @@ export default function InspectReturnPage() {
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const selectedTier = DAMAGE_TIERS.find((t) => t.value === damageTier);
 
@@ -105,6 +107,7 @@ export default function InspectReturnPage() {
 
   const handleSubmit = async () => {
     if (!order) return;
+    setConfirmOpen(false);
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -116,7 +119,14 @@ export default function InspectReturnPage() {
 
       const res = await rentalService.inspectReturn(order._id, formData);
       setResult(res.data);
-      setToast({ show: true, message: "Đã hoàn tất kiểm tra đồ trả!", type: "success" });
+      const netRefund = Math.max(0, (res.data?.refundAmount || 0) - (res.data?.replacementFee || 0));
+      setToast({
+        show: true,
+        message: netRefund > 0
+          ? `Đã chốt đơn và hoàn ${netRefund.toLocaleString("vi-VN")}đ vào ví khách hàng!`
+          : "Đã chốt đơn thành công!",
+        type: "success",
+      });
     } catch (error) {
       setToast({ show: true, message: error.response?.data?.message || error.message || "Lỗi khi kiểm tra đồ trả", type: "error" });
     } finally {
@@ -168,6 +178,11 @@ export default function InspectReturnPage() {
               <p>Phí bồi thường vượt cọc: <strong>{result.replacementFee.toLocaleString("vi-VN")} đ</strong></p>
             )}
             <p>Số tiền hoàn cọc cho khách: <strong>{(result.refundAmount || 0).toLocaleString("vi-VN")} đ</strong></p>
+            {Math.max(0, (result.refundAmount || 0) - (result.replacementFee || 0)) > 0 && (
+              <p className="text-emerald-600 font-medium pt-1">
+                Đã cộng tiền vào ví khách hàng và gửi thông báo hoàn tất cho khách.
+              </p>
+            )}
           </div>
           <button
             onClick={() => navigate("/staff/orders")}
@@ -314,7 +329,7 @@ export default function InspectReturnPage() {
               Hủy
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={() => setConfirmOpen(true)}
               disabled={submitting}
               className="flex-1 px-4 py-3 bg-[#1a1a1a] text-white rounded-lg text-sm font-semibold hover:bg-black disabled:opacity-50 transition-colors"
             >
@@ -323,6 +338,22 @@ export default function InspectReturnPage() {
           </div>
         </>
       )}
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Xác nhận kiểm tra đồ trả"
+        message={
+          <div className="space-y-1.5 text-left">
+            <p>Mức độ hư hỏng đã chọn: <strong>{selectedTier?.title}</strong> ({damagePercent}% cọc)</p>
+            <p>Phí hư hỏng ước tính: <strong>{estimatedDamageFee.toLocaleString("vi-VN")} đ</strong> (chưa gồm phí trễ hạn nếu có)</p>
+            <p className="text-red-600 font-medium pt-1">
+              Sau khi xác nhận, đơn sẽ được chốt hoàn tất và số tiền cọc còn lại sẽ được cộng ngay vào ví khách hàng — không thể hoàn tác.
+            </p>
+          </div>
+        }
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleSubmit}
+      />
 
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
