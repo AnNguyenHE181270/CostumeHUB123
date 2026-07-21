@@ -62,6 +62,31 @@ const autoUpdateDeliveredStatus = async () => {
   }
 };
 
+const sendAutoConfirmReminders = async () => {
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const fourHoursAndFifteenMinsAgo = new Date(Date.now() - 4.25 * 60 * 60 * 1000);
+  
+  const rentals = await Rental.find({
+    status: 'delivered',
+    deliveredAt: { $lte: fourHoursAgo, $gt: fourHoursAndFifteenMinsAgo },
+  });
+  
+  for (const rental of rentals) {
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'order_status',
+        title: `Nhắc nhở đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: 'Hệ thống sẽ tự động xác nhận đã nhận hàng trong vòng 1 tiếng nữa nếu bạn không có khiếu nại gì.',
+        link: '/rental-history',
+        relatedId: rental._id,
+      });
+    } catch (err) {
+      console.error('[Notification Error]', err);
+    }
+  }
+};
+
 const getRentalHistory = async (userId) => {
   await autoUpdateDeliveredStatus();
 
@@ -876,4 +901,6 @@ module.exports = {
   extendRental,
   notifyOrderStatus,
   getTopRentedCostumes,
+  autoUpdateDeliveredStatus,
+  sendAutoConfirmReminders,
 };

@@ -86,6 +86,7 @@ const userSchema = new mongoose.Schema(
 
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpire: { type: Date, select: false },
+    resetPasswordCooldownUntil: { type: Date, select: false },
 
     addresses: {
       type: [addressSchema],
