@@ -274,7 +274,8 @@ const forgotPassword = async (email) => {
   user.resetPasswordCooldownUntil = new Date(now.getTime() + 60 * 1000);
   await user.save();
 
-  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
   await sendResetPasswordEmail(email, resetUrl, user.fullName);
 };
 
