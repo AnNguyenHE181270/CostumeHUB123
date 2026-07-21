@@ -25,6 +25,7 @@ export default function AccountDetailPage() {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [avatarFile, setAvatarFile] = useState(null);
 
+  const [initialStatus, setInitialStatus] = useState("");
   const [form, setForm] = useState({
     phone: "",
     email: "",
@@ -42,6 +43,7 @@ export default function AccountDetailPage() {
       setLoadingPage(true);
       setToast({ isVisible: false, message: "", type: "success" });
       const data = await userService.getUserById(id);
+      setInitialStatus(data.user.status);
       setForm({
         phone: data.user.phone,
         email: data.user.email,
@@ -219,7 +221,7 @@ export default function AccountDetailPage() {
                           }`}
                       >
                         <option value="active">Hoạt động (Active)</option>
-                        <option value="pending">Chờ xử lý (Pending)</option>
+                        <option value="pending" disabled={initialStatus !== 'pending'}>Chờ xử lý (Pending)</option>
                         <option value="blocked">Đã khóa (Blocked)</option>
                       </select>
                       <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 ${form.status === "blocked" ? "text-red-500" : "text-[#999]"}`}>

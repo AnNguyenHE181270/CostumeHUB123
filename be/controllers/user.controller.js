@@ -74,8 +74,9 @@ const resetPassword = async (req, res, next) => {
 
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await userService.getAllUsers();
-    res.status(200).json({ users });
+    const { search, role, status, page, limit } = req.query;
+    const result = await userService.getAllUsers({ search, role, status, page, limit });
+    res.status(200).json(result);
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message, 500));
   }
