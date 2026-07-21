@@ -43,7 +43,6 @@ export default function TransactionHistoryPage() {
       case "completed":
         return <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-semibold"><FontAwesomeIcon icon={faCheckCircle} /> Thành công</span>;
       case "pending":
-      case "awaitingPayment":
         return <span className="flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded text-xs font-semibold"><FontAwesomeIcon icon={faClock} /> Đang xử lý</span>;
       case "failed":
       case "cancelled":
