@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const StockTransaction = require('../models/stockTransaction.model');
 const Costume = require('../models/costume.model');
 const HttpError = require('../models/http-error.model');
@@ -9,69 +10,80 @@ const REASONS_BY_TYPE = {
 };
 
 const createStockTransaction = async ({ costumeId, size, type, reason, quantity, note }, userId) => {
+  if (!mongoose.Types.ObjectId.isValid(costumeId)) throw new HttpError('Mã sản phẩm không hợp lệ.', 400);
   if (!['in', 'out'].includes(type)) throw new HttpError('Loại giao dịch không hợp lệ.', 400);
   if (!REASONS_BY_TYPE[type].includes(reason)) throw new HttpError('Lý do không hợp lệ với loại giao dịch này.', 400);
   const qty = Number(quantity);
   if (!Number.isInteger(qty) || qty <= 0) throw new HttpError('Số lượng phải là số nguyên dương.', 400);
 
-  const costume = await Costume.findById(costumeId);
-  if (!costume) throw new HttpError('Không tìm thấy sản phẩm.', 404);
+  // Đọc + kiểm tra tồn kho + trừ/thêm instance + lưu phải nguyên tử trong 1 transaction — tránh 2 người
+  // cùng thao tác Nhập/Xuất kho cùng lúc trên cùng 1 size ghi đè lẫn nhau (lost update).
+  const session = await mongoose.startSession();
+  let transaction, costumeResult, beforeStock, afterStock;
+  try {
+    await session.withTransaction(async () => {
+      const costume = await Costume.findById(costumeId).session(session);
+      if (!costume) throw new HttpError('Không tìm thấy sản phẩm.', 404);
 
-  const variant = costume.variants.find((v) => v.size === size);
-  if (!variant) throw new HttpError(`Sản phẩm không có size ${size}.`, 404);
+      const variant = costume.variants.find((v) => v.size === size);
+      if (!variant) throw new HttpError(`Sản phẩm không có size ${size}.`, 404);
 
-  backfillInstancesFromCounts(variant);
+      backfillInstancesFromCounts(variant);
 
-  const beforeStock = variant.totalStock || 0;
-  const rentedCount = Math.max(0, beforeStock - (variant.availableStock || 0));
+      beforeStock = variant.totalStock || 0;
+      const rentedCount = Math.max(0, beforeStock - (variant.availableStock || 0));
 
-  let afterStock;
-  if (type === 'in') {
-    // Nhập thêm hàng mới -> sinh thêm unit vật lý mới (available) — Case restock.
-    addInstances(variant, qty);
-    afterStock = beforeStock + qty;
-  } else {
-    afterStock = beforeStock - qty;
-    if (afterStock < rentedCount) {
-      throw new HttpError(
-        `Không thể xuất kho ${qty} chiếc — chỉ còn ${beforeStock - rentedCount} chiếc chưa cho thuê (${rentedCount} chiếc đang được khách thuê).`,
-        400
-      );
-    }
-    // Xuất kho (hỏng/mất/điều chỉnh giảm) -> loại vĩnh viễn (retired) đúng N unit đang rảnh, cũ nhất trước.
-    variant.instances
-      .filter((i) => i.status === 'available')
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-      .slice(0, qty)
-      .forEach((inst) => { inst.status = 'retired'; });
+      if (type === 'in') {
+        // Nhập thêm hàng mới -> sinh thêm unit vật lý mới (available) — Case restock.
+        addInstances(variant, qty);
+        afterStock = beforeStock + qty;
+      } else {
+        afterStock = beforeStock - qty;
+        if (afterStock < rentedCount) {
+          throw new HttpError(
+            `Không thể xuất kho ${qty} chiếc — chỉ còn ${beforeStock - rentedCount} chiếc chưa cho thuê (${rentedCount} chiếc đang được khách thuê).`,
+            400
+          );
+        }
+        // Xuất kho (hỏng/mất/điều chỉnh giảm) -> loại vĩnh viễn (retired) đúng N unit đang rảnh, cũ nhất trước.
+        variant.instances
+          .filter((i) => i.status === 'available')
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          .slice(0, qty)
+          .forEach((inst) => { inst.status = 'retired'; });
+      }
+      syncVariantFromInstances(variant);
+
+      // Đồng bộ trạng thái sản phẩm nếu vừa hết/vừa có hàng trở lại (giữ nguyên các trạng thái đang bị khoá thủ công)
+      const lockedStatuses = ['hidden', 'maintenance', 'rented'];
+      const totalAvailable = costume.variants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
+      if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
+        costume.status = 'out_of_stock';
+      } else if (totalAvailable > 0 && costume.status === 'out_of_stock') {
+        costume.status = 'available';
+      }
+
+      await costume.save({ session });
+
+      transaction = new StockTransaction({
+        costumeId,
+        size,
+        type,
+        reason,
+        quantity: qty,
+        note: note || '',
+        beforeStock,
+        afterStock,
+        performedBy: userId,
+      });
+      await transaction.save({ session });
+      costumeResult = costume;
+    });
+  } finally {
+    await session.endSession();
   }
-  syncVariantFromInstances(variant);
 
-  // Đồng bộ trạng thái sản phẩm nếu vừa hết/vừa có hàng trở lại (giữ nguyên các trạng thái đang bị khoá thủ công)
-  const lockedStatuses = ['hidden', 'maintenance', 'rented'];
-  const totalAvailable = costume.variants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
-  if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
-    costume.status = 'out_of_stock';
-  } else if (totalAvailable > 0 && costume.status === 'out_of_stock') {
-    costume.status = 'available';
-  }
-
-  await costume.save();
-
-  const transaction = new StockTransaction({
-    costumeId,
-    size,
-    type,
-    reason,
-    quantity: qty,
-    note: note || '',
-    beforeStock,
-    afterStock,
-    performedBy: userId,
-  });
-  await transaction.save();
-
-  return { transaction, costume };
+  return { transaction, costume: costumeResult };
 };
 
 const getStockHistory = async ({ costumeId, type, reason, page = 1, limit = 20 }) => {

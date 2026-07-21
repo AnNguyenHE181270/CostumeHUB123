@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faChevronRight, faLock, faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import StockTransactionModal from "./StockTransactionModal";
+import { computeVariantBreakdown } from "../../utils/inventoryReport";
 
 const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
   const [txModal, setTxModal] = useState({ open: false, type: "in", variant: null });
@@ -9,9 +10,13 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
   if (!product) return null;
 
   const variants = product.variants || [];
-  const totalStock = variants.reduce((s, v) => s + (v.totalStock || 0), 0);
-  const totalAvail = variants.reduce((s, v) => s + (v.availableStock || 0), 0);
-  const totalRented = totalStock - totalAvail;
+  // Tách riêng "đang thuê" và "đang bảo trì" từ instances[] — trước đây gộp chung bằng
+  // totalStock - availableStock nên unit đang bảo trì bị hiển thị nhầm là "đang thuê".
+  const breakdowns = variants.map((v) => computeVariantBreakdown(v));
+  const totalStock = breakdowns.reduce((s, b) => s + b.total, 0);
+  const totalAvail = breakdowns.reduce((s, b) => s + b.available, 0);
+  const totalRented = breakdowns.reduce((s, b) => s + b.rented, 0);
+  const totalMaintenance = breakdowns.reduce((s, b) => s + b.maintenance, 0);
 
   const openTx = (type, variant) => setTxModal({ open: true, type, variant });
   const closeTx = () => setTxModal((prev) => ({ ...prev, open: false }));
@@ -56,8 +61,8 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
           </div>
         </div>
 
-        {/* ── Aggregate 3-stat bar ── */}
-        <div className="grid grid-cols-3 border-b border-gray-100 flex-shrink-0">
+        {/* ── Aggregate stat bar ── */}
+        <div className="grid grid-cols-4 border-b border-gray-100 flex-shrink-0">
           <div className="text-center py-3 border-r border-gray-100">
             <p className="text-xl font-bold text-[#1a1a1a]">{totalStock}</p>
             <p className="text-[11px] text-gray-400 mt-0.5">Tổng kho</p>
@@ -66,11 +71,17 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
             <p className="text-xl font-bold text-emerald-600">{totalAvail}</p>
             <p className="text-[11px] text-gray-400 mt-0.5">Sẵn sàng</p>
           </div>
-          <div className="text-center py-3">
+          <div className="text-center py-3 border-r border-gray-100">
             <p className={`text-xl font-bold ${totalRented > 0 ? "text-orange-500" : "text-gray-300"}`}>
               {totalRented}
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">Đang thuê</p>
+          </div>
+          <div className="text-center py-3">
+            <p className={`text-xl font-bold ${totalMaintenance > 0 ? "text-amber-600" : "text-gray-300"}`}>
+              {totalMaintenance}
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Bảo trì</p>
           </div>
         </div>
 
@@ -85,11 +96,9 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
               Sản phẩm này chưa có biến thể nào
             </div>
           ) : (
-            variants.map((v) => {
+            variants.map((v, idx) => {
               const vid = v._id?.toString();
-              const vTotal = v.totalStock || 0;
-              const vAvail = v.availableStock || 0;
-              const vRented = Math.max(0, vTotal - vAvail);
+              const { total: vTotal, available: vAvail, rented: vRented, maintenance: vMaintenance } = breakdowns[idx];
 
               return (
                 <div key={vid} className="border border-gray-200 rounded-xl p-4 bg-white">
@@ -100,8 +109,8 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
                     </span>
                   </div>
 
-                  {/* 3 micro-stats */}
-                  <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+                  {/* 4 micro-stats */}
+                  <div className="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
                     <div className="bg-gray-50 rounded-lg py-2 px-1">
                       <p className="font-bold text-[#1a1a1a] text-sm">{vTotal}</p>
                       <p className="text-gray-400 mt-0.5 leading-tight">Tổng kho</p>
@@ -116,14 +125,23 @@ const InventoryDetailDrawer = ({ product, onClose, onSaved, showToast }) => {
                       </p>
                       <p className="text-gray-400 mt-0.5 leading-tight">Đang thuê</p>
                     </div>
+                    <div className={`rounded-lg py-2 px-1 ${vMaintenance > 0 ? "bg-amber-50" : "bg-gray-50"}`}>
+                      <p className={`font-bold text-sm ${vMaintenance > 0 ? "text-amber-600" : "text-gray-300"}`}>
+                        {vMaintenance}
+                      </p>
+                      <p className="text-gray-400 mt-0.5 leading-tight">Bảo trì</p>
+                    </div>
                   </div>
 
-                  {/* Rented lock notice */}
-                  {vRented > 0 && (
+                  {/* Rented/maintenance lock notice — cả 2 loại đều không thể xuất qua thao tác này */}
+                  {(vRented > 0 || vMaintenance > 0) && (
                     <div className="flex items-center gap-1.5 mb-3 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
                       <FontAwesomeIcon icon={faLock} className="text-[10px] flex-shrink-0" />
                       <span>
-                        <strong>{vRented}</strong> chiếc đang được khách thuê — chỉ có thể xuất tối đa <strong>{vAvail}</strong> chiếc
+                        {vRented > 0 && <><strong>{vRented}</strong> chiếc đang được khách thuê</>}
+                        {vRented > 0 && vMaintenance > 0 && ', '}
+                        {vMaintenance > 0 && <><strong>{vMaintenance}</strong> chiếc đang bảo trì</>}
+                        {' '}— chỉ có thể xuất tối đa <strong>{vAvail}</strong> chiếc
                       </span>
                     </div>
                   )}

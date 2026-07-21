@@ -153,19 +153,25 @@ const getInventoryDetailReport = async () => {
   const costumes = await Costume.find({}, 'name variants categoryId').populate('categoryId', 'name');
 
   const rows = [];
-  let grandTotal = 0, grandAvailable = 0, grandRented = 0;
+  let grandTotal = 0, grandAvailable = 0, grandRented = 0, grandMaintenance = 0;
 
   costumes.forEach(c => {
     const variants = c.variants && c.variants.length > 0 ? c.variants : [];
     variants.forEach(v => {
       const total = v.totalStock || 0;
       const available = v.availableStock || 0;
-      const rented = Math.max(0, total - available);
+      const hasInstances = v.instances && v.instances.length > 0;
+      // Tách riêng "đang thuê" và "đang bảo trì" từ instances[] (nguồn sự thật) — trước đây gộp chung
+      // thành "total - available" khiến số liệu "Đang thuê" bị tính luôn cả unit đang bảo trì, không
+      // khớp với chỉ số "currentlyRented" ở dashboard (chỉ tính unit thực sự gắn với đơn thuê đang hoạt động).
+      const rented = hasInstances ? v.instances.filter((i) => i.status === 'rented').length : Math.max(0, total - available);
+      const maintenance = hasInstances ? v.instances.filter((i) => i.status === 'maintenance').length : 0;
       const utilPct = total > 0 ? ((rented / total) * 100).toFixed(1) : '0.0';
 
       grandTotal += total;
       grandAvailable += available;
       grandRented += rented;
+      grandMaintenance += maintenance;
 
       rows.push({
         name: c.name || '',
@@ -175,6 +181,7 @@ const getInventoryDetailReport = async () => {
         totalStock: total,
         availableStock: available,
         rentedStock: rented,
+        maintenanceStock: maintenance,
         utilizationPct: parseFloat(utilPct),
         status: v.status || 'unknown',
       });
@@ -185,7 +192,7 @@ const getInventoryDetailReport = async () => {
   const hotCold = [...rows].sort((a, b) => b.rentedStock - a.rentedStock);
 
   return {
-    summary: { grandTotal, grandAvailable, grandRented },
+    summary: { grandTotal, grandAvailable, grandRented, grandMaintenance },
     rows,
     hotCostumes: hotCold.slice(0, 10),
     coldCostumes: hotCold.slice(-10).reverse(),

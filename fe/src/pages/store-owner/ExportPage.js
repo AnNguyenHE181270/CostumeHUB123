@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
 import costumeService from "../../services/costume.service";
+import { exportInventoryExcelFile } from "../../utils/inventoryReport";
 
 const DATE_RANGE_OPTIONS = ["Tất cả thời gian", "Hôm nay", "7 ngày qua", "30 ngày qua", "Tháng này"];
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
@@ -18,12 +19,6 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:9999";
 const fmtVND = (n) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n || 0);
 const fmtNum = (n) => new Intl.NumberFormat("vi-VN").format(n || 0);
 const fmtPct = (n) => `${parseFloat(n || 0).toFixed(1)}%`;
-
-const COSTUME_STATUS_LABEL = {
-  available: "Còn hàng", rented: "Đang thuê",
-  maintenance: "Bảo trì", dry_cleaning: "Bảo trì",
-  hidden: "Đang ẩn", out_of_stock: "Hết hàng",
-};
 
 export default function ExportPage() {
   const { token } = useAuth();
@@ -469,37 +464,7 @@ export default function ExportPage() {
     setInventoryExporting(true);
     try {
       const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden" });
-      const products = data.costumes || [];
-      const detailRows = [];
-      let tStock = 0, tAvail = 0, tRented = 0;
-      products.forEach(p => {
-        const variants = p.variants?.length > 0 ? p.variants : [{}];
-        variants.forEach(v => {
-          const s = v.totalStock || 0, a = v.availableStock || 0, r = Math.max(0, s - a);
-          tStock += s; tAvail += a; tRented += r;
-          detailRows.push({
-            "Tên sản phẩm": p.name || "", "Danh mục": p.categoryId?.name || "",
-            "Size": v.size || "—", "SKU": v.sku || "—",
-            "Tổng kho": s, "Sẵn sàng": a, "Đang thuê": r,
-            "Tỷ lệ khai thác": s > 0 ? `${((r / s) * 100).toFixed(1)}%` : "0%",
-            "Trạng thái": COSTUME_STATUS_LABEL[v.status || p.status] || "",
-          });
-        });
-      });
-      const currentDate = new Date().toLocaleString("vi-VN");
-      const wb = XLSX.utils.book_new();
-      const wsSummary = XLSX.utils.aoa_to_sheet([
-        ["BÁO CÁO TỒN KHO CHI TIẾT - COSTUMEHUB"],
-        [`Ngày trích xuất: ${currentDate}`], [],
-        ["Tổng sản phẩm", products.length], ["Tổng kho", tStock],
-        ["Sẵn sàng", tAvail], ["Đang thuê", tRented],
-      ]);
-      wsSummary["!cols"] = [{ wch: 28 }, { wch: 14 }];
-      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
-      wsDetail["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 8 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Tong quan");
-      XLSX.utils.book_append_sheet(wb, wsDetail, "Chi tiet tung size");
-      XLSX.writeFile(wb, `Bao_cao_ton_kho_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      exportInventoryExcelFile(data.costumes || []);
       setToast({ isVisible: true, type: "success", message: "Xuất Excel tồn kho thành công!" });
     } catch {
       setToast({ isVisible: true, type: "error", message: "Lỗi xuất tồn kho." });

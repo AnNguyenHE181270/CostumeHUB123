@@ -7,6 +7,8 @@ import {
   faChevronRight,
   faWarehouse,
   faClockRotateLeft,
+  faFileExcel,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import Input from "../../components/ui/Input";
 import Pagination from "../../components/ui/Pagination";
@@ -15,6 +17,7 @@ import DataTable from "../../components/ui/DataTable";
 import InventoryDetailDrawer from "../../components/store-owner/InventoryDetailDrawer";
 import StockHistoryPanel from "../../components/store-owner/StockHistoryPanel";
 import costumeService from "../../services/costume.service";
+import { computeVariantBreakdown, exportInventoryExcelFile } from "../../utils/inventoryReport";
 const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
@@ -27,6 +30,7 @@ export default function InventoryPage() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+  const [exporting, setExporting] = useState(false);
 
   const showToast = (message, type = "success") =>
     setToast({ isVisible: true, message, type });
@@ -45,16 +49,22 @@ export default function InventoryPage() {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // Enrich each product with aggregate inventory numbers
+  // Enrich each product with aggregate inventory numbers — tách riêng "đang thuê" và "đang bảo trì"
+  // từ instances[] (nguồn sự thật), thay vì gộp chung thành totalStock - availableStock như trước
+  // (khiến unit đang bảo trì bị đếm nhầm là "đang thuê").
   const enriched = useMemo(() => products.map(p => {
     const variants = p.variants || [];
-    const totalStock = variants.reduce((s, v) => s + (v.totalStock || 0), 0);
-    const availStock = variants.reduce((s, v) => s + (v.availableStock || 0), 0);
+    let totalStock = 0, availStock = 0, rentedStock = 0, maintenanceStock = 0;
+    variants.forEach((v) => {
+      const b = computeVariantBreakdown(v);
+      totalStock += b.total; availStock += b.available; rentedStock += b.rented; maintenanceStock += b.maintenance;
+    });
     return {
       ...p,
       _totalStock: totalStock,
       _availStock: availStock,
-      _rentedStock: totalStock - availStock,
+      _rentedStock: rentedStock,
+      _maintenanceStock: maintenanceStock,
       _sizeCount: variants.length,
       _isOutOfStock: availStock === 0 && totalStock > 0,
       _isEmpty: totalStock === 0,
@@ -96,29 +106,60 @@ export default function InventoryPage() {
     setHistoryRefreshKey((k) => k + 1); // history tab refetches next time it's visible
   };
 
+  // Xuất báo cáo tồn kho ngay từ dữ liệu đang hiển thị trên màn hình (không gọi lại API) — đảm bảo
+  // số liệu trong file Excel luôn khớp 100% với những gì chủ shop đang thấy trên trang này.
+  const handleExportInventory = () => {
+    if (products.length === 0) {
+      showToast("Chưa có dữ liệu để xuất báo cáo.", "error");
+      return;
+    }
+    setExporting(true);
+    try {
+      exportInventoryExcelFile(products);
+      showToast("Xuất báo cáo tồn kho thành công!");
+    } catch {
+      showToast("Lỗi khi xuất báo cáo tồn kho.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
 
       {/* ── Tabs ── */}
-      <div className="flex gap-2 border-b border-[#eaeaea]">
-        <button
-          onClick={() => setTab("stock")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            tab === "stock" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <FontAwesomeIcon icon={faWarehouse} className="text-xs" />
-          Tồn kho
-        </button>
-        <button
-          onClick={() => setTab("history")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            tab === "history" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <FontAwesomeIcon icon={faClockRotateLeft} className="text-xs" />
-          Lịch sử Nhập/Xuất
-        </button>
+      <div className="flex items-center justify-between gap-2 border-b border-[#eaeaea]">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTab("stock")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === "stock" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            <FontAwesomeIcon icon={faWarehouse} className="text-xs" />
+            Tồn kho
+          </button>
+          <button
+            onClick={() => setTab("history")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === "history" ? "border-[#1a1a1a] text-[#1a1a1a]" : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            <FontAwesomeIcon icon={faClockRotateLeft} className="text-xs" />
+            Lịch sử Nhập/Xuất
+          </button>
+        </div>
+        {tab === "stock" && (
+          <button
+            type="button"
+            onClick={handleExportInventory}
+            disabled={exporting}
+            className="mb-2 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FontAwesomeIcon icon={exporting ? faSpinner : faFileExcel} spin={exporting} className="text-xs" />
+            {exporting ? "Đang xuất..." : "Xuất báo cáo tồn kho"}
+          </button>
+        )}
       </div>
 
       {tab === "history" ? (
@@ -211,6 +252,9 @@ export default function InventoryPage() {
             <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
               Đang thuê
             </th>
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+              Đang bảo trì
+            </th>
             <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">
               Chi tiết
             </th>
@@ -284,6 +328,13 @@ export default function InventoryPage() {
               <td className="py-4 px-6 text-center">
                 <span className={`font-medium text-sm ${product._rentedStock > 0 ? "text-orange-500" : "text-[#ccc]"}`}>
                   {product._rentedStock > 0 ? product._rentedStock : "—"}
+                </span>
+              </td>
+
+              {/* Maintenance */}
+              <td className="py-4 px-6 text-center">
+                <span className={`font-medium text-sm ${product._maintenanceStock > 0 ? "text-amber-600" : "text-[#ccc]"}`}>
+                  {product._maintenanceStock > 0 ? product._maintenanceStock : "—"}
                 </span>
               </td>
 
