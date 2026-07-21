@@ -2,6 +2,8 @@ const cron = require('node-cron');
 const User = require('../models/user.model');
 const Rental = require('../models/rental.model');
 const notificationService = require('./notification.service');
+const { autoUpdateDeliveredStatus, sendAutoConfirmReminders } = require('./rental.service');
+const TransactionHistory = require('../models/transactionHistory.model');
 
 const cleanupPendingUsers = async () => {
   console.log(" Đang chạy dọn dẹp tài khoản rác...");
@@ -23,6 +25,31 @@ const cleanupPendingUsers = async () => {
     }
   } catch (error) {
     console.error("Lỗi khi chạy dọn dẹp tài khoản rác:", error);
+  }
+};
+
+const cleanupPendingTransactions = async () => {
+  console.log(" Đang dọn dẹp các giao dịch VNPay treo (quá hạn)...");
+  try {
+    // VNPay link hết hạn sau 15 phút, ta lấy 20 phút cho an toàn
+    const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000);
+    const result = await TransactionHistory.updateMany(
+      {
+        status: "pending",
+        createdAt: { $lt: twentyMinsAgo }
+      },
+      {
+        $set: { status: "cancelled" }
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      console.log(`Đã tự động hủy ${result.modifiedCount} giao dịch VNPay quá hạn.`);
+    } else {
+      console.log(`Không có giao dịch VNPay nào quá hạn cần hủy.`);
+    }
+  } catch (error) {
+    console.error("Lỗi khi hủy giao dịch VNPay quá hạn:", error);
   }
 };
 
@@ -65,10 +92,22 @@ const checkOverdueRentals = async () => {
 
 const startCronJobs = () => {
   cleanupPendingUsers();
-  checkOverdueRentals(); 
+  cleanupPendingTransactions();
+  checkOverdueRentals();
+  autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
+  sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
 
   cron.schedule('0 0 * * *', cleanupPendingUsers);
-  cron.schedule('0 0 * * *', checkOverdueRentals);
+  // Quét đơn quá hạn và đơn đã giao mỗi 15 phút thay vì chỉ 1 lần/ngày lúc 0h — tránh đơn quá hạn
+  // buổi sáng phải chờ tới nửa đêm hôm sau mới được đánh dấu, và tự xác nhận "đã nhận hàng" đúng giờ hơn.
+  cron.schedule('*/15 * * * *', checkOverdueRentals);
+  cron.schedule('*/15 * * * *', () => {
+    autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
+  });
+  cron.schedule('*/15 * * * *', () => {
+    sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
+  });
+  cron.schedule('*/15 * * * *', cleanupPendingTransactions);
 
   console.log("Cron jobs initialized.");
 };

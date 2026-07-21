@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,18 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [countdown, setCountdown] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleChange = (e) => {
     setEmail(e.target.value);
@@ -28,6 +39,7 @@ export default function ForgotPasswordPage() {
       setError("");
       await userService.forgotPassword(email);
       setSuccessMessage(`Chúng tôi đã gửi liên kết đặt lại mật khẩu đến ${email}`);
+      setCountdown(60);
     } catch (err) {
       setError(err.message || "Yêu cầu thất bại.");
     } finally {
@@ -61,12 +73,25 @@ export default function ForgotPasswordPage() {
             <div className="bg-success-50 border border-success-100 text-success-600 p-4 rounded-xl text-sm leading-relaxed">
               {successMessage}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              label="Quay lại Đăng nhập"
-              onClick={() => navigate(ROUTES.LOGIN)}
-            />
+
+            {error && <ErrorMessage message={error} />}
+
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                variant="primary"
+                label={countdown > 0 ? `Gửi lại liên kết (${countdown}s)` : "Gửi lại liên kết"}
+                onClick={handleSubmit}
+                disabled={countdown > 0 || loading}
+                loading={loading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                label="Quay lại Đăng nhập"
+                onClick={() => navigate(ROUTES.LOGIN)}
+              />
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">

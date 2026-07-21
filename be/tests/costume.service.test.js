@@ -189,7 +189,7 @@ describe('getAllCostumes', () => {
 
     await getAllCostumes({});
 
-    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+    assert.strictEqual(mockData.costumeFilter.status, 'available');
     assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
   });
 });

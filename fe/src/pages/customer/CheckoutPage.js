@@ -21,6 +21,7 @@ import Button from "../../components/ui/Button";
 import Radio from "../../components/ui/Radio";
 import Input from "../../components/ui/Input";
 import Toast from "../../components/ui/Toast";
+import QuickTopUpModal from "../../components/customer/QuickTopUpModal";
 import { formatPrice, formatDateNoHours, getRentalDays, getRentalPriceFactor } from "../../utils/formatters";
 import rentalService from "../../services/rental.service";
 
@@ -41,6 +42,7 @@ export function Checkout() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [deliveryEstimate, setDeliveryEstimate] = useState({ loading: false, date: null, isLate: false });
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -105,6 +107,10 @@ export function Checkout() {
 
   const deliveryFee = 0; // Miễn phí giao hàng trọn gói
   const total = totalRental + totalDeposit + deliveryFee;
+
+  // Phát hiện sớm số dư ví không đủ ngay khi vào Checkout, thay vì đợi khách bấm xác nhận mới báo.
+  const walletBalance = user?.balance || 0;
+  const walletShortfall = paymentMethod === "WALLET" ? Math.max(0, total - walletBalance) : 0;
 
   // Hiện ngay dự kiến giao hàng GHN khi đã có địa chỉ + ngày nhận, không đợi tới lúc ấn xác nhận đặt thuê.
   useEffect(() => {
@@ -527,7 +533,35 @@ export function Checkout() {
                 </div>
               </label>
             </div>
+
+            {walletShortfall > 0 && (
+              <div className="mt-4 p-4 rounded-2xl border border-red-200 bg-red-50 flex items-center justify-between">
+                <div className="text-red-700 text-[13px]">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <FontAwesomeIcon icon={faTriangleExclamation} className="text-red-600" />
+                    Số dư ví không đủ
+                  </div>
+                  Bạn cần nạp thêm <span className="font-bold">{formatPrice(walletShortfall)}</span> để có thể đặt thuê.
+                </div>
+                <Button
+                  onClick={() => setShowTopUpModal(true)}
+                  className="bg-red-600 text-white text-[12px] h-9 px-4 rounded-xl font-bold hover:bg-red-700 transition-colors"
+                >
+                  Nạp Nhanh
+                </Button>
+              </div>
+            )}
           </div>
+
+          <QuickTopUpModal
+            isOpen={showTopUpModal}
+            onClose={() => setShowTopUpModal(false)}
+            requiredAmount={walletShortfall}
+            onSuccess={() => {
+              setShowTopUpModal(false);
+              showToast("Nạp tiền thành công! Bạn có thể tiếp tục đặt thuê.", "success");
+            }}
+          />
 
           {/* RIGHT: Order Summary Box */}
           <div className="w-full lg:w-1/3 bg-[#faf6f0]/90 rounded-3xl border border-[#e6dcab] p-6 mt-12 lg:p-8 shadow-md sticky top-[100px] space-y-6">
@@ -582,10 +616,17 @@ export function Checkout() {
               <Button
                 onClick={handleCheckout}
                 loading={isLoading}
+                disabled={isLoading || walletShortfall > 0}
                 className="w-full py-4 rounded-2xl text-[12px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 border border-[#c9a869]/40 luxury-btn-gold-shine"
               >
-                {isLoading ? "Đang xử lý tạo đơn..." : "Xác Nhận Đặt Thuê Ngay"}
-                {!isLoading && <FontAwesomeIcon icon={faArrowRight} className="text-[12px] text-[#d4af37]" />}
+                {isLoading
+                  ? "Đang xử lý tạo đơn..."
+                  : walletShortfall > 0
+                  ? "Số Dư Không Đủ — Vui Lòng Nạp Thêm"
+                  : "Xác Nhận Đặt Thuê Ngay"}
+                {!isLoading && walletShortfall === 0 && (
+                  <FontAwesomeIcon icon={faArrowRight} className="text-[12px] text-[#d4af37]" />
+                )}
               </Button>
 
               <div className="mt-5 pt-4 border-t border-[#e6dcab] space-y-2">

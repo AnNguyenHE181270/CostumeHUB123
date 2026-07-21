@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const topUpTransactionSchema = new mongoose.Schema(
+const transactionHistorySchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -22,8 +22,9 @@ const topUpTransactionSchema = new mongoose.Schema(
       default: "pending",
     },
     vnpayInfo: {
-      type: Object,
-      default: {},
+      type: String,
+      default: "",
+      select: false,
     },
   },
   {
@@ -31,4 +32,4 @@ const topUpTransactionSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("TopUpTransaction", topUpTransactionSchema);
+module.exports = mongoose.model("TransactionHistory", transactionHistorySchema);

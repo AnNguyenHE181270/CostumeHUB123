@@ -1,7 +1,6 @@
 const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
 const User = require('../models/user.model');
-const Role = require('../models/role.model');
 const Issue = require('../models/issue.model');
 const Cart = require('../models/cart.model');
 const HttpError = require('../models/http-error.model');
@@ -60,6 +59,31 @@ const autoUpdateDeliveredStatus = async () => {
     rental.rentingAt = new Date(rental.deliveredAt.getTime() + 5 * 60 * 60 * 1000);
     await rental.save();
     await notifyOrderStatus(rental, 'renting');
+  }
+};
+
+const sendAutoConfirmReminders = async () => {
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const fourHoursAndFifteenMinsAgo = new Date(Date.now() - 4.25 * 60 * 60 * 1000);
+  
+  const rentals = await Rental.find({
+    status: 'delivered',
+    deliveredAt: { $lte: fourHoursAgo, $gt: fourHoursAndFifteenMinsAgo },
+  });
+  
+  for (const rental of rentals) {
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'order_status',
+        title: `Nhắc nhở đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: 'Hệ thống sẽ tự động xác nhận đã nhận hàng trong vòng 1 tiếng nữa nếu bạn không có khiếu nại gì.',
+        link: '/rental-history',
+        relatedId: rental._id,
+      });
+    } catch (err) {
+      console.error('[Notification Error]', err);
+    }
   }
 };
 
@@ -145,72 +169,6 @@ const getOrderDetail = async (orderId, customerId) => {
   };
 };
 
-// Gọi GHN để lấy ngày dự kiến giao hàng tới 1 địa chỉ (không so sánh, không chặn đơn).
-// Dùng chung cho cả bước hiển thị sớm (ngay khi có địa chỉ) lẫn bước chặn đơn lúc tạo order.
-// Trả về null nếu thiếu districtId/wardCode hoặc GHN không phản hồi được — không throw.
-const estimateDeliveryDate = async (districtId, wardCode) => {
-  if (!districtId || !wardCode) return null;
-
-  try {
-    const services = await ghnService.getAvailableServices(ghnService.SHOP_ORIGIN.district_id, districtId);
-    const service = services.find((s) => s.service_type_id === 2) || services[0];
-    if (!service) return null;
-
-    const leadtime = await ghnService.getLeadTime({
-      fromDistrictId: ghnService.SHOP_ORIGIN.district_id,
-      fromWardCode: ghnService.SHOP_ORIGIN.ward_code,
-      toDistrictId: districtId,
-      toWardCode: wardCode,
-      serviceId: service.service_id,
-    });
-
-    return leadtime?.leadtime_order?.to_estimate_date ? new Date(leadtime.leadtime_order.to_estimate_date) : null;
-  } catch (error) {
-    console.error('[GHN Estimate Error]', error.message);
-    return null;
-  }
-};
-
-// So sánh ngày khách chọn nhận hàng với ngày GHN dự kiến giao được tới địa chỉ đó.
-// Chỉ áp dụng cho đơn giao hàng (có districtId/wardCode); đơn nhận tại cửa hàng bỏ qua.
-// Lỗi kết nối GHN không chặn luồng đặt đơn — chỉ chặn khi xác định rõ ngày chọn không khả thi.
-const checkDeliveryFeasibility = async (shippingAddress, startDate) => {
-  if (!shippingAddress?.districtId || !shippingAddress?.wardCode) return;
-
-  try {
-    const estimatedDeliveryDate = await estimateDeliveryDate(shippingAddress.districtId, shippingAddress.wardCode);
-    if (!estimatedDeliveryDate) return;
-
-    if (new Date(startDate) < estimatedDeliveryDate) {
-      const formattedDate = estimatedDeliveryDate.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-      throw new HttpError(
-        `Đơn hàng của bạn dự kiến được giao vào ${formattedDate}, hãy lựa chọn lại thời gian nhận cho phù hợp để được hỗ trợ tốt nhất.`,
-        400,
-        { estimatedDeliveryDate: estimatedDeliveryDate.toISOString() }
-      );
-    }
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    console.error('[GHN Feasibility Check Error]', error.message);
-  }
-};
-
-// API công khai cho FE: hiển thị ngày dự kiến giao ngay khi khách có địa chỉ (chưa cần chọn ngày thuê).
-const getDeliveryEstimate = async (districtId, wardCode) => {
-  if (!districtId || !wardCode) {
-    throw new HttpError('Thiếu thông tin quận/huyện hoặc phường/xã.', 400);
-  }
-  const estimatedDeliveryDate = await estimateDeliveryDate(districtId, wardCode);
-  if (!estimatedDeliveryDate) {
-    throw new HttpError('Không thể lấy thông tin dự kiến giao hàng lúc này.', 502);
-  }
-  return { estimatedDeliveryDate: estimatedDeliveryDate.toISOString() };
-};
-
 const createOrder = async (customerId, body) => {
   const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod } = body;
 
@@ -229,8 +187,6 @@ const createOrder = async (customerId, body) => {
     throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
   }
 
-  await checkDeliveryFeasibility(shippingAddress, startDate);
-
   let totalRentalPrice = 0;
   let totalDeposit = 0;
   const formattedItems = [];
@@ -241,15 +197,41 @@ const createOrder = async (customerId, body) => {
     if (!costume) throw new HttpError('Costume not found.', 404);
 
     const minDays = costume.minRentalDays || 1;
-    if (rentalDays > minDays) {
+    if (rentalDays < minDays) {
       throw new HttpError(
-        `Chỉ được thuê tối đa ${minDays} ngày.`,
+        `Phải thuê tối thiểu ${minDays} ngày.`,
         400
       );
     }
 
     const variant = costume.variants.find((v) => v.size === item.size);
     if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
+
+    // Tính tổng số lượng đã được đặt (đơn đang hoạt động) trùng khoảng ngày yêu cầu,
+    // thay vì chặn tuyệt đối chỉ vì trùng costume+size+khoảng ngày.
+    const overlappingOrders = await Rental.find({
+      'items.costume': item.costume,
+      'items.size': item.size,
+      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
+      startDate: { $lte: new Date(endDate) },
+      endDate: { $gte: new Date(startDate) },
+    });
+    let bookedQty = 0;
+    overlappingOrders.forEach((order) => {
+      order.items.forEach((oi) => {
+        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
+          bookedQty += oi.quantity;
+        }
+      });
+    });
+
+    if (bookedQty + item.quantity > variant.totalStock) {
+      throw new HttpError(
+        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
+        400
+      );
+    }
+
     const depositPrice = costume.deposit || costume.price || 0;
     const priceFactor = getRentalPriceFactor(rentalDays);
     totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
@@ -265,45 +247,34 @@ const createOrder = async (customerId, body) => {
     costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
   }
 
+  for (const update of costumesToUpdate) {
+    update.variant.availableStock -= update.quantityToDeduct;
+    await update.costume.save();
+  }
+
   const totalAmount = totalRentalPrice + totalDeposit + shippingFee;
 
-  // Trừ kho, trừ ví và tạo đơn phải nguyên tử: nếu số dư không đủ hoặc lưu đơn lỗi
-  // giữa chừng, phải rollback kho/ví — tránh trừ tiền/trừ kho mà không có đơn nào được tạo.
-  const session = await mongoose.startSession();
-  let newOrder;
-  try {
-    await session.withTransaction(async () => {
-      for (const update of costumesToUpdate) {
-        update.variant.availableStock -= update.quantityToDeduct;
-        await update.costume.save({ session });
-      }
+  const user = await User.findById(customerId);
+  if (!user) throw new HttpError('Người dùng không tồn tại', 404);
+  if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
 
-      const user = await User.findById(customerId).session(session);
-      if (!user) throw new HttpError('Người dùng không tồn tại', 404);
-      if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
+  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalAmount } });
 
-      user.balance -= totalAmount;
-      await user.save({ session });
-
-      newOrder = new Rental({
-        customerId,
-        items: formattedItems,
-        startDate,
-        endDate,
-        shippingFee,
-        paymentMethod: 'WALLET',
-        paymentStatus: 'paid',
-        shippingAddress,
-        totalRentalPrice,
-        totalDeposit,
-        totalAmount,
-        status: 'pending',
-      });
-      await newOrder.save({ session });
-    });
-  } finally {
-    await session.endSession();
-  }
+  const newOrder = new Rental({
+    customerId,
+    items: formattedItems,
+    startDate,
+    endDate,
+    shippingFee,
+    paymentMethod: 'WALLET',
+    paymentStatus: 'paid',
+    shippingAddress,
+    totalRentalPrice,
+    totalDeposit,
+    totalAmount,
+    status: 'pending',
+  });
+  await newOrder.save();
 
   try {
     await notificationService.createNotification({
@@ -354,11 +325,7 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
   await order.save();
   await notifyOrderStatus(order, 'cancelled');
 
-  const user = await User.findById(customerId);
-  if (user) {
-    user.balance = (user.balance || 0) + order.totalAmount;
-    await user.save();
-  }
+  await User.updateOne({ _id: customerId }, { $inc: { balance: order.totalAmount } });
 
   for (const item of order.items) {
     const costume = await Costume.findById(item.costume);
@@ -447,7 +414,7 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
 const getAllOrders = async (startDate, endDate) => {
   return Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
-    .populate('items.costume', 'name images minRentalDays')
+    .populate('items.costume', 'name images')
     .sort({ createdAt: -1 });
 };
 
@@ -461,11 +428,7 @@ const updateOrderStatus = async (id, status) => {
     }
 
     // 1. Hoàn tiền ví
-    const user = await User.findById(order.customerId);
-    if (user) {
-      user.balance = (user.balance || 0) + order.totalAmount;
-      await user.save();
-    }
+    await User.updateOne({ _id: order.customerId }, { $inc: { balance: order.totalAmount } });
 
     // 2. Hoàn trả tồn kho trang phục
     for (const item of order.items) {
@@ -566,10 +529,10 @@ const confirmPreparation = async (id) => {
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
-    order.status = 'renting';
+    order.status = 'delivering';
     await order.save();
-    await notifyOrderStatus(order, 'renting');
-    return { message: 'Đơn nhận tại cửa hàng đã chuyển sang trạng thái đang thuê.', order };
+    await notifyOrderStatus(order, 'delivering');
+    return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
   }
 };
 
@@ -779,11 +742,7 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
 
-  const user = await User.findById(rental.customerId);
-  if (user) {
-    user.balance = (user.balance || 0) + refundAmount - replacementFee;
-    await user.save();
-  }
+  await User.updateOne({ _id: rental.customerId }, { $inc: { balance: refundAmount - replacementFee } });
 
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
@@ -889,8 +848,7 @@ const extendRental = async (id, customerId, newEndDate) => {
     };
   }
 
-  user.balance -= totalExtendCost;
-  await user.save();
+  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalExtendCost } });
 
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
@@ -900,6 +858,8 @@ const extendRental = async (id, customerId, newEndDate) => {
   return { success: true, message: 'Gia hạn thuê và thanh toán thành công.', order: rental };
 };
 
+// Top N sản phẩm được thuê nhiều nhất, tính từ số liệu đơn thuê thực tế (không tính đơn đã hủy)
+// — dùng cho mục "Khoảnh Khắc Tỏa Sáng" ở trang chủ.
 const getTopRentedCostumes = async (limit = 3) => {
   const limitNum = Math.max(1, Math.min(10, parseInt(limit) || 3));
 
@@ -923,195 +883,6 @@ const getTopRentedCostumes = async (limit = 3) => {
     .filter(Boolean);
 };
 
-const updateRentalDates = async (id, { startDate, endDate }) => {
-  const rental = await Rental.findById(id).populate('items.costume');
-  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
-
-  if (rental.status !== 'pending') {
-    throw new HttpError('Chỉ có thể thay đổi ngày thuê cho đơn hàng đang chờ xử lý.', 400);
-  }
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const originalStart = new Date(rental.startDate);
-  originalStart.setHours(0, 0, 0, 0);
-
-  if (start < today && start.getTime() !== originalStart.getTime()) {
-    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
-  }
-
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (rentalDays <= 0) {
-    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
-  }
-
-  for (const item of rental.items) {
-    const costume = item.costume;
-    if (!costume) throw new HttpError('Sản phẩm trong đơn hàng không tồn tại.', 404);
-
-    const minDays = costume.minRentalDays || 1;
-    if (rentalDays > minDays) {
-      throw new HttpError(`Sản phẩm ${costume.name} chỉ cho phép thuê tối đa ${minDays} ngày.`, 400);
-    }
-  }
-
-  // Recalculate price
-  let totalRentalPrice = 0;
-  for (const item of rental.items) {
-    const priceFactor = getRentalPriceFactor(rentalDays);
-    totalRentalPrice += (item.rentalPricePerDay * priceFactor) * item.quantity;
-  }
-
-  const difference = totalRentalPrice - rental.totalRentalPrice;
-  const totalAmount = rental.totalAmount + difference;
-
-  if (difference !== 0) {
-    const user = await User.findById(rental.customerId);
-    if (!user) throw new HttpError('Người dùng không tồn tại', 404);
-
-    if (difference < 0) {
-      // Hoàn tiền thừa về ví
-      user.balance = (user.balance || 0) + Math.abs(difference);
-      await user.save();
-    }
-    // Nếu difference > 0 (cần thanh toán thêm), luồng này sẽ xử lý sau.
-  }
-
-  rental.startDate = start;
-  rental.endDate = end;
-  rental.totalRentalPrice = totalRentalPrice;
-  rental.totalAmount = totalAmount;
-
-  await rental.save();
-  return rental;
-};
-
-const createOfflineOrder = async (staffId, body) => {
-  const { startDate, endDate, items, customerName, customerPhone, customerAddress } = body;
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  if (start < today) {
-    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
-  }
-
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (rentalDays <= 0) {
-    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
-  }
-
-  // Find or create dummy offline customer user
-  let offlineCustomer = await User.findOne({ email: 'offline-customer@costumehub.com' });
-  if (!offlineCustomer) {
-    let roleCust = await Role.findOne({ name: 'online-customer' });
-    offlineCustomer = new User({
-      fullName: 'Khách mua Offline',
-      email: 'offline-customer@costumehub.com',
-      password: 'offline-dummy-password-hash',
-      role: roleCust ? roleCust._id : null,
-      status: 'active',
-      isEmailVerified: true
-    });
-    await offlineCustomer.save();
-  }
-
-  let totalRentalPrice = 0;
-  let totalDeposit = 0;
-  const formattedItems = [];
-  const costumesToUpdate = [];
-
-  for (const item of items) {
-    const costume = await Costume.findById(item.costume);
-    if (!costume) throw new HttpError('Costume not found.', 404);
-
-    const minDays = costume.minRentalDays || 1;
-    if (rentalDays < minDays) {
-      throw new HttpError(`Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
-    }
-    const maxDays = costume.maxRentalDays || 7;
-    if (rentalDays > maxDays) {
-      throw new HttpError(`Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`, 400);
-    }
-
-    const variant = costume.variants.find((v) => v.size === item.size);
-    if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
-
-    const overlappingOrders = await Rental.find({
-      'items.costume': item.costume,
-      'items.size': item.size,
-      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
-      startDate: { $lte: new Date(endDate) },
-      endDate: { $gte: new Date(startDate) },
-    });
-    let bookedQty = 0;
-    overlappingOrders.forEach((order) => {
-      order.items.forEach((oi) => {
-        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
-          bookedQty += oi.quantity;
-        }
-      });
-    });
-
-    if (bookedQty + item.quantity > variant.totalStock) {
-      throw new HttpError(
-        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
-        400
-      );
-    }
-
-    const depositPrice = costume.deposit || costume.price || 0;
-    const priceFactor = getRentalPriceFactor(rentalDays);
-    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
-    totalDeposit += depositPrice * item.quantity;
-
-    formattedItems.push({
-      costume: costume._id,
-      size: item.size,
-      quantity: item.quantity,
-      rentalPricePerDay: costume.pricePerDay,
-      depositPrice,
-    });
-    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
-  }
-
-  for (const update of costumesToUpdate) {
-    update.variant.availableStock -= update.quantityToDeduct;
-    await update.costume.save();
-  }
-
-  const totalAmount = totalRentalPrice + totalDeposit;
-
-  const newOrder = new Rental({
-    customerId: offlineCustomer._id,
-    items: formattedItems,
-    startDate,
-    endDate,
-    shippingFee: 0,
-    paymentMethod: 'Cash',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      receiverName: customerName,
-      receiverPhone: customerPhone,
-      addressDetail: customerAddress || 'Mua trực tiếp tại cửa hàng',
-    },
-    totalRentalPrice,
-    totalDeposit,
-    totalAmount,
-    status: 'renting',
-    rentingAt: new Date(),
-  });
-
-  await newOrder.save();
-  return newOrder;
-};
-
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -1130,7 +901,6 @@ module.exports = {
   extendRental,
   notifyOrderStatus,
   getTopRentedCostumes,
-  updateRentalDates,
-  createOfflineOrder,
-  getDeliveryEstimate,
+  autoUpdateDeliveredStatus,
+  sendAutoConfirmReminders,
 };

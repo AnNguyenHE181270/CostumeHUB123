@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import Modal from "../Modal";
 import stockTransactionService from "../../services/stockTransaction.service";
 
@@ -41,6 +41,9 @@ export default function StockTransactionModal({ open, type, costume, variant, on
   const qtyNum = Number(quantity) || 0;
   const invalidQty = !Number.isInteger(qtyNum) || qtyNum <= 0 || (!isIn && qtyNum > maxOut);
   const afterStock = isIn ? totalStock + qtyNum : totalStock - qtyNum;
+  const afterAvailable = isIn ? availableStock + qtyNum : Math.max(0, availableStock - qtyNum);
+  const lowStockThreshold = variant.lowStockThreshold ?? 3;
+  const showLowStockWarning = !isIn && !invalidQty && qtyNum > 0 && afterAvailable <= lowStockThreshold;
 
   const handleSubmit = async () => {
     if (invalidQty) return;
@@ -163,7 +166,17 @@ export default function StockTransactionModal({ open, type, costume, variant, on
             Sau giao dịch: <span className="font-semibold text-[#1a1a1a]">Tổng {afterStock}</span>
             {" · "}
             <span className="font-semibold text-emerald-600">
-              Sẵn {isIn ? availableStock + qtyNum : Math.max(0, availableStock - qtyNum)}
+              Sẵn {afterAvailable}
+            </span>
+          </div>
+        )}
+
+        {showLowStockWarning && (
+          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <span>
+              Sau khi xuất, size {variant.size} chỉ còn <b>{afterAvailable}</b> chiếc sẵn sàng
+              — đã chạm hoặc dưới ngưỡng cảnh báo (<b>{lowStockThreshold}</b>). Cân nhắc nhập thêm hàng sớm.
             </span>
           </div>
         )}

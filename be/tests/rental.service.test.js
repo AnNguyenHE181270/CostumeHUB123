@@ -24,6 +24,7 @@ RentalMock.find = (filter) => {
     mockData.rentalFindFilter = filter;
     return {
         populate: function () { return this; },
+        session: function () { return this; },
         sort: async (s) => {
             mockData.rentalSortCalledWith = s;
             return mockData.rentalList || [];
@@ -84,10 +85,24 @@ CostumeMock.findById = async (id) => {
 };
 
 // ---- UserMock ----
+// findById phải vừa await trực tiếp được (User.findById(id)) vừa chain .session() được
+// (User.findById(id).session(session), dùng trong transaction của createOrder).
 const UserMock = function (data) { Object.assign(this, data); };
-UserMock.findById = async (id) => {
+UserMock.findById = (id) => {
     mockData.userFindByIdCalledWith = id;
-    return mockData.user || null;
+    return {
+        session: function () { return this; },
+        then: function (resolve, reject) { resolve(mockData.user || null); },
+    };
+};
+// updateOne({_id}, {$inc: {balance: X}}) — mô phỏng đúng semantics $inc mà code thật đang dùng
+// (thay cho findById().save()) để trừ/hoàn tiền ví nguyên tử.
+UserMock.updateOne = async (filter, update) => {
+    mockData.userUpdateOneCalledWith = { filter, update };
+    if (mockData.user && update?.$inc?.balance !== undefined) {
+        mockData.user.balance = (mockData.user.balance || 0) + update.$inc.balance;
+    }
+    return { acknowledged: true, modifiedCount: mockData.user ? 1 : 0 };
 };
 
 // ---- CartMock ----
@@ -118,6 +133,14 @@ mock('../models/cart.model', CartMock);
 mock('../models/issue.model', { findOne: async () => null });
 mock('../services/email.service', sendEmailMock);
 mock('../services/ghn.service', ghnMock);
+
+// createOrder chạy trong mongoose transaction (session.withTransaction) — không có DB thật/replica set
+// trong môi trường test nên mongoose.startSession() thật sẽ treo rồi timeout. Toàn bộ model trong
+// transaction đã được mock ở trên (không thao tác DB thật), nên chỉ cần session giả chạy callback trực tiếp.
+mongoose.startSession = async () => ({
+    withTransaction: async (fn) => fn(),
+    endSession: async () => {},
+});
 
 const rentalService = require('../services/rental.service');
 const HttpError = require('../models/http-error.model');
@@ -210,7 +233,6 @@ describe('createOrder', () => {
         assert.strictEqual(mockData.costume.variants[0].availableStock, 4);
         assert.ok(mockData.costume._saved);
         assert.ok(mockData.user.balance < 1000000); // deducted
-        assert.ok(mockData.user._saved);
         assert.strictEqual(result.customerId, 'user_123');
         assert.strictEqual(result.status, 'pending');
         assert.deepStrictEqual(mockData.cartDeleteFilter, { customerId: 'user_123' });
@@ -321,8 +343,7 @@ describe('cancelOrder', () => {
         assert.strictEqual(result.status, 'cancelled');
         assert.strictEqual(result.paymentStatus, 'refunded');
         assert.strictEqual(result.cancelReason, 'Changed my mind');
-        assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k
-        assert.ok(mockData.user._saved);
+        assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k — hoàn tiền qua User.updateOne($inc), không còn dùng .save()
         assert.strictEqual(mockData.costume.variants[0].availableStock, 6); // 5+1
         assert.ok(mockData.costume._saved);
         assert.ok(sendEmailCalledWith);
@@ -787,8 +808,7 @@ describe('extendRental', () => {
 
         const result = await rentalService.extendRental('rental_123', 'user_123', newEndDateStr);
 
-        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày)
-        assert.ok(mockData.user._saved);
+        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày) — trừ qua User.updateOne($inc)
         assert.ok(mockData.rental._saved);
         assert.strictEqual(result.success, true);
         assert.ok(result.message.includes('Gia hạn thuê'));

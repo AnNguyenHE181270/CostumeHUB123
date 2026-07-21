@@ -18,6 +18,9 @@ const rentalSchema = new mongoose.Schema(
             quantity: { type: Number, required: true, min: 1 },
             rentalPricePerDay: { type: Number, required: true },
             depositPrice: { type: Number, required: true },
+            // Mã các unit vật lý cụ thể được gán cho dòng đơn này (độ dài = quantity) —
+            // dùng để chỉ đánh dấu bảo trì đúng những cái đã trả, không phải cả size.
+            instanceCodes: { type: [String], default: [] },
         }, { _id: false }],
 
         startDate: { type: Date, required: true },
@@ -27,6 +30,7 @@ const rentalSchema = new mongoose.Schema(
 
         totalRentalPrice: { type: Number, required: true },
         totalDeposit: { type: Number, required: true },
+        shippingFee: { type: Number, default: 0 },
         totalAmount: { type: Number, required: true },
 
         lateFee: { type: Number, default: 0 },
@@ -99,6 +103,13 @@ const rentalSchema = new mongoose.Schema(
         },
         rentingAt: {
             type: Date
+        },
+
+        // Đánh dấu đã gửi thông báo nhắc khách trước khi hệ thống tự động xác nhận đã nhận hàng,
+        // tránh cron job gửi lặp lại nhắc nhở nhiều lần trong cùng 1 khung giờ chờ.
+        autoConfirmReminderSent: {
+            type: Boolean,
+            default: false,
         },
     },
     {

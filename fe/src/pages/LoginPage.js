@@ -53,7 +53,7 @@ export default function LoginPage() {
       } else if (userRole === "staff") {
         navigate("/staff");
       } else {
-        navigate("/");
+        navigate("/", { state: { showPolicies: true } });
       }
     } catch (err) {
       console.error("Login error:", err);

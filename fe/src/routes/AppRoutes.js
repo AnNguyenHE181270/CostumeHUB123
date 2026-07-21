@@ -40,7 +40,7 @@ import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage";
 import TransactionHistoryPage from "../pages/customer/TransactionHistoryPage";
-import TopupSuccessPage from "../pages/customer/TopupSuccessPage";
+import TransactionSuccessPage from "../pages/customer/TransactionSuccessPage";
 import { ROUTES } from "./routePaths";
 
 
@@ -76,7 +76,7 @@ function AppRoutes() {
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
             <Route path="/user/transactions" element={<TransactionHistoryPage />} />
-            <Route path="/user/topup-success" element={<TopupSuccessPage />} />
+            <Route path="/user/transaction-success" element={<TransactionSuccessPage />} />
           </Route>
         </Route>
       </Route>
