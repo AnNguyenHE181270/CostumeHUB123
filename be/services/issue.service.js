@@ -36,16 +36,17 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
   const existingIssue = await Issue.findOne({ rentalId });
   if (existingIssue) { cleanupFiles(); throw new HttpError('Đơn hàng thuê này đã có khiếu nại.', 400); }
 
-  if (!['delivered', 'renting'].includes(rental.status)) {
+  if (rental.status !== 'renting') {
     cleanupFiles();
-    throw new HttpError('Đơn hàng ở trạng thái này không thể khiếu nại.', 400);
+    throw new HttpError('Đơn hàng chỉ có thể khiếu nại ở trạng thái đang thuê.', 400);
   }
 
-  if (rental.status === 'renting' && rental.rentingAt) {
-    const fiveHoursMs = 5 * 60 * 60 * 1000;
-    if (Date.now() - new Date(rental.rentingAt).getTime() > fiveHoursMs) {
+  if (rental.rentingAt) {
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+    // Dùng ">" vì chúng ta muốn NÉM LỖI (chặn) khi thời gian đã vượt quá 3 tiếng
+    if (Date.now() - new Date(rental.rentingAt).getTime() > threeHoursMs) {
       cleanupFiles();
-      throw new HttpError('Đơn hàng đã quá hạn khiếu nại (tối đa 5 tiếng kể từ khi bắt đầu thuê).', 400);
+      throw new HttpError('Đơn hàng đã quá hạn hoàn trả (tối đa 3 tiếng kể từ khi bắt đầu thuê).', 400);
     }
   }
 

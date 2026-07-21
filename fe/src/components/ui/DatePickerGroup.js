@@ -14,7 +14,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const requiredDays = Math.max(1, Number(minRentalDays) || 1);
+    const requiredDays = Math.max(0, (Number(minRentalDays) || 1) - 1);
     const start = new Date(startDate);
     const minEndDate = new Date(start);
     minEndDate.setDate(minEndDate.getDate() + requiredDays);

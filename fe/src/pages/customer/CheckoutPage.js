@@ -43,6 +43,7 @@ export function Checkout() {
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [deliveryEstimate, setDeliveryEstimate] = useState({ loading: false, date: null, isLate: false });
   const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [lateDeliveryModal, setLateDeliveryModal] = useState({ show: false, message: "" });
 
   useEffect(() => {
     if (user) {
@@ -139,7 +140,8 @@ export function Checkout() {
     };
   }, [deliveryOption, selectedAddress?.districtId, selectedAddress?.wardCode, orderStartDate]);
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (isLateConfirm = false) => {
+    const confirmLateDelivery = isLateConfirm === true;
     if (checkoutItems.length === 0) return;
 
     if (deliveryOption === "delivery" && (!address.name || !address.phone || !address.detail)) {
@@ -188,6 +190,7 @@ export function Checkout() {
           district: deliveryOption === "delivery" && selectedAddress ? selectedAddress.district : null,
           ward: deliveryOption === "delivery" && selectedAddress ? selectedAddress.ward : null,
         },
+        confirmLateDelivery
       };
 
       await rentalService.createOrder(payload);
@@ -210,8 +213,17 @@ export function Checkout() {
         navigate("/rental-history");
       }, 1800);
     } catch (err) {
-      if (err.extra?.estimatedDeliveryDate) {
-        navigate("/cart", { state: { checkoutError: err.message } });
+      if (err.extra?.estimatedDeliveryDate && !confirmLateDelivery) {
+        const estimatedDate = new Date(err.extra.estimatedDeliveryDate);
+        const formattedDate = estimatedDate.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        setLateDeliveryModal({
+          show: true,
+          message: `Đơn hàng dự kiến được giao tới địa chỉ của bạn vào ${formattedDate}, bạn có chắc chắn muốn đặt thuê không?`,
+        });
         return;
       }
       showToast(err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
@@ -622,8 +634,8 @@ export function Checkout() {
                 {isLoading
                   ? "Đang xử lý tạo đơn..."
                   : walletShortfall > 0
-                  ? "Số Dư Không Đủ — Vui Lòng Nạp Thêm"
-                  : "Xác Nhận Đặt Thuê Ngay"}
+                    ? "Số Dư Không Đủ — Vui Lòng Nạp Thêm"
+                    : "Xác Nhận Đặt Thuê Ngay"}
                 {!isLoading && walletShortfall === 0 && (
                   <FontAwesomeIcon icon={faArrowRight} className="text-[12px] text-[#d4af37]" />
                 )}
@@ -643,6 +655,35 @@ export function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Modal xác nhận giao trễ */}
+      {lateDeliveryModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+            <h3 className="text-[22px] font-bold text-[#1a1a1a] mb-4 text-center" style={SERIF}>Xác Nhận Đặt Thuê</h3>
+            <div className="text-[#665a45] text-[14px] text-center mb-8 leading-relaxed">
+              {lateDeliveryModal.message}
+            </div>
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={() => setLateDeliveryModal({ show: false, message: "" })}
+                className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-6 py-2.5 rounded-xl font-bold"
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={() => {
+                  setLateDeliveryModal({ show: false, message: "" });
+                  handleCheckout(true);
+                }}
+                className="bg-[#1a1a1a] text-[#f5e6ca] hover:brightness-125 px-6 py-2.5 rounded-xl font-bold"
+              >
+                Có, đặt thuê
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

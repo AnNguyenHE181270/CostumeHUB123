@@ -37,7 +37,7 @@ const getAllCarts = async (userId) => {
           } else if (end < start) {
             dateError = "Ngày trả đồ không được trước ngày nhận đồ";
           } else {
-            const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
             const minDays = item.costume?.minRentalDays || 1;
             const maxDays = item.costume?.maxRentalDays || 7;
             if (rentalDays < minDays) {
@@ -105,9 +105,9 @@ const addCart = async (userId, { costumeId, size, quantity, startDate, endDate }
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
   if (startNorm < tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
-  if (endNorm < startNorm) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
+  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ không được trước ngày nhận đồ', 400);
 
-  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
   const newItem = { costume: costumeId, size, quantity: numQuantity, startDate: start, endDate: end, rentalDays };
 
   let cart = await Cart.findOne({ customerId: userId });
@@ -227,11 +227,11 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
   const endNorm = new Date(end); endNorm.setHours(0, 0, 0, 0);
 
   if (startNorm < tomorrow || endNorm < tomorrow) throw new HttpError('Vui lòng đặt thuê đồ trước ít nhất 1 ngày', 400);
-  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ phải sau ngày nhận đồ', 400);
+  if (endNorm < startNorm) throw new HttpError('Ngày trả đồ không được trước ngày nhận đồ', 400);
 
   const minDays = costume.minRentalDays || 1;
   const maxDays = costume.maxRentalDays || 7;
-  const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24));
+  const rentalDaysDiff = Math.ceil((endNorm - startNorm) / (1000 * 60 * 60 * 24)) + 1;
   if (rentalDaysDiff < minDays) {
     throw new HttpError(`Sản phẩm yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
   }
@@ -239,7 +239,7 @@ const updateCart = async (userId, costumeId, { size, quantity, startDate, endDat
     throw new HttpError(`Sản phẩm giới hạn thuê tối đa ${maxDays} ngày.`, 400);
   }
 
-  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) + 1;
+  const rentalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
   const rentalPrice = costume.pricePerDay || costume.price || 0;
   const depositPrice = costume.deposit || 0;
 

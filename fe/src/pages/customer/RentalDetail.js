@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faLocationDot } from "@fortawesome/free-solid-svg-icons"
 import { statusOrder } from "../../constants/statusOrder"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
-import { IssuesModal } from "./IssuesPage"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import rentalService from "../../services/rental.service"
@@ -48,6 +47,15 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
         const now = Date.now()
         const hoursDiff = (now - deliveredTime) / (1000 * 60 * 60)
         isWithin5Hours = hoursDiff < 5
+    }
+
+    let isWithin3HoursRenting = true
+    const rentingAt = detailedOrder?.rentingAt || order?.rentingAt
+    if (rentingAt) {
+        const rentingTime = new Date(rentingAt).getTime()
+        const now = Date.now()
+        const hoursDiff = (now - rentingTime) / (1000 * 60 * 60)
+        isWithin3HoursRenting = hoursDiff <= 3
     }
 
     return (
@@ -270,7 +278,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </button>
                         )}
 
-                        {['renting', 'delivered', 'returning', 'completed'].includes(currentStatus) && (
+                        {((currentStatus === 'renting' && isWithin3HoursRenting) || detailedOrder?.hasIssue) && (
                             <button
                                 onClick={() => onRequestIssue?.()}
                                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
@@ -279,7 +287,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                     }`}
                             >
                                 <FontAwesomeIcon icon={faExclamationCircle} className="h-4 w-4" />
-                                {detailedOrder?.hasIssue ? "Xem khiếu nại" : "Khiếu nại"}
+                                {detailedOrder?.hasIssue ? "Xem đơn hoàn trả" : "Trả hàng & Hoàn tiền"}
                             </button>
                         )}
 

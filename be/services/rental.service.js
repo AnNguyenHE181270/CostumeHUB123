@@ -104,6 +104,7 @@ const getRentalHistory = async (userId) => {
     rawStartDate: order.startDate,
     rawEndDate: order.endDate,
     status: order.status,
+    rentingAt: order.rentingAt,
     totalPrice: order.totalAmount,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
@@ -137,6 +138,9 @@ const getOrderDetail = async (orderId, customerId) => {
     hasIssue: !!issue,
     issueStatus: issue?.status || null,
     deliveredAt: order.deliveredAt,
+    rentingAt: order.rentingAt,
+    cancelReason: order.cancelReason,
+    refundAmount: order.refundAmount,
     startDate: order.startDate,
     endDate: order.endDate,
     customer: {
@@ -170,7 +174,7 @@ const getOrderDetail = async (orderId, customerId) => {
 };
 
 const createOrder = async (customerId, body) => {
-  const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod } = body;
+  const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod, confirmLateDelivery } = body;
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -182,11 +186,14 @@ const createOrder = async (customerId, body) => {
     throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
   }
 
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (rentalDays <= 0) {
-    throw new HttpError('Ngày kết thúc thuê phải sau ngày bắt đầu thuê.', 400);
+  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  if (rentalDays < 1) {
+    throw new HttpError('Ngày kết thúc thuê không được trước ngày bắt đầu thuê.', 400);
   }
 
+  if (!confirmLateDelivery) {
+    await checkDeliveryFeasibility(shippingAddress, startDate);
+  }
   let totalRentalPrice = 0;
   let totalDeposit = 0;
   const formattedItems = [];

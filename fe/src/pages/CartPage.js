@@ -86,9 +86,6 @@ export default function CartPage() {
       const currentIds = cartItems
         .filter((item) => (item.variant?.availableStock || 0) > 0 && !invalidMessage(item, cartErrors))
         .map((item) => item._id);
-      if (prev.length === 0 && currentIds.length > 0) {
-        return currentIds;
-      }
       return prev.filter((id) => currentIds.includes(id));
     });
   }, [cartItems, cartErrors]);
