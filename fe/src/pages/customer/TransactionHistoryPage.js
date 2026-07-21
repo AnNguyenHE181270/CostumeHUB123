@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { formatPrice } from "../../utils/formatters";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faWallet, faMoneyBillWave, faArrowRightArrowLeft, faClock, faCheckCircle, faTimesCircle } from "@fortawesome/free-solid-svg-icons";
+import { faWallet, faMoneyBillWave, faArrowRightArrowLeft, faClock, faCheckCircle, faTimesCircle, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 
 export default function TransactionHistoryPage() {
   const [activeTab, setActiveTab] = useState("all");
@@ -74,7 +74,28 @@ export default function TransactionHistoryPage() {
         date: r.createdAt || r.startDate || new Date(),
         ref: r.trackingCode || `...${shortId}`
       };
-    })
+    }),
+    // Tiền hoàn về ví — huỷ đơn (hoàn toàn bộ) hoặc trả đồ/khiếu nại được duyệt (hoàn cọc, có thể trừ phí hư hỏng).
+    // Trước đây các khoản này chỉ cộng thẳng vào balance mà không có dòng lịch sử tương ứng.
+    ...rentals
+      .filter(r => {
+        const net = (r.refundAmount || 0) - (r.replacementFee || 0);
+        return net > 0 && (r.status === "cancelled" || r.status === "completed");
+      })
+      .map(r => {
+        const rentalId = (r.id || r._id).toString();
+        const shortId = rentalId.slice(-6).toUpperCase();
+        const netRefund = (r.refundAmount || 0) - (r.replacementFee || 0);
+        return {
+          id: rentalId + "-refund",
+          type: "refund",
+          title: r.status === "cancelled" ? `Hoàn tiền huỷ đơn #${shortId}` : `Hoàn cọc đơn #${shortId}`,
+          amount: netRefund,
+          status: "success",
+          date: r.updatedAt || r.createdAt || new Date(),
+          ref: `...${shortId}`
+        };
+      })
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const filteredActivities = allActivities.filter(a => {
@@ -133,6 +154,15 @@ export default function TransactionHistoryPage() {
             <FontAwesomeIcon icon={faWallet} className="mr-2" />
             Thuê đồ
           </button>
+          <button
+            onClick={() => setActiveTab("refund")}
+            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
+              activeTab === "refund" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <FontAwesomeIcon icon={faRotateLeft} className="mr-2" />
+            Hoàn tiền
+          </button>
         </div>
 
         {/* Date Filters */}
@@ -180,8 +210,8 @@ export default function TransactionHistoryPage() {
           {filteredActivities.map((activity) => (
             <div key={activity.id} className="flex items-center justify-between p-4 sm:p-5 border border-gray-100 rounded-lg hover:shadow-md transition-shadow bg-white group">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'transaction' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                  <FontAwesomeIcon icon={activity.type === 'transaction' ? faMoneyBillWave : faArrowRightArrowLeft} className="text-lg" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'transaction' || activity.type === 'refund' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <FontAwesomeIcon icon={activity.type === 'transaction' ? faMoneyBillWave : activity.type === 'refund' ? faRotateLeft : faArrowRightArrowLeft} className="text-lg" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-800 text-sm sm:text-base group-hover:text-black transition-colors">{activity.title}</h3>

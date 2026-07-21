@@ -122,6 +122,10 @@ const getRentalHistory = async (userId) => {
     rawEndDate: order.endDate,
     status: order.status,
     totalPrice: order.totalAmount,
+    refundAmount: order.refundAmount || 0,
+    replacementFee: order.replacementFee || 0,
+    cancelReason: order.cancelReason || '',
+    updatedAt: order.updatedAt,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,

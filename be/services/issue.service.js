@@ -7,6 +7,7 @@ const User = require('../models/user.model');
 const Costume = require('../models/costume.model');
 const sendEmail = require('./email.service');
 const notificationService = require('./notification.service');
+const { syncVariantFromInstances, backfillInstancesFromCounts } = require('./costume.service');
 
 const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
   const cleanupFiles = () => {
@@ -178,13 +179,28 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     if (user) {
     }
 
-    // 2. Hoàn trả tồn kho trang phục
+    // 2. Hoàn trả tồn kho trang phục — giải phóng đúng (các) unit vật lý đã gán cho đơn này,
+    // không cộng thẳng vào availableStock để tránh lệch với instances[] (nguồn sự thật).
     for (const item of rental.items) {
       const costume = await Costume.findById(item.costume);
       if (costume) {
         const variant = costume.variants.find((v) => v.size === item.size);
         if (variant) {
-          variant.availableStock += item.quantity;
+          backfillInstancesFromCounts(variant);
+          if (item.instanceCodes && item.instanceCodes.length > 0) {
+            variant.instances.forEach((inst) => {
+              if (item.instanceCodes.includes(inst.unitCode) && inst.status === 'rented') {
+                inst.status = 'available';
+              }
+            });
+          } else {
+            variant.instances
+              .filter((i) => i.status === 'rented')
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+              .slice(0, item.quantity)
+              .forEach((inst) => { inst.status = 'available'; });
+          }
+          syncVariantFromInstances(variant);
           await costume.save();
         }
       }
@@ -195,6 +211,7 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
 
     rental.status = 'completed';
     rental.paymentStatus = 'refunded';
+    rental.refundAmount = rental.totalAmount;
     await rental.save();
     await notifyOrderStatus(rental, 'completed');
 
