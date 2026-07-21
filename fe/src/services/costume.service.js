@@ -16,7 +16,8 @@ const costumeService = {
 
   getMaintenanceList: () => axiosClient.get('/api/costumes/maintenance/list'),
 
-  completeMaintenance: (id) => axiosClient.put(`/api/costumes/${id}/complete-maintenance`),
+  completeMaintenance: (id, size, unitCode) =>
+    axiosClient.put(`/api/costumes/${id}/complete-maintenance`, { size, unitCode }),
 };
 
 export default costumeService;

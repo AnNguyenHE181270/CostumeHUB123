@@ -6,6 +6,7 @@ const { uploadIssueMedia } = require('./cloudinary.service');
 const User = require('../models/user.model');
 const Costume = require('../models/costume.model');
 const sendEmail = require('./email.service');
+const notificationService = require('./notification.service');
 
 const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
   const cleanupFiles = () => {
@@ -196,6 +197,19 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     rental.paymentStatus = 'refunded';
     await rental.save();
     await notifyOrderStatus(rental, 'completed');
+
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'issue_refund_accepted',
+        title: `Khiếu nại đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: `Đơn của bạn đã được chấp nhận hoàn tiền. Số tiền ${rental.totalAmount.toLocaleString('vi-VN')}đ đã được hoàn vào ví của bạn.`,
+        link: '/user/transactions',
+        relatedId: rental._id,
+      });
+    } catch (notifyError) {
+      console.error('[Notification Error]', notifyError);
+    }
 
     // Gửi email thông báo cho khách hàng
     try {

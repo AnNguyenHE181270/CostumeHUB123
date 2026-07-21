@@ -1,4 +1,4 @@
-import { faCube, faBoxOpen, faTruck, faClock, faCheckCircle, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCube, faBoxOpen, faTruck, faRotateLeft, faClock, faCheckCircle, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
 
 export const statusOrder = {
     pending: { label: "Chờ xác nhận", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -16,7 +16,8 @@ export const statusOrder = {
 export const tabs = [
     { id: "all", label: "Tất cả", icon: faCube },
     { id: "pending", label: "Chờ xác nhận", icon: faBoxOpen },
-    { id: "delivering", label: "Đang vận chuyển", icon: faTruck },
+    { id: "delivering", label: "Đang giao đến bạn", icon: faTruck },
+    { id: "returning", label: "Đang trả hàng", icon: faRotateLeft },
     { id: "renting", label: "Đang thuê", icon: faClock },
     { id: "completed", label: "Đã thuê", icon: faCheckCircle },
     { id: "cancelled", label: "Đã hủy", icon: faCircleXmark },
