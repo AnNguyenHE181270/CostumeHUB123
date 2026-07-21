@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowDown, faArrowUp, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import Modal from "../Modal";
 import stockTransactionService from "../../services/stockTransaction.service";
+import { computeVariantBreakdown } from "../../utils/inventoryReport";
 
 const REASONS = {
   in: [
@@ -35,7 +36,9 @@ export default function StockTransactionModal({ open, type, costume, variant, on
   const isIn = type === "in";
   const totalStock = variant.totalStock || 0;
   const availableStock = variant.availableStock || 0;
-  const rentedCount = Math.max(0, totalStock - availableStock);
+  // Tách riêng "đang thuê" khỏi "đang bảo trì" từ instances[] — trước đây gộp chung bằng
+  // totalStock - availableStock nên nhãn "Đang thuê" hiển thị sai khi có unit đang bảo trì.
+  const { rented: rentedCount, maintenance: maintenanceCount } = computeVariantBreakdown(variant);
   const maxOut = availableStock;
 
   const qtyNum = Number(quantity) || 0;
@@ -107,6 +110,7 @@ export default function StockTransactionModal({ open, type, costume, variant, on
             <p className="text-xs text-gray-500">
               Size {variant.size} · Tồn hiện tại: <b>{totalStock}</b> · Sẵn sàng: <b>{availableStock}</b>
               {rentedCount > 0 && <> · Đang thuê: <b>{rentedCount}</b></>}
+              {maintenanceCount > 0 && <> · Đang bảo trì: <b>{maintenanceCount}</b></>}
             </p>
           </div>
         </div>

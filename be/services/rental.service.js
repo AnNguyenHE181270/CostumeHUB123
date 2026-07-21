@@ -106,6 +106,8 @@ const getRentalHistory = async (userId) => {
     status: order.status,
     rentingAt: order.rentingAt,
     totalPrice: order.totalAmount,
+    refundAmount: order.refundAmount,
+    replacementFee: order.replacementFee,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
@@ -118,6 +120,7 @@ const getRentalHistory = async (userId) => {
       maxRentalDays: item.costume?.maxRentalDays || 7,
     })),
     createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
   }));
 };
 
@@ -618,7 +621,10 @@ const getInventoryUtilization = async (startDate, endDate) => {
 
   if (totalStock === 0) return { utilizationPercentage: 0, totalStock: 0, currentlyRented: 0, categoryBreakdown: [] };
 
-  const activeStatuses = ['delivering', 'delivered', 'renting', 'overdue'];
+  // Khớp đúng danh sách trạng thái "đang giữ hàng" dùng ở createOrder/extendRental — trước đây thiếu
+  // 'pending' và 'returning' khiến "đang thuê" ở dashboard thấp hơn thực tế (đơn pending đã giữ instance
+  // ngay từ lúc tạo; đơn returning vẫn giữ instance tới khi staff kiểm tra đồ trả xong).
+  const activeStatuses = ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'];
   const activeOrders = await Rental.find({
     status: { $in: activeStatuses },
     ...buildDateRangeFilter(startDate, endDate),
