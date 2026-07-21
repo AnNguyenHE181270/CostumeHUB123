@@ -11,7 +11,7 @@ import { CancelOrderModal } from './CancelRentalModal'
 import { tabs } from '../../constants/statusOrder'
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
-import { faBox } from '@fortawesome/free-solid-svg-icons'
+import { faBox, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import rentalService from '../../services/rental.service'
 
 function RentalHistory() {
@@ -67,16 +67,18 @@ function RentalHistory() {
     const filteredOrders = activeTab === "all"
         ? rentalOrders
         : activeTab === "renting"
-            ? rentalOrders.filter(order => ["delivered", "renting", "overdue"].includes(order.status))
+            ? rentalOrders.filter(order => ["delivered", "renting"].includes(order.status))
             : rentalOrders.filter(order => order.status === activeTab)
 
     const getOrderCount = (status) => {
         if (status === "all") return rentalOrders.length
         if (status === "renting") {
-            return rentalOrders.filter(order => ["delivered", "renting", "overdue"].includes(order.status)).length
+            return rentalOrders.filter(order => ["delivered", "renting"].includes(order.status)).length
         }
         return rentalOrders.filter(order => order.status === status).length
     }
+
+    const overdueCount = rentalOrders.filter(order => order.status === "overdue").length
 
     const isDetailOpen = !!selectedOrder;
 
@@ -164,9 +166,23 @@ function RentalHistory() {
             <h3 className="text-3xl font-bold text-[#1a1a1a]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 Lịch sử đơn thuê
             </h3>
-            <p className="text-[14px] text-[#858585] mb-6 pb-4 border-b border-[#eaeaea]">
+            <p className="text-[14px] text-[#858585] mb-4 pb-4 border-b border-[#eaeaea]">
                 Quản lý và theo dõi tất cả các đơn thuê trang phục của bạn
             </p>
+
+            {/* Cảnh báo nổi bật — đơn quá hạn cần khách xử lý ngay, không để lẫn trong tab "Đang thuê" */}
+            {overdueCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() => handleTabChange("overdue")}
+                    className="w-full mb-6 flex items-center gap-3 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-left transition-colors hover:bg-orange-100"
+                >
+                    <FontAwesomeIcon icon={faTriangleExclamation} className="h-5 w-5 text-orange-600 shrink-0" />
+                    <p className="text-sm font-medium text-orange-800">
+                        Bạn có <b>{overdueCount}</b> đơn hàng quá hạn trả — vui lòng trả sớm để tránh phát sinh thêm phí trễ hạn.
+                    </p>
+                </button>
+            )}
 
             {/* Tabs */}
             <div className="mb-6 border-b border-[#eaeaea]">

@@ -274,7 +274,8 @@ const forgotPassword = async (email) => {
   user.resetPasswordCooldownUntil = new Date(now.getTime() + 60 * 1000);
   await user.save();
 
-  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
   await sendResetPasswordEmail(email, resetUrl, user.fullName);
 };
 
@@ -291,18 +292,53 @@ const resetPassword = async (token, password) => {
   await user.save();
 };
 
-const getAllUsers = async (search = '') => {
-  const query = search ? {
-    $or: [
+const getAllUsers = async ({ search = '', role, status, page = 1, limit = 10 }) => {
+  const query = {};
+  
+  if (search) {
+    query.$or = [
       { fullName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } }
-    ]
-  } : {};
-  const users = await User.find(query).populate('role');
-  return users.map((u) => ({
+    ];
+  }
+
+  if (status) {
+    query.status = status;
+  }
+
+  if (role) {
+    const findRole = await Role.findOne({ name: role });
+    if (findRole) {
+      query.role = findRole._id;
+    } else {
+      return { users: [], totalPages: 0, currentPage: parseInt(page, 10) || 1, totalUsers: 0 };
+    }
+  }
+
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 10;
+  const skip = (pageNum - 1) * limitNum;
+
+  const totalUsers = await User.countDocuments(query);
+  const totalPages = Math.ceil(totalUsers / limitNum);
+
+  const users = await User.find(query)
+    .populate('role')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limitNum);
+
+  const mappedUsers = users.map((u) => ({
     fullName: u.fullName, email: u.email, phone: u.phone, avatar: u.avatar,
-    status: u.status, role: u.role.name, createdAt: u.createdAt, updatedAt: u.updatedAt, id: u._id,
+    status: u.status, role: u.role ? u.role.name : null, createdAt: u.createdAt, updatedAt: u.updatedAt, id: u._id,
   }));
+
+  return {
+    users: mappedUsers,
+    totalPages,
+    currentPage: pageNum,
+    totalUsers
+  };
 };
 
 const findUserById = async (id) => {

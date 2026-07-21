@@ -56,9 +56,7 @@ const makeCart = (items = [], overrides = {}) => ({
     ...overrides,
 });
 
-// ============================
-// Mocks
-// ============================
+
 
 let mockData = {};
 

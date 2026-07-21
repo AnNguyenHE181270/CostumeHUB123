@@ -16,8 +16,6 @@ import staffService from "../../services/staff.service";
 // Màu + label cho từng trạng thái đơn hàng
 const STATUS_MAP = {
   pending: { label: "Chờ duyệt", bg: "bg-yellow-100", text: "text-yellow-800", color: "#eab308" },
-  awaitingPayment: { label: "Chờ thanh toán", bg: "bg-orange-100", text: "text-orange-800", color: "#f97316" },
-  preparing: { label: "Đang xử lý", bg: "bg-blue-100", text: "text-blue-800", color: "#3b82f6" },
   delivering: { label: "Đang giao", bg: "bg-indigo-100", text: "text-indigo-800", color: "#6366f1" },
   delivered: { label: "Đã giao", bg: "bg-teal-100", text: "text-teal-800", color: "#0d9488" },
   renting: { label: "Đang thuê", bg: "bg-emerald-100", text: "text-emerald-800", color: "#10b981" },

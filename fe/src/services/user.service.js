@@ -30,7 +30,7 @@ const userService = {
   deleteAddress: (id) => axiosClient.delete(`/api/users/delete-address/${id}`),
 
   // Owner / Admin
-  getAllUsers: () => axiosClient.get('/api/users/get-users'),
+  getAllUsers: (params) => axiosClient.get('/api/users/get-users', { params }),
 
   getUserById: (id) => axiosClient.get(`/api/users/user/${id}`),
 

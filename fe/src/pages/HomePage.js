@@ -79,8 +79,8 @@ export default function HomePage() {
             </span>
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mt-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            <span className="text-shine-black">Sản Phẩm</span>{" "}
-            <span className="text-shine-gold-animated">Nổi Bật</span>
+            <span className="text-shine-black">Danh Sách </span>{" "}
+            <span className="text-shine-gold-animated">Sản Phẩm</span>
           </h2>
           <div className="flex items-center justify-center gap-3 mt-4">
             <div className="w-10 h-px bg-gradient-to-r from-transparent to-[#d4c5b0]" />

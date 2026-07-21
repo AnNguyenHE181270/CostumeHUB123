@@ -36,53 +36,51 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
 
-  const getAccounts = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const data = await userService.getAllUsers();
-      setAccounts(data.users || []);
-    } catch (err) {
-      setError(err.message || "Lỗi kết nối. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  useEffect(() => { getAccounts(); }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterRole, filterStatus]);
 
-  useEffect(() => { setCurrentPage(1); }, [search, filterRole, filterStatus]);
+  useEffect(() => {
+    const getAccounts = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const params = {
+          page: currentPage,
+          limit: PAGE_SIZE,
+        };
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (filterRole !== "all") params.role = filterRole;
+        if (filterStatus !== "all") params.status = filterStatus;
 
-  const filteredAccounts = useMemo(() => {
-    return accounts.filter((acc) => {
-      // ĐÃ FIX ISSUE 2: Thêm (acc.fullName || "") để tránh lỗi undefined khi user không có tên
-      const matchSearch =
-        (acc.fullName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (acc.email || "").toLowerCase().includes(search.toLowerCase());
-        
-      const matchRole =
-        filterRole === "all" ||
-        acc?.role?.toLowerCase() === filterRole.toLowerCase();
-        
-      const matchStatus =
-        filterStatus === "all" ||
-        acc.status?.toLowerCase() === filterStatus.toLowerCase();
-        
-      return matchSearch && matchRole && matchStatus;
-    });
-  }, [accounts, search, filterRole, filterStatus]);
+        const data = await userService.getAllUsers(params);
+        setAccounts(data.users || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.totalUsers || 0);
+      } catch (err) {
+        setError(err.message || "Lỗi kết nối. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const paginatedAccounts = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredAccounts.slice(start, start + PAGE_SIZE);
-  }, [filteredAccounts, currentPage]);
-
-  const totalPages = Math.ceil(filteredAccounts.length / PAGE_SIZE);
+    getAccounts();
+  }, [currentPage, debouncedSearch, filterRole, filterStatus]);
 
   const handleEdit = (user) => {
     navigate(`/owner/accounts/detail-account/${user.id}`);
@@ -129,12 +127,12 @@ export default function AccountsPage() {
 
       <DataTable
         isLoading={loading}
-        isEmpty={!loading && filteredAccounts.length === 0}
+        isEmpty={!loading && accounts.length === 0}
         emptyMessage="Không tìm thấy tài khoản nào phù hợp."
         footer={
           <Pagination
-            displayCount={paginatedAccounts.length}
-            totalCount={filteredAccounts.length}
+            displayCount={accounts.length}
+            totalCount={totalCount}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
@@ -151,7 +149,7 @@ export default function AccountsPage() {
           </tr>
         </thead>
         <tbody>
-          {paginatedAccounts.map((acc) => {
+          {accounts.map((acc) => {
             const roleInfo = getRoleInfo(acc.role);
             const statusInfo = getStatusInfo(acc.status);
             return (
