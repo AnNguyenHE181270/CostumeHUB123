@@ -498,12 +498,6 @@ export default function OrdersPage() {
                       Xác nhận
                     </button>
                     <button
-                      className="py-1.5 px-3 border border-transparent bg-blue-100 text-blue-700 font-semibold rounded-lg hover:bg-blue-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
-                      onClick={() => setChangeRequestTarget(row)} // NEW: Open change request modal
-                    >
-                      Yêu cầu thay đổi
-                    </button>
-                    <button
                       className="py-1.5 px-3 border border-transparent bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-colors text-[11px] whitespace-nowrap text-center shadow-sm"
                       onClick={() => handleUpdateStatus(row._id, 'cancelled')}
                     >
@@ -529,7 +523,12 @@ export default function OrdersPage() {
             <h2 className="text-xl font-bold text-[#1a1a1a] mb-4 border-b pb-2">Chi tiết đơn #{selectedOrder._id?.slice(-6).toUpperCase()}</h2>
 
             <div className="mb-6">
-              <h3 className="font-semibold mb-2">Sản phẩm thuê</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Sản phẩm thuê</h3>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
+                  {getStatusLabel(selectedOrder.status)}
+                </span>
+              </div>
               <ul className="bg-gray-50 p-4 rounded-lg space-y-3">
                 {selectedOrder.items?.map((item, idx) => (
                   <li key={idx} className="flex justify-between items-center text-sm border-b border-gray-200 pb-3 last:border-0 last:pb-0">
@@ -585,39 +584,41 @@ export default function OrdersPage() {
               )}
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Trạng thái hiện tại:</p>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
-                  {getStatusLabel(selectedOrder.status)}
-                </span>
+            {/* CHỈ STAFF MỚI THẤY CÁC NÚT THAO TÁC NÀY */}
+            {role === 'staff' && (
+              <div className=" flex justify-end gap-3 mt-4">
+                {selectedOrder.status === 'pending' && (
+                  <button
+                    className="flex-1 sm:flex-none px-4 py-2 bg-orange-100 text-orange-700 font-medium rounded hover:bg-orange-200 transition-colors text-sm"
+                    onClick={() => {
+                      setChangeRequestTarget(selectedOrder);
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Yêu cầu thay đổi
+                  </button>
+                )}
+                {!['pending', 'cancelled'].includes(selectedOrder.status) && (
+                  <button
+                    className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
+                    onClick={() => setIsTrackingOpen(true)}
+                  >
+                    Theo dõi
+                  </button>
+                )}
+                {selectedOrder.status === 'returning' && (
+                  <button
+                    className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
+                    onClick={() => {
+                      setInspectReturnOrder(selectedOrder);
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Kiểm tra đồ trả
+                  </button>
+                )}
               </div>
-
-              {/* CHỈ STAFF MỚI THẤY CÁC NÚT THAO TÁC NÀY */}
-              {role === 'staff' && (
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  {!['pending', 'cancelled'].includes(selectedOrder.status) && (
-                    <button
-                      className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors text-sm"
-                      onClick={() => setIsTrackingOpen(true)}
-                    >
-                      Theo dõi
-                    </button>
-                  )}
-                  {selectedOrder.status === 'returning' && (
-                    <button
-                      className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
-                      onClick={() => {
-                        setInspectReturnOrder(selectedOrder);
-                        setSelectedOrder(null);
-                      }}
-                    >
-                      Kiểm tra đồ trả
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}

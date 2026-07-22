@@ -3,7 +3,7 @@ import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortaweso
 import { statusOrder } from "../../constants/statusOrder"
 import { formatOrderId } from "../../utils/formatters"
 
-function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder }) {
+function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
     const status = statusOrder[order.status]
 
     return (
@@ -117,6 +117,17 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                                         Gia hạn thuê
                                     </button>
                                 )}
+                                {['renting', 'overdue'].includes(order.status) && onRequestReturn && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRequestReturn(order);
+                                        }}
+                                        className="flex items-center gap-2 rounded-lg bg-[#b8935a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#a07d4a]"
+                                    >
+                                        Trả hàng
+                                    </button>
+                                )}
                                 {["completed", "cancelled"].includes(order.status) && (
                                     <button
                                         onClick={(e) => {
@@ -126,6 +137,29 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                                         className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                     >
                                         Thuê lại
+                                    </button>
+                                )}
+                                {order.status === "pending" && onCancelOrder && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCancelOrder(order);
+                                        }}
+                                        className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                                    >
+                                        Hủy đơn hàng
+                                    </button>
+                                )}
+                                {order.status === "delivering" && onTrackOrder && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onTrackOrder(order);
+                                        }}
+                                        className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                                    >
+                                        <FontAwesomeIcon icon={faLocationDot} className="h-4 w-4" />
+                                        Theo dõi đơn
                                     </button>
                                 )}
                             </div>

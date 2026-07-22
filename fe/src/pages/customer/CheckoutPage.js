@@ -664,22 +664,27 @@ export function Checkout() {
             <div className="text-[#665a45] text-[14px] text-center mb-8 leading-relaxed">
               {lateDeliveryModal.message}
             </div>
-            <div className="flex gap-4 justify-center">
-              <Button
-                onClick={() => setLateDeliveryModal({ show: false, message: "" })}
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-6 py-2.5 rounded-xl font-bold"
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setLateDeliveryModal({ show: false, message: "" });
+                  showToast("Đã hủy xác nhận đặt hàng", "success");
+                }}
+                className="flex-1 py-2.5 border border-[#eaeaea] text-gray-700 hover:bg-[#faf9f7] font-medium text-sm transition-colors"
               >
                 Hủy
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setLateDeliveryModal({ show: false, message: "" });
                   handleCheckout(true);
                 }}
-                className="bg-[#1a1a1a] text-[#f5e6ca] hover:brightness-125 px-6 py-2.5 rounded-xl font-bold"
+                className="flex-1 py-2.5 bg-[#1a1a1a] text-white hover:bg-[#333] font-medium text-sm transition-colors"
               >
                 Có, đặt thuê
-              </Button>
+              </button>
             </div>
           </div>
         </div>

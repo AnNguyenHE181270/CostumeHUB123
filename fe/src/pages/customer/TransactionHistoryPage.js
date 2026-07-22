@@ -47,6 +47,8 @@ export default function TransactionHistoryPage() {
       case "failed":
       case "cancelled":
         return <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs font-semibold"><FontAwesomeIcon icon={faTimesCircle} /> Thất bại/Hủy</span>;
+      case "renting":
+        return <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs font-semibold"> Đang thuê</span>;
       default:
         return <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-semibold"> Đang diễn ra</span>;
     }
@@ -62,6 +64,28 @@ export default function TransactionHistoryPage() {
       date: t.createdAt,
       ref: t.orderCode ? `#${t.orderCode}` : ''
     })),
+    ...transactions.map(t => {
+      let title = "Nạp tiền vào ví (VNPay)";
+      let type = "transaction";
+      let status = t.status;
+      if (t.txnRef && t.txnRef.startsWith("EXTEND_")) {
+        title = "Phí gia hạn";
+        type = "rental";
+        status = "renting";
+      } else if (t.txnRef && t.txnRef.startsWith("REFUND_DATE_")) {
+        title = "Hoàn tiền cập nhật ngày thuê";
+        type = "refund";
+      }
+      return {
+        id: t._id,
+        type: type,
+        title: title,
+        amount: t.amount,
+        status: status,
+        date: t.createdAt,
+        ref: t.txnRef ? t.txnRef.replace(/[a-f0-9]{24}/i, '***') : ''
+      };
+    }),
     ...rentals.map(r => {
       const rentalId = (r.id || r._id).toString();
       const shortId = rentalId.slice(-6).toUpperCase();
@@ -129,36 +153,32 @@ export default function TransactionHistoryPage() {
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
           <button
             onClick={() => setActiveTab("all")}
-            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
-              activeTab === "all" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${activeTab === "all" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
           >
             <FontAwesomeIcon icon={faArrowRightArrowLeft} className="mr-2" />
             Tất cả
           </button>
           <button
             onClick={() => setActiveTab("transaction")}
-            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
-              activeTab === "transaction" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${activeTab === "transaction" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
           >
             <FontAwesomeIcon icon={faMoneyBillWave} className="mr-2" />
             Nạp tiền
           </button>
           <button
             onClick={() => setActiveTab("rental")}
-            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
-              activeTab === "rental" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${activeTab === "rental" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
           >
             <FontAwesomeIcon icon={faWallet} className="mr-2" />
             Thuê đồ
           </button>
           <button
             onClick={() => setActiveTab("refund")}
-            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${
-              activeTab === "refund" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`px-5 py-2.5 text-[13px] font-bold tracking-widest uppercase transition-colors rounded-t-md ${activeTab === "refund" ? "bg-black text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
           >
             <FontAwesomeIcon icon={faRotateLeft} className="mr-2" />
             Hoàn tiền
@@ -169,8 +189,8 @@ export default function TransactionHistoryPage() {
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded border border-gray-200">
             <span className="text-sm font-medium text-gray-500">Từ:</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="bg-transparent text-sm border-none outline-none text-gray-700 cursor-pointer"
@@ -178,15 +198,15 @@ export default function TransactionHistoryPage() {
           </div>
           <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded border border-gray-200">
             <span className="text-sm font-medium text-gray-500">Đến:</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="bg-transparent text-sm border-none outline-none text-gray-700 cursor-pointer"
             />
           </div>
           {(startDate || endDate) && (
-            <button 
+            <button
               onClick={() => { setStartDate(""); setEndDate(""); }}
               className="text-xs text-red-500 hover:text-red-700 font-medium underline"
             >
@@ -220,7 +240,7 @@ export default function TransactionHistoryPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-right shrink-0">
                 <div className={`font-bold text-sm sm:text-lg mb-1 ${activity.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {activity.amount > 0 ? '+' : ''}{formatPrice(activity.amount)}

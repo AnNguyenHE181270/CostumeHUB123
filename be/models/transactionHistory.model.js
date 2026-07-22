@@ -12,6 +12,11 @@ const transactionHistorySchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    // Khôi phục lại trường orderCode để tránh lỗi E11000 duplicate key từ index cũ của MongoDB
+    orderCode: {
+      type: Number,
+      default: () => Math.floor(Math.random() * 10000) + Date.now(),
+    },
     amount: {
       type: Number,
       required: true,

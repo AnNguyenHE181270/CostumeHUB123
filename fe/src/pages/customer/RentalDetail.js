@@ -279,7 +279,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </button>
                         )}
 
-                        {((currentStatus === 'renting' && isWithin3HoursRenting) || detailedOrder?.hasIssue) && (
+                        {((currentStatus === 'renting' && isWithin3HoursRenting && detailedOrder?.shippingAddress?.addressDetail !== "Nhận tại cửa hàng") || detailedOrder?.hasIssue) && (
                             <button
                                 onClick={() => onRequestIssue?.()}
                                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue
