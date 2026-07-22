@@ -176,6 +176,50 @@ const getOrderDetail = async (orderId, customerId) => {
   };
 };
 
+// Lấy ngày giao hàng dự kiến (GHN leadtime) tới một quận/phường cụ thể
+const getDeliveryEstimate = async (districtId, wardCode) => {
+  if (!districtId || !wardCode) {
+    throw new HttpError('Thiếu thông tin địa chỉ giao hàng.', 400);
+  }
+
+  const services = await ghnService.getAvailableServices(ghnService.SHOP_ORIGIN.district_id, districtId);
+  const serviceId = services[0]?.service_id;
+  if (!serviceId) throw new HttpError('Không tìm thấy dịch vụ vận chuyển phù hợp tới địa chỉ này.', 400);
+
+  const leadtimeData = await ghnService.getLeadTime({
+    fromDistrictId: ghnService.SHOP_ORIGIN.district_id,
+    fromWardCode: ghnService.SHOP_ORIGIN.ward_code,
+    toDistrictId: districtId,
+    toWardCode: wardCode,
+    serviceId,
+  });
+
+  return { estimatedDeliveryDate: new Date(leadtimeData.leadtime * 1000) };
+};
+
+// Kiểm tra ngày nhận hàng khách chọn có khả thi so với thời gian giao hàng dự kiến GHN không.
+// Nếu GHN dự kiến giao trễ hơn ngày khách muốn nhận, chặn lại và trả kèm estimatedDeliveryDate
+// để FE hiện modal xác nhận (khách có thể chọn đặt tiếp bằng confirmLateDelivery).
+const checkDeliveryFeasibility = async (shippingAddress, startDate) => {
+  if (!shippingAddress?.districtId || !shippingAddress?.wardCode) return; // Nhận tại showroom, không cần check GHN
+
+  let estimate;
+  try {
+    estimate = await getDeliveryEstimate(shippingAddress.districtId, shippingAddress.wardCode);
+  } catch (err) {
+    console.error('[GHN Feasibility Check Error]', err);
+    return; // GHN lỗi tạm thời thì không chặn đơn hàng
+  }
+
+  if (estimate.estimatedDeliveryDate > new Date(startDate)) {
+    throw new HttpError(
+      'Đơn hàng có thể được giao trễ hơn ngày nhận bạn đã chọn.',
+      400,
+      { estimatedDeliveryDate: estimate.estimatedDeliveryDate }
+    );
+  }
+};
+
 const createOrder = async (customerId, body) => {
   const { startDate, endDate, items, shippingFee, shippingAddress, paymentMethod, confirmLateDelivery } = body;
 
@@ -899,6 +943,7 @@ const getTopRentedCostumes = async (limit = 3) => {
 module.exports = {
   getRentalHistory,
   getOrderDetail,
+  getDeliveryEstimate,
   createOrder,
   cancelOrder,
   confirmReceipt,
