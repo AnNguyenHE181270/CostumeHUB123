@@ -624,7 +624,7 @@ export default function ExportPage() {
               <KpiGrid items={[
                 { icon: faWallet, label: "Tổng nạp ví", value: fmtVND(r?.wallet?.totalTransaction), color: "text-teal-600", bg: "bg-teal-50" },
                 { icon: faCheckCircle, label: "GD nạp thành công", value: `${fmtNum(r?.wallet?.successCount)} (${r?.wallet?.successRate || 0}%)`, color: "text-emerald-600", bg: "bg-emerald-50" },
-                { icon: faCreditCard, label: "VNPAY", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "VNPAY")?.total), color: "text-blue-500", bg: "bg-blue-50" },
+                { icon: faCreditCard, label: "payOS", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "payOS")?.total), color: "text-blue-500", bg: "bg-blue-50" },
                 { icon: faCreditCard, label: "WALLET / Cash", value: fmtVND((r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "WALLET")?.total || 0) + (r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "Cash")?.total || 0)), color: "text-violet-600", bg: "bg-violet-50" },
               ]} />
 

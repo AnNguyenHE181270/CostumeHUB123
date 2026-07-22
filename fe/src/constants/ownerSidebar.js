@@ -7,6 +7,7 @@ import {
   faWarehouse,
   faFileExport,
   faCircleExclamation,
+  faMoneyBillTransfer,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ownerSidebar = [
@@ -66,6 +67,13 @@ const ownerSidebar = [
     title: "Xử lý khiếu nại", 
     subtitle: "Tiếp nhận và giải quyết các phản hồi, sự cố từ khách hàng", 
     icon: faCircleExclamation 
+  },
+  { 
+    path: "/owner/withdrawals", 
+    label: "Yêu cầu Rút tiền", 
+    title: "Quản lý Rút tiền", 
+    subtitle: "Duyệt hoặc từ chối các yêu cầu rút tiền từ ví của khách hàng", 
+    icon: faMoneyBillTransfer 
   },
 ];
 

@@ -14,7 +14,6 @@ const cleanupPendingUsers = async () => {
     // Xóa các user đang pending, chưa xác thực email và quá hạn 24h
     const result = await User.deleteMany({
       status: "pending",
-      isEmailVerified: false,
       createdAt: { $lt: yesterday }
     });
 
@@ -29,9 +28,9 @@ const cleanupPendingUsers = async () => {
 };
 
 const cleanupPendingTransactions = async () => {
-  console.log(" Đang dọn dẹp các giao dịch VNPay treo (quá hạn)...");
+  console.log(" Đang dọn dẹp các giao dịch payOS treo (quá hạn)...");
   try {
-    // VNPay link hết hạn sau 15 phút, ta lấy 20 phút cho an toàn
+    // payOS link hết hạn sau 15 phút, ta lấy 20 phút cho an toàn
     const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000);
     const result = await TransactionHistory.updateMany(
       {
@@ -44,12 +43,12 @@ const cleanupPendingTransactions = async () => {
     );
 
     if (result.modifiedCount > 0) {
-      console.log(`Đã tự động hủy ${result.modifiedCount} giao dịch VNPay quá hạn.`);
+      console.log(`Đã tự động hủy ${result.modifiedCount} giao dịch payOS quá hạn.`);
     } else {
-      console.log(`Không có giao dịch VNPay nào quá hạn cần hủy.`);
+      console.log(`Không có giao dịch payOS nào quá hạn cần hủy.`);
     }
   } catch (error) {
-    console.error("Lỗi khi hủy giao dịch VNPay quá hạn:", error);
+    console.error("Lỗi khi hủy giao dịch payOS quá hạn:", error);
   }
 };
 

@@ -17,8 +17,8 @@ import paymentService from "../../services/payment.service";
 const MIN_TOPUP = 10000;
 const POLL_INTERVAL_MS = 4000;
 
-// Nạp ví nhanh ngay tại Checkout: mở VNPAY ở tab mới (giữ nguyên trang Checkout, không mất dữ liệu
-// đã nhập), rồi tự động theo dõi số dư và báo thành công khi VNPAY xử lý xong — không cần khách quay
+// Nạp ví nhanh ngay tại Checkout: mở payOS ở tab mới (giữ nguyên trang Checkout, không mất dữ liệu
+// đã nhập), rồi tự động theo dõi số dư và báo thành công khi payOS xử lý xong — không cần khách quay
 // lại thao tác từ đầu.
 export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, onSuccess }) {
   const { user, refreshProfile } = useAuth();
@@ -39,7 +39,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
     }
   }, [isOpen, requiredAmount]);
 
-  // Theo dõi số dư khi đang chờ khách thanh toán ở tab VNPAY.
+  // Theo dõi số dư khi đang chờ khách thanh toán ở tab payOS.
   useEffect(() => {
     if (stage !== "waiting") return undefined;
     const timer = setInterval(() => {
@@ -82,7 +82,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
     try {
       const data = await paymentService.createPaymentUrl(amt);
       if (!data?.success || !data?.paymentUrl) {
-        throw new Error(data?.message || "Không thể tạo liên kết thanh toán VNPAY.");
+        throw new Error(data?.message || "Không thể tạo liên kết thanh toán payOS.");
       }
 
       if (popup) {
@@ -97,7 +97,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
       setStage("waiting");
     } catch (err) {
       if (popup) popup.close();
-      setErrorMsg(err.message || "Có lỗi xảy ra khi tạo thanh toán VNPAY.");
+      setErrorMsg(err.message || "Có lỗi xảy ra khi tạo thanh toán payOS.");
       setStage("form");
     }
   };
@@ -148,7 +148,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
             onClick={handleStartPayment}
             className="rounded-xl"
           >
-            Nạp Qua VNPAY
+            Nạp Qua payOS
           </Button>
         </div>
       ) : stage === "waiting" ? (
@@ -159,7 +159,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
               Đang chờ xác nhận thanh toán...
             </p>
             <p className="text-[12px] text-[#8a7d63] leading-relaxed">
-              Vui lòng hoàn tất thanh toán {formatPrice(Number(amount))} trên tab VNPAY vừa mở. Trang này
+              Vui lòng hoàn tất thanh toán {formatPrice(Number(amount))} trên tab payOS vừa mở. Trang này
               sẽ tự động cập nhật khi nạp tiền thành công.
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function QuickTopUpModal({ isOpen, onClose, requiredAmount = 0, o
               className="inline-flex items-center gap-2 text-[12px] font-semibold text-[#b8935a] hover:underline"
             >
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
-              Trình duyệt đã chặn tab mới — bấm để mở trang thanh toán VNPAY
+              Trình duyệt đã chặn tab mới — bấm để mở trang thanh toán payOS
             </a>
           )}
 

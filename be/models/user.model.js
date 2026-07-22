@@ -6,9 +6,9 @@ const addressSchema = new mongoose.Schema(
     receiverName: { type: String, required: true, trim: true },
     receiverPhone: { type: String, required: true, trim: true },
     province: { type: String, required: true },
-    provinceId: { type: Number },
+    provinceId: { type: mongoose.Schema.Types.Mixed },
     district: { type: String, required: true },
-    districtId: { type: Number },
+    districtId: { type: mongoose.Schema.Types.Mixed },
     ward: { type: String, required: true },
     wardCode: { type: String },
     addressDetail: { type: String, required: true, trim: true },
@@ -73,11 +73,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["active", "blocked", "pending"],
       default: "active",
-    },
-
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
     },
 
     otpCode: { type: String, select: false },

@@ -22,6 +22,7 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
+import WithdrawalsPage from "../pages/store-owner/WithdrawalsPage";
 
 import OrdersPage from "../pages/shared/OrdersPage";
 import ExportPage from "../pages/store-owner/ExportPage";
@@ -115,6 +116,7 @@ function AppRoutes() {
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
           <Route path={ROUTES.STORE_OWNER_EXPORT} element={<ExportPage />} />
           <Route path={ROUTES.STORE_OWNER_ISSUES} element={<IssuesManagePage />} />
+          <Route path="withdrawals" element={<WithdrawalsPage />} />
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />

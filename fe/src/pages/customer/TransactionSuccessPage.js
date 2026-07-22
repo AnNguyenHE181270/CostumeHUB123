@@ -8,6 +8,16 @@ export default function TransactionSuccessPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Read orderCode from query params
+    const searchParams = new URLSearchParams(window.location.search);
+    const orderCode = searchParams.get('orderCode');
+    
+    if (orderCode) {
+      import('../../services/payment.service').then(m => {
+        m.default.syncTransaction(orderCode).catch(err => console.error("Sync error:", err));
+      });
+    }
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {

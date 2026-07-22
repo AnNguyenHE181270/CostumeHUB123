@@ -17,12 +17,12 @@ export default function TransactionHistoryPage() {
       setLoading(true);
       try {
         const [transactionRes, rentalRes] = await Promise.all([
-          axiosClient.get(`/api/vnpays/transaction-history`).catch(() => ({ data: [] })),
+          axiosClient.get(`/api/payos/transaction-history`).catch(() => ({ data: [] })),
           axiosClient.get(`/api/rentals/rental-history`).catch(() => [])
         ]);
 
-        // Chỉ lấy những giao dịch nạp tiền thành công
-        const transactionData = (transactionRes.data || []).filter(t => t.status === "success" || t.status === "completed");
+        // Lấy tất cả giao dịch (bao gồm cả pending và failed)
+        const transactionData = transactionRes.data || [];
         const rentalData = Array.isArray(rentalRes) ? rentalRes : [];
 
         setTransactions(transactionData);
@@ -56,11 +56,11 @@ export default function TransactionHistoryPage() {
     ...transactions.map(t => ({
       id: t._id,
       type: "transaction",
-      title: "Nạp tiền vào ví (VNPay)",
-      amount: t.amount,
+      title: t.type === 'WITHDRAW' ? "Rút tiền từ ví" : "Nạp tiền vào ví",
+      amount: t.type === 'WITHDRAW' ? -t.amount : t.amount,
       status: t.status,
       date: t.createdAt,
-      ref: t.txnRef ? t.txnRef.replace(/[a-f0-9]{24}/i, '***') : ''
+      ref: t.orderCode ? `#${t.orderCode}` : ''
     })),
     ...rentals.map(r => {
       const rentalId = (r.id || r._id).toString();
