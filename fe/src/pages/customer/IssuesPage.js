@@ -281,12 +281,12 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-[#858585]">Trạng thái khiếu nại</span>
                             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${existingIssue.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                                existingIssue.status === 'resolved' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                existingIssue.status === 'accepted' ? 'bg-green-100 text-green-800 border border-green-200' :
                                     existingIssue.status === 'cancelled' ? 'bg-gray-100 text-gray-800 border border-gray-200' :
                                         'bg-red-100 text-red-800 border border-red-200'
                                 }`}>
                                 {existingIssue.status === 'pending' ? 'Chờ xử lý' :
-                                    existingIssue.status === 'resolved' ? 'Đã giải quyết' :
+                                    existingIssue.status === 'accepted' ? 'Đã chấp nhận' :
                                         existingIssue.status === 'cancelled' ? 'Đã hủy' : 'Đã từ chối'}
                             </span>
                         </div>
