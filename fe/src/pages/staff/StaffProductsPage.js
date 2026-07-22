@@ -318,8 +318,8 @@ export default function StaffProductsPage() {
                         key={p}
                         onClick={() => setPage(p)}
                         className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${p === page
-                            ? "bg-[#1a1a1a] text-white"
-                            : "border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5]"
+                          ? "bg-[#1a1a1a] text-white"
+                          : "border border-[#eaeaea] text-[#555] hover:bg-[#f5f5f5]"
                           }`}
                       >
                         {p}
