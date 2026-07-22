@@ -65,7 +65,7 @@ function MediaViewer({ urls = [], title = "Bằng chứng" }) {
 
   return (
     <div>
-      <div className="rounded-xl overflow-hidden bg-black aspect-video relative flex items-center justify-center">
+      <div className="rounded-xl overflow-hidden bg-[#18181b] h-[340px] relative flex items-center justify-center border border-[#eaeaea]">
         {isVideo(urls[activeIdx]) ? (
           <video
             key={urls[activeIdx]}
@@ -77,7 +77,8 @@ function MediaViewer({ urls = [], title = "Bằng chứng" }) {
           <img
             src={urls[activeIdx]}
             alt={`${title} ${activeIdx + 1}`}
-            className="max-h-full max-w-full object-contain"
+            className="max-h-full max-w-full object-contain cursor-zoom-in"
+            onClick={() => window.open(urls[activeIdx], "_blank")}
           />
         )}
         {urls.length > 1 && (
@@ -301,33 +302,52 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
             )}
           </div>
 
-          {/* Action selector */}
-
           {canAcceptReject && (
             <div>
               <label className="block text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">
                 Hành động
               </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setAction("accept")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "accept"
-                    ? "bg-emerald-600 text-white border-emerald-600"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                    }`}
-                >
-                  <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
-                </button>
-                <button
-                  onClick={() => setAction("reject")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${action === "reject"
-                    ? "bg-red-600 text-white border-red-600"
-                    : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    }`}
-                >
-                  <FontAwesomeIcon icon={faTimes} /> Từ chối
-                </button>
-              </div>
+              {!action ? (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setAction("accept")}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                  >
+                    <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                  </button>
+                  <button
+                    onClick={() => setAction("reject")}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                  >
+                    <FontAwesomeIcon icon={faTimes} /> Từ chối
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    {action === "accept" ? (
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+                        <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-700">
+                        <FontAwesomeIcon icon={faTimes} /> Từ chối
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAction("");
+                      setRejectReason("");
+                      setFiles([]);
+                    }}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    Thay đổi
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -458,13 +478,20 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col z-10">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-[#eaeaea] px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
-          <div>
-            <h2 className="text-[15px] font-bold text-[#1a1a1a]">
-              Chi tiết khiếu nại
-            </h2>
-            <p className="text-xs text-[#888] mt-0.5">
-              #{issue._id?.slice(-8).toUpperCase()}
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="text-[15px] font-bold text-[#1a1a1a]">
+                Chi tiết khiếu nại
+              </h2>
+              <p className="text-xs text-[#888] mt-0.5">
+                #{issue._id?.slice(-8).toUpperCase()}
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[issue.status]}`}
+            >
+              {STATUS_LABELS[issue.status] || issue.status}
+            </span>
           </div>
           <button
             onClick={onClose}
@@ -476,23 +503,15 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
 
         {/* Content Body */}
         <div className="flex-1 px-6 py-5 overflow-y-auto">
-          <div className="mb-4">
-            <span
-              className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold ${STATUS_STYLES[issue.status]}`}
-            >
-              {STATUS_LABELS[issue.status] || issue.status}
-            </span>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Cột trái: Thông tin khách hàng, đơn hàng & khiếu nại */}
+            {/* Cột trái: Thông tin khách hàng, đơn hàng & Sản phẩm */}
             <div className="space-y-6">
               {/* Customer info */}
               <div>
                 <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
                   Thông tin khách hàng
                 </p>
-                <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm border border-[#eaeaea]">
+                <div className="bg-[#fafafa] rounded-xl p-4 space-y-2.5 text-sm border border-[#eaeaea]">
                   <div className="flex justify-between">
                     <span className="text-[#888]">Họ tên</span>
                     <span className="font-semibold text-[#1a1a1a]">{customer?.fullName || "—"}</span>
@@ -511,79 +530,106 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
               {/* Order info */}
               <div>
                 <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
-                  Thông tin đơn hàng
+                  Thông tin đơn hàng & Sản phẩm
                 </p>
-                <div className="bg-[#fafafa] rounded-xl p-4 space-y-2 text-sm border border-[#eaeaea]">
-                  <div className="flex justify-between">
-                    <span className="text-[#888]">Mã đơn</span>
-                    <span className="font-mono font-semibold text-[#1a1a1a]">
-                      {rental?._id?.slice(-8).toUpperCase() || "—"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888]">Tổng tiền</span>
-                    <span
-                      className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
-                        }`}
-                    >
-                      {formatCurrency(rental?.totalAmount)}
-                      {isHighValue && " ⚠️"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888]">Ngày thuê</span>
-                    <span className="text-[#555]">{formatDate(rental?.startDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888]">Ngày trả</span>
-                    <span className="text-[#555]">{formatDate(rental?.endDate)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Issue content */}
-              <div>
-                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
-                  Nội dung khiếu nại
-                </p>
-                <div className="space-y-3">
-                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                    <p className="text-xs text-amber-600 font-semibold mb-1">
-                      Yêu cầu giải quyết
-                    </p>
-                    <p className="text-sm font-semibold text-[#1a1a1a]">
-                      {RESOLUTION_LABELS[issue.resolution] || issue.resolution}
-                    </p>
-                  </div>
-                  <div className="bg-[#fafafa] border border-[#eaeaea] rounded-xl p-4">
-                    <p className="text-xs text-[#888] font-semibold mb-1">
-                      Lý do khiếu nại
-                    </p>
-                    <p className="text-sm text-[#333] leading-relaxed">
-                      {issue.reason}
-                    </p>
-                  </div>
-                  {issue.note && (
-                    <div className="bg-[#fafafa] border border-[#eaeaea] rounded-xl p-4">
-                      <p className="text-xs text-[#888] font-semibold mb-1">
-                        Ghi chú thêm
-                      </p>
-                      <p className="text-sm text-[#555]">{issue.note}</p>
+                <div className="bg-[#fafafa] rounded-xl p-4 space-y-3.5 text-sm border border-[#eaeaea]">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-[#888]">Mã đơn</span>
+                      <span className="font-mono font-semibold text-[#1a1a1a]">
+                        {rental?._id?.slice(-8).toUpperCase() || "—"}
+                      </span>
                     </div>
-                  )}
-                  <div className="text-xs text-[#888] italic">
-                    Gửi lúc: {formatDate(issue.createdAt)}
+                    <div className="flex justify-between">
+                      <span className="text-[#888]">Tổng tiền</span>
+                      <span
+                        className={`font-bold ${isHighValue ? "text-red-600" : "text-[#1a1a1a]"
+                          }`}
+                      >
+                        {formatCurrency(rental?.totalAmount)}
+                        {isHighValue && " ⚠️"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#888]">Ngày thuê</span>
+                      <span className="text-[#555]">{formatDate(rental?.startDate)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#888]">Ngày trả</span>
+                      <span className="text-[#555]">{formatDate(rental?.endDate)}</span>
+                    </div>
+                  </div>
+
+                  {/* Products List */}
+                  <div className="border-t border-[#eaeaea] pt-3.5">
+                    <p className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2.5">
+                      Sản phẩm thuê
+                    </p>
+                    <div className="space-y-3">
+                      {rental?.items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-start text-xs border-b border-[#f5f5f5] pb-2.5 last:border-0 last:pb-0">
+                          <div className="flex-1 pr-2">
+                            <p className="font-semibold text-[#1a1a1a] leading-tight">
+                              {item.costume?.name || "Sản phẩm không tên"}
+                            </p>
+                            <p className="text-[10px] text-[#888] mt-1">
+                              Size: <span className="font-semibold text-[#333]">{item.size}</span> | Số lượng: <span className="font-semibold text-[#333]">{item.quantity}</span>
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-medium text-[#1a1a1a]">{formatCurrency(item.rentalPricePerDay)}/ngày</p>
+                            <p className="text-[10px] text-[#888]">Cọc: {formatCurrency(item.depositPrice)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Cột phải: Bằng chứng hình ảnh/video & lý do phản hồi */}
+            {/* Cột phải: Thông tin khiếu nại & Bằng chứng */}
             <div className="space-y-6">
-              {/* Customer evidence */}
+              {/* Issue content */}
               <div>
                 <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
-                  <FontAwesomeIcon icon={faImage} className="mr-1.5" />
+                  Chi tiết khiếu nại
+                </p>
+                <div className="bg-[#fafafa] rounded-xl p-4 space-y-3.5 text-sm border border-[#eaeaea]">
+                  <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3">
+                    <p className="text-xs text-amber-700 font-semibold mb-1">
+                      Yêu cầu giải quyết
+                    </p>
+                    <p className="text-sm font-semibold text-amber-900">
+                      {RESOLUTION_LABELS[issue.resolution] || issue.resolution}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#888] font-semibold mb-1">
+                      Lý do khiếu nại
+                    </p>
+                    <p className="text-sm text-[#333] leading-relaxed bg-white border border-[#eaeaea] p-3 rounded-lg">
+                      {issue.reason}
+                    </p>
+                  </div>
+                  {issue.note && (
+                    <div>
+                      <p className="text-xs text-[#888] font-semibold mb-1">
+                        Ghi chú thêm
+                      </p>
+                      <p className="text-sm text-[#555] bg-white border border-[#eaeaea] p-3 rounded-lg">{issue.note}</p>
+                    </div>
+                  )}
+                  <div className="text-xs text-[#999] italic pt-1">
+                    Gửi lúc: {formatDate(issue.createdAt)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer evidence */}
+              <div>
+                <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <FontAwesomeIcon icon={faImage} />
                   Bằng chứng từ khách hàng
                 </p>
                 <MediaViewer urls={issue.evidence || []} title="Bằng chứng khách" />
@@ -592,8 +638,8 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
               {/* Store evidence */}
               {issue.rejectEvidence?.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5">
-                    <FontAwesomeIcon icon={faImage} className="mr-1.5" />
+                  <p className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faImage} />
                     {isEscalated
                       ? "Bằng chứng từ nhân viên (lúc nhận hàng)"
                       : "Bằng chứng từ cửa hàng (từ chối)"}
@@ -607,11 +653,11 @@ function DetailDrawer({ issue, role, onClose, onAction }) {
 
               {/* Reject reason */}
               {issue.rejectReason && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                <div className="bg-red-50/70 border border-red-100 rounded-xl p-4">
                   <p className="text-xs text-red-600 font-semibold mb-1">
                     Lý do từ chối
                   </p>
-                  <p className="text-sm text-red-800">{issue.rejectReason}</p>
+                  <p className="text-sm text-red-800 font-medium">{issue.rejectReason}</p>
                 </div>
               )}
             </div>
@@ -830,17 +876,6 @@ export default function IssuesManagePage() {
                       >
                         <FontAwesomeIcon icon={faInfoCircle} />
                       </button>
-                      {canHandle && (
-                        <button
-                          onClick={() => setHandleTarget(iss)}
-                          title="Xử lý khiếu nại"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1a1a] hover:bg-[#eaeaea] transition-colors"
-                        >
-                          <FontAwesomeIcon
-                            icon={faGavel}
-                          />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>

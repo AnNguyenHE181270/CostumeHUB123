@@ -115,7 +115,10 @@ const getAllIssues = async (query) => {
   return Issue.find(filter)
     .populate({
       path: 'rentalId',
-      populate: { path: 'customerId', select: 'fullName email phone' }
+      populate: [
+        { path: 'customerId', select: 'fullName email phone' },
+        { path: 'items.costume', select: 'name' }
+      ]
     })
     .sort({ createdAt: -1 });
 };
