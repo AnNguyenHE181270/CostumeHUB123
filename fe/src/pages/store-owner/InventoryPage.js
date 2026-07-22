@@ -188,7 +188,7 @@ export default function InventoryPage() {
       </div>
 
       {/* ── Filters ── */}
-      <div className="bg-white rounded-2xl p-5 border border-[#f0f0f0] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
         <div className="relative w-full md:col-span-2">
           <FontAwesomeIcon
             icon={faSearch}
@@ -234,28 +234,28 @@ export default function InventoryPage() {
       >
         <thead>
           <tr className="border-b border-[#f0f0f0] bg-gray-50/50">
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider w-[35%]">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider w-[28%] text-left">
               Sản phẩm
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider w-[15%] text-left">
               Danh mục
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">
               Số size
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">
               Tổng kho
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">
               Sẵn sàng
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">
               Đang thuê
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-center w-[10%]">
               Đang bảo trì
             </th>
-            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right">
+            <th className="py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right w-[7%]">
               Chi tiết
             </th>
           </tr>
@@ -295,8 +295,8 @@ export default function InventoryPage() {
               </td>
 
               {/* Category */}
-              <td className="py-4 px-6 text-[13px] text-[#555]">
-                <span className="bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 text-[13px]">
+              <td className="py-4 px-6 text-[13px] text-[#555] whitespace-nowrap">
+                <span className="inline-block bg-[#f4f4f5] text-[#3f3f46] text-xs px-2.5 py-1 rounded-full font-medium border border-[#e4e4e7]">
                   {product.categoryId?.name || "—"}
                 </span>
               </td>
@@ -339,10 +339,10 @@ export default function InventoryPage() {
               </td>
 
               {/* Action */}
-              <td className="py-4 px-6 text-right">
+              <td className="py-4 px-6 text-right whitespace-nowrap">
                 <button
                   onClick={e => { e.stopPropagation(); setSelectedProductId(product._id); }}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a1a1a] border border-[#e0e0e0] hover:border-[#1a1a1a] hover:bg-[#f5f5f5] px-3 py-1.5 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#1a1a1a] hover:text-[#666] transition-colors"
                 >
                   Chi tiết
                   <FontAwesomeIcon icon={faChevronRight} className="text-[9px]" />
