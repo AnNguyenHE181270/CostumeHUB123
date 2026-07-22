@@ -95,10 +95,10 @@ export default function ProductsPage() {
 
       let matchStatus = false;
       if (!filterStatus || filterStatus === "all") {
-        matchStatus = true;
+        matchStatus = pro.status !== "hidden";
       } else if (filterStatus === "out_of_stock") {
         const totalAvail = pro.variants ? pro.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
-        matchStatus = pro.status === "out_of_stock" || totalAvail === 0;
+        matchStatus = (pro.status === "out_of_stock" || totalAvail === 0) && pro.status !== "hidden";
       } else {
         matchStatus = pro.status?.toLowerCase() === filterStatus.toLowerCase();
       }
@@ -126,15 +126,16 @@ export default function ProductsPage() {
   const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
 
   const stats = useMemo(() => {
-    const total = filteredProducts.length;
-    const hidden = filteredProducts.filter((product) => product.status === "hidden").length;
-    const outOfStock = filteredProducts.filter((product) => {
+    const total = products.filter((product) => product.status !== "hidden").length;
+    const hidden = products.filter((product) => product.status === "hidden").length;
+    const outOfStock = products.filter((product) => {
+      if (product.status === "hidden") return false;
       if (product.status === "out_of_stock") return true;
       const totalAvail = product.variants ? product.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
       return totalAvail === 0;
     }).length;
     return { total, hidden, outOfStock };
-  }, [filteredProducts]);
+  }, [products]);
 
 
 
@@ -372,7 +373,7 @@ export default function ProductsPage() {
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Danh mục</th>
             <th className="w-[10%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Tồn kho</th>
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Giá & Cọc</th>
-            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Trạng thái</th>
+            <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10 text-center">Thuê tối đa</th>
             <th className="w-[15%] py-4 px-6 text-xs font-semibold text-[#999] uppercase tracking-wider text-right sticky top-0 bg-white/95 backdrop-blur-sm border-b border-[#f0f0f0] z-10">Thao tác</th>
           </tr>
         </thead>
@@ -432,30 +433,11 @@ export default function ProductsPage() {
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                  {product.status === "hidden" ? (
-                    <span className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-red-50 text-red-700 border border-red-200">
-                      Đã ẩn
-                    </span>
-                  ) : product.status === "out_of_stock" ? (
-                    <span
-                      className="px-3 py-1.5 rounded-md text-[12px] font-semibold bg-gray-100 text-gray-500 border border-gray-300 cursor-default"
-                      title="Tự động đặt khi tồn kho = 0. Vào Quản lý Kho để bổ sung hàng."
-                    >
-                      Hết hàng
-                    </span>
-                  ) : (
-                    <select
-                      value={product.status}
-                      onChange={(e) => handleStatusChangeClick(product, e.target.value)}
-                      disabled={isLocked}
-                      className={`border px-2 py-1.5 rounded-md text-[12px] font-semibold outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-80 ${getStatusColor(product.status)}`}
-                    >
-                      <option value="available">Sẵn sàng</option>
-                      <option value="maintenance">Bảo trì</option>
-                      <option value="rented" disabled>Đang thuê</option>
-                    </select>
-                  )}
+                <td className="py-4 px-6 text-center text-[14px]">
+                  <span className="font-semibold text-[#1a1a1a]">
+                    {product.maxRentalDays || 7}
+                  </span>
+                  <span className="text-[#999] text-[12px] ml-1">ngày</span>
                 </td>
                 <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
