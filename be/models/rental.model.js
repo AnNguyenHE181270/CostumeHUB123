@@ -1,5 +1,20 @@
 const mongoose = require("mongoose");
 
+
+const shippingAddressSchema = new mongoose.Schema({
+    receiverName: { type: String, required: true },
+    receiverPhone: { type: String, required: true },
+    provinceId: { type: String },
+    districtId: { type: String },
+    wardCode: { type: String },
+    province: { type: String },
+    district: { type: String },
+    ward: { type: String },
+    addressDetail: { type: String },
+    note: { type: String },
+}, { _id: false });
+
+
 const rentalSchema = new mongoose.Schema(
     {
         customerId: {
@@ -64,7 +79,7 @@ const rentalSchema = new mongoose.Schema(
 
         paymentMethod: {
             type: String,
-            enum: ["VNPAY", "Cash", "WALLET"],
+            enum: ["payOS", "Cash", "WALLET"],
             default: "WALLET",
         },
 
@@ -80,16 +95,8 @@ const rentalSchema = new mongoose.Schema(
         },
 
         shippingAddress: {
-            receiverName: { type: String, required: true },
-            receiverPhone: { type: String, required: true },
-            provinceId: { type: Number },
-            districtId: { type: Number },
-            wardCode: { type: String },
-            province: { type: String },
-            district: { type: String },
-            ward: { type: String },
-            addressDetail: { type: String },
-            note: { type: String },
+            type: shippingAddressSchema,
+            required: true
         },
 
         trackingCode: {
@@ -120,5 +127,4 @@ const rentalSchema = new mongoose.Schema(
 rentalSchema.index({ status: 1 });
 rentalSchema.index({ createdAt: -1 });
 rentalSchema.index({ customerId: 1 });
-
 module.exports = mongoose.model("Rental", rentalSchema);

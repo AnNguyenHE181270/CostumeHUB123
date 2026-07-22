@@ -7,8 +7,8 @@ const transactionHistorySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    txnRef: {
-      type: String,
+    orderCode: {
+      type: Number,
       required: true,
       unique: true,
     },
@@ -21,10 +21,27 @@ const transactionHistorySchema = new mongoose.Schema(
       enum: ["pending", "success", "failed"],
       default: "pending",
     },
-    vnpayInfo: {
+    payosInfo: {
       type: String,
       default: "",
       select: false,
+    },
+    type: {
+      type: String,
+      enum: ["TOPUP", "WITHDRAW"],
+      default: "TOPUP",
+    },
+    bankName: {
+      type: String,
+      trim: true,
+    },
+    accountNumber: {
+      type: String,
+      trim: true,
+    },
+    accountName: {
+      type: String,
+      trim: true,
     },
   },
   {

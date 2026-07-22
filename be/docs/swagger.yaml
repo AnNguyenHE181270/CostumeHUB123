@@ -482,9 +482,7 @@ components:
             - blocked
             - pending
           example: active
-        isEmailVerified:
-          type: boolean
-          example: true  /users/get-users:
+  /users/get-users:
     get:
       summary: Get all users
       tags:

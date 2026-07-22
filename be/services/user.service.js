@@ -131,7 +131,7 @@ const register = async ({ fullName, email, phone, password, gender, dateOfBirth 
       throw new HttpError('Tài khoản với số điện thoại này đã tồn tại.', 422);
     }
   }
-  if (existUser && existUser.status === 'blocked' && existUser.isEmailVerified) {
+  if (existUser && existUser.status === 'blocked') {
     throw new HttpError('Tài khoản này không thể đăng ký lại.', 403);
   }
 
@@ -145,7 +145,7 @@ const register = async ({ fullName, email, phone, password, gender, dateOfBirth 
   const otpExpires = new Date(now.getTime() + 10 * 60 * 1000);
   const otpCooldownUntil = new Date(now.getTime() + 60 * 1000);
 
-  if (existUser && existUser.status === 'pending' && !existUser.isEmailVerified) {
+  if (existUser && existUser.status === 'pending') {
     const updatedUser = await User.findByIdAndUpdate(
       existUser._id,
       { fullName, phone, password: passwordHash, role: roleUser._id, gender: gender || null, dateOfBirth: dateOfBirth || null, otpCode: otpHash, otpExpires, otpCooldownUntil, status: 'pending' },
@@ -178,7 +178,7 @@ const register = async ({ fullName, email, phone, password, gender, dateOfBirth 
 const verifyOtp = async (email, otp) => {
   const existUser = await User.findOne({ email }).select('+otpCode +otpExpires +otpCooldownUntil');
   if (!existUser) throw new HttpError('Không tìm thấy người dùng.', 404);
-  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('Người dùng đã được xác thực.', 400);
+  if (existUser.status === 'active') throw new HttpError('Người dùng đã được xác thực.', 400);
   if (existUser.status === 'blocked') throw new HttpError('Tài khoản này đã bị khóa.', 403);
   if (!existUser.otpCode || !existUser.otpExpires) throw new HttpError('Không tìm thấy OTP. Vui lòng đăng ký lại.', 400);
   if (existUser.otpExpires < new Date()) throw new HttpError('OTP đã hết hạn. Vui lòng đăng ký lại.', 400);
@@ -187,7 +187,6 @@ const verifyOtp = async (email, otp) => {
   if (!isValidOtp) throw new HttpError('OTP không hợp lệ.', 400);
 
   existUser.status = 'active';
-  existUser.isEmailVerified = true;
   existUser.otpCode = null;
   existUser.otpExpires = null;
   existUser.otpCooldownUntil = null;
@@ -199,7 +198,7 @@ const verifyOtp = async (email, otp) => {
 const resendOtp = async (email) => {
   const existUser = await User.findOne({ email }).select('+otpCooldownUntil');
   if (!existUser) throw new HttpError('Không tìm thấy người dùng.', 404);
-  if (existUser.status === 'active' && existUser.isEmailVerified) throw new HttpError('Người dùng đã được xác thực.', 400);
+  if (existUser.status === 'active') throw new HttpError('Người dùng đã được xác thực.', 400);
   if (existUser.status === 'blocked') throw new HttpError('Tài khoản này đã bị khóa.', 403);
 
   const now = new Date();
@@ -260,7 +259,7 @@ const getMyProfile = async (email) => {
 const forgotPassword = async (email) => {
   const user = await User.findOne({ email }).select('+resetPasswordCooldownUntil');
   if (!user) throw new HttpError('Nếu tài khoản với email này tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.', 200);
-  if (!user.isEmailVerified) throw new HttpError('Email chưa được xác thực. Vui lòng xác thực email trước khi đặt lại mật khẩu.', 403);
+  if (user.status === 'pending') throw new HttpError('Email chưa được xác thực. Vui lòng xác thực email trước khi đặt lại mật khẩu.', 403);
   if (user.status === 'blocked') throw new HttpError('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được trợ giúp.', 403);
 
   const now = new Date();
@@ -357,8 +356,16 @@ const updateUsers = async (id, data, currentUserId) => {
   const targetUser = await User.findById(id);
   if (!targetUser) throw new HttpError('Không tìm thấy người dùng', 404);
 
-  if (targetUser.status !== 'pending' && status === 'pending') {
-    throw new HttpError('Không thể chuyển trạng thái người dùng về pending.', 400);
+  if (status && status !== targetUser.status) {
+    if (status === 'blocked' && targetUser.status !== 'active') {
+      throw new HttpError('Chỉ có thể khóa (block) tài khoản đang hoạt động (active).', 400);
+    }
+    if (status === 'active' && !['pending', 'blocked'].includes(targetUser.status)) {
+      throw new HttpError('Tài khoản này không thể chuyển sang trạng thái hoạt động (active).', 400);
+    }
+    if (status === 'pending') {
+      throw new HttpError('Không thể chuyển trạng thái người dùng về pending.', 400);
+    }
   }
 
   const findRole = await Role.findOne({ name: role });

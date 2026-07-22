@@ -8,6 +8,7 @@ import Toast from "../components/ui/Toast";
 import { formatPrice } from "../utils/formatters";
 import userService from "../services/user.service";
 import paymentService from "../services/payment.service";
+import WithdrawModal from "../components/customer/WithdrawModal";
 
 export default function ProfilePage() {
   const { loading, user, token, login } = useAuth();
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [transactionAmount, setTransactionAmount] = useState("");
   const [isToppingUp, setIsToppingUp] = useState(false);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   
   const [form, setForm] = useState({
       fullName: "",
@@ -109,6 +111,13 @@ export default function ProfilePage() {
     } finally {
       setIsToppingUp(false);
     }
+  };
+
+  const handleWithdrawSuccess = async (message) => {
+    setIsWithdrawModalOpen(false);
+    setToast({ isVisible: true, type: "success", message });
+    // Refetch profile to update balance
+    await login(token, true);
   };
 
   if (loading || !user) {
@@ -250,7 +259,15 @@ export default function ProfilePage() {
               disabled={isToppingUp}
               className="!rounded-lg whitespace-nowrap px-6 py-3.5 bg-[#1b1b1b] text-white font-semibold text-[11px] uppercase tracking-wider hover:bg-black shadow-sm"
             >
-              {isToppingUp ? "Đang xử lý..." : "NẠP TIỀN QUA VNPAY"}
+              {isToppingUp ? "Đang xử lý..." : "NẠP TIỀN"}
+            </Button>
+            <Button 
+              type="button"
+              variant="secondary"
+              onClick={() => setIsWithdrawModalOpen(true)} 
+              className="!rounded-lg whitespace-nowrap px-6 py-3.5 font-semibold text-[11px] uppercase tracking-wider shadow-sm"
+            >
+              RÚT TIỀN
             </Button>
           </div>
         </div>
@@ -267,6 +284,13 @@ export default function ProfilePage() {
           {submitting ? "Đang lưu..." : "LƯU THAY ĐỔI"}
         </Button>
       </div>
+
+      <WithdrawModal 
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
+        user={user}
+        onWithdrawSuccess={handleWithdrawSuccess}
+      />
     </div>
   );
 }

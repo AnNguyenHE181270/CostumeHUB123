@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const savedToken =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
+      sessionStorage.getItem("token") || localStorage.getItem("token");
     if (savedToken) {
       setToken(savedToken);
       getProfile(savedToken).finally(() => setLoading(false));
@@ -42,7 +42,6 @@ export function AuthProvider({ children }) {
       sessionStorage.removeItem("token");
     } else {
       sessionStorage.setItem("token", newToken);
-      localStorage.removeItem("token");
     }
 
     setToken(newToken);
