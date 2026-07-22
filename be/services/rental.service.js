@@ -99,7 +99,7 @@ const getRentalHistory = async (userId) => {
     id: order._id,
     costumeName: order.items[0]?.costume?.name || 'Đơn hàng thuê',
     costumeImage: order.items[0]?.costume?.images?.[0] || '',
-    rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24))} ngày`,
+    rentalPeriod: `${Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1} ngày`,
     startDate: new Date(order.startDate).toLocaleDateString('vi-VN'),
     endDate: new Date(order.endDate).toLocaleDateString('vi-VN'),
     rawStartDate: order.startDate,
@@ -261,27 +261,9 @@ const createOrder = async (customerId, body) => {
     const variant = costume.variants.find((v) => v.size === item.size);
     if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
 
-    // Tính tổng số lượng đã được đặt (đơn đang hoạt động) trùng khoảng ngày yêu cầu,
-    // thay vì chặn tuyệt đối chỉ vì trùng costume+size+khoảng ngày.
-    const overlappingOrders = await Rental.find({
-      'items.costume': item.costume,
-      'items.size': item.size,
-      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
-      startDate: { $lte: new Date(endDate) },
-      endDate: { $gte: new Date(startDate) },
-    });
-    let bookedQty = 0;
-    overlappingOrders.forEach((order) => {
-      order.items.forEach((oi) => {
-        if (oi.costume.toString() === item.costume.toString() && oi.size === item.size) {
-          bookedQty += oi.quantity;
-        }
-      });
-    });
-
-    if (bookedQty + item.quantity > variant.totalStock) {
+    if (item.quantity > variant.availableStock) {
       throw new HttpError(
-        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng trong khoảng thời gian này. Chỉ còn trống ${Math.max(0, variant.totalStock - bookedQty)}.`,
+        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng để thuê lúc này. Chỉ còn sẵn ${variant.availableStock} bộ.`,
         400
       );
     }
@@ -424,43 +406,13 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
   const costume = await Costume.findById(costumeId);
   if (!costume) throw new HttpError('Costume not found', 404);
 
-  const paddingMs = 24 * 60 * 60 * 1000;
-  const paddedStart = new Date(new Date(startDate).getTime() - paddingMs);
-  const paddedEnd = new Date(new Date(endDate).getTime() + paddingMs);
-
-  // Query rentals có items chứa costume này, trong khoảng thời gian overlap
-  const overlaps = await Rental.find({
-    'items.costume': costumeId,
-    status: { $in: ['pending', 'delivering', 'delivered', 'renting'] },
-    startDate: { $lte: paddedEnd },
-    endDate: { $gte: paddedStart },
-  });
-
-  // Tính tổng quantity từ items array
-  let rentedQty = 0;
-  overlaps.forEach(rental => {
-    rental.items.forEach(item => {
-      if (item.costume.toString() === costumeId) {
-        // Nếu có size, chỉ count quantity của size đó
-        if (size ? item.size === size : true) {
-          rentedQty += item.quantity;
-        }
-      }
-    });
-  });
-
-  // Tính total stock từ variants
-  let totalStock = 0;
+  let availableQty = 0;
   if (size) {
-    // Nếu có size, chỉ count stock của size đó
     const variant = costume.variants.find(v => v.size === size);
-    totalStock = variant?.totalStock || 0;
+    availableQty = variant?.availableStock || 0;
   } else {
-    // Nếu không có size, count tất cả
-    totalStock = costume.variants.reduce((sum, v) => sum + (v.totalStock || 0), 0);
+    availableQty = costume.variants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
   }
-
-  const availableQty = totalStock - rentedQty;
 
   return { isAvailable: availableQty >= quantity, availableQty };
 };
