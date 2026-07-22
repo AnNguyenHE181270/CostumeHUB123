@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false, minRentalDays }) {
+export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false, disableStart = false, disableEnd = false, maxRentalDays }) {
     const [activePicker, setActivePicker] = useState(null);
     const pickerRef = useRef(null);
 
@@ -14,10 +14,10 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const requiredDays = Math.max(0, (Number(minRentalDays) || 1) - 1);
+    const allowedMaxDays = Math.max(1, Number(maxRentalDays) || 7) - 1;
     const start = new Date(startDate);
     const minEndDate = new Date(start);
-    minEndDate.setDate(minEndDate.getDate() + requiredDays);
+    minEndDate.setDate(minEndDate.getDate());
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -29,7 +29,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
     const maxEndDate = new Date(start);
-    maxEndDate.setDate(maxEndDate.getDate() + requiredDays); // MAXIMUM logic
+    maxEndDate.setDate(maxEndDate.getDate() + allowedMaxDays); // MAXIMUM logic
 
     return (
         <>
@@ -40,10 +40,10 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                         Ngày nhận đồ
                     </label>
                     <button
-                        onClick={() => !disabled && setActivePicker(activePicker === 'start' ? null : 'start')}
-                        disabled={disabled}
+                        onClick={() => !disabled && !disableStart && setActivePicker(activePicker === 'start' ? null : 'start')}
+                        disabled={disabled || disableStart}
                         className={`w-full text-left bg-white border ${activePicker === 'start' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
+                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${(disabled || disableStart) ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
                     >
                         {new Date(startDate).toLocaleDateString('vi-VN')}
                         <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'start' ? 'text-[#1a1a1a]' : 'text-[#999]'} />
@@ -69,13 +69,13 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                             const existingEnd = new Date(endDate).getTime();
                                             if (existingEnd < newStart) {
                                                 const defaultEnd = new Date(newStart);
-                                                defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
+                                                defaultEnd.setDate(defaultEnd.getDate() + allowedMaxDays);
                                                 setEndDate(defaultEnd.toISOString().split("T")[0]);
                                             } else {
                                                 const diffDays = Math.ceil((existingEnd - newStart) / (1000 * 60 * 60 * 24));
-                                                if (diffDays > requiredDays) {
+                                                if (diffDays > allowedMaxDays) {
                                                     const defaultEnd = new Date(newStart);
-                                                    defaultEnd.setDate(defaultEnd.getDate() + requiredDays);
+                                                    defaultEnd.setDate(defaultEnd.getDate() + allowedMaxDays);
                                                     setEndDate(defaultEnd.toISOString().split("T")[0]);
                                                 }
                                             }
@@ -96,10 +96,10 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                         Ngày trả đồ
                     </label>
                     <button
-                        onClick={() => !disabled && setActivePicker(activePicker === 'end' ? null : 'end')}
-                        disabled={disabled}
+                        onClick={() => !disabled && !disableEnd && setActivePicker(activePicker === 'end' ? null : 'end')}
+                        disabled={disabled || disableEnd}
                         className={`w-full text-left bg-white border ${activePicker === 'end' ? 'border-[#1a1a1a] shadow-sm' : 'border-[#eaeaea]'
-                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
+                            } text-[13px] text-[#1a1a1a] rounded-lg px-4 py-3 font-semibold transition-all flex justify-between items-center hover:border-[#1a1a1a] ${(disabled || disableEnd) ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : ''}`}
                     >
                         {new Date(endDate).toLocaleDateString('vi-VN')}
                         <FontAwesomeIcon icon={faCalendarDays} className={activePicker === 'end' ? 'text-[#1a1a1a]' : 'text-[#999]'} />

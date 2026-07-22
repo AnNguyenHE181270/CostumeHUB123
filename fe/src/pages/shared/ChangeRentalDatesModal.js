@@ -109,9 +109,9 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
 
         const rentalDays = getRentalDays(newStartDate, newEndDate);
         for (const item of order.items) {
-            const minDays = item.costume?.minRentalDays || 1;
-            if (rentalDays > minDays) {
-                setError(`Sản phẩm ${item.costume?.name || item.costumeName} chỉ được thuê tối đa ${minDays} ngày.`);
+            const maxDays = item.costume?.maxRentalDays || 7;
+            if (rentalDays > maxDays) {
+                setError(`Sản phẩm ${item.costume?.name || item.costumeName} chỉ được thuê tối đa ${maxDays} ngày.`);
                 return false;
             }
         }
@@ -205,7 +205,7 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
                         setStartDate={(val) => { setError(""); setNewStartDate(val); }}
                         endDate={newEndDate}
                         setEndDate={(val) => { setError(""); setNewEndDate(val); }}
-                        minRentalDays={Math.max(1, ...(order?.items?.map(item => item.costume?.minRentalDays || 1) || [1]))}
+                        maxRentalDays={Math.min(...(order?.items?.map(item => item.costume?.maxRentalDays || 7) || [7]))}
                     />
                 </div>
 
@@ -246,6 +246,17 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
                                         {formatPrice(Math.abs(difference))}
                                     </span>
                                 </div>
+                                {difference > 0 && (
+                                    <div className="mt-4 flex flex-col items-center justify-center bg-white rounded-lg p-4 border border-orange-200">
+                                        <p className="text-xs font-bold text-[#1a1a1a] mb-2 uppercase tracking-wider">Mã QR Thanh Toán</p>
+                                        <img
+                                            src={`https://img.vietqr.io/image/970436-1025539209-compact2.png?amount=${Math.abs(difference)}&addInfo=GIAHAN%20${order._id.slice(-6).toUpperCase()}&accountName=NGUYEN%20HUU%20DAT`}
+                                            alt="QR Thanh toán"
+                                            className="w-40 h-40 object-cover rounded-lg border border-gray-100 shadow-sm"
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-2 text-center">Khách hàng vui lòng quét mã này để thanh toán phí gia hạn.</p>
+                                    </div>
+                                )}
                                 {difference < 0 && (
                                     <span className="text-xs text-emerald-700 italic">
                                         * Số tiền thừa sẽ được tự động hoàn về ví của khách.
@@ -283,7 +294,7 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
                         disabled={loading || !newStartDate || !newEndDate || (new Date(newEndDate) <= new Date(newStartDate))}
                     >
                         {loading && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
-                        Cập nhật
+                        {difference > 0 ? "Xác nhận đã thanh toán" : "Cập nhật"}
                     </button>
                 </div>
             </div>

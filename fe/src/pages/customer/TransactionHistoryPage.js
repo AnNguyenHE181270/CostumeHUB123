@@ -47,21 +47,36 @@ export default function TransactionHistoryPage() {
       case "failed":
       case "cancelled":
         return <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs font-semibold"><FontAwesomeIcon icon={faTimesCircle} /> Thất bại/Hủy</span>;
+      case "renting":
+        return <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs font-semibold"> Đang thuê</span>;
       default:
         return <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-semibold"> Đang diễn ra</span>;
     }
   };
 
   const allActivities = [
-    ...transactions.map(t => ({
-      id: t._id,
-      type: "transaction",
-      title: "Nạp tiền vào ví (VNPay)",
-      amount: t.amount,
-      status: t.status,
-      date: t.createdAt,
-      ref: t.txnRef ? t.txnRef.replace(/[a-f0-9]{24}/i, '***') : ''
-    })),
+    ...transactions.map(t => {
+      let title = "Nạp tiền vào ví (VNPay)";
+      let type = "transaction";
+      let status = t.status;
+      if (t.txnRef && t.txnRef.startsWith("EXTEND_")) {
+        title = "Phí gia hạn";
+        type = "rental";
+        status = "renting";
+      } else if (t.txnRef && t.txnRef.startsWith("REFUND_DATE_")) {
+        title = "Hoàn tiền cập nhật ngày thuê";
+        type = "refund";
+      }
+      return {
+        id: t._id,
+        type: type,
+        title: title,
+        amount: t.amount,
+        status: status,
+        date: t.createdAt,
+        ref: t.txnRef ? t.txnRef.replace(/[a-f0-9]{24}/i, '***') : ''
+      };
+    }),
     ...rentals.map(r => {
       const rentalId = (r.id || r._id).toString();
       const shortId = rentalId.slice(-6).toUpperCase();

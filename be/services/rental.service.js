@@ -11,6 +11,7 @@ const fs = require('fs');
 const { getRentalPriceFactor } = require('../utils/pricing.util');
 const notificationService = require('./notification.service');
 const { uploadReturnEvidence } = require('./cloudinary.service');
+const TransactionHistory = require('../models/transactionHistory.model');
 
 // Bảng đền bù hư hỏng (khớp nội dung công khai ở trang "Về Chúng Tôi") — staff chọn mức, không tự nhập số tiền
 const DAMAGE_TIER_RANGES = {
@@ -65,12 +66,12 @@ const autoUpdateDeliveredStatus = async () => {
 const sendAutoConfirmReminders = async () => {
   const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
   const fourHoursAndFifteenMinsAgo = new Date(Date.now() - 4.25 * 60 * 60 * 1000);
-  
+
   const rentals = await Rental.find({
     status: 'delivered',
     deliveredAt: { $lte: fourHoursAgo, $gt: fourHoursAndFifteenMinsAgo },
   });
-  
+
   for (const rental of rentals) {
     try {
       await notificationService.createNotification({
@@ -249,11 +250,10 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
-
-    const minDays = costume.minRentalDays || 1;
-    if (rentalDays < minDays) {
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) {
       throw new HttpError(
-        `Phải thuê tối thiểu ${minDays} ngày.`,
+        `Chỉ được thuê tối đa ${maxDays} ngày đối với sản phẩm ${costume.name}.`,
         400
       );
     }
@@ -583,10 +583,18 @@ const confirmPreparation = async (id) => {
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
-    order.status = 'delivering';
-    await order.save();
-    await notifyOrderStatus(order, 'delivering');
-    return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
+    if (order.shippingAddress?.addressDetail === "Nhận tại cửa hàng") {
+      order.status = 'renting';
+      order.rentingAt = new Date();
+      await order.save();
+      await notifyOrderStatus(order, 'renting');
+      return { message: 'Đã chuyển sang đang thuê (Nhận tại cửa hàng).', order };
+    } else {
+      order.status = 'delivering';
+      await order.save();
+      await notifyOrderStatus(order, 'delivering');
+      return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
+    }
   }
 };
 
@@ -865,18 +873,6 @@ const extendRental = async (id, customerId, newEndDate) => {
         400
       );
     }
-
-    const overlap = await Rental.findOne({
-      _id: { $ne: rental._id },
-      'items.costume': costume._id,
-      'items.size': item.size,
-      status: { $in: ['pending', 'delivering', 'delivered', 'renting', 'returning', 'overdue'] },
-      startDate: { $lte: newEnd },
-      endDate: { $gte: oldEnd },
-    });
-    if (overlap) {
-      throw new HttpError(`Sản phẩm ${costume.name} (Size ${item.size}) đã được khách hàng khác đặt trước trong khoảng thời gian gia hạn.`, 400);
-    }
   }
 
   const oldRentalDays = Math.ceil((oldEndDay.getTime() - startDayZero.getTime()) / (1000 * 60 * 60 * 24));
@@ -906,6 +902,26 @@ const extendRental = async (id, customerId, newEndDate) => {
   }
 
   await User.updateOne({ _id: customerId }, { $inc: { balance: -totalExtendCost } });
+
+  // Ghi lại lịch sử giao dịch trừ tiền
+  if (totalExtendCost > 0) {
+    await TransactionHistory.create({
+      user: customerId,
+      txnRef: `EXTEND_${rental._id}_${Date.now()}`,
+      amount: -totalExtendCost,
+      status: "success",
+    });
+
+    // Tạo thông báo
+    await notificationService.createNotification({
+      userId: customerId,
+      type: "order_status",
+      title: "Gia hạn thuê thành công",
+      message: `Tài khoản của bạn đã bị trừ ${totalExtendCost.toLocaleString("vi-VN")}đ cho phí gia hạn đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}.`,
+      link: "/rental-history",
+      relatedId: rental._id,
+    });
+  }
 
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
@@ -940,6 +956,73 @@ const getTopRentedCostumes = async (limit = 3) => {
     .filter(Boolean);
 };
 
+const updateRentalDates = async (id, { startDate, endDate }) => {
+  const rental = await Rental.findById(id).populate('items.costume');
+  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (rentalDays < 1) throw new HttpError('Ngày kết thúc phải sau ngày bắt đầu.', 400);
+
+  for (const item of rental.items) {
+    const costume = item.costume;
+    if (!costume) continue;
+
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) throw new HttpError(`Sản phẩm ${costume.name} chỉ được thuê tối đa ${maxDays} ngày.`, 400);
+  }
+
+  const priceFactor = getRentalPriceFactor(rentalDays);
+  let newTotalRentalPrice = 0;
+
+  for (const item of rental.items) {
+    const costume = item.costume;
+    const rentalPrice = item.rentalPricePerDay || (costume ? costume.pricePerDay : 0);
+    newTotalRentalPrice += rentalPrice * priceFactor * item.quantity;
+  }
+
+  const difference = newTotalRentalPrice - rental.totalRentalPrice;
+
+  if (difference < 0) {
+    const user = await User.findById(rental.customerId);
+    if (user) {
+      const refundAmt = Math.abs(difference);
+      user.balance += refundAmt;
+      await user.save();
+
+      // Ghi lại lịch sử giao dịch hoàn tiền
+      await TransactionHistory.create({
+        user: rental.customerId,
+        txnRef: `REFUND_DATE_${rental._id}_${Date.now()}`,
+        amount: refundAmt,
+        status: "success",
+      });
+
+      // Tạo thông báo
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: "order_status",
+        title: "Hoàn tiền cập nhật ngày thuê",
+        message: `Tài khoản của bạn đã được cộng ${refundAmt.toLocaleString("vi-VN")}đ do thay đổi ngày thuê của đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}.`,
+        link: "/rental-history",
+        relatedId: rental._id,
+      });
+    }
+  }
+
+  rental.startDate = start;
+  rental.endDate = end;
+  rental.totalRentalPrice = newTotalRentalPrice;
+  rental.totalAmount += difference;
+
+  await rental.save();
+  return rental;
+};
+
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -957,6 +1040,7 @@ module.exports = {
   requestReturn,
   inspectReturn,
   extendRental,
+  updateRentalDates,
   notifyOrderStatus,
   getTopRentedCostumes,
   autoUpdateDeliveredStatus,

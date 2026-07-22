@@ -8,6 +8,7 @@ import { faBox, faTriangleExclamation, faCircleInfo, faCalendarDay } from "@fort
 import { statusOrder } from "../../constants/statusOrder";
 import rentalService from "../../services/rental.service";
 import { getRentalPriceFactor } from "../../utils/formatters";
+import DatePickerGroup from "../../components/ui/DatePickerGroup";
 
 export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   const navigate = useNavigate();
@@ -43,10 +44,10 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   // Ngày trả tối thiểu (ngày trả hiện tại + 1 ngày)
   const minDateString = endZero
     ? (() => {
-        const nextDay = new Date(endZero);
-        nextDay.setDate(nextDay.getDate() + 1);
-        return nextDay.toISOString().split("T")[0];
-      })()
+      const nextDay = new Date(endZero);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return nextDay.toISOString().split("T")[0];
+    })()
     : "";
 
   // Ngày trả tối đa cho phép gia hạn (ngày trả hiện tại + maxExtendableDays)
@@ -56,10 +57,14 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   const maxDateString = maxEndDateObj ? maxEndDateObj.toISOString().split("T")[0] : minDateString;
 
   useEffect(() => {
-    if (open && isExtendable && minDateString) {
-      setNewEndDate(minDateString);
-    } else {
-      setNewEndDate("");
+    if (open) {
+      setToast({ isVisible: false, message: "", type: "success" });
+      setIsSubmitting(false);
+      if (isExtendable && minDateString) {
+        setNewEndDate(minDateString);
+      } else {
+        setNewEndDate("");
+      }
     }
   }, [open, order, isExtendable, minDateString]);
 
@@ -174,65 +179,17 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
 
       {/* Cảnh báo / Hạn mức gia hạn */}
       <div className="space-y-4 my-4">
-        {!isExtendable ? (
-          <div className="rounded-xl bg-rose-50 p-4 border border-rose-200 text-rose-800 text-xs space-y-1.5 shadow-sm">
-            <div className="font-bold flex items-center gap-2 text-sm text-rose-900">
-              <FontAwesomeIcon icon={faTriangleExclamation} className="text-rose-600 text-base" />
-              Không Thể Gia Hạn Thêm
-            </div>
-            <p className="leading-relaxed">
-              Sản phẩm trong đơn hàng này chỉ giới hạn thuê tối đa <strong>{maxAllowedTotalDays} ngày</strong>.
-              Đơn hàng của bạn hiện đã thuê đủ <strong>{currentRentalDays}/{maxAllowedTotalDays} ngày</strong> giới hạn cho phép nên không thể kéo dài thêm thời gian thuê.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-amber-50/80 p-3.5 border border-amber-200/80 text-amber-900 text-xs space-y-1 shadow-sm">
-            <div className="font-bold flex items-center gap-2 text-amber-950 text-xs uppercase tracking-wider">
-              <FontAwesomeIcon icon={faCircleInfo} className="text-amber-600 text-sm" />
-              Hạn Mức Thuê Trang Phục
-            </div>
-            <p className="leading-relaxed">
-              Đơn hàng đang thuê <strong>{currentRentalDays} ngày</strong> (Tối đa <strong>{maxAllowedTotalDays} ngày</strong>). Bạn có thể chọn gia hạn thêm tối đa <strong>{maxExtendableDays} ngày</strong> (Ngày trả mới muộn nhất là <strong>{maxEndDateObj ? maxEndDateObj.toLocaleDateString("vi-VN") : ""}</strong>).
-            </p>
-          </div>
-        )}
-
         {/* Khung chọn ngày */}
         {isExtendable && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-                Ngày trả hiện tại:
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={endZero ? endZero.toISOString().split("T")[0] : ""}
-                  disabled
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-500 font-semibold outline-none cursor-not-allowed"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center justify-between">
-                <span>Chọn ngày trả mới:</span>
-                <span className="text-[10px] text-amber-700 font-bold lowercase">
-                  (Muộn nhất: {maxEndDateObj ? maxEndDateObj.toLocaleDateString("vi-VN") : ""})
-                </span>
-              </label>
-              <input
-                type="date"
-                min={minDateString}
-                max={maxDateString}
-                value={newEndDate}
-                onChange={(e) => setNewEndDate(e.target.value)}
-                className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all ${
-                  isOverMaxLimit
-                    ? "border-rose-500 focus:ring-1 focus:ring-rose-500"
-                    : "border-slate-300 focus:border-black focus:ring-1 focus:ring-black"
-                }`}
-              />
-            </div>
+          <div className="pt-1">
+            <DatePickerGroup
+              startDate={endZero ? endZero.toISOString().split("T")[0] : ""}
+              setStartDate={() => { }} // Disabled start date doesn't need handler
+              endDate={newEndDate}
+              setEndDate={(val) => setNewEndDate(val)}
+              disableStart={true}
+              maxRentalDays={maxAllowedTotalDays}
+            />
           </div>
         )}
 
@@ -274,11 +231,10 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
         <button
           onClick={handleConfirmExtend}
           disabled={!isExtendable || extendDays <= 0 || isOverMaxLimit || isSubmitting}
-          className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
-            isExtendable && extendDays > 0 && !isOverMaxLimit && !isSubmitting
-              ? "bg-[#1a1a1a] text-[#f5e6ca] hover:bg-amber-600 hover:text-white"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-          }`}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-md ${isExtendable && extendDays > 0 && !isOverMaxLimit && !isSubmitting
+            ? "bg-[#1a1a1a] text-[#f5e6ca] hover:bg-amber-600 hover:text-white"
+            : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+            }`}
         >
           {isSubmitting ? "Đang xử lý..." : "Xác Nhận & Thanh Toán"}
         </button>

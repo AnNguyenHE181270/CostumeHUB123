@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
@@ -8,11 +6,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
+import { OrderTrackingModal } from './OrderTrackingModal'
 import { tabs } from '../../constants/statusOrder'
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
 import { faBox, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import rentalService from '../../services/rental.service'
+import Pagination from '../../components/ui/Pagination'
 
 function RentalHistory() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -23,9 +23,13 @@ function RentalHistory() {
     const [rentalOrders, setRentalOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [extendOrderTarget, setExtendOrderTarget] = useState(null);
+    const [cancelOrderTarget, setCancelOrderTarget] = useState(null);
+    const [trackingOrderTarget, setTrackingOrderTarget] = useState(null);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isIssuesOpen, setIsIssuesOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
     const showToast = (message, type = "success") => {
         setToast({ isVisible: true, message, type });
@@ -41,6 +45,7 @@ function RentalHistory() {
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setSearchParams({ status: tabId });
+        setCurrentPage(1);
         handleCloseDetail();
     };
 
@@ -70,6 +75,12 @@ function RentalHistory() {
             ? rentalOrders.filter(order => ["delivered", "renting"].includes(order.status))
             : rentalOrders.filter(order => order.status === activeTab)
 
+    const totalCount = filteredOrders.length;
+    const totalPages = Math.ceil(totalCount / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
     const getOrderCount = (status) => {
         if (status === "all") return rentalOrders.length
         if (status === "renting") {
@@ -83,13 +94,22 @@ function RentalHistory() {
     const isDetailOpen = !!selectedOrder;
 
     const handleCancelOrder = (order) => {
-        setSelectedOrder(order);
+        setCancelOrderTarget(order);
         setIsCancelOpen(true);
     };
 
+    const handleTrackOrder = (order) => {
+        setTrackingOrderTarget(order);
+    };
+
     const handleConfirmCancel = () => {
-        fetchOrders(); // Tải lại danh sách đơn
-        handleCloseDetail(); // Đóng detail panel để hiển thị status mới
+        showToast("Hủy đơn hàng thành công!", "success");
+        if (cancelOrderTarget) {
+            setRentalOrders(prev => prev.map(order =>
+                order.id === cancelOrderTarget.id ? { ...order, status: 'cancelled' } : order
+            ));
+        }
+        handleCloseDetail();
         setIsCancelOpen(false);
     };
 
@@ -106,7 +126,12 @@ function RentalHistory() {
         try {
             await rentalService.requestReturn(order.id);
             showToast("Đã gửi yêu cầu trả hàng thành công!", "success");
-            fetchOrders();
+            setRentalOrders(prev => prev.map(o =>
+                o.id === order.id ? { ...o, status: 'returning' } : o
+            ));
+            if (selectedOrder && selectedOrder.id === order.id) {
+                setSelectedOrder(prev => ({ ...prev, status: 'returning' }));
+            }
             handleCloseDetail();
         } catch (err) {
             showToast(err.message || "Lỗi yêu cầu trả hàng.", "error");
@@ -118,7 +143,12 @@ function RentalHistory() {
         try {
             await rentalService.confirmReceipt(order.id);
             showToast("Xác nhận đã nhận hàng thành công!", "success");
-            fetchOrders();
+            setRentalOrders(prev => prev.map(o =>
+                o.id === order.id ? { ...o, status: 'renting' } : o
+            ));
+            if (selectedOrder && selectedOrder.id === order.id) {
+                setSelectedOrder(prev => ({ ...prev, status: 'renting' }));
+            }
         } catch (err) {
             showToast(err.message || "Lỗi xác nhận nhận hàng.", "error");
         }
@@ -232,19 +262,33 @@ function RentalHistory() {
                                 <h3 className="font-medium text-foreground">Không có đơn hàng</h3>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {filteredOrders.map((order) => (
-                                    <OrderCard
-                                        key={order.id}
-                                        order={order}
-                                        onViewDetail={handleViewDetail}
-                                        isSelected={selectedOrder?.id === order.id}
-                                        isCompact={isDetailOpen}
-                                        onRentAgain={handleRentAgain}
-                                        onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
+                            <>
+                                <div className="space-y-3">
+                                    {paginatedOrders.map((order) => (
+                                        <OrderCard
+                                            key={order.id}
+                                            order={order}
+                                            onViewDetail={handleViewDetail}
+                                            isSelected={selectedOrder?.id === order.id}
+                                            isCompact={isDetailOpen}
+                                            onRentAgain={handleRentAgain}
+                                            onExtendOrder={(orderToExtend) => setExtendOrderTarget(orderToExtend)}
+                                            onCancelOrder={handleCancelOrder}
+                                            onTrackOrder={handleTrackOrder}
+                                            onRequestReturn={handleRequestReturn}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="mt-6">
+                                    <Pagination
+                                        displayCount={paginatedOrders.length}
+                                        totalCount={totalCount}
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
                                     />
-                                ))}
-                            </div>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -302,9 +346,18 @@ function RentalHistory() {
             {/* Cancel Modal */}
             <CancelOrderModal
                 open={isCancelOpen}
-                onOpenChange={setIsCancelOpen}
-                orderId={selectedOrder?.id}
+                onOpenChange={(val) => {
+                    setIsCancelOpen(val);
+                    if (!val) setCancelOrderTarget(null);
+                }}
+                orderId={cancelOrderTarget?.id}
                 onConfirm={handleConfirmCancel}
+            />
+
+            <OrderTrackingModal
+                open={!!trackingOrderTarget}
+                onOpenChange={(val) => { if (!val) setTrackingOrderTarget(null) }}
+                order={trackingOrderTarget}
             />
 
             <ExtendRentalModal

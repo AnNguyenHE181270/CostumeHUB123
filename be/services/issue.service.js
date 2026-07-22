@@ -42,6 +42,11 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
     throw new HttpError('Đơn hàng chỉ có thể khiếu nại ở trạng thái đang thuê.', 400);
   }
 
+  if (rental.shippingAddress?.addressDetail === 'Nhận tại cửa hàng') {
+    cleanupFiles();
+    throw new HttpError('Đơn hàng nhận tại cửa hàng không hỗ trợ trả hàng hoàn tiền.', 400);
+  }
+
   if (rental.rentingAt) {
     const threeHoursMs = 3 * 60 * 60 * 1000;
     // Dùng ">" vì chúng ta muốn NÉM LỖI (chặn) khi thời gian đã vượt quá 3 tiếng
