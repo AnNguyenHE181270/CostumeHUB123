@@ -59,7 +59,17 @@ const pickAvailableInstances = (variant, count) => {
 
 const getAllCostumes = async (query) => {
   const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = query;
-  const filter = { status: { $ne: 'hidden' } };
+  
+  // By default, exclude hidden costumes unless 'hidden' is explicitly requested
+  let includeHidden = false;
+  if (status) {
+    const statuses = status.split(',').filter(Boolean);
+    if (statuses.includes('hidden')) {
+      includeHidden = true;
+    }
+  }
+
+  const filter = includeHidden ? {} : { status: { $ne: 'hidden' } };
 
   const activeCategories = await Category.find({ isActive: true }).select('_id');
   const activeCategoryIds = activeCategories.map((c) => c._id.toString());
@@ -103,17 +113,18 @@ const getAllCostumes = async (query) => {
 
   if (status) {
     if (status === 'all' || status === '') {
-      filter.status = { $ne: 'hidden' };
+      filter.status = includeHidden ? { $in: ['available', 'out_of_stock', 'maintenance', 'rented', 'hidden'] } : { $ne: 'hidden' };
     } else if (status === 'available') {
-      filter.status = { $ne: 'hidden' };
+      filter.status = includeHidden ? { $in: ['available', 'hidden'] } : { $ne: 'hidden' };
       filter['variants.availableStock'] = { $gt: 0 };
     } else if (status === 'out_of_stock') {
-      filter.status = { $ne: 'hidden' };
+      filter.status = includeHidden ? { $in: ['out_of_stock', 'hidden'] } : { $ne: 'hidden' };
       filter['variants'] = { $not: { $elemMatch: { availableStock: { $gt: 0 } } } };
     } else {
-      const statuses = status.split(',').filter(Boolean).filter((s) => s !== 'hidden');
-      if (statuses.length > 0) {
-        filter.status = { $in: statuses, $ne: 'hidden' };
+      const statuses = status.split(',').filter(Boolean);
+      const filteredStatuses = includeHidden ? statuses : statuses.filter((s) => s !== 'hidden');
+      if (filteredStatuses.length > 0) {
+        filter.status = { $in: filteredStatuses };
       } else {
         filter.status = { $ne: 'hidden' };
       }
