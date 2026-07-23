@@ -463,7 +463,7 @@ export default function ExportPage() {
   const handleExportInventoryExcel = async () => {
     setInventoryExporting(true);
     try {
-      const data = await costumeService.getAll({ limit: 1000, status: "available,out_of_stock,maintenance,dry_cleaning,rented,hidden" });
+      const data = await costumeService.getInventory();
       exportInventoryExcelFile(data.costumes || []);
       setToast({ isVisible: true, type: "success", message: "Xuất Excel tồn kho thành công!" });
     } catch {

@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   getAllCostumes,
+  getInventoryCostumes,
   getCostumeById,
   createCostume,
   updateCostume,
@@ -21,6 +22,9 @@ router.use(checkAuth);
 
 router.get("/maintenance/list", getMaintenanceCostumes);
 router.put("/:id/complete-maintenance", completeMaintenance);
+
+// Kho hàng cho trang quản trị: thấy đủ mọi sản phẩm (kể cả hidden), không giới hạn 50 bản ghi
+router.get("/inventory/list", isOwner, getInventoryCostumes);
 
 router.post("/", isOwner, createCostumeValidator, validate, createCostume);
 router.put("/:id", isOwner, updateCostumeValidator, validate, updateCostume);

@@ -12,6 +12,14 @@ const { getRentalPriceFactor } = require('../utils/pricing.util');
 const notificationService = require('./notification.service');
 const { uploadReturnEvidence } = require('./cloudinary.service');
 const TransactionHistory = require('../models/transactionHistory.model');
+const StockTransaction = require('../models/stockTransaction.model');
+// instances[] là nguồn sự thật duy nhất của tồn kho — luồng thuê phải đánh dấu/nhả từng unit
+// qua các helper này, không được cộng/trừ thẳng availableStock (sẽ lệch với luồng kho/bảo trì).
+const {
+  markInstancesRented,
+  releaseRentedInstances,
+  syncCostumeStatusFromVariants,
+} = require('./costume.service');
 
 // Bảng đền bù hư hỏng (khớp nội dung công khai ở trang "Về Chúng Tôi") — staff chọn mức, không tự nhập số tiền
 const DAMAGE_TIER_RANGES = {
@@ -273,18 +281,30 @@ const createOrder = async (customerId, body) => {
     totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
     totalDeposit += depositPrice * item.quantity;
 
-    formattedItems.push({
+    const formattedItem = {
       costume: costume._id,
       size: item.size,
       quantity: item.quantity,
       rentalPricePerDay: costume.pricePerDay,
       depositPrice,
-    });
-    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
+      instanceCodes: [],
+    };
+    formattedItems.push(formattedItem);
+    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity, formattedItem });
   }
 
   for (const update of costumesToUpdate) {
-    update.variant.availableStock -= update.quantityToDeduct;
+    // Đánh dấu đúng N unit vật lý là 'rented' và lưu unitCode vào đơn — khi hủy/trả/khiếu nại
+    // sẽ nhả ra đúng các unit này, giữ instances[] và availableStock luôn khớp nhau.
+    const codes = markInstancesRented(update.variant, update.quantityToDeduct);
+    if (!codes) {
+      throw new HttpError(
+        `Sản phẩm ${update.costume.name} (Size ${update.variant.size}) không đủ số lượng để thuê lúc này. Chỉ còn sẵn ${update.variant.availableStock} bộ.`,
+        400
+      );
+    }
+    update.formattedItem.instanceCodes = codes;
+    syncCostumeStatusFromVariants(update.costume);
     await update.costume.save();
   }
 
@@ -368,7 +388,9 @@ const cancelOrder = async (orderId, customerId, cancelReason) => {
     if (costume) {
       const variant = costume.variants.find((v) => v.size === item.size);
       if (variant) {
-        variant.availableStock += item.quantity;
+        // Đơn chưa giao mà hủy -> unit chưa rời kho, trả thẳng về 'available'
+        releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+        syncCostumeStatusFromVariants(costume);
         await costume.save();
       }
     }
@@ -436,13 +458,14 @@ const updateOrderStatus = async (id, status) => {
     // 1. Hoàn tiền ví
     await User.updateOne({ _id: order.customerId }, { $inc: { balance: order.totalAmount } });
 
-    // 2. Hoàn trả tồn kho trang phục
+    // 2. Hoàn trả tồn kho trang phục — nhả đúng các unit đã gán cho đơn về 'available'
     for (const item of order.items) {
       const costume = await Costume.findById(item.costume);
       if (costume) {
         const variant = costume.variants.find((v) => v.size === item.size);
         if (variant) {
-          variant.availableStock += item.quantity;
+          releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+          syncCostumeStatusFromVariants(costume);
           await costume.save();
         }
       }
@@ -455,6 +478,7 @@ const updateOrderStatus = async (id, status) => {
     await order.save();
 
     // 4. Gửi email thông báo cho khách hàng
+    const user = await User.findById(order.customerId);
     try {
       if (user?.email) {
         await sendEmail({
@@ -675,7 +699,7 @@ const requestReturn = async (id) => {
   return rental;
 };
 
-const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = []) => {
+const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = [], performedBy = null) => {
   const cleanupFiles = () => {
     for (const file of files) {
       if (fs.existsSync(file.path)) {
@@ -761,6 +785,12 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
 
   await User.updateOne({ _id: rental.customerId }, { $inc: { balance: refundAmount - replacementFee } });
 
+  // Nhả đúng các unit đã cho thuê của đơn này:
+  // - Trả hàng bình thường/hư hỏng nhẹ -> 'maintenance' (giặt là/kiểm tra xong staff bấm
+  //   "Hoàn tất bảo trì" mới quay lại 'available' — khớp luồng MaintenancePage).
+  // - Mất/hỏng toàn bộ (total_loss) -> 'retired' (loại vĩnh viễn) + ghi lịch sử xuất kho 'lost'
+  //   để số liệu kho và lịch sử Nhập/Xuất luôn khớp với thực tế.
+  const returnedStatus = tier === 'total_loss' ? 'retired' : 'maintenance';
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
     if (item.costume) {
@@ -768,25 +798,23 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
       if (costumeToUpdate) {
         const variant = costumeToUpdate.variants.find((v) => v.size === item.size);
         if (variant) {
-          // Chỉ chuyển trạng thái bảo trì cho size/biến thể cụ thể được hoàn trả này
-          variant.status = 'maintenance';
-          variant.availableStock += item.quantity;
+          const beforeStock = variant.totalStock || 0;
+          releaseRentedInstances(variant, item.instanceCodes, item.quantity, returnedStatus);
+          if (tier === 'total_loss' && performedBy) {
+            await StockTransaction.create({
+              costumeId: costumeToUpdate._id,
+              size: item.size,
+              type: 'out',
+              reason: 'lost',
+              quantity: item.quantity,
+              note: `Khách làm mất/hỏng toàn bộ — đơn #${rental._id.toString().slice(-6).toUpperCase()}`,
+              beforeStock,
+              afterStock: variant.totalStock || 0,
+              performedBy,
+            });
+          }
         }
-
-        // Cập nhật trạng thái costume tổng thể:
-        // Nếu còn ít nhất 1 biến thể sẵn sàng -> costume.status = 'available'
-        // Nếu tất cả biến thể đều bảo trì -> costume.status = 'maintenance'
-        const hasAvailableVariant = costumeToUpdate.variants.some(
-          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
-        );
-
-        if (hasAvailableVariant) {
-          costumeToUpdate.status = 'available';
-        } else {
-          const allMaintenance = costumeToUpdate.variants.every((v) => v.status === 'maintenance');
-          costumeToUpdate.status = allMaintenance ? 'maintenance' : 'out_of_stock';
-        }
-
+        syncCostumeStatusFromVariants(costumeToUpdate);
         await costumeToUpdate.save();
       }
     }

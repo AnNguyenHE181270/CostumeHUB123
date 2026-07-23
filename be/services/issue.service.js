@@ -7,7 +7,7 @@ const User = require('../models/user.model');
 const Costume = require('../models/costume.model');
 const sendEmail = require('./email.service');
 const notificationService = require('./notification.service');
-const { syncVariantFromInstances, backfillInstancesFromCounts } = require('./costume.service');
+const { releaseRentedInstances, syncCostumeStatusFromVariants } = require('./costume.service');
 
 const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
   const cleanupFiles = () => {
@@ -196,37 +196,9 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
       if (costume) {
         const variant = costume.variants.find((v) => v.size === item.size);
         if (variant) {
-          backfillInstancesFromCounts(variant);
-          if (item.instanceCodes && item.instanceCodes.length > 0) {
-            variant.instances.forEach((inst) => {
-              if (item.instanceCodes.includes(inst.unitCode) && inst.status === 'rented') {
-                inst.status = 'maintenance';
-              }
-            });
-          } else {
-            variant.instances
-              .filter((i) => i.status === 'rented')
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-              .slice(0, item.quantity)
-              .forEach((inst) => { inst.status = 'maintenance'; });
-          }
-          syncVariantFromInstances(variant);
+          releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'maintenance');
         }
-
-        // Cập nhật lại status costume tổng thể: còn ít nhất 1 biến thể sẵn sàng -> available;
-        // nếu không, còn biến thể đang bảo trì -> maintenance; ngược lại -> out_of_stock.
-        const hasAvailableVariant = costume.variants.some(
-          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
-        );
-        const hasMaintenanceVariant = costume.variants.some((v) => v.status === 'maintenance');
-        if (hasAvailableVariant) {
-          costume.status = 'available';
-        } else if (hasMaintenanceVariant) {
-          costume.status = 'maintenance';
-        } else {
-          costume.status = 'out_of_stock';
-        }
-
+        syncCostumeStatusFromVariants(costume);
         await costume.save();
       }
     }

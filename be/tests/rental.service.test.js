@@ -338,13 +338,16 @@ describe('createOrder', () => {
 
 describe('cancelOrder', () => {
     test('Cancel order successfully → refund balance, restock, send email', async () => {
+        // Đơn pending đã trừ 1 bộ lúc tạo -> kho còn 4/5. Hủy đơn nhả đúng 1 unit đang thuê về kho,
+        // availableStock quay lại 5 và không bao giờ được vượt totalStock như hành vi cũ (5 -> 6).
+        mockData.costume.variants[0].availableStock = 4;
         const result = await rentalService.cancelOrder('rental_123', 'user_123', 'Changed my mind');
 
         assert.strictEqual(result.status, 'cancelled');
         assert.strictEqual(result.paymentStatus, 'refunded');
         assert.strictEqual(result.cancelReason, 'Changed my mind');
         assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k — hoàn tiền qua User.updateOne($inc), không còn dùng .save()
-        assert.strictEqual(mockData.costume.variants[0].availableStock, 6); // 5+1
+        assert.strictEqual(mockData.costume.variants[0].availableStock, 5); // 4+1
         assert.ok(mockData.costume._saved);
         assert.ok(sendEmailCalledWith);
         assert.strictEqual(sendEmailCalledWith.to, 'customer@gmail.com');

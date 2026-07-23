@@ -134,7 +134,7 @@ const requestReturn = async (req, res, next) => {
 
 const inspectReturn = async (req, res, next) => {
   try {
-    const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || []);
+    const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || [], req.userData.id);
     res.status(200).json({ message: 'Kiểm tra và khấu trừ cọc thành công', data: result });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi kiểm tra đồ', 500));

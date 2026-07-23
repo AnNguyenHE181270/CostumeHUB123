@@ -30,10 +30,19 @@ const createCostume = async (req, res, next) => {
 
 const updateCostume = async (req, res, next) => {
   try {
-    const costume = await costumeService.updateCostume(req.params.id, req.body);
+    const costume = await costumeService.updateCostume(req.params.id, req.body, req.userData.id);
     res.status(200).json({ costume });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message || 'Updating costume failed.', 500));
+  }
+};
+
+const getInventoryCostumes = async (req, res, next) => {
+  try {
+    const data = await costumeService.getInventoryCostumes(req.query);
+    res.status(200).json(data);
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lấy dữ liệu kho thất bại.', 500));
   }
 };
 
@@ -74,6 +83,7 @@ const completeMaintenance = async (req, res, next) => {
 
 module.exports = {
   getAllCostumes,
+  getInventoryCostumes,
   getCostumeById,
   createCostume,
   updateCostume,

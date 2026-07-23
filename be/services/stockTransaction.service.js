@@ -2,7 +2,12 @@ const mongoose = require('mongoose');
 const StockTransaction = require('../models/stockTransaction.model');
 const Costume = require('../models/costume.model');
 const HttpError = require('../models/http-error.model');
-const { backfillInstancesFromCounts, addInstances, syncVariantFromInstances } = require('./costume.service');
+const {
+  backfillInstancesFromCounts,
+  addInstances,
+  syncVariantFromInstances,
+  syncCostumeStatusFromVariants,
+} = require('./costume.service');
 
 const REASONS_BY_TYPE = {
   in: ['purchase_new', 'stock_correction_in'],
@@ -31,7 +36,6 @@ const createStockTransaction = async ({ costumeId, size, type, reason, quantity,
       backfillInstancesFromCounts(variant);
 
       beforeStock = variant.totalStock || 0;
-      const rentedCount = Math.max(0, beforeStock - (variant.availableStock || 0));
 
       if (type === 'in') {
         // Nhập thêm hàng mới -> sinh thêm unit vật lý mới (available) — Case restock.
@@ -39,9 +43,12 @@ const createStockTransaction = async ({ costumeId, size, type, reason, quantity,
         afterStock = beforeStock + qty;
       } else {
         afterStock = beforeStock - qty;
-        if (afterStock < rentedCount) {
+        const freeCount = variant.instances.filter((i) => i.status === 'available').length;
+        if (qty > freeCount) {
+          const rentedUnits = variant.instances.filter((i) => i.status === 'rented').length;
+          const maintenanceUnits = variant.instances.filter((i) => i.status === 'maintenance').length;
           throw new HttpError(
-            `Không thể xuất kho ${qty} chiếc — chỉ còn ${beforeStock - rentedCount} chiếc chưa cho thuê (${rentedCount} chiếc đang được khách thuê).`,
+            `Không thể xuất kho ${qty} chiếc — chỉ còn ${freeCount} chiếc sẵn sàng (${rentedUnits} chiếc đang được khách thuê, ${maintenanceUnits} chiếc đang bảo trì).`,
             400
           );
         }
@@ -54,14 +61,8 @@ const createStockTransaction = async ({ costumeId, size, type, reason, quantity,
       }
       syncVariantFromInstances(variant);
 
-      // Đồng bộ trạng thái sản phẩm nếu vừa hết/vừa có hàng trở lại (giữ nguyên các trạng thái đang bị khoá thủ công)
-      const lockedStatuses = ['hidden', 'maintenance', 'rented'];
-      const totalAvailable = costume.variants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
-      if (totalAvailable === 0 && !lockedStatuses.includes(costume.status)) {
-        costume.status = 'out_of_stock';
-      } else if (totalAvailable > 0 && costume.status === 'out_of_stock') {
-        costume.status = 'available';
-      }
+      // Đồng bộ trạng thái sản phẩm tổng thể theo cùng một luật với mọi luồng khác ('hidden' được giữ nguyên)
+      syncCostumeStatusFromVariants(costume);
 
       await costume.save({ session });
 
