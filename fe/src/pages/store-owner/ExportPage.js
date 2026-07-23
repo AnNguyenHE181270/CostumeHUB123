@@ -6,7 +6,7 @@ import {
   faSpinner, faCalendarAlt, faDownload, faChevronDown,
   faUsers, faExclamationTriangle, faCreditCard,
   faCheckCircle, faTimesCircle, faShoppingBag, faWarehouse,
-  faArrowTrendUp,
+  faArrowTrendUp, faWallet,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../../components/ui/Toast";
@@ -96,7 +96,10 @@ export default function ExportPage() {
         [`Ngày trích xuất: ${now}`],
         [],
         ["CHỈ SỐ", "GIÁ TRỊ", "GHI CHÚ"],
-        ["Tổng doanh thu", revenue?.totalRevenue || 0, fmtVND(revenue?.totalRevenue)],
+        ["Tổng doanh thu thực tế", revenue?.totalRevenue || 0, fmtVND(revenue?.totalRevenue)],
+        ["Tiền thuê thuần", revenue?.totalRentalPrice || 0, fmtVND(revenue?.totalRentalPrice)],
+        ["Tiền cọc giữ lại do lỗi", revenue?.totalDeductedDeposit || 0, fmtVND(revenue?.totalDeductedDeposit)],
+        ["Tổng tiền cọc ban đầu", revenue?.totalDeposit || 0, fmtVND(revenue?.totalDeposit)],
         ["Số đơn phát sinh", revenue?.orderCount || 0, ""],
         ["Tỷ lệ hoàn tất", `${lifecycle?.completionRate || 0}%`, "completed / tổng"],
         ["Tỷ lệ huỷ", `${lifecycle?.cancelRate || 0}%`, "cancelled / tổng"],
@@ -578,9 +581,10 @@ export default function ExportPage() {
                 <span className="ml-auto px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">10 sheets Excel</span>
               </div>
 
-              {/* KPI Row 1: Doanh thu */}
+              {/* KPI Row 1: Doanh thu & Tiền cọc */}
               <KpiGrid items={[
                 { icon: faArrowTrendUp, label: "Tổng doanh thu", value: fmtVND(r?.revenue?.totalRevenue), color: "text-blue-600", bg: "bg-blue-50" },
+                { icon: faWallet, label: "Tổng tiền cọc", value: fmtVND(r?.revenue?.totalDeposit), color: "text-purple-600", bg: "bg-purple-50" },
                 { icon: faShoppingBag, label: "Số đơn phát sinh", value: `${fmtNum(r?.revenue?.orderCount)} đơn`, color: "text-amber-600", bg: "bg-amber-50" },
                 { icon: faCheckCircle, label: "Tỷ lệ hoàn tất", value: fmtPct(r?.lifecycle?.completionRate), color: "text-emerald-600", bg: "bg-emerald-50" },
                 { icon: faTimesCircle, label: "Tỷ lệ quá hạn", value: fmtPct(r?.lifecycle?.overdueRate), color: "text-rose-600", bg: "bg-rose-50" },
@@ -595,8 +599,8 @@ export default function ExportPage() {
               ]} />
 
               <KpiGrid items={[
-                { icon: faCreditCard, label: "VNPAY", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "VNPAY")?.total), color: "text-blue-500", bg: "bg-blue-50" },
-                { icon: faCreditCard, label: "Tiền mặt (Cash)", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "Cash")?.total), color: "text-violet-600", bg: "bg-violet-50" },
+                { icon: faCreditCard, label: "Thanh toán Online (VNPAY / CK)", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method.includes("Online") || p.method === "VNPAY" || p.method === "WALLET")?.total), color: "text-blue-500", bg: "bg-blue-50" },
+                { icon: faCreditCard, label: "Thanh toán tại cửa hàng (Tiền mặt / CK)", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method.includes("cửa hàng") || p.method === "CASH" || p.method === "Cash")?.total), color: "text-violet-600", bg: "bg-violet-50" },
               ]} />
 
               {/* Top costumes preview */}
