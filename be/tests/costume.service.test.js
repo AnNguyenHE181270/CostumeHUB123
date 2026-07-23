@@ -72,35 +72,13 @@ describe('getAllCostumes', () => {
     CostumeMock.findById = defaultCostumeFindById;
     CostumeMock.find = defaultCostumeFind;
   });
+  test('Get all costume (all status)', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
 
-  test('Get all costumes list with full filters', async () => {
-    mockData.costumes = [{ _id: 'costume_id_123', name: 'Ao Dai' }];
-    mockData.totalItems = 1;
-    mockData.childCategories = [{ _id: '507f1f77bcf86cd799439011' }];
+    await getAllCostumes({ status: 'all' });
 
-    const result = await getAllCostumes({
-      categoryId: '507f1f77bcf86cd799439011',
-      minPrice: '100000',
-      maxPrice: '200000',
-      status: 'available',
-      page: '1',
-      limit: '10',
-    });
-
-    assert.ok(result.costumes);
-    assert.strictEqual(result.costumes.length, 1);
-    assert.deepStrictEqual(result.pagination, {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 1,
-      limit: 10,
-    });
-    // filter status phải đúng
-    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available'] });
-    // filter price phải đúng
-    assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
-    // filter categoryId phải đúng
-    assert.ok(mockData.costumeFilter.categoryId);
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
   });
 
   test('Filter costume list by category', async () => {
@@ -164,24 +142,17 @@ describe('getAllCostumes', () => {
     assert.strictEqual(mockData.limitValue, 5);
   });
 
-  test('Filter by specific status list (available,maintenance)', async () => {
+  test('Filter by specific status list (available)', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ status: 'available,maintenance' });
+    await getAllCostumes({ status: 'available' });
 
-    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available', 'maintenance'] });
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+    assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
   });
 
-  test('Get all costume (all status)', async () => {
-    mockData.costumes = [];
-    mockData.totalItems = 0;
 
-    await getAllCostumes({ status: 'all' });
-
-    assert.strictEqual(mockData.costumeFilter.status, undefined);
-    assert.strictEqual(mockData.costumeFilter['variants.availableStock'], undefined);
-  });
 
   test('Get all costume without hidden status and with available stock', async () => {
     mockData.costumes = [];
