@@ -2,7 +2,8 @@ const cron = require('node-cron');
 const User = require('../models/user.model');
 const Rental = require('../models/rental.model');
 const notificationService = require('./notification.service');
-const { autoUpdateDeliveredStatus, sendAutoConfirmReminders } = require('./rental.service');
+const sendEmail = require('./email.service');
+const { autoUpdateDeliveredStatus, sendAutoConfirmReminders, sendUpcomingOverdueReminders, buildOrderLink } = require('./rental.service');
 
 
 const cleanupPendingUsers = async () => {
@@ -36,7 +37,7 @@ const checkOverdueRentals = async () => {
     const overdueRentals = await Rental.find({
       status: "renting",
       endDate: { $lt: now }
-    });
+    }).populate('customerId', 'email fullName');
 
     for (const rental of overdueRentals) {
       rental.status = "overdue";
@@ -52,6 +53,30 @@ const checkOverdueRentals = async () => {
         });
       } catch (notifyError) {
         console.error('[Notification Error]', notifyError);
+      }
+
+      const user = rental.customerId;
+      if (user?.email) {
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: `CostumeHUB — Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} đã quá hạn trả`,
+            text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} của bạn đã quá hạn trả. Vui lòng trả hàng sớm để tránh phát sinh thêm phí trễ hạn. Xem đơn tại: ${buildOrderLink(rental._id, 'overdue')}`,
+            html: sendEmail.renderEmailHtml({
+              heading: 'Đơn hàng của bạn đã quá hạn trả',
+              badgeText: 'Quá hạn',
+              badgeColor: 'danger',
+              bodyHtml: `
+                <p>Đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> đã qua ngày hẹn trả (<b>${new Date(rental.endDate).toLocaleDateString('vi-VN')}</b>) mà chưa được hoàn trả.</p>
+                <p>Phí trễ hạn đang được tính thêm theo từng ngày. Vui lòng liên hệ cửa hàng hoặc tiến hành trả hàng sớm nhất có thể để hạn chế phát sinh chi phí.</p>
+              `,
+              ctaText: 'Xem đơn hàng',
+              ctaUrl: buildOrderLink(rental._id, 'overdue'),
+            }),
+          });
+        } catch (mailError) {
+          console.error('Lỗi khi gửi email báo quá hạn:', mailError);
+        }
       }
     }
 
@@ -71,6 +96,7 @@ const startCronJobs = () => {
   checkOverdueRentals();
   autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
   sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
+  sendUpcomingOverdueReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở sắp quá hạn:', err));
 
   cron.schedule('0 0 * * *', cleanupPendingUsers);
   // Quét đơn quá hạn và đơn đã giao mỗi 15 phút thay vì chỉ 1 lần/ngày lúc 0h — tránh đơn quá hạn
@@ -81,6 +107,9 @@ const startCronJobs = () => {
   });
   cron.schedule('*/15 * * * *', () => {
     sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
+  });
+  cron.schedule('*/15 * * * *', () => {
+    sendUpcomingOverdueReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở sắp quá hạn:', err));
   });
 
   console.log("Cron jobs initialized.");

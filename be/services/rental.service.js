@@ -20,6 +20,14 @@ const {
   syncCostumeStatusFromVariants,
 } = require('./costume.service');
 
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+
+// Link email trỏ thẳng về đúng tab + đơn hàng cần xem trên trang lịch sử thuê của khách —
+// FE (RentalHistoryPage) đọc query param "order" để tự mở đúng panel chi tiết đơn đó.
+function buildOrderLink(orderId, statusTab) {
+  return `${CLIENT_URL}/rental-history?status=${statusTab}&order=${orderId}`;
+}
+
 // Bảng đền bù hư hỏng (khớp nội dung công khai ở trang "Về Chúng Tôi") — staff chọn mức, không tự nhập số tiền
 const DAMAGE_TIER_RANGES = {
   none: { min: 0, max: 0 },
@@ -91,6 +99,62 @@ const sendAutoConfirmReminders = async () => {
       });
     } catch (err) {
       console.error('[Notification Error]', err);
+    }
+  }
+};
+
+// Nhắc khách trước 12 tiếng khi đơn sắp quá hạn trả — quét trong cửa sổ 12h-12h15' để khớp với
+// nhịp cron 15 phút, dùng thêm cờ upcomingOverdueReminderSent làm lưới an toàn phòng khi cron
+// bị trễ nhịp (đơn trôi khỏi cửa sổ thời gian mà vẫn chưa được nhắc).
+const sendUpcomingOverdueReminders = async () => {
+  const twelveHoursFromNow = new Date(Date.now() + 12 * 60 * 60 * 1000);
+  const twelveHoursFifteenFromNow = new Date(Date.now() + 12.25 * 60 * 60 * 1000);
+
+  const rentals = await Rental.find({
+    status: 'renting',
+    upcomingOverdueReminderSent: { $ne: true },
+    endDate: { $gte: twelveHoursFromNow, $lt: twelveHoursFifteenFromNow },
+  }).populate('customerId', 'email fullName');
+
+  for (const rental of rentals) {
+    rental.upcomingOverdueReminderSent = true;
+    await rental.save();
+
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'order_status',
+        title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: 'Đơn hàng của bạn sẽ quá hạn trả trong 12 tiếng nữa. Vui lòng chuẩn bị trả hàng đúng hạn.',
+        link: '/rental-history',
+        relatedId: rental._id,
+      });
+    } catch (notifyError) {
+      console.error('[Notification Error]', notifyError);
+    }
+
+    const user = rental.customerId;
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: `CostumeHUB — Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} sắp đến hạn trả (còn 12 tiếng)`,
+          text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} sẽ đến hạn trả vào ${new Date(rental.endDate).toLocaleString('vi-VN')}. Vui lòng chuẩn bị trả hàng đúng hạn. Xem đơn tại: ${buildOrderLink(rental._id, 'renting')}`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn sắp đến hạn trả',
+            badgeText: 'Còn 12 tiếng',
+            badgeColor: 'warning',
+            bodyHtml: `
+              <p>Đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> sẽ đến hạn trả vào lúc <b>${new Date(rental.endDate).toLocaleString('vi-VN')}</b> — còn khoảng 12 tiếng nữa.</p>
+              <p>Vui lòng sắp xếp trả hàng đúng hạn để tránh phát sinh phí trễ hạn. Nếu cần thêm thời gian, bạn có thể gia hạn ngay trong ứng dụng trước khi đơn quá hạn.</p>
+            `,
+            ctaText: 'Xem đơn hàng',
+            ctaUrl: buildOrderLink(rental._id, 'renting'),
+          }),
+        });
+      } catch (mailError) {
+        console.error('Lỗi khi gửi email nhắc sắp quá hạn:', mailError);
+      }
     }
   }
 };
@@ -487,9 +551,18 @@ const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
     if (emailUser?.email) {
       await sendEmail({
         to: emailUser.email,
-        subject: 'CostumeHUB — Thông báo hủy đơn hàng',
-        text: `Chào ${emailUser.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy.\nLý do: ${order.cancelReason}`,
-        html: `<p>Chào <b>${emailUser.fullName}</b>,</p><p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy.</p><p>Lý do: <span style="color:red">${order.cancelReason}</span></p>`,
+        subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`,
+        text: `Chào ${emailUser.fullName}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã bị hủy. Lý do: ${order.cancelReason}`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Đơn hàng của bạn đã bị hủy',
+          badgeText: 'Đã hủy',
+          badgeColor: 'danger',
+          bodyHtml: `
+            <p>Đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> của bạn đã bị hủy.</p>
+            <p>Lý do: <b>${order.cancelReason}</b></p>
+          `,
+          footerNote: 'Nếu đơn hàng đã được thanh toán, khoản tiền sẽ được cửa hàng hoàn trả theo chính sách hiện hành.',
+        }),
       });
     }
   } catch (mailError) {
@@ -581,9 +654,18 @@ const updateOrderStatus = async (id, status) => {
       if (user?.email) {
         await sendEmail({
           to: user.email,
-          subject: 'CostumeHUB — Thông báo hủy đơn hàng',
-          text: `Chào ${user.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy bởi cửa hàng.\nLý do: Cửa hàng hủy đơn`,
-          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy bởi cửa hàng.</p><p>Lý do: <span style="color:red">Cửa hàng hủy đơn</span></p>`,
+          subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`,
+          text: `Chào ${user.fullName}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã bị hủy bởi cửa hàng. Lý do: Cửa hàng hủy đơn.`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn đã bị hủy bởi cửa hàng',
+            badgeText: 'Đã hủy',
+            badgeColor: 'danger',
+            bodyHtml: `
+              <p>Đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> của bạn đã bị hủy bởi cửa hàng.</p>
+              <p>Lý do: <b>Cửa hàng hủy đơn</b></p>
+            `,
+            footerNote: 'Nếu đơn hàng đã được thanh toán, khoản tiền sẽ được cửa hàng hoàn trả theo chính sách hiện hành. Mọi thắc mắc vui lòng liên hệ bộ phận hỗ trợ.',
+          }),
         });
       }
     } catch (mailError) {
@@ -629,6 +711,35 @@ const updateOrderStatus = async (id, status) => {
   order.status = status;
   await order.save();
   await notifyOrderStatus(order, status);
+
+  // Gửi email báo "đã giao tới nơi" kèm link xác nhận nhận hàng trực tiếp trong mail.
+  if (status === 'delivered') {
+    const user = await User.findById(order.customerId);
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã giao tới nơi`,
+          text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã được giao. Vui lòng xác nhận đã nhận hàng tại: ${buildOrderLink(order._id, 'delivering')}`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn đã được giao tới nơi',
+            badgeText: 'Đã giao hàng',
+            badgeColor: 'success',
+            bodyHtml: `
+              <p>Đơn vị vận chuyển báo đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> đã giao thành công đến địa chỉ của bạn.</p>
+              <p>Vui lòng kiểm tra trang phục và nhấn nút bên dưới để <b>xác nhận đã nhận hàng</b>. Nếu sau 5 tiếng bạn không xác nhận, hệ thống sẽ tự động xác nhận giúp bạn.</p>
+            `,
+            ctaText: 'Xác nhận đã nhận hàng',
+            ctaUrl: buildOrderLink(order._id, 'delivering'),
+            footerNote: 'Nếu trang phục nhận được có vấn đề (sai mẫu, hư hỏng...), vui lòng liên hệ cửa hàng hoặc gửi yêu cầu trả hàng/hoàn tiền ngay trong ứng dụng trước khi xác nhận.',
+          }),
+        });
+      } catch (mailError) {
+        console.error('Lỗi khi gửi email đã giao hàng:', mailError);
+      }
+    }
+  }
+
   return order;
 };
 
@@ -638,6 +749,32 @@ const confirmPreparation = async (id) => {
   if (order.status !== 'pending') {
     throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý', 400);
   }
+
+  const user = await User.findById(order.customerId);
+  const sendDeliveringEmail = async () => {
+    if (!user?.email) return;
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đang được giao đến bạn`,
+        text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đang được giao${order.trackingCode ? ` (mã vận đơn: ${order.trackingCode})` : ''}. Theo dõi tại: ${buildOrderLink(order._id, 'delivering')}`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Đơn hàng của bạn đang được giao đến bạn',
+          badgeText: 'Đang giao hàng',
+          badgeColor: 'warning',
+          bodyHtml: `
+            <p>Cửa hàng đã xác nhận và bàn giao đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> cho đơn vị vận chuyển.</p>
+            ${order.trackingCode ? `<p>Mã vận đơn: <b>${order.trackingCode}</b></p>` : ''}
+            <p>Vui lòng chú ý điện thoại để nhận hàng. Sau khi nhận được, hãy xác nhận trong ứng dụng để hoàn tất giao dịch.</p>
+          `,
+          ctaText: 'Theo dõi đơn hàng',
+          ctaUrl: buildOrderLink(order._id, 'delivering'),
+        }),
+      });
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email đang giao hàng:', mailError);
+    }
+  };
 
   if (!order.trackingCode && order.shippingAddress?.districtId) {
     try {
@@ -659,11 +796,13 @@ const confirmPreparation = async (id) => {
       order.status = 'delivering';
       await order.save();
       await notifyOrderStatus(order, 'delivering');
+      await sendDeliveringEmail();
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
       order.status = 'delivering';
       await order.save();
       await notifyOrderStatus(order, 'delivering');
+      await sendDeliveringEmail();
       return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
     }
   } else {
@@ -677,6 +816,7 @@ const confirmPreparation = async (id) => {
       order.status = 'delivering';
       await order.save();
       await notifyOrderStatus(order, 'delivering');
+      await sendDeliveringEmail();
       return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
     }
   }
@@ -1032,6 +1172,7 @@ const extendRental = async (id, customerId, newEndDate) => {
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
   rental.totalAmount += totalExtendCost;
+  rental.upcomingOverdueReminderSent = false;
   await rental.save();
 
   if (totalExtendCost > 0) {
@@ -1122,6 +1263,7 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   rental.endDate = end;
   rental.totalRentalPrice = newTotalRentalPrice;
   rental.totalAmount += difference;
+  rental.upcomingOverdueReminderSent = false;
 
   await rental.save();
   return rental;
@@ -1150,17 +1292,23 @@ const confirmRefund = async (orderId) => {
     
     // Gửi email thông báo hoàn tiền thành công
     if (rental.customerId && rental.customerId.email) {
+      const bank = rental.refundDetails || {};
       await sendEmail({
         to: rental.customerId.email,
-        subject: `[CostumeHUB] Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
-        html: `
-          <h3>Xin chào ${rental.customerId.fullName || 'bạn'},</h3>
-          <p>Cửa hàng đã hoàn tất việc chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
-          <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn.</p>
-          <br/>
-          <p>Trân trọng,</p>
-          <p>Đội ngũ CostumeHUB</p>
-        `
+        subject: `CostumeHUB — Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        text: `Chào ${rental.customerId.fullName || 'bạn'}, cửa hàng đã hoàn tất chuyển khoản hoàn tiền cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}. Vui lòng kiểm tra tài khoản ngân hàng của bạn.`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Hoàn tiền thành công',
+          badgeText: 'Đã hoàn tiền',
+          badgeColor: 'success',
+          bodyHtml: `
+            <p>Cửa hàng đã hoàn tất chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
+            ${bank.accountNumber ? `<p>Số tiền đã được chuyển đến tài khoản <b>${bank.accountNumber}</b>${bank.bankName ? ` (${bank.bankName})` : ''}${bank.accountName ? ` — chủ tài khoản: ${bank.accountName}` : ''}.</p>` : ''}
+            <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn. Nếu chưa nhận được tiền sau 1-2 ngày làm việc, vui lòng liên hệ cửa hàng để được hỗ trợ.</p>
+          `,
+          ctaText: 'Xem đơn hàng',
+          ctaUrl: buildOrderLink(rental._id, 'return_refund'),
+        }),
       });
     }
   } catch (err) {
@@ -1192,5 +1340,7 @@ module.exports = {
   getTopRentedCostumes,
   autoUpdateDeliveredStatus,
   sendAutoConfirmReminders,
+  sendUpcomingOverdueReminders,
   confirmRefund,
+  buildOrderLink,
 };

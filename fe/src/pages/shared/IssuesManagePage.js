@@ -351,15 +351,6 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
             </div>
           )}
 
-          {/* Accept notice — chấp nhận KHÔNG hoàn tiền ngay, hàng vẫn đang ở nhà khách */}
-          {action === "accept" && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
-              Đơn sẽ chuyển sang <strong>"Đang trả hàng"</strong> — tiền <strong>chưa</strong> được hoàn ngay.
-              Khách cần gửi/trả sản phẩm về cửa hàng; nhân viên kiểm tra hàng thực tế qua màn hình
-              "Kiểm tra đồ trả" rồi mới chốt hoàn tiền (gồm cả tiền thuê và tiền cọc).
-            </div>
-          )}
-
           {/* Reject reason */}
           {action === "reject" && (
             <div>

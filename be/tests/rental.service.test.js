@@ -121,6 +121,11 @@ const sendEmailMock = async (opts) => {
     sendEmailCalledWith = opts;
     return true;
 };
+// email.service.js export thật là sendEmail() có gắn thêm renderEmailHtml() (helper dựng layout mail
+// chung) như 1 property trên chính hàm — mock cũng phải có property này, nếu không code gọi
+// sendEmail.renderEmailHtml(...) sẽ ném lỗi bị try/catch nuốt mất, khiến sendEmail() không bao giờ
+// thực sự được gọi (bug ẩn từng khiến test "Cancel order" fail sau khi thêm template mail chung).
+sendEmailMock.renderEmailHtml = (opts) => `<mock-email>${JSON.stringify(opts)}</mock-email>`;
 
 // ---- ghnService mock ----
 let ghnCreateOrderImpl = async () => { throw new Error('ghn not configured'); };
