@@ -145,6 +145,14 @@ describe('getAllCostumes', () => {
     CostumeMock.findById = defaultCostumeFindById;
     CostumeMock.find = defaultCostumeFind;
   });
+  test('Get all costume (all status)', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    await getAllCostumes({ status: 'all' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+  });
 
   test('Filter costume list by category', async () => {
     mockData.childCategories = [{ _id: 'category_id_123' }];
@@ -156,7 +164,6 @@ describe('getAllCostumes', () => {
     // D. Test phụ: Đảm bảo dữ liệu DB ném cho Service không bị Service làm rơi rớt trên đường về
     assert.strictEqual(result.costumes.length, 2); // Do MOCK_COSTUMES mặc định có 2 bộ
   });
-
 
   test('Get all costumes list', async () => {
     const result = await getAllCostumes({});
@@ -230,6 +237,18 @@ describe('getAllCostumes', () => {
     const result = await getAllCostumes({ status: 'hidden' });
 
     assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['hidden'] });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
+  });
+
+  test('Filter by specific status list (available)', async () => {
+    mockData.costumes = [];
+    mockData.totalItems = 0;
+
+    const result = await getAllCostumes({ status: 'available' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+    assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
     assert.deepStrictEqual(result.costumes, []);
     assert.strictEqual(result.pagination.totalItems, 0);
   });
