@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faLocationDot } from "@fortawesome/free-solid-svg-icons"
-import { statusOrder } from "../../constants/statusOrder"
+import { getOrderStatusLabel } from "../../constants/statusOrder"
 import { PAYMENT_METHOD_LABELS } from "../../constants/paymentMethod"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { OrderTrackingModal } from "./OrderTrackingModal"
@@ -40,7 +40,8 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
     const currentStatus = detailedOrder?.status || order.status
     const deliveredAt = detailedOrder?.deliveredAt
-    let status = statusOrder[currentStatus] || statusOrder[order.status]
+    const currentIssueStatus = detailedOrder?.hasIssue ? detailedOrder.issueStatus : order.issue?.status
+    let status = getOrderStatusLabel({ status: currentStatus, issue: currentIssueStatus ? { status: currentIssueStatus } : null })
     const refundDetails = detailedOrder?.refundDetails || order.refundDetails
     if (currentStatus === 'cancelled' && refundDetails?.status === 'pending') {
         status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }

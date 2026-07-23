@@ -38,6 +38,13 @@ const issueSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Đánh dấu khiếu nại đã TỪNG được staff đẩy lên chủ shop — giữ lại vĩnh viễn dù status sau đó
+    // chuyển tiếp (accepted/rejected), để lọc đúng danh sách khiếu nại hiển thị cho owner (chỉ thấy
+    // những khiếu nại staff đã đẩy lên, không thấy khiếu nại staff tự xử lý trực tiếp).
+    escalatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

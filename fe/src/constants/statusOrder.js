@@ -28,11 +28,24 @@ export const tabs = [
 ];
 
 // Trạng thái con của yêu cầu Trả hàng/hoàn tiền — hiển thị ở góc thẻ đơn (thay vị trí giá)
-// và trong tab "Trả hàng". Map từ issue.status (pending/escalated gộp thành "Đang chờ duyệt").
-export const issueStatusBadge = {
-    pending: { label: "Đang chờ duyệt", className: "text-amber-600" },
-    escalated: { label: "Đang chờ duyệt", className: "text-amber-600" },
-    accepted: { label: "Đã hoàn tiền", className: "text-emerald-600" },
-    cancelled: { label: "Khiếu nại đã hủy", className: "text-gray-500" },
-    rejected: { label: "Khiếu nại bị từ chối", className: "text-red-500" },
-};
+// và trong tab "Trả hàng". Chỉ 2 mức đơn giản theo đúng ý chủ shop: "Chờ xử lí" (shop chưa xem/
+// chưa quyết định) và "Đã xử lí" (shop đã duyệt) — không chẻ nhỏ theo tiến độ trả hàng/hoàn tiền
+// bên dưới nữa, khách chỉ cần biết shop đã duyệt hay chưa.
+export function getIssueBadge(order) {
+    const issue = order?.issue;
+    if (!issue) return null;
+    if (issue.status === "pending" || issue.status === "escalated") {
+        return { label: "Chờ xử lí", className: "text-amber-600" };
+    }
+    if (issue.status === "accepted") return { label: "Đã xử lí", className: "text-emerald-600" };
+    if (issue.status === "cancelled") return { label: "Khiếu nại đã hủy", className: "text-gray-500" };
+    if (issue.status === "rejected") return { label: "Khiếu nại bị từ chối", className: "text-red-500" };
+    return null;
+}
+
+// Nhãn trạng thái đơn chính — LUÔN dùng nguyên nhãn 'returning' = "Đang trả hàng" cho mọi lý do trả
+// hàng (bình thường hay do khiếu nại). Ngữ cảnh khiếu nại chỉ hiện ở badge con (getIssueBadge, ngay
+// trên card đơn) — không nhân đôi thông tin ra nhãn trạng thái chính để tránh rối.
+export function getOrderStatusLabel(order) {
+    return statusOrder[order?.status];
+}

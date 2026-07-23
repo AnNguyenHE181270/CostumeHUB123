@@ -313,7 +313,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                     onClick={() => setAction("accept")}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                   >
-                    <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                    <FontAwesomeIcon icon={faCheck} /> Đồng ý — yêu cầu trả hàng
                   </button>
                   <button
                     onClick={() => setAction("reject")}
@@ -327,7 +327,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                   <div className="flex items-center gap-2">
                     {action === "accept" ? (
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
-                        <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                        <FontAwesomeIcon icon={faCheck} /> Đồng ý — yêu cầu trả hàng
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-700">
@@ -348,6 +348,15 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Accept notice — chấp nhận KHÔNG hoàn tiền ngay, hàng vẫn đang ở nhà khách */}
+          {action === "accept" && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
+              Đơn sẽ chuyển sang <strong>"Đang trả hàng"</strong> — tiền <strong>chưa</strong> được hoàn ngay.
+              Khách cần gửi/trả sản phẩm về cửa hàng; nhân viên kiểm tra hàng thực tế qua màn hình
+              "Kiểm tra đồ trả" rồi mới chốt hoàn tiền (gồm cả tiền thuê và tiền cọc).
             </div>
           )}
 

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faCloudUploadAlt, faTrash, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faCloudUploadAlt, faTrash, faCircleCheck, faTriangleExclamation, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import rentalService from "../../services/rental.service";
+import issueService from "../../services/issue.service";
 import Toast from "../../components/ui/Toast";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import { formatDate } from "../../utils/formatters";
+
+const RESOLUTION_LABELS = { return_refund: "Hoàn tiền", exchange: "Đổi hàng" };
 
 const DAMAGE_TIERS = [
   { value: "none", title: "Bình thường hoặc bẩn nhẹ", desc: "Có thể giặt sạch sẽ dễ dàng, không bị khấu trừ tiền cọc.", min: 0, max: 0 },
@@ -24,12 +27,33 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [linkedIssue, setLinkedIssue] = useState(null);
+  const [issueLoading, setIssueLoading] = useState(true);
 
   const selectedTier = DAMAGE_TIERS.find((t) => t.value === damageTier);
 
   useEffect(() => {
     if (selectedTier) setDamagePercent(selectedTier.min);
   }, [damageTier, selectedTier]);
+
+  // Đơn returning có thể tới từ 2 nguồn: khách bấm "Yêu cầu trả hàng" (trả bình thường) hoặc
+  // staff/owner vừa Chấp nhận 1 khiếu nại (Issue.status='accepted') — cần biết rõ nguồn gốc để
+  // hiển thị đúng lý do trả hàng và tính lại số tiền hoàn cho khớp chính sách (xem backend inspectReturn).
+  useEffect(() => {
+    let cancelled = false;
+    setLinkedIssue(null);
+    setIssueLoading(true);
+    if (!order?._id) { setIssueLoading(false); return; }
+    issueService.getByRentalId(order._id)
+      .then((res) => {
+        if (cancelled) return;
+        const iss = res.issue;
+        setLinkedIssue(iss && iss.status === "accepted" ? iss : null);
+      })
+      .catch(() => { if (!cancelled) setLinkedIssue(null); })
+      .finally(() => { if (!cancelled) setIssueLoading(false); });
+    return () => { cancelled = true; };
+  }, [order?._id]);
 
   const handleFilesChange = (e) => {
     const newFiles = Array.from(e.target.files || []);
@@ -66,7 +90,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
       setToast({
         show: true,
         message: netRefund > 0
-          ? `Đã chốt đơn và hoàn ${netRefund.toLocaleString("vi-VN")}đ vào ví khách hàng!`
+          ? `Đã chốt đơn — tạo yêu cầu hoàn ${netRefund.toLocaleString("vi-VN")}đ cho khách!`
           : "Đã chốt đơn thành công!",
         type: "success",
       });
@@ -142,9 +166,43 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
           <h1 className="text-2xl font-bold text-[#1a1a1a] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Kiểm Tra Đồ Trả
           </h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Kiểm tra tình trạng trang phục, đánh giá hư hỏng (nếu có) và xác nhận hoàn cọc.
+          <p className="text-sm text-gray-500 mb-4">
+            Kiểm tra tình trạng trang phục, đánh giá hư hỏng (nếu có) và xác nhận hoàn tiền.
           </p>
+
+          {/* Lý do đơn này vào 'returning' — trả bình thường hay do khiếu nại đã được duyệt */}
+          {!issueLoading && (
+            linkedIssue ? (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-amber-800">
+                  <FontAwesomeIcon icon={faTriangleExclamation} />
+                  Trả hàng do khiếu nại #{linkedIssue._id?.slice(-6).toUpperCase()} đã được duyệt
+                </p>
+                <p className="text-xs text-amber-700 mt-1.5">
+                  Yêu cầu: <strong>{RESOLUTION_LABELS[linkedIssue.resolution] || linkedIssue.resolution}</strong> — cửa hàng đã đồng ý sản phẩm có lỗi, mặc định <strong>không tính phí trễ hạn</strong> và <strong>hoàn cả tiền thuê lẫn tiền cọc</strong> (trừ khi phát hiện thêm hư hỏng do khách gây ra khi kiểm tra thực tế).
+                </p>
+                <p className="text-xs text-amber-900 bg-white/70 border border-amber-100 rounded-lg px-3 py-2 mt-2">
+                  Lý do khách nêu: “{linkedIssue.reason}”
+                </p>
+                {linkedIssue.evidence?.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {linkedIssue.evidence.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="w-14 h-14 rounded-lg overflow-hidden border border-amber-200 bg-black/5 block">
+                        {/\.(mp4|mov|webm)(\?|$)/i.test(url)
+                          ? <div className="w-full h-full flex items-center justify-center text-[10px] text-amber-700 font-semibold">Video</div>
+                          : <img src={url} alt={`bằng chứng ${i + 1}`} className="w-full h-full object-cover" />}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mb-6 rounded-xl border border-[#eaeaea] bg-[#faf9f7] p-4 flex items-center gap-2.5">
+                <FontAwesomeIcon icon={faRotateLeft} className="text-[#888]" />
+                <p className="text-sm text-[#555]">Trả hàng do hết hạn thuê — khách chủ động yêu cầu trả đồ.</p>
+              </div>
+            )
+          )}
 
           {result ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center my-auto shadow-sm">
@@ -155,11 +213,11 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                 {result.replacementFee > 0 && (
                   <div className="flex justify-between border-b border-gray-100 pb-3 mb-2"><span>Phí bồi thường vượt cọc:</span> <strong>{result.replacementFee.toLocaleString("vi-VN")} đ</strong></div>
                 )}
-                <div className="flex justify-between pt-1"><span>Số tiền hoàn cọc cho khách:</span> <strong className="text-emerald-600 text-xl font-extrabold">{(result.refundAmount || 0).toLocaleString("vi-VN")} đ</strong></div>
+                <div className="flex justify-between pt-1"><span>{result.hasLinkedIssue ? "Tổng tiền hoàn cho khách (cọc + tiền thuê):" : "Số tiền hoàn cọc cho khách:"}</span> <strong className="text-emerald-600 text-xl font-extrabold">{(result.refundAmount || 0).toLocaleString("vi-VN")} đ</strong></div>
               </div>
               {Math.max(0, (result.refundAmount || 0) - (result.replacementFee || 0)) > 0 && (
                 <p className="text-emerald-600 font-medium text-sm -mt-4 mb-6">
-                  Đã cộng tiền vào ví khách hàng và gửi thông báo hoàn tất cho khách.
+                  Đã tạo yêu cầu hoàn tiền và gửi thông báo cho khách — chủ shop chuyển khoản rồi xác nhận hoàn tất ở mục "Yêu cầu hoàn tiền".
                 </p>
               )}
               <div>
@@ -307,7 +365,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                   disabled={submitting}
                   className="flex-[2] px-4 py-3.5 bg-gradient-to-r from-[#1a1a1a] to-[#333] text-white rounded-xl text-sm font-bold hover:brightness-110 disabled:opacity-50 transition-all shadow flex items-center justify-center gap-2"
                 >
-                  {submitting ? "Đang xử lý..." : "Xác nhận & Hoàn cọc"}
+                  {submitting ? "Đang xử lý..." : linkedIssue ? "Xác nhận & Tạo yêu cầu hoàn tiền" : "Xác nhận & Hoàn cọc"}
                 </button>
               </div>
             </div>
@@ -322,8 +380,11 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
           <div className="space-y-1.5 text-left">
             <p>Mức độ hư hỏng đã chọn: <strong>{selectedTier?.title}</strong> ({damagePercent}% cọc)</p>
             <p>Phí hư hỏng ước tính: <strong>{estimatedDamageFee.toLocaleString("vi-VN")} đ</strong> (chưa gồm phí trễ hạn nếu có)</p>
+            {linkedIssue && (
+              <p>Đơn này trả hàng do khiếu nại đã duyệt — sẽ hoàn thêm cả <strong>{(order.totalRentalPrice || 0).toLocaleString("vi-VN")} đ</strong> tiền thuê.</p>
+            )}
             <p className="text-red-600 font-medium pt-1">
-              Sau khi xác nhận, đơn sẽ được chốt hoàn tất và số tiền cọc còn lại sẽ được cộng ngay vào ví khách hàng — không thể hoàn tác.
+              Sau khi xác nhận, đơn sẽ được chốt hoàn tất và hệ thống sẽ tạo yêu cầu hoàn tiền gửi tới chủ shop xử lý chuyển khoản — không thể hoàn tác.
             </p>
           </div>
         }

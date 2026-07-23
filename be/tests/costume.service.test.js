@@ -48,7 +48,16 @@ const CategoryMock = function (data) {
 
 CategoryMock.find = (filter) => {
   mockData.categoryFindFilter = filter;
-  const result = mockData.childCategories || [];
+  // Query có parentId -> đang lấy category con của (các) id được truyền vào getAllCostumes;
+  // phải thực sự lọc theo id đó (không trả cứng) để test bắt được categoryId sai/gõ nhầm.
+  // Query không có parentId -> đang lấy toàn bộ category active.
+  let result;
+  if (filter && filter.parentId) {
+    const targetIds = filter.parentId.$in.map((id) => id.toString());
+    result = (mockData.childCategories || []).filter((c) => targetIds.includes(c.parentId?.toString()));
+  } else {
+    result = mockData.activeCategories || [];
+  }
   return {
     select: async function (fields) {
       return result;
@@ -76,7 +85,8 @@ describe('getAllCostumes', () => {
   test('Get all costumes list with full filters', async () => {
     mockData.costumes = [{ _id: 'costume_id_123', name: 'Ao Dai' }];
     mockData.totalItems = 1;
-    mockData.childCategories = [{ _id: '507f1f77bcf86cd799439011' }];
+    mockData.activeCategories = [{ _id: '507f1f77bcf86cd799439011' }];
+    mockData.childCategories = [];
 
     const result = await getAllCostumes({
       categoryId: '507f1f77bcf86cd799439011',
@@ -95,8 +105,10 @@ describe('getAllCostumes', () => {
       totalItems: 1,
       limit: 10,
     });
-    // filter status phải đúng
-    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available'] });
+    // filter status phải đúng — status='available' giờ lọc theo $ne:'hidden' + variants.availableStock>0
+    // (không còn $in:['available']) để không bỏ sót costume có hàng nhưng chưa cập nhật status field.
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+    assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
     // filter price phải đúng
     assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
     // filter categoryId phải đúng
@@ -106,14 +118,19 @@ describe('getAllCostumes', () => {
   test('Filter costume list by category', async () => {
     mockData.costumes = [{ _id: 'costume_id_123' }];
     mockData.totalItems = 1;
-    mockData.childCategories = [{ _id: 'category_id_123' }, { _id: 'subcategory_id_456' }];
+    // category_id_123 là cha, subcategory_id_456 là con của nó — cả 2 đều đang active.
+    mockData.activeCategories = [{ _id: 'category_id_123' }, { _id: 'subcategory_id_456' }];
+    mockData.childCategories = [{ _id: 'subcategory_id_456', parentId: 'category_id_123' }];
 
-    await getAllCostumes({ categoryId: 'category_id_123' });
+    await getAllCostumes({ categoryId: 'category_id_123678' });
 
     // Category.find phải được gọi để lấy sub-categories
     assert.ok(mockData.categoryFindFilter !== undefined);
-    // categoryId phải có trong filter
-    assert.ok(mockData.costumeFilter.categoryId);
+    // filter categoryId phải chứa đúng category cha + category con của nó (không chỉ "có tồn tại")
+    assert.deepStrictEqual(
+      (mockData.costumeFilter.categoryId.$in || []).map(String).sort(),
+      ['category_id_123', 'subcategory_id_456'].sort()
+    );
   });
 
   test('Filter costume list by price range', async () => {
@@ -179,7 +196,9 @@ describe('getAllCostumes', () => {
 
     await getAllCostumes({ status: 'all' });
 
-    assert.strictEqual(mockData.costumeFilter.status, undefined);
+    // status='all' vẫn ẩn 'hidden' theo mặc định — tránh lộ sản phẩm chủ shop đã ẩn ra API công khai
+    // chỉ vì FE truyền status=all. (Muốn thấy cả hidden, dùng endpoint riêng getInventoryCostumes.)
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
     assert.strictEqual(mockData.costumeFilter['variants.availableStock'], undefined);
   });
 

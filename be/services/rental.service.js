@@ -288,6 +288,13 @@ const createOrder = async (customerId, body) => {
         400
       );
     }
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays < minDays) {
+      throw new HttpError(
+        `Phải thuê tối thiểu ${minDays} ngày đối với sản phẩm ${costume.name}.`,
+        400
+      );
+    }
 
     const variant = costume.variants.find((v) => v.size === item.size);
     if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
@@ -491,10 +498,23 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
 };
 
 const getAllOrders = async (startDate, endDate) => {
-  return Rental.find(buildDateRangeFilter(startDate, endDate))
+  const orders = await Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
     .populate('items.costume', 'name images')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Gắn khiếu nại liên kết (nếu có) vào từng đơn — để staff/owner xem chi tiết đơn hàng thấy ngay
+  // đây là 'đơn hoàn tiền do khiếu nại' thay vì tưởng nhầm là đơn trả hàng bình thường bị kẹt.
+  const issues = await Issue.find({ rentalId: { $in: orders.map((o) => o._id) } })
+    .select('rentalId status resolution reason createdAt');
+  const issueByRental = new Map(issues.map((is) => [is.rentalId.toString(), is]));
+  orders.forEach((o) => {
+    const is = issueByRental.get(o._id.toString());
+    o.issue = is ? { id: is._id, status: is.status, resolution: is.resolution, reason: is.reason, createdAt: is.createdAt } : null;
+  });
+
+  return orders;
 };
 
 const updateOrderStatus = async (id, status) => {
@@ -780,6 +800,22 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn thuê', 404); }
   if (rental.status !== 'returning') { cleanupFiles(); throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400); }
 
+  // returning là trạng thái THUẦN VẬT LÝ, dùng chung cho cả trả hàng bình thường lẫn trả hàng do
+  // khiếu nại. Đơn vào 'returning' ngay khi khách gửi khiếu nại (xem issue.service.js createIssue),
+  // TRƯỚC CẢ khi shop duyệt — nên phải chặn kiểm tra hàng nếu khiếu nại chưa được duyệt, bắt staff
+  // xử lý khiếu nại (đồng ý/từ chối) trước, tránh lỡ tay tính phí trễ hạn/không hoàn tiền thuê cho
+  // một đơn thực chất là khiếu nại hợp lệ chỉ vì chưa kịp bấm "Chấp nhận" ở trang Khiếu nại.
+  const pendingIssue = await Issue.findOne({ rentalId: id, status: { $in: ['pending', 'escalated'] } });
+  if (pendingIssue) {
+    cleanupFiles();
+    throw new HttpError('Đơn này có khiếu nại chưa xử lý — vui lòng đồng ý hoặc từ chối khiếu nại ở trang Khiếu nại trước khi kiểm tra hàng trả.', 400);
+  }
+
+  // Đơn có khiếu nại đã duyệt thì kiểm tra hàng vẫn quét đúng 1 quy trình này, nhưng áp chính sách
+  // khác: hoàn cả tiền thuê (không chỉ cọc) và không tính phí trễ hạn (lỗi thuộc về sản phẩm, không
+  // phải khách trễ hẹn).
+  const linkedIssue = await Issue.findOne({ rentalId: id, status: 'accepted' });
+
   const tier = damageTier || 'none';
   const tierRange = DAMAGE_TIER_RANGES[tier];
   if (!tierRange) { cleanupFiles(); throw new HttpError('Mức độ hư hỏng không hợp lệ.', 400); }
@@ -801,7 +837,8 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   let daysLate = 0;
   let totalLateFee = 0;
 
-  if (actualReturn > scheduledReturn) {
+  // Trả trễ do khiếu nại sản phẩm lỗi không tính là "khách trễ hẹn" — bỏ qua phí trễ hạn.
+  if (!linkedIssue && actualReturn > scheduledReturn) {
     const timeDiff = actualReturn.getTime() - scheduledReturn.getTime();
     daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
     rental.items.forEach((item) => {
@@ -822,7 +859,9 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   }
 
   const totalFine = totalLateFee + finalDamageFee;
-  const refundAmount = Math.max(0, originalDeposit - totalFine);
+  // Trả hàng do khiếu nại được duyệt: cửa hàng đã thừa nhận sản phẩm lỗi -> hoàn cả tiền thuê
+  // (rental.totalRentalPrice), không chỉ tiền cọc như trả hàng bình thường.
+  const refundAmount = Math.max(0, originalDeposit - totalFine) + (linkedIssue ? (rental.totalRentalPrice || 0) : 0);
 
   // Tải ảnh/video bằng chứng lên Cloudinary làm bằng chứng đơn hàng đã được kiểm tra đúng hiện trạng
   const evidenceUrls = [];
@@ -848,11 +887,21 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   rental.returnEvidence = evidenceUrls;
   rental.refundAmount = refundAmount;
   if (missingNotes) rental.cancelReason = missingNotes;
+
+  // Không còn ví để cộng tiền tự động — mọi khoản hoàn tiền giờ là YÊU CẦU gửi tới chủ shop, xử lý
+  // thủ công qua chuyển khoản (giống hệt cơ chế refundDetails đã dùng ở luồng huỷ đơn/cancelOrder).
+  // Chủ shop xác nhận đã chuyển khoản xong qua PUT /:id/confirm-refund (confirmRefund bên dưới).
+  const netRefund = Math.max(0, refundAmount - replacementFee);
+  if (netRefund > 0) {
+    rental.refundDetails = { ...(rental.refundDetails ? rental.refundDetails.toObject?.() ?? rental.refundDetails : {}), status: 'pending' };
+  }
+  if (linkedIssue) {
+    // Khiếu nại được duyệt -> hoàn cả tiền thuê nên coi như khoản thanh toán ban đầu đã được hoàn.
+    rental.paymentStatus = 'refunded';
+  }
+
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
-
-  // Hoàn tiền qua VNPAY / Offline
-
 
   // Nhả đúng các unit đã cho thuê của đơn này:
   // - Trả hàng bình thường/hư hỏng nhẹ -> 'maintenance' (giặt là/kiểm tra xong staff bấm
@@ -889,7 +938,7 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
     }
   }
 
-  return { totalFine, refundAmount, damageFee: finalDamageFee, replacementFee };
+  return { totalFine, refundAmount, damageFee: finalDamageFee, replacementFee, hasLinkedIssue: !!linkedIssue };
 };
 
 const extendRental = async (id, customerId, newEndDate) => {
@@ -933,7 +982,9 @@ const extendRental = async (id, customerId, newEndDate) => {
   let totalExtendCost = 0;
   for (const item of rental.items) {
     const costume = item.costume;
-    const pricePerDay = item.rentalPricePerDay || (costume ? (costume.pricePerDay || costume.price) : 0) || 0;
+    // Dùng ?? thay vì || — rentalPricePerDay = 0 là giá trị hợp lệ (VD: sản phẩm khuyến mãi miễn phí
+    // thuê), || sẽ coi 0 là falsy rồi fallback nhầm sang giá gốc costume, tính phí gia hạn sai.
+    const pricePerDay = item.rentalPricePerDay ?? (costume ? (costume.pricePerDay ?? costume.price) : 0) ?? 0;
     totalExtendCost += pricePerDay * (newPriceFactor - oldPriceFactor) * item.quantity;
   }
 

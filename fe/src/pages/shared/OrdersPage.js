@@ -318,6 +318,7 @@ export default function OrdersPage() {
     switch (order.status) {
       case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'delivering': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'delivered': return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'returning': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -334,6 +335,7 @@ export default function OrdersPage() {
     switch (order.status) {
       case 'pending': return 'Chờ xử lý';
       case 'delivering': return 'Đang giao';
+      case 'delivered': return 'Đã giao';
       case 'renting': return 'Đang thuê';
       case 'returning': return 'Đang trả hàng';
       case 'completed': return 'Hoàn tất';
@@ -541,6 +543,24 @@ export default function OrdersPage() {
             <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
             <h2 className="text-xl font-bold text-[#1a1a1a] mb-4 border-b pb-2">Chi tiết đơn #{selectedOrder._id?.slice(-6).toUpperCase()}</h2>
 
+            {/* Đơn có khiếu nại — phải hiện rõ ngay ở đây để staff/owner không tưởng nhầm là đơn
+                trả hàng bình thường bị kẹt, nhất là khi đơn đang 'returning' nhưng khiếu nại chưa
+                được duyệt hoặc đã duyệt nhưng còn chờ staff xác nhận nhận lại hàng thật. */}
+            {selectedOrder.issue && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3.5">
+                <p className="text-sm font-bold text-amber-800">
+                  Đơn có khiếu nại — {
+                    selectedOrder.issue.status === 'accepted' ? 'Đã duyệt, đang chờ kiểm tra đồ trả'
+                      : selectedOrder.issue.status === 'escalated' ? 'Đã đẩy lên chủ cửa hàng, chờ duyệt'
+                        : selectedOrder.issue.status === 'rejected' ? 'Đã từ chối'
+                          : selectedOrder.issue.status === 'cancelled' ? 'Khách đã hủy khiếu nại'
+                            : 'Đang chờ xử lý'
+                  }
+                </p>
+                <p className="text-xs text-amber-700 mt-1">Lý do khách nêu: “{selectedOrder.issue.reason}”</p>
+              </div>
+            )}
+
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold">Sản phẩm thuê</h3>
@@ -609,18 +629,26 @@ export default function OrdersPage() {
                   </p>
                 </div>
               )}
-              {role === 'owner' && selectedOrder.refundDetails && selectedOrder.refundDetails.accountNumber && (
+              {role === 'owner' && selectedOrder.refundDetails && (
                 <div className="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100 mt-1">
-                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Thông tin nhận hoàn tiền (Khách yêu cầu)</p>
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold">Ngân hàng:</span> {selectedOrder.refundDetails.bankName}
-                  </p>
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold">Số tài khoản:</span> {selectedOrder.refundDetails.accountNumber}
-                  </p>
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold">Tên người nhận:</span> {selectedOrder.refundDetails.accountName}
-                  </p>
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Thông tin nhận hoàn tiền</p>
+                  {selectedOrder.refundDetails.accountNumber ? (
+                    <>
+                      <p className="text-sm text-gray-800">
+                        <span className="font-semibold">Ngân hàng:</span> {selectedOrder.refundDetails.bankName}
+                      </p>
+                      <p className="text-sm text-gray-800">
+                        <span className="font-semibold">Số tài khoản:</span> {selectedOrder.refundDetails.accountNumber}
+                      </p>
+                      <p className="text-sm text-gray-800">
+                        <span className="font-semibold">Tên người nhận:</span> {selectedOrder.refundDetails.accountName}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-600 italic">
+                      Chưa có thông tin ngân hàng (đơn hoàn tiền qua khiếu nại/kiểm tra trả hàng không thu số tài khoản tự động) — vui lòng liên hệ khách để lấy thông tin chuyển khoản.
+                    </p>
+                  )}
                   <p className="text-sm mt-2">
                     <span className="font-semibold">Trạng thái hoàn tiền:</span>{" "}
                     <span className={selectedOrder.refundDetails.status === "completed" ? "text-green-600 font-bold" : "text-yellow-600 font-bold"}>
@@ -662,15 +690,24 @@ export default function OrdersPage() {
                   </button>
                 )}
                 {selectedOrder.status === 'returning' && (
-                  <button
-                    className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
-                    onClick={() => {
-                      setInspectReturnOrder(selectedOrder);
-                      setSelectedOrder(null);
-                    }}
-                  >
-                    Kiểm tra đồ trả
-                  </button>
+                  ['pending', 'escalated'].includes(selectedOrder.issue?.status) ? (
+                    <span
+                      className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-400 font-medium rounded text-sm text-center cursor-not-allowed"
+                      title="Khiếu nại của đơn này chưa được duyệt — xử lý ở trang Khiếu nại trước"
+                    >
+                      Chờ duyệt khiếu nại
+                    </span>
+                  ) : (
+                    <button
+                      className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
+                      onClick={() => {
+                        setInspectReturnOrder(selectedOrder);
+                        setSelectedOrder(null);
+                      }}
+                    >
+                      Kiểm tra đồ trả
+                    </button>
+                  )
                 )}
               </div>
             )}
