@@ -75,10 +75,6 @@ const userSchema = new mongoose.Schema(
       default: "active",
     },
 
-    otpCode: { type: String, select: false },
-    otpExpires: { type: Date, select: false },
-    otpCooldownUntil: { type: Date, select: false },
-
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpire: { type: Date, select: false },
     resetPasswordCooldownUntil: { type: Date, select: false },

@@ -108,6 +108,18 @@ const rentalSchema = new mongoose.Schema(
             type: String,
             default: ""
         },
+        
+        refundDetails: {
+            bankName: { type: String },
+            accountNumber: { type: String },
+            accountName: { type: String },
+            status: { type: String, enum: ["pending", "completed"], default: "pending" }
+        },
+
+        cancelOtpCode: { type: String, select: false },
+        cancelOtpExpires: { type: Date, select: false },
+        cancelOtpCooldownUntil: { type: Date, select: false },
+
         rentingAt: {
             type: Date
         },

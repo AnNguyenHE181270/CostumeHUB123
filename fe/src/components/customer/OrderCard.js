@@ -4,7 +4,10 @@ import { statusOrder } from "../../constants/statusOrder"
 import { formatOrderId } from "../../utils/formatters"
 
 function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
-    const status = statusOrder[order.status]
+    let status = statusOrder[order.status]
+    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
+        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
+    }
 
     return (
         <div

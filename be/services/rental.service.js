@@ -104,10 +104,13 @@ const getRentalHistory = async (userId) => {
     rawStartDate: order.startDate,
     rawEndDate: order.endDate,
     status: order.status,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
     rentingAt: order.rentingAt,
     totalPrice: order.totalAmount,
     refundAmount: order.refundAmount,
     replacementFee: order.replacementFee,
+    refundDetails: order.refundDetails,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
@@ -161,6 +164,7 @@ const getOrderDetail = async (orderId, customerId) => {
     },
     shippingAddress: order.shippingAddress,
     orderDate: order.createdAt,
+    refundDetails: order.refundDetails,
     rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
@@ -354,18 +358,49 @@ const createOrder = async (customerId, body) => {
   return newOrder;
 };
 
-const cancelOrder = async (orderId, customerId, cancelReason) => {
-  const order = await Rental.findOne({ _id: orderId, customerId });
+const bcrypt = require('bcryptjs');
+
+const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
+  const order = await Rental.findOne({ _id: orderId, customerId }).select("+cancelOtpCode +cancelOtpExpires +cancelOtpCooldownUntil");
   if (!order) throw new HttpError('Không tìm thấy đơn hàng.', 404);
   if (!['pending'].includes(order.status)) throw new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400);
 
+  if (order.paymentStatus === 'paid' && order.paymentMethod === 'VNPAY') {
+      if (!refundData || !refundData.otp) throw new HttpError('Vui lòng nhập mã OTP để xác nhận hủy đơn.', 400);
+      if (!order.cancelOtpCode || order.cancelOtpCode !== refundData.otp || order.cancelOtpExpires < Date.now()) {
+          throw new HttpError("Mã OTP không hợp lệ hoặc đã hết hạn", 400);
+      }
+      
+      if (!refundData.bankName || !refundData.accountNumber || !refundData.accountName) {
+          throw new HttpError("Vui lòng cung cấp đầy đủ thông tin ngân hàng để hoàn tiền", 400);
+      }
+      
+      order.refundDetails = {
+          bankName: refundData.bankName,
+          accountNumber: refundData.accountNumber,
+          accountName: refundData.accountName,
+          status: 'pending'
+      };
+
+      // Clear OTP
+      order.cancelOtpCode = undefined;
+      order.cancelOtpExpires = undefined;
+      order.cancelOtpCooldownUntil = undefined;
+  }
+
   order.status = 'cancelled';
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
-  order.paymentStatus = 'refunded';
+  
+  if (order.paymentStatus === 'paid') {
+      // Keep as paid but mark refund pending via refundDetails, or mark as refund pending?
+      // Let's keep it 'paid' for now until admin processes refund, or change to 'refunded' if it's done. 
+      // The old code changed it to 'refunded', but actually we should just leave it or change to a new status.
+      // But paymentStatus enum only has: "pending", "paid", "failed", "refunded".
+      order.paymentStatus = 'refunded'; // We'll just set it to refunded, and admin tracks refundDetails.
+  }
+
   await order.save();
   await notifyOrderStatus(order, 'cancelled');
-
-  // Removed wallet refund
 
   for (const item of order.items) {
     const costume = await Costume.findById(item.costume);
@@ -945,6 +980,49 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   return rental;
 };
 
+const confirmRefund = async (orderId) => {
+  const rental = await Rental.findById(orderId).populate('customerId', 'email fullName');
+  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
+  
+  if (!rental.refundDetails || rental.refundDetails.status === 'completed') {
+    throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền hoặc đã hoàn tất hoàn tiền.', 400);
+  }
+  
+  rental.refundDetails.status = 'completed';
+  await rental.save();
+
+  try {
+    await notificationService.createNotification({
+      userId: rental.customerId._id,
+      type: "order_status",
+      title: "Hoàn tất hoàn tiền",
+      message: `Cửa hàng đã chuyển khoản hoàn tiền cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}. Vui lòng kiểm tra tài khoản ngân hàng của bạn.`,
+      link: "/rental-history",
+      relatedId: rental._id,
+    });
+    
+    // Gửi email thông báo hoàn tiền thành công
+    if (rental.customerId && rental.customerId.email) {
+      await sendEmail({
+        to: rental.customerId.email,
+        subject: `[CostumeHUB] Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        html: `
+          <h3>Xin chào ${rental.customerId.fullName || 'bạn'},</h3>
+          <p>Cửa hàng đã hoàn tất việc chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
+          <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn.</p>
+          <br/>
+          <p>Trân trọng,</p>
+          <p>Đội ngũ CostumeHUB</p>
+        `
+      });
+    }
+  } catch (err) {
+    console.error('[Notification/Email Error]', err);
+  }
+
+  return rental;
+};
+
 module.exports = {
   getRentalHistory,
   getOrderDetail,
@@ -967,4 +1045,5 @@ module.exports = {
   getTopRentedCostumes,
   autoUpdateDeliveredStatus,
   sendAutoConfirmReminders,
+  confirmRefund,
 };

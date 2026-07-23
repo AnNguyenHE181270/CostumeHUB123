@@ -9,8 +9,10 @@ const rentalService = {
 
   createOfflineOrder: (orderData) => axiosClient.post('/api/rentals/create-offline', orderData),
 
-  cancelOrder: (orderId, cancelReason) =>
-    axiosClient.put(`/api/rentals/${orderId}/cancel`, { cancelReason }),
+  cancelOrder: (orderId, cancelReason, refundData) =>
+    axiosClient.put(`/api/rentals/${orderId}/cancel`, { cancelReason, refundData }),
+
+  sendCancelOtp: (password, orderId) => axiosClient.post('/api/rentals/cancel-otp', { password, orderId }),
 
   confirmReceipt: (orderId) => axiosClient.put(`/api/rentals/${orderId}/confirm-receipt`),
 
@@ -37,6 +39,9 @@ const rentalService = {
 
   inspectReturn: (orderId, formData) =>
     axiosClient.put(`/api/rentals/${orderId}/inspect-return`, formData),
+
+  confirmRefund: (orderId) =>
+    axiosClient.put(`/api/rentals/${orderId}/confirm-refund`),
 
   // Dashboard
   getTotalRevenue: () => axiosClient.get('/api/rentals/dashboard/revenue'),
