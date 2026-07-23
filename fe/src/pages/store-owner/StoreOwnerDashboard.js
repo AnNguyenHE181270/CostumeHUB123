@@ -252,7 +252,7 @@ export default function FrappeStyleDashboard() {
     const kpi = (cells) => `<table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><tr>${cells.map(c => `<td style="padding:10px;background:#f9f9f9;border:1px solid #eaeaea;text-align:center;"><div style="font-size:11px;color:#777;text-transform:uppercase;">${c.label}</div><div style="font-size:15px;font-weight:bold;margin-top:3px;">${c.value}</div></td>`).join("")}</tr></table>`;
     const tbl = (headers, rows) => `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;"><thead><tr>${headers.map(h => `<th style="background:#1a1a1a;color:#fff;padding:7px 8px;text-align:left;">${h}</th>`).join("")}</tr></thead><tbody>${rows.map((rowArr, i) => `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">${rowArr.map(c => `<td style="border-bottom:1px solid #eaeaea;padding:6px 8px;">${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     const data = r || reportData || {};
-    const { revenue: rev, lifecycle, topCostumes, customers, issues, wallet, inventory } = data;
+    const { revenue: rev, lifecycle, topCostumes, customers, issues, inventory } = data;
     const revenueTrend = revenueByMonth.length ? revenueByMonth : (rev?.revenueByMonth || []);
     const categories = categoryData || [];
     const orders = recentOrders || [];
@@ -310,7 +310,7 @@ export default function FrappeStyleDashboard() {
         ${s(4,"Chi tiết tồn kho theo size")}${inventory?.rows?.length?tbl(["Tên trang phục","Danh mục","Size","SKU","Tổng kho","Sẵn sàng","Đang thuê","Tỷ lệ khai thác"],inventory.rows.map(row=>[row.name,row.category,row.size,row.sku,fmtNum(row.totalStock),fmtNum(row.availableStock),fmtNum(row.rentedStock),`${row.utilizationPct}%`])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
       `;
     } else if (activeTab === "issues") {
-      title = "BÁO CÁO KHIẾU NẠI & VÍ";
+      title = "BÁO CÁO KHIẾU NẠI";
       tabTitle = "Khiếu nại";
       bodyContent = `
         ${s(1,"Tổng quan khiếu nại & Ví")}${kpi([
@@ -322,12 +322,7 @@ export default function FrappeStyleDashboard() {
         ${s(2,"Phân loại theo trạng thái khiếu nại")}${issues?.statusBreakdown?.length?tbl(["Trạng thái","Số đơn khiếu nại","Tỷ lệ"],issues.statusBreakdown.map(s=>[s.status,fmtNum(s.count),issues.total>0?fmtPct(s.count/issues.total*100):"0%"])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
         ${s(3,"Phân loại theo giải pháp xử lý")}${issues?.resolutionBreakdown?.length?tbl(["Giải pháp","Số đơn giải quyết","Tỷ lệ"],issues.resolutionBreakdown.map(s=>[s.resolution,fmtNum(s.count),issues.total>0?fmtPct(s.count/issues.total*100):"0%"])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
         ${s(4,"Top khách hàng chi tiêu nhiều nhất")}${customers?.topBySpending?.length?tbl(["#","Họ tên","Số lần thuê","Tổng chi tiêu"],customers.topBySpending.slice(0,10).map((c,i)=>[i+1,c.fullName,fmtNum(c.rentalCount),fmtVND(c.totalSpent)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
-        ${s(5,"Báo cáo ví điện tử - nạp ví")}${kpi([
-          {label:"Tổng giao dịch nạp",value:`${fmtNum(wallet?.total)} lần`},
-          {label:"Thành công",value:`${fmtNum(wallet?.successCount)} lần (${wallet?.successRate||0}%)`},
-          {label:"Thất bại",value:`${fmtNum(wallet?.failedCount)} lần`},
-          {label:"Tổng tiền nạp thành công",value:fmtVND(wallet?.totalTransaction)}
-        ])}
+
       `;
     }
 
@@ -364,7 +359,7 @@ export default function FrappeStyleDashboard() {
     try {
       const r = await fetchFullReportData();
       const now = new Date().toLocaleString("vi-VN");
-      const { revenue: rev, topCostumes, lifecycle, inventory, customers, issues, wallet } = r;
+      const { revenue: rev, topCostumes, lifecycle, inventory, customers, issues } = r;
       const wb = XLSX.utils.book_new();
 
       if (activeTab === "revenue") {
@@ -556,7 +551,7 @@ export default function FrappeStyleDashboard() {
 
       } else if (activeTab === "issues") {
         const ws1 = XLSX.utils.aoa_to_sheet([
-          ["BÁO CÁO KHIẾU NẠI & VÍ - COSTUMEHUB"],
+          ["BÁO CÁO KHIẾU NẠI - COSTUMEHUB"],
           [`Kỳ: ${dateRange}`],
           [`Ngày: ${now}`],
           [],
@@ -599,21 +594,7 @@ export default function FrappeStyleDashboard() {
           XLSX.utils.book_append_sheet(wb, ws, "Top khach hang");
         }
 
-        if (wallet) {
-          const ws = XLSX.utils.aoa_to_sheet([
-            ["BÁO CÁO VÍ ĐIỆN TỬ - COSTUMEHUB"],
-            [`Kỳ: ${dateRange}`],
-            [`Ngày: ${now}`],
-            [],
-            ["CHỈ SỐ", "GIÁ TRỊ", "GHI CHÚ"],
-            ["Tổng giao dịch nạp", wallet.total || 0, "lần"],
-            ["Thành công", wallet.successCount || 0, `${wallet.successRate || 0}%`],
-            ["Thất bại", wallet.failedCount || 0, ""],
-            ["Tổng nạp ví thành công", wallet.totalTransaction || 0, fmtVND(wallet.totalTransaction)]
-          ]);
-          ws["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 16 }];
-          XLSX.utils.book_append_sheet(wb, ws, "Vi dien tu");
-        }
+
 
         XLSX.writeFile(wb, `Bao_cao_Khieu_nai_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
       }
@@ -1080,14 +1061,7 @@ export default function FrappeStyleDashboard() {
               </div>
             </div>
 
-            {/* Ví điện tử */}
-            <SectionTitle>Báo cáo ví điện tử — nạp ví</SectionTitle>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard icon={faChartBar}    label="Tổng giao dịch nạp"      value={`${fmtNum(r?.wallet?.total)} lần`}          color="teal" />
-              <StatCard icon={faCheckCircle} label="Thành công"               value={`${fmtNum(r?.wallet?.successCount)} lần`}   color="emerald" sub={`Tỷ lệ: ${r?.wallet?.successRate || 0}%`} />
-              <StatCard icon={faTimesCircle} label="Thất bại"                 value={`${fmtNum(r?.wallet?.failedCount)} lần`}    color="rose" />
-              <StatCard icon={faChartLine}   label="Tổng tiền nạp thành công" value={fmtVND(r?.wallet?.totalTransaction)}             color="blue" />
-            </div>
+
           </div>
         )}
       </div>

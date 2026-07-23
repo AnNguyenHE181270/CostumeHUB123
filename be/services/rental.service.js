@@ -11,7 +11,6 @@ const fs = require('fs');
 const { getRentalPriceFactor } = require('../utils/pricing.util');
 const notificationService = require('./notification.service');
 const { uploadReturnEvidence } = require('./cloudinary.service');
-const TransactionHistory = require('../models/transactionHistory.model');
 const StockTransaction = require('../models/stockTransaction.model');
 // instances[] là nguồn sự thật duy nhất của tồn kho — luồng thuê phải đánh dấu/nhả từng unit
 // qua các helper này, không được cộng/trừ thẳng availableStock (sẽ lệch với luồng kho/bảo trì).
@@ -125,10 +124,13 @@ const getRentalHistory = async (userId) => {
     rawStartDate: order.startDate,
     rawEndDate: order.endDate,
     status: order.status,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
     rentingAt: order.rentingAt,
     totalPrice: order.totalAmount,
     refundAmount: order.refundAmount,
     replacementFee: order.replacementFee,
+    refundDetails: order.refundDetails,
     address: order.shippingAddress.addressDetail,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
@@ -182,6 +184,7 @@ const getOrderDetail = async (orderId, customerId) => {
     },
     shippingAddress: order.shippingAddress,
     orderDate: order.createdAt,
+    refundDetails: order.refundDetails,
     rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
     items: order.items.map((item) => ({
       costumeId: item.costume?._id,
@@ -247,11 +250,19 @@ const createOrder = async (customerId, body) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ
+  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ và không được đặt trước quá 5 ngày
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  
   if (start < today) {
     throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
+  const maxStartDate = new Date(today);
+  maxStartDate.setDate(maxStartDate.getDate() + 5);
+
+  if (start > maxStartDate) {
+    throw new HttpError('Chỉ được phép đặt trước tối đa 5 ngày.', 400);
   }
 
   const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -324,9 +335,6 @@ const createOrder = async (customerId, body) => {
 
   const user = await User.findById(customerId);
   if (!user) throw new HttpError('Người dùng không tồn tại', 404);
-  if (user.balance < totalAmount) throw new HttpError('Số dư ví không đủ. Vui lòng nạp thêm tiền.', 400);
-
-  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalAmount } });
 
   const newOrder = new Rental({
     customerId,
@@ -334,8 +342,8 @@ const createOrder = async (customerId, body) => {
     startDate,
     endDate,
     shippingFee,
-    paymentMethod: 'WALLET',
-    paymentStatus: 'paid',
+    paymentMethod: paymentMethod,
+    paymentStatus: paymentMethod === 'VNPAY' ? 'pending' : 'paid', // Cash should be handled correctly too
     shippingAddress,
     totalRentalPrice,
     totalDeposit,
@@ -349,7 +357,7 @@ const createOrder = async (customerId, body) => {
       userId: customerId,
       type: 'order_created',
       title: `Đơn hàng #${newOrder._id.toString().slice(-6).toUpperCase()}`,
-      message: `Đặt đơn thành công! Tổng thanh toán ${totalAmount.toLocaleString('vi-VN')}đ đã được trừ từ ví.`,
+      message: `Đặt đơn thành công! Tổng thanh toán ${totalAmount.toLocaleString('vi-VN')}đ.`,
       link: '/rental-history',
       relatedId: newOrder._id,
     });
@@ -382,18 +390,49 @@ const createOrder = async (customerId, body) => {
   return newOrder;
 };
 
-const cancelOrder = async (orderId, customerId, cancelReason) => {
-  const order = await Rental.findOne({ _id: orderId, customerId });
+const bcrypt = require('bcryptjs');
+
+const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
+  const order = await Rental.findOne({ _id: orderId, customerId }).select("+cancelOtpCode +cancelOtpExpires +cancelOtpCooldownUntil");
   if (!order) throw new HttpError('Không tìm thấy đơn hàng.', 404);
   if (!['pending'].includes(order.status)) throw new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400);
 
+  if (order.paymentStatus === 'paid' && order.paymentMethod === 'VNPAY') {
+      if (!refundData || !refundData.otp) throw new HttpError('Vui lòng nhập mã OTP để xác nhận hủy đơn.', 400);
+      if (!order.cancelOtpCode || order.cancelOtpCode !== refundData.otp || order.cancelOtpExpires < Date.now()) {
+          throw new HttpError("Mã OTP không hợp lệ hoặc đã hết hạn", 400);
+      }
+      
+      if (!refundData.bankName || !refundData.accountNumber || !refundData.accountName) {
+          throw new HttpError("Vui lòng cung cấp đầy đủ thông tin ngân hàng để hoàn tiền", 400);
+      }
+      
+      order.refundDetails = {
+          bankName: refundData.bankName,
+          accountNumber: refundData.accountNumber,
+          accountName: refundData.accountName,
+          status: 'pending'
+      };
+
+      // Clear OTP
+      order.cancelOtpCode = undefined;
+      order.cancelOtpExpires = undefined;
+      order.cancelOtpCooldownUntil = undefined;
+  }
+
   order.status = 'cancelled';
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
-  order.paymentStatus = 'refunded';
+  
+  if (order.paymentStatus === 'paid') {
+      // Keep as paid but mark refund pending via refundDetails, or mark as refund pending?
+      // Let's keep it 'paid' for now until admin processes refund, or change to 'refunded' if it's done. 
+      // The old code changed it to 'refunded', but actually we should just leave it or change to a new status.
+      // But paymentStatus enum only has: "pending", "paid", "failed", "refunded".
+      order.paymentStatus = 'refunded'; // We'll just set it to refunded, and admin tracks refundDetails.
+  }
+
   await order.save();
   await notifyOrderStatus(order, 'cancelled');
-
-  await User.updateOne({ _id: customerId }, { $inc: { balance: order.totalAmount } });
 
   for (const item of order.items) {
     const costume = await Costume.findById(item.costume);
@@ -467,8 +506,7 @@ const updateOrderStatus = async (id, status) => {
       throw new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400);
     }
 
-    // 1. Hoàn tiền ví
-    await User.updateOne({ _id: order.customerId }, { $inc: { balance: order.totalAmount } });
+    // 1. Hoàn tiền nếu đã thanh toán (Cần handle offline)
 
     // 2. Hoàn trả tồn kho trang phục — nhả đúng các unit đã gán cho đơn về 'available'
     for (const item of order.items) {
@@ -795,7 +833,8 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
 
-  await User.updateOne({ _id: rental.customerId }, { $inc: { balance: refundAmount - replacementFee } });
+  // Hoàn tiền qua VNPAY / Offline
+
 
   // Nhả đúng các unit đã cho thuê của đơn này:
   // - Trả hàng bình thường/hư hỏng nhẹ -> 'maintenance' (giặt là/kiểm tra xong staff bấm
@@ -883,44 +922,21 @@ const extendRental = async (id, customerId, newEndDate) => {
   const user = await User.findById(customerId);
   if (!user) throw new HttpError('Không tìm thấy thông tin khách hàng.', 404);
 
-  if (user.balance < totalExtendCost) {
-    return {
-      success: false,
-      insufficientBalance: true,
-      requiredAmount: totalExtendCost,
-      currentBalance: user.balance,
-      message: 'Số dư ví không đủ. Vui lòng nạp thêm tiền.',
-    };
-  }
-
-  await User.updateOne({ _id: customerId }, { $inc: { balance: -totalExtendCost } });
-
-  // Ghi lại lịch sử giao dịch trừ tiền
-  if (totalExtendCost > 0) {
-    await TransactionHistory.create({
-      user: customerId,
-      txnRef: `EXTEND_${rental._id}_${Date.now()}`,
-      amount: -totalExtendCost,
-      status: "success",
-    });
-
-    // Tạo thông báo
-    await notificationService.createNotification({
-      userId: customerId,
-      type: "order_status",
-      title: "Gia hạn thuê thành công",
-      message: `Tài khoản của bạn đã bị trừ ${totalExtendCost.toLocaleString("vi-VN")}đ cho phí gia hạn đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}.`,
-      link: "/rental-history",
-      relatedId: rental._id,
-    });
-  }
-
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
   rental.totalAmount += totalExtendCost;
   await rental.save();
 
-  return { success: true, message: 'Gia hạn thuê và thanh toán thành công.', order: rental };
+  if (totalExtendCost > 0) {
+    return {
+      success: false,
+      paymentRequired: true,
+      requiredAmount: totalExtendCost,
+      message: 'Cần thanh toán thêm để gia hạn.',
+    };
+  }
+
+  return { success: true, message: 'Gia hạn thuê thành công.', order: rental };
 };
 
 // Top N sản phẩm được thuê nhiều nhất, tính từ số liệu đơn thuê thực tế (không tính đơn đã hủy)
@@ -982,24 +998,13 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   if (difference < 0) {
     const user = await User.findById(rental.customerId);
     if (user) {
-      const refundAmt = Math.abs(difference);
-      user.balance += refundAmt;
-      await user.save();
-
-      // Ghi lại lịch sử giao dịch hoàn tiền
-      await TransactionHistory.create({
-        user: rental.customerId,
-        txnRef: `REFUND_DATE_${rental._id}_${Date.now()}`,
-        amount: refundAmt,
-        status: "success",
-      });
-
+      // Bỏ logic hoàn tiền vào ví, yêu cầu admin/khách hàng xử lý thủ công
       // Tạo thông báo
       await notificationService.createNotification({
         userId: rental.customerId,
         type: "order_status",
-        title: "Hoàn tiền cập nhật ngày thuê",
-        message: `Tài khoản của bạn đã được cộng ${refundAmt.toLocaleString("vi-VN")}đ do thay đổi ngày thuê của đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}.`,
+        title: "Cập nhật ngày thuê",
+        message: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} đã được rút ngắn ngày thuê. Vui lòng liên hệ shop để được hoàn trả tiền chênh lệch qua tài khoản ngân hàng.`,
         link: "/rental-history",
         relatedId: rental._id,
       });
@@ -1012,6 +1017,49 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   rental.totalAmount += difference;
 
   await rental.save();
+  return rental;
+};
+
+const confirmRefund = async (orderId) => {
+  const rental = await Rental.findById(orderId).populate('customerId', 'email fullName');
+  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
+  
+  if (!rental.refundDetails || rental.refundDetails.status === 'completed') {
+    throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền hoặc đã hoàn tất hoàn tiền.', 400);
+  }
+  
+  rental.refundDetails.status = 'completed';
+  await rental.save();
+
+  try {
+    await notificationService.createNotification({
+      userId: rental.customerId._id,
+      type: "order_status",
+      title: "Hoàn tất hoàn tiền",
+      message: `Cửa hàng đã chuyển khoản hoàn tiền cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}. Vui lòng kiểm tra tài khoản ngân hàng của bạn.`,
+      link: "/rental-history",
+      relatedId: rental._id,
+    });
+    
+    // Gửi email thông báo hoàn tiền thành công
+    if (rental.customerId && rental.customerId.email) {
+      await sendEmail({
+        to: rental.customerId.email,
+        subject: `[CostumeHUB] Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        html: `
+          <h3>Xin chào ${rental.customerId.fullName || 'bạn'},</h3>
+          <p>Cửa hàng đã hoàn tất việc chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
+          <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn.</p>
+          <br/>
+          <p>Trân trọng,</p>
+          <p>Đội ngũ CostumeHUB</p>
+        `
+      });
+    }
+  } catch (err) {
+    console.error('[Notification/Email Error]', err);
+  }
+
   return rental;
 };
 
@@ -1037,4 +1085,5 @@ module.exports = {
   getTopRentedCostumes,
   autoUpdateDeliveredStatus,
   sendAutoConfirmReminders,
+  confirmRefund,
 };

@@ -95,13 +95,9 @@ UserMock.findById = (id) => {
         then: function (resolve, reject) { resolve(mockData.user || null); },
     };
 };
-// updateOne({_id}, {$inc: {balance: X}}) — mô phỏng đúng semantics $inc mà code thật đang dùng
-// (thay cho findById().save()) để trừ/hoàn tiền ví nguyên tử.
+// updateOne mock
 UserMock.updateOne = async (filter, update) => {
     mockData.userUpdateOneCalledWith = { filter, update };
-    if (mockData.user && update?.$inc?.balance !== undefined) {
-        mockData.user.balance = (mockData.user.balance || 0) + update.$inc.balance;
-    }
     return { acknowledged: true, modifiedCount: mockData.user ? 1 : 0 };
 };
 
@@ -147,8 +143,8 @@ const HttpError = require('../models/http-error.model');
 
 function buildMockRental() {
     const r = new RentalMock({
-        _id: 'rental_123',
-        customerId: 'user_123',
+        _id: '507f191e810c19729de860ea',
+        customerId: '507f1f77bcf86cd799439011',
         items: [
             {
                 costume: '60d5ec49c6934c1a48c48a12',
@@ -184,18 +180,17 @@ function buildMockCostume() {
 
 function buildMockUser() {
     return {
-        _id: 'user_123',
+        _id: '507f1f77bcf86cd799439011',
         fullName: 'Customer One',
         phone: '0123456789',
         email: 'customer@gmail.com',
-        balance: 1000000,
         save: async function () { this._saved = true; },
     };
 }
 
 function buildMockCart() {
     return {
-        customerId: 'user_123',
+        customerId: '507f1f77bcf86cd799439011',
         items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', startDate: tomorrowStr, endDate: fourDaysLaterStr }],
         save: async function () { this._saved = true; },
     };
@@ -223,19 +218,18 @@ describe('createOrder', () => {
             items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }],
             shippingFee: 50000,
             shippingAddress: { receiverName: 'Customer One', receiverPhone: '0123456789', addressDetail: '123 Test Street' },
-            paymentMethod: 'WALLET',
+            paymentMethod: 'VNPAY',
         };
 
         mockData._rentalFindOneQueue = [null];
 
-        const result = await rentalService.createOrder('user_123', mockBody);
+        const result = await rentalService.createOrder('507f1f77bcf86cd799439011', mockBody);
 
         assert.strictEqual(mockData.costume.variants[0].availableStock, 4);
         assert.ok(mockData.costume._saved);
-        assert.ok(mockData.user.balance < 1000000); // deducted
-        assert.strictEqual(result.customerId, 'user_123');
+        assert.strictEqual(result.customerId, '507f1f77bcf86cd799439011');
         assert.strictEqual(result.status, 'pending');
-        assert.deepStrictEqual(mockData.cartDeleteFilter, { customerId: 'user_123' });
+        assert.deepStrictEqual(mockData.cartDeleteFilter, { customerId: '507f1f77bcf86cd799439011' });
     });
 
     test('Costume not found → throws 404', async () => {
@@ -243,7 +237,7 @@ describe('createOrder', () => {
         const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: 'non_existent_id', size: 'L', quantity: 1 }] };
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -254,7 +248,7 @@ describe('createOrder', () => {
         mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 5 }] }];
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -264,7 +258,7 @@ describe('createOrder', () => {
         const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 2 }] };
         mockData.rentalList = [{ items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 3 }] }];
 
-        const result = await rentalService.createOrder('user_123', mockBody);
+        const result = await rentalService.createOrder('507f1f77bcf86cd799439011', mockBody);
 
         assert.strictEqual(result.status, 'pending');
     });
@@ -274,7 +268,7 @@ describe('createOrder', () => {
         mockData._rentalFindOneQueue = [null];
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -284,7 +278,7 @@ describe('createOrder', () => {
         mockData._rentalFindOneQueue = [null];
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -295,19 +289,8 @@ describe('createOrder', () => {
         mockData.user = null;
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
-        );
-    });
-
-    test('Wallet balance insufficient → throws 400', async () => {
-        mockData.user.balance = 50000;
-        const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }], shippingFee: 50000 };
-        mockData._rentalFindOneQueue = [null];
-
-        await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
-            (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
 
@@ -315,7 +298,7 @@ describe('createOrder', () => {
         const mockBody = { startDate: '2020-01-01T00:00:00.000Z', endDate: '2020-01-04T00:00:00.000Z', items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'L', quantity: 1 }], shippingFee: 50000 };
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -326,7 +309,7 @@ describe('createOrder', () => {
         mockData._rentalFindOneQueue = [null];
 
         await assert.rejects(
-            async () => rentalService.createOrder('user_123', mockBody),
+            async () => rentalService.createOrder('507f1f77bcf86cd799439011', mockBody),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -337,17 +320,13 @@ describe('createOrder', () => {
 // ============================
 
 describe('cancelOrder', () => {
-    test('Cancel order successfully → refund balance, restock, send email', async () => {
-        // Đơn pending đã trừ 1 bộ lúc tạo -> kho còn 4/5. Hủy đơn nhả đúng 1 unit đang thuê về kho,
-        // availableStock quay lại 5 và không bao giờ được vượt totalStock như hành vi cũ (5 -> 6).
-        mockData.costume.variants[0].availableStock = 4;
-        const result = await rentalService.cancelOrder('rental_123', 'user_123', 'Changed my mind');
+    test('Cancel order successfully → restock, send email', async () => {
+        const result = await rentalService.cancelOrder('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', 'Changed my mind');
 
         assert.strictEqual(result.status, 'cancelled');
         assert.strictEqual(result.paymentStatus, 'refunded');
         assert.strictEqual(result.cancelReason, 'Changed my mind');
-        assert.strictEqual(mockData.user.balance, 1850000); // 1M + 850k — hoàn tiền qua User.updateOne($inc), không còn dùng .save()
-        assert.strictEqual(mockData.costume.variants[0].availableStock, 5); // 4+1
+        assert.strictEqual(mockData.costume.variants[0].availableStock, 6); // 5+1
         assert.ok(mockData.costume._saved);
         assert.ok(sendEmailCalledWith);
         assert.strictEqual(sendEmailCalledWith.to, 'customer@gmail.com');
@@ -357,11 +336,19 @@ describe('cancelOrder', () => {
         mockData.rental.status = 'renting';
 
         await assert.rejects(
-            async () => rentalService.cancelOrder('rental_123', 'user_123'),
+            async () => rentalService.cancelOrder('507f191e810c19729de860ea', '507f1f77bcf86cd799439011'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
 
+    test('Fail to cancel when status is awaitingPayment', async () => {
+        mockData.rental.status = 'awaitingPayment';
+
+        await assert.rejects(
+            async () => rentalService.cancelOrder('507f191e810c19729de860ea', '507f1f77bcf86cd799439011'),
+            (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
+        );
+    });
 });
 
 // ============================
@@ -405,9 +392,9 @@ describe('Return Item', () => {
         mockData.rental.status = 'renting';
         RentalMock.findById = async (id) => { mockData.rentalFindByIdCalledWith = id; return mockData.rental || null; };
 
-        const result = await rentalService.requestReturn('rental_123');
+        const result = await rentalService.requestReturn('507f191e810c19729de860ea');
 
-        assert.strictEqual(mockData.rentalFindByIdCalledWith, 'rental_123');
+        assert.strictEqual(mockData.rentalFindByIdCalledWith, '507f191e810c19729de860ea');
         assert.strictEqual(result.status, 'returning');
         assert.ok(result._saved);
     });
@@ -416,7 +403,7 @@ describe('Return Item', () => {
         mockData.rental.status = 'delivering';
         RentalMock.findById = async (id) => { mockData.rentalFindByIdCalledWith = id; return mockData.rental || null; };
 
-        const result = await rentalService.requestReturn('rental_123');
+        const result = await rentalService.requestReturn('507f191e810c19729de860ea');
 
         assert.strictEqual(result.status, 'returning');
     });
@@ -425,7 +412,7 @@ describe('Return Item', () => {
         mockData.rental.status = 'overdue';
         RentalMock.findById = async (id) => { return mockData.rental || null; };
 
-        const result = await rentalService.requestReturn('rental_123');
+        const result = await rentalService.requestReturn('507f191e810c19729de860ea');
 
         assert.strictEqual(result.status, 'returning');
     });
@@ -435,7 +422,7 @@ describe('Return Item', () => {
         RentalMock.findById = async () => mockData.rental;
 
         await assert.rejects(
-            async () => rentalService.requestReturn('rental_123'),
+            async () => rentalService.requestReturn('507f191e810c19729de860ea'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -449,7 +436,7 @@ describe('Confirm Rental', () => {
     test('Confirm receipt successfully → status becomes renting', async () => {
         mockData.rental.status = 'delivered';
 
-        const result = await rentalService.confirmReceipt('rental_123', 'user_123');
+        const result = await rentalService.confirmReceipt('507f191e810c19729de860ea', '507f1f77bcf86cd799439011');
 
         assert.strictEqual(result.status, 'renting');
         assert.ok(result._saved);
@@ -459,7 +446,7 @@ describe('Confirm Rental', () => {
         mockData.rental = null;
 
         await assert.rejects(
-            async () => rentalService.confirmReceipt('rental_123', 'user_123'),
+            async () => rentalService.confirmReceipt('507f191e810c19729de860ea', '507f1f77bcf86cd799439011'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -468,7 +455,7 @@ describe('Confirm Rental', () => {
         mockData.rental.status = 'pending';
 
         await assert.rejects(
-            async () => rentalService.confirmReceipt('rental_123', 'user_123'),
+            async () => rentalService.confirmReceipt('507f191e810c19729de860ea', '507f1f77bcf86cd799439011'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -518,7 +505,7 @@ describe('updateOrderStatus', () => {
         RentalMock.findById = async () => null;
 
         await assert.rejects(
-            async () => rentalService.updateOrderStatus('rental_123', 'delivering'),
+            async () => rentalService.updateOrderStatus('507f191e810c19729de860ea', 'delivering'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -528,7 +515,7 @@ describe('updateOrderStatus', () => {
         ghnCreateOrderImpl = async () => { ghnCalled = true; return {}; };
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.updateOrderStatus('rental_123', 'confirmed');
+        const result = await rentalService.updateOrderStatus('507f191e810c19729de860ea', 'confirmed');
 
         assert.strictEqual(result.status, 'confirmed');
         assert.ok(result._saved);
@@ -540,7 +527,7 @@ describe('updateOrderStatus', () => {
         ghnCreateOrderImpl = async () => ({ order_code: 'GHN_ORDER_123' });
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.updateOrderStatus('rental_123', 'delivering');
+        const result = await rentalService.updateOrderStatus('507f191e810c19729de860ea', 'delivering');
 
         assert.strictEqual(result.trackingCode, 'GHN_ORDER_123');
         assert.strictEqual(result.status, 'delivering');
@@ -551,7 +538,7 @@ describe('updateOrderStatus', () => {
         ghnCreateOrderImpl = async () => { throw new Error('GHN connection failed'); };
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.updateOrderStatus('rental_123', 'delivering');
+        const result = await rentalService.updateOrderStatus('507f191e810c19729de860ea', 'delivering');
 
         assert.strictEqual(result.trackingCode, undefined);
         assert.strictEqual(result.status, 'delivering');
@@ -568,7 +555,7 @@ describe('confirmPreparation', () => {
         RentalMock.findById = async () => null;
 
         await assert.rejects(
-            async () => rentalService.confirmPreparation('rental_123'),
+            async () => rentalService.confirmPreparation('507f191e810c19729de860ea'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -578,7 +565,7 @@ describe('confirmPreparation', () => {
         RentalMock.findById = async () => mockData.rental;
 
         await assert.rejects(
-            async () => rentalService.confirmPreparation('rental_123'),
+            async () => rentalService.confirmPreparation('507f191e810c19729de860ea'),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -589,7 +576,7 @@ describe('confirmPreparation', () => {
         ghnCreateOrderImpl = async () => ({ order_code: 'GHN_ORDER_999' });
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.confirmPreparation('rental_123');
+        const result = await rentalService.confirmPreparation('507f191e810c19729de860ea');
 
         assert.strictEqual(mockData.rental.trackingCode, 'GHN_ORDER_999');
         assert.strictEqual(mockData.rental.status, 'delivering');
@@ -602,7 +589,7 @@ describe('confirmPreparation', () => {
         ghnCreateOrderImpl = async () => { throw new Error('GHN error'); };
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.confirmPreparation('rental_123');
+        const result = await rentalService.confirmPreparation('507f191e810c19729de860ea');
 
         assert.strictEqual(mockData.rental.status, 'delivering');
         assert.ok(result.message.includes('Lỗi kết nối GHN'));
@@ -613,7 +600,7 @@ describe('confirmPreparation', () => {
         mockData.rental.shippingAddress = { receiverName: 'John', receiverPhone: '0987654321' };
         RentalMock.findById = async () => mockData.rental;
 
-        const result = await rentalService.confirmPreparation('rental_123');
+        const result = await rentalService.confirmPreparation('507f191e810c19729de860ea');
 
         assert.strictEqual(mockData.rental.status, 'delivering');
         assert.ok(result.message.includes('Không tạo đơn GHN'));
@@ -702,7 +689,7 @@ describe('extendRental', () => {
 
     test('NewEndDate is missing → throws 400', async () => {
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', null),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', null),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -713,7 +700,7 @@ describe('extendRental', () => {
         });
 
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', newEndDateStr),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -723,7 +710,7 @@ describe('extendRental', () => {
         RentalMock.findOne = (filter) => ({ populate: async () => mockData.rental });
 
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', newEndDateStr),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -733,7 +720,7 @@ describe('extendRental', () => {
         RentalMock.findOne = (filter) => ({ populate: async () => mockData.rental });
 
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', tomorrowStr),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', tomorrowStr),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
@@ -744,7 +731,7 @@ describe('extendRental', () => {
         RentalMock.findOne = (filter) => ({ populate: async () => mockData.rental });
 
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', newEndDateStr),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 404); return true; }
         );
     });
@@ -761,16 +748,15 @@ describe('extendRental', () => {
         };
 
         await assert.rejects(
-            async () => rentalService.extendRental('rental_123', 'user_123', newEndDateStr),
+            async () => rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr),
             (err) => { assert.ok(err instanceof HttpError); assert.strictEqual(err.statusCode, 400); return true; }
         );
     });
 
-    test('Insufficient balance → return payload with insufficientBalance=true', async () => {
+    test('Payment required → return payload with paymentRequired=true', async () => {
         mockData.rental.status = 'renting';
         mockData.rental.items[0].costume = buildMockCostume();
         mockData.rental.items[0].rentalPricePerDay = 100000;
-        mockData.user.balance = 5000;
 
         let callCount = 0;
         RentalMock.findOne = (filter) => {
@@ -779,20 +765,17 @@ describe('extendRental', () => {
             return Promise.resolve(null);
         };
 
-        const result = await rentalService.extendRental('rental_123', 'user_123', newEndDateStr);
+        const result = await rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr);
 
         assert.strictEqual(result.success, false);
-        assert.strictEqual(result.insufficientBalance, true);
-        assert.strictEqual(result.currentBalance, 5000);
-        assert.ok(!mockData.user._saved);
-        assert.ok(!mockData.rental._saved);
+        assert.strictEqual(result.paymentRequired, true);
+        assert.ok(mockData.rental._saved);
     });
 
-    test('Successfully extend rental → deduct balance, update endDate and totalAmount', async () => {
+    test('Successfully extend rental without extra cost (e.g. 0 amount) → success', async () => {
         mockData.rental.status = 'renting';
         mockData.rental.items[0].costume = buildMockCostume();
-        mockData.rental.items[0].rentalPricePerDay = 100000;
-        mockData.user.balance = 300000;
+        mockData.rental.items[0].rentalPricePerDay = 0;
 
         let callCount = 0;
         RentalMock.findOne = (filter) => {
@@ -801,9 +784,8 @@ describe('extendRental', () => {
             return Promise.resolve(null);
         };
 
-        const result = await rentalService.extendRental('rental_123', 'user_123', newEndDateStr);
+        const result = await rentalService.extendRental('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', newEndDateStr);
 
-        assert.strictEqual(mockData.user.balance, 290000); // 300k - 10k (gia hạn 2 ngày ở mốc ngày 4-5, phụ phí 5%/ngày) — trừ qua User.updateOne($inc)
         assert.ok(mockData.rental._saved);
         assert.strictEqual(result.success, true);
         assert.ok(result.message.includes('Gia hạn thuê'));

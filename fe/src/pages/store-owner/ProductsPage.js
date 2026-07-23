@@ -95,7 +95,7 @@ export default function ProductsPage() {
 
       let matchStatus = false;
       if (!filterStatus || filterStatus === "all") {
-        matchStatus = pro.status !== "hidden";
+        matchStatus = true;
       } else if (filterStatus === "out_of_stock") {
         const totalAvail = pro.variants ? pro.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
         matchStatus = (pro.status === "out_of_stock" || totalAvail === 0) && pro.status !== "hidden";
@@ -263,7 +263,7 @@ export default function ProductsPage() {
   const getConfirmMessage = () => {
     if (confirmAction === 'add') return "Bạn có chắc chắn muốn thêm sản phẩm này?";
     if (confirmAction === 'edit') return "Bạn có chắc chắn muốn lưu thay đổi cho sản phẩm này?";
-    if (confirmAction === 'delete') return "Bạn có chắc chắn muốn ẩn/xóa mềm sản phẩm này khỏi hệ thống?";
+    if (confirmAction === 'delete') return "Bạn có chắc chắn muốn ẩn sản phẩm này khỏi hệ thống?";
     if (confirmAction === 'restore') return "Bạn có chắc chắn muốn khôi phục lại sản phẩm này (trạng thái Sẵn sàng)?";
     if (confirmAction === 'change_status') return "Bạn có chắc chắn muốn cập nhật trạng thái hoạt động của sản phẩm này?";
     return "";
@@ -383,7 +383,9 @@ export default function ProductsPage() {
             return (
               <tr
                 key={product._id}
-                className="border-border border-gray-50 hover:bg-[#faf9f7] transition-colors cursor-pointer"
+                className={`border-border border-gray-50 hover:bg-[#faf9f7] transition-colors cursor-pointer ${
+                  product.status === "hidden" ? "opacity-60 bg-gray-50/50" : ""
+                }`}
                 onClick={() => setDetailProduct(product)}
               >
                 <td className="py-4 px-6">
@@ -394,7 +396,14 @@ export default function ProductsPage() {
                       className="w-14 h-14 rounded-lg object-cover bg-[#f5f5f5] border border-[#eaeaea]"
                     />
                     <div>
-                      <p className="font-semibold text-[15px] text-[#1a1a1a]">{product.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-[15px] text-[#1a1a1a]">{product.name}</p>
+                        {product.status === "hidden" && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">
+                            Đã ẩn
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[13px] text-[#999] w-48 truncate mt-0.5">{product.description}</p>
                     </div>
                   </div>

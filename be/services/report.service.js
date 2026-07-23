@@ -3,7 +3,7 @@ const Costume = require('../models/costume.model');
 const Category = require('../models/category.model');
 const User = require('../models/user.model');
 const Issue = require('../models/issue.model');
-const TransactionHistory = require('../models/transactionHistory.model');
+
 
 // Helper: xây filter ngày tháng cho createdAt
 const buildDateFilter = (startDate, endDate) => {
@@ -281,46 +281,21 @@ const getIssueReport = async (startDate, endDate) => {
   };
 };
 
-// ─────────────────────────────────────────────────────────────────
-// 7. VÍ ĐIỆN TỬ — TopUpTransaction
-// ─────────────────────────────────────────────────────────────────
-const getWalletReport = async (startDate, endDate) => {
-  const dateFilter = buildDateFilter(startDate, endDate);
-
-  const txns = await TransactionHistory.find(dateFilter, 'amount status createdAt');
-
-  const total = txns.length;
-  const success = txns.filter(t => t.status === 'success');
-  const failed = txns.filter(t => t.status === 'failed');
-  const pending = txns.filter(t => t.status === 'pending');
-
-  const totalTransaction = success.reduce((s, t) => s + (t.amount || 0), 0);
-
-  return {
-    total,
-    successCount: success.length,
-    failedCount: failed.length,
-    pendingCount: pending.length,
-    totalTransaction,
-    successRate: total > 0 ? ((success.length / total) * 100).toFixed(1) : 0,
-  };
-};
 
 // ─────────────────────────────────────────────────────────────────
 // FULL REPORT — gộp tất cả vào 1 request
 // ─────────────────────────────────────────────────────────────────
 const getFullReport = async (startDate, endDate) => {
-  const [revenue, topCostumes, lifecycle, inventory, customers, issues, wallet] = await Promise.all([
+  const [revenue, topCostumes, lifecycle, inventory, customers, issues] = await Promise.all([
     getRevenueReport(startDate, endDate),
     getTopCostumesReport(startDate, endDate),
     getRentalLifecycleReport(startDate, endDate),
     getInventoryDetailReport(),
     getCustomerReport(startDate, endDate),
     getIssueReport(startDate, endDate),
-    getWalletReport(startDate, endDate),
   ]);
 
-  return { revenue, topCostumes, lifecycle, inventory, customers, issues, wallet };
+  return { revenue, topCostumes, lifecycle, inventory, customers, issues };
 };
 
 module.exports = {
@@ -331,5 +306,4 @@ module.exports = {
   getInventoryDetailReport,
   getCustomerReport,
   getIssueReport,
-  getWalletReport,
 };

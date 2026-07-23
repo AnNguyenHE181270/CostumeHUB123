@@ -1,12 +1,13 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { statusOrder, issueStatusBadge } from "../../constants/statusOrder"
-import { formatOrderId } from "../../utils/formatters"
-
-const fmtVND = (n) => (typeof n === "number" ? n.toLocaleString("vi-VN") + "đ" : n);
+import { formatOrderId, formatPrice } from "../../utils/formatters"
 
 function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
-    const status = statusOrder[order.status]
+    let status = statusOrder[order.status]
+    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
+        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
+    }
     // Đơn có yêu cầu Trả hàng/hoàn tiền -> hiện trạng thái con ở góc (Đang chờ duyệt /
     // Khiếu nại đã hủy / Đã hoàn tiền) + số tiền hoàn: thực nhận nếu đã duyệt, còn lại là số yêu cầu.
     const issueBadge = order.issue ? issueStatusBadge[order.issue.status] : null;
@@ -89,10 +90,10 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                                         {issueBadge.label}
                                     </p>
                                 )}
-                                <p className="text-lg font-semibold text-foreground">{fmtVND(order.totalPrice)}</p>
+                                <p className="text-lg font-semibold text-foreground">{formatPrice(order.totalPrice)}</p>
                                 {issueBadge ? (
                                     <p className="text-xs text-muted-foreground">
-                                        Số tiền hoàn: <span className="font-semibold text-[#b8935a]">{fmtVND(refundValue)}</span>
+                                        Số tiền hoàn: <span className="font-semibold text-[#b8935a]">{formatPrice(refundValue)}</span>
                                     </p>
                                 ) : (
                                     <p className="text-xs text-muted-foreground">Thuê {order.rentalPeriod}</p>
@@ -198,7 +199,7 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                     {/* Compact view - Price on right */}
                     {isCompact && (
                         <span className="mt-1.5 text-sm font-semibold text-foreground">
-                            {fmtVND(order.totalPrice)}
+                            {formatPrice(order.totalPrice)}
                             {issueBadge && (
                                 <span className={"ml-2 text-xs font-semibold " + issueBadge.className}>{issueBadge.label}</span>
                             )}

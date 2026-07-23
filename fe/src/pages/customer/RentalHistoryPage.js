@@ -349,14 +349,13 @@ function RentalHistory() {
                 </div>
             </div>
 
-            {/* Cancel Modal */}
             <CancelOrderModal
                 open={isCancelOpen}
                 onOpenChange={(val) => {
                     setIsCancelOpen(val);
                     if (!val) setCancelOrderTarget(null);
                 }}
-                orderId={cancelOrderTarget?.id}
+                order={cancelOrderTarget}
                 onConfirm={handleConfirmCancel}
             />
 

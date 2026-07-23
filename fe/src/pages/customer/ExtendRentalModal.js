@@ -9,6 +9,7 @@ import { statusOrder } from "../../constants/statusOrder";
 import rentalService from "../../services/rental.service";
 import { getRentalPriceFactor } from "../../utils/formatters";
 import DatePickerGroup from "../../components/ui/DatePickerGroup";
+import paymentService from "../../services/payment.service";
 
 export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   const navigate = useNavigate();
@@ -111,23 +112,30 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
           if (onConfirm) onConfirm();
           handleClose();
         }, 1500);
-      } else if (data.insufficientBalance) {
-        setToast({ isVisible: true, message: "Số dư trong ví không đủ. Đang chuyển sang trang cá nhân...", type: "error" });
-        setTimeout(() => {
-          navigate("/user/my-profile");
-          handleClose();
-        }, 2500);
+      } else if (data.paymentRequired) {
+        setToast({ isVisible: true, message: "Đang chuyển hướng đến cổng thanh toán VNPAY...", type: "success" });
+        setTimeout(async () => {
+          try {
+            const vnpayRes = await paymentService.createPaymentUrl({
+              amount: data.requiredAmount,
+              orderInfo: orderId
+            });
+            if (vnpayRes.success && vnpayRes.paymentUrl) {
+              window.location.href = vnpayRes.paymentUrl;
+            } else {
+              setToast({ isVisible: true, message: "Không thể tạo URL thanh toán.", type: "error" });
+            }
+          } catch (err) {
+            setToast({ isVisible: true, message: "Lỗi kết nối thanh toán.", type: "error" });
+          }
+        }, 1000);
       } else {
         setToast({ isVisible: true, message: data.message || "Gia hạn thuê thất bại.", type: "error" });
       }
     } catch (err) {
       const msg = err.message || "";
-      if (msg.includes("Số dư") || msg.includes("không đủ")) {
-        setToast({ isVisible: true, message: "Số dư trong ví không đủ. Đang chuyển sang trang cá nhân...", type: "error" });
-        setTimeout(() => {
-          navigate("/user/my-profile");
-          handleClose();
-        }, 2500);
+      if (msg.includes("thanh toán")) {
+        setToast({ isVisible: true, message: "Lỗi xử lý thanh toán gia hạn.", type: "error" });
       } else {
         setToast({ isVisible: true, message: msg || "Lỗi kết nối đến máy chủ.", type: "error" });
       }
@@ -215,8 +223,8 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
 
         {isExtendable && (
           <div className="rounded-xl bg-blue-50/70 p-3 text-[11px] text-blue-900 border border-blue-100 leading-relaxed">
-            <strong>Lưu ý:</strong> Tiền gia hạn sẽ được trừ trực tiếp từ ví cá nhân của bạn.
-            Nếu số dư ví không đủ, hệ thống sẽ tự động thông báo và hướng dẫn nạp thêm.
+            <strong>Lưu ý:</strong> Tiền gia hạn sẽ được thanh toán trực tiếp qua cổng VNPAY.
+            Sau khi thanh toán thành công, đơn hàng của bạn sẽ được cập nhật.
           </div>
         )}
       </div>

@@ -277,9 +277,9 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1 font-medium">
-                      Tối thiểu
+                      Tối đa
                     </span>
-                    <span className="text-[13px] font-bold text-[#1a1a1a]">{costume.minRentalDays || 1} Ngày</span>
+                    <span className="text-[13px] font-bold text-[#1a1a1a]">{costume.maxRentalDays || 7} Ngày</span>
                   </div>
                 </div>
 
@@ -353,7 +353,7 @@ export default function ProductDetailPage() {
                     Thời Gian Thuê
                   </h4>
                   <span className="text-[11px] text-[#b8935a] font-medium">
-                    (Tối thiểu: {costume.minRentalDays || 1} ngày)
+                    ({costume.minRentalDays > 1 ? `Tối thiểu: ${costume.minRentalDays} ngày - ` : ""}Tối đa: {costume.maxRentalDays || 7} ngày)
                   </span>
                 </div>
 
@@ -363,6 +363,7 @@ export default function ProductDetailPage() {
                   endDate={endDate}
                   setEndDate={setEndDate}
                   minRentalDays={costume.minRentalDays}
+                  maxRentalDays={costume.maxRentalDays}
                 />
 
                 <div className="flex items-center justify-between bg-[#faf9f7] p-3 mt-4 rounded-2xl border border-[#e2d5bd]">
@@ -438,8 +439,12 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays > (costume.minRentalDays || 1)) {
-                        showToast(`Chỉ được phép thuê tối đa ${costume.minRentalDays || 1} ngày.`, "error");
+                      if (rentalDays < (costume.minRentalDays || 1)) {
+                        showToast(`Yêu cầu thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
+                        return;
+                      }
+                      if (rentalDays > (costume.maxRentalDays || 7)) {
+                        showToast(`Chỉ được phép thuê tối đa ${costume.maxRentalDays || 7} ngày.`, "error");
                         return;
                       }
                       setIsBuying(true);
@@ -478,8 +483,12 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays > (costume.minRentalDays || 1)) {
-                        showToast(`Chỉ được phép thuê tối đa ${costume.minRentalDays || 1} ngày.`, "error");
+                      if (rentalDays < (costume.minRentalDays || 1)) {
+                        showToast(`Yêu cầu thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
+                        return;
+                      }
+                      if (rentalDays > (costume.maxRentalDays || 7)) {
+                        showToast(`Chỉ được phép thuê tối đa ${costume.maxRentalDays || 7} ngày.`, "error");
                         return;
                       }
                       const available = await verifyAvailability();

@@ -252,7 +252,7 @@ const getMyProfile = async (email) => {
   return {
     id: user._id, fullName: user.fullName, email: user.email, phone: user.phone,
     gender: user.gender, dateOfBirth: user.dateOfBirth, provider: user.provider,
-    role: user.role.name, avatar: user.avatar, addresses: user.addresses, balance: user.balance,
+    role: user.role.name, avatar: user.avatar, addresses: user.addresses,
   };
 };
 
@@ -291,7 +291,7 @@ const resetPassword = async (token, password) => {
   await user.save();
 };
 
-const getAllUsers = async ({ search = '', role, status, page = 1, limit = 10 }) => {
+const getAllUsers = async ({ search = '', role, status, page = 1, limit = 10 } = {}) => {
   const query = {};
   
   if (search) {
