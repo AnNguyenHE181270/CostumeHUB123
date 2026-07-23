@@ -118,12 +118,16 @@ const ProductDetailModal = ({ product, onClose, onEdit }) => {
 
             {/* Meta info row */}
             <div className="flex gap-3 flex-wrap text-xs text-gray-500">
-              {product.minRentalDays > 1 && (
+               {product.minRentalDays > 1 && (
                 <span className="flex items-center gap-1">
                   <FontAwesomeIcon icon={faClock} className="text-[10px]" />
                   Thuê tối thiểu: <strong className="text-gray-700">{product.minRentalDays} ngày</strong>
                 </span>
               )}
+              <span className="flex items-center gap-1">
+                <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                Thuê tối đa: <strong className="text-gray-700">{product.maxRentalDays || 7} ngày</strong>
+              </span>
               {product.specifications?.material && (
                 <span className="flex items-center gap-1">
                   <FontAwesomeIcon icon={faShield} className="text-[10px]" />

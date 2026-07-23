@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -27,7 +27,7 @@ const ProductFormModal = ({
   const [formData, setFormData] = useState({
     name: "", slug: "", categoryId: "",
     pricePerDay: "", deposit: "",
-    minRentalDays: 1, description: "",
+    minRentalDays: 1, maxRentalDays: 7, description: "",
     images: [], material: "", includedAccessories: "",
     variants: []
   });
@@ -63,6 +63,7 @@ const ProductFormModal = ({
         pricePerDay: initialData.pricePerDay ?? "",
         deposit: initialData.deposit ?? "",
         minRentalDays: initialData.minRentalDays || 1,
+        maxRentalDays: initialData.maxRentalDays || 7,
         description: initialData.description || "",
         images: initialData.images || [],
         material: initialData.specifications?.material || "",
@@ -80,7 +81,7 @@ const ProductFormModal = ({
       setFormData({
         name: "", slug: "", categoryId: "",
         pricePerDay: "", deposit: "",
-        minRentalDays: 1, description: "",
+        minRentalDays: 1, maxRentalDays: 7, description: "",
         images: [], material: "", includedAccessories: "",
         variants: []
       });
@@ -191,6 +192,7 @@ const ProductFormModal = ({
       deposit: Number(formData.deposit) || 0,
       lateFeePerDay: computedLateFee,
       minRentalDays: Number(formData.minRentalDays) || 1,
+      maxRentalDays: Number(formData.maxRentalDays) || 7,
       description: formData.description,
       images: formData.images,
       specifications: {
@@ -340,6 +342,15 @@ const ProductFormModal = ({
                 type="number"
                 min="1"
                 value={formData.minRentalDays}
+                onChange={handleChange}
+              />
+
+              <Input
+                label="Thuê tối đa (ngày)"
+                name="maxRentalDays"
+                type="number"
+                min="1"
+                value={formData.maxRentalDays}
                 onChange={handleChange}
               />
             </div>

@@ -178,7 +178,7 @@ const getCostumeById = async (id) => {
 const createCostume = async (data, userId) => {
   const {
     name, slug, sku, categoryId, description, images, size, color, condition,
-    pricePerDay, price, deposit, minRentalDays, lateFeePerDay, status, specifications, variants,
+    pricePerDay, price, deposit, minRentalDays, maxRentalDays, lateFeePerDay, status, specifications, variants,
   } = data;
 
   let processedVariants = [];
@@ -199,6 +199,7 @@ const createCostume = async (data, userId) => {
     price: price || 0,
     deposit: deposit || 0,
     minRentalDays: minRentalDays || 1,
+    maxRentalDays: maxRentalDays || 7,
     lateFeePerDay: lateFeePerDay || 0,
     status: status || 'available',
     specifications: specifications || {},
@@ -217,7 +218,7 @@ const updateCostume = async (id, data) => {
   const fields = [
     'name', 'slug', 'sku', 'categoryId', 'description', 'images',
     'size', 'color', 'condition', 'pricePerDay', 'price', 'deposit',
-    'minRentalDays', 'lateFeePerDay', 'status', 'specifications',
+    'minRentalDays', 'maxRentalDays', 'lateFeePerDay', 'status', 'specifications',
   ];
   fields.forEach((f) => { if (data[f] !== undefined) costume[f] = data[f]; });
 
