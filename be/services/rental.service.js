@@ -227,11 +227,19 @@ const createOrder = async (customerId, body) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ
+  // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ và không được đặt trước quá 5 ngày
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  
   if (start < today) {
     throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
+  const maxStartDate = new Date(today);
+  maxStartDate.setDate(maxStartDate.getDate() + 5);
+
+  if (start > maxStartDate) {
+    throw new HttpError('Chỉ được phép đặt trước tối đa 5 ngày.', 400);
   }
 
   const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
