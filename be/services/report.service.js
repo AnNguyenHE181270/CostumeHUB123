@@ -172,7 +172,8 @@ const getRentalLifecycleReport = async (startDate, endDate) => {
 // 4. TỒN KHO — theo từng costume/size
 // ─────────────────────────────────────────────────────────────────
 const getInventoryDetailReport = async () => {
-  const costumes = await Costume.find({}, 'name variants categoryId').populate('categoryId', 'name');
+  // Sản phẩm đã ẩn không còn bán/cho thuê -> không tính vào báo cáo tồn kho tổng quan.
+  const costumes = await Costume.find({ status: { $ne: 'hidden' } }, 'name variants categoryId').populate('categoryId', 'name');
 
   const rows = [];
   let grandTotal = 0, grandAvailable = 0, grandRented = 0, grandMaintenance = 0;

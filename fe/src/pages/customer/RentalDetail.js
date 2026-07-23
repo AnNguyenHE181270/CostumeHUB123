@@ -47,6 +47,11 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
     if (currentStatus === 'cancelled' && refundDetails?.status === 'pending') {
         status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
     }
+    // Đơn trả hàng/hoàn tiền do khiếu nại ĐÃ được xử lý xong (status='completed' — staff đã kiểm tra
+    // đồ trả ở inspectReturn) coi như đã kết thúc trọn vẹn với khách hàng — không hiện "Chờ hoàn tiền"
+    // gây hiểu lầm là chưa xong nữa (refundDetails.status='pending' lúc này chỉ còn là việc NỘI BỘ
+    // của cửa hàng — chờ owner tự tay xác nhận đã chuyển khoản — khách không cần thấy trạng thái đó).
+    const isCompletedReturnRefund = currentStatus === 'completed' && currentIssue?.resolution === 'return_refund'
 
     let isWithin3HoursRenting = true
     const rentingAt = detailedOrder?.rentingAt || order?.rentingAt
@@ -179,8 +184,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                 <span>Thanh toán</span>
                             </div>
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' : 
-                                 detailedOrder.payment?.paymentStatus === 'refunded' ? (refundDetails?.status === 'pending' ? 'Chờ hoàn tiền' : 'Đã hoàn tiền') : 'Chưa thanh toán'}
+                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                                    detailedOrder.payment?.paymentStatus === 'refunded'
+                                        ? (isCompletedReturnRefund || refundDetails?.status !== 'pending' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền')
+                                        : 'Chưa thanh toán'}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-foreground">
@@ -219,7 +226,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                 <span>Phí trễ hạn hiện tại (ước tính)</span>
                             </div>
                             <p className="mt-1 text-xs text-orange-700">
-                                Đơn #{formatOrderId(order.id)} đã trễ {detailedOrder.estimatedDaysLate} ngày so với hạn trả. Số phí dưới đây sẽ tiếp tục tăng mỗi ngày cho tới khi bạn trả hàng — số tiền chính xác cuối cùng sẽ được chốt khi cửa hàng kiểm tra đồ trả.
+                                Đơn {formatOrderId(order.id)} đã trễ {detailedOrder.estimatedDaysLate} ngày so với hạn trả. Số phí dưới đây sẽ tiếp tục tăng mỗi ngày cho tới khi bạn trả hàng — số tiền chính xác cuối cùng sẽ được chốt khi cửa hàng kiểm tra đồ trả.
                             </p>
                             <p className="mt-2 text-lg font-bold text-orange-800">
                                 {formatPrice(detailedOrder.estimatedLateFee)}
@@ -233,7 +240,7 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                         <div className="rounded-lg border border-border p-4">
                             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                                 <FontAwesomeIcon icon={faFileLines} className="h-4 w-4" />
-                                <span>Phí phát sinh & Hoàn tiền — Đơn #{formatOrderId(order.id)}</span>
+                                <span>Phí phát sinh & Hoàn tiền — Đơn {formatOrderId(order.id)}</span>
                             </div>
                             <div className="mt-3 space-y-2">
                                 <div className="flex justify-between text-sm">
@@ -261,8 +268,8 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground pt-1">
-                                    {refundDetails?.status === "completed"
-                                        ? "Cửa hàng đã chuyển khoản hoàn tiền cho đơn này."
+                                    {isCompletedReturnRefund || refundDetails?.status === "completed"
+                                        ? "Cửa hàng đã xử lý hoàn tiền cho đơn này."
                                         : "Yêu cầu hoàn tiền cho đơn này đang chờ cửa hàng xử lý chuyển khoản."}
                                 </p>
                             </div>
@@ -272,9 +279,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3 pt-4 mt-auto items-center justify-evenly">
 
-                        {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store) */}
-                        {/* Đơn 'delivered' không cần Theo dõi nữa — đã tới nơi, chỉ cần khách xác nhận */}
-                        {!['renting', 'overdue', 'delivered'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
+                        {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store).
+                            Không hiện cho 'delivered' (đã tới nơi, chỉ cần khách xác nhận), 'completed'
+                            hay 'cancelled' (đơn đã kết thúc, theo dõi vận chuyển không còn ý nghĩa). */}
+                        {!['renting', 'overdue', 'delivered', 'completed', 'cancelled'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
                             <button
                                 onClick={() => setIsTrackingOpen(true)}
                                 className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
@@ -334,7 +342,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </button>
                         )}
 
-                        {((currentStatus === 'renting' && isWithin3HoursRenting && detailedOrder?.shippingAddress?.addressDetail !== "Nhận tại cửa hàng") || detailedOrder?.hasIssue) && (
+                        {/* "Xem đơn hoàn trả" chỉ còn ý nghĩa khi khiếu nại CHƯA xử lý xong hoàn toàn —
+                            đơn đã 'completed' nghĩa là staff đã kiểm tra hàng trả xong, không còn gì
+                            để "xem" nữa, chỉ cần nút Thuê lại ở dưới. */}
+                        {((currentStatus === 'renting' && isWithin3HoursRenting && detailedOrder?.shippingAddress?.addressDetail !== "Nhận tại cửa hàng") || (detailedOrder?.hasIssue && currentStatus !== 'completed')) && (
                             <button
                                 onClick={() => onRequestIssue?.()}
                                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue

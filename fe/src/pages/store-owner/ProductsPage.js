@@ -93,14 +93,19 @@ export default function ProductsPage() {
         }
       }
 
+      // Chỉ còn 3 mức lọc theo đúng SỐ LƯỢNG TỒN KHO thật (availableStock), không theo trực tiếp
+      // field costume.status nữa — 1 sản phẩm có thể status='rented'/'maintenance' ở size này nhưng
+      // vẫn còn hàng sẵn sàng ở size khác, nên "Còn hàng"/"Hết hàng" phải tính trên tổng tồn thật.
+      const totalAvail = pro.variants ? pro.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
       let matchStatus = false;
       if (!filterStatus || filterStatus === "all") {
         matchStatus = true;
+      } else if (filterStatus === "hidden") {
+        matchStatus = pro.status === "hidden";
       } else if (filterStatus === "out_of_stock") {
-        const totalAvail = pro.variants ? pro.variants.reduce((acc, v) => acc + (v.availableStock || 0), 0) : 0;
-        matchStatus = (pro.status === "out_of_stock" || totalAvail === 0) && pro.status !== "hidden";
-      } else {
-        matchStatus = pro.status?.toLowerCase() === filterStatus.toLowerCase();
+        matchStatus = pro.status !== "hidden" && totalAvail === 0;
+      } else if (filterStatus === "in_stock") {
+        matchStatus = pro.status !== "hidden" && totalAvail > 0;
       }
       return matchSearch && matchRole && matchStatus;
     });
@@ -308,11 +313,9 @@ export default function ProductsPage() {
             className="w-full px-4 py-2.5 border border-[#eaeaea] rounded-xl outline-none focus:ring-2 focus:ring-[#1a1a1a] text-sm bg-white text-[#555]"
           >
             <option value="all">Tất cả trạng thái</option>
-            <option value="available">Sẵn sàng</option>
-            <option value="out_of_stock">Hết hàng</option>
-            <option value="maintenance">Bảo trì</option>
-            <option value="rented">Đang thuê</option>
+            <option value="in_stock">Còn hàng</option>
             <option value="hidden">Đã ẩn</option>
+            <option value="out_of_stock">Hết hàng</option>
           </select>
         </div>
 

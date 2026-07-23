@@ -226,7 +226,9 @@ const getAllCostumes = async (query) => {
 // không kẹp limit 50, không loại sản phẩm 'hidden', không lọc theo danh mục đang active,
 // để chủ shop luôn kiểm kê được toàn bộ hàng vật lý đang có trong kho.
 const getInventoryCostumes = async (query = {}) => {
-  const filter = {};
+  // Sản phẩm đã ẩn (status='hidden') không còn bán/cho thuê nữa -> không tính vào kho quản lý tồn
+  // (chủ shop không cần theo dõi tồn kho của cái đã ẩn khỏi web nữa).
+  const filter = { status: { $ne: 'hidden' } };
   if (query.search) filter.name = { $regex: query.search, $options: 'i' };
   const costumes = await Costume.find(filter)
     .populate('categoryId', 'name')
