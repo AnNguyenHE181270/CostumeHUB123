@@ -13,6 +13,8 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const maxStartDate = new Date(today);
+    maxStartDate.setDate(maxStartDate.getDate() + 5);
 
     const allowedMaxDays = Math.max(1, Number(maxRentalDays) || 7) - 1;
     const start = new Date(startDate);
@@ -83,6 +85,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                     }}
                                     value={new Date(startDate)}
                                     minDate={tomorrow}
+                                    maxDate={maxStartDate}
                                     className="border-none text-[13px] font-sans w-full"
                                 />
                             </motion.div>
