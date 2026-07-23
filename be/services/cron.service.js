@@ -3,7 +3,7 @@ const User = require('../models/user.model');
 const Rental = require('../models/rental.model');
 const notificationService = require('./notification.service');
 const { autoUpdateDeliveredStatus, sendAutoConfirmReminders } = require('./rental.service');
-const TransactionHistory = require('../models/transactionHistory.model');
+
 
 const cleanupPendingUsers = async () => {
   console.log(" Đang chạy dọn dẹp tài khoản rác...");
@@ -27,30 +27,6 @@ const cleanupPendingUsers = async () => {
   }
 };
 
-const cleanupPendingTransactions = async () => {
-  console.log(" Đang dọn dẹp các giao dịch payOS treo (quá hạn)...");
-  try {
-    // payOS link hết hạn sau 15 phút, ta lấy 20 phút cho an toàn
-    const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000);
-    const result = await TransactionHistory.updateMany(
-      {
-        status: "pending",
-        createdAt: { $lt: twentyMinsAgo }
-      },
-      {
-        $set: { status: "cancelled" }
-      }
-    );
-
-    if (result.modifiedCount > 0) {
-      console.log(`Đã tự động hủy ${result.modifiedCount} giao dịch payOS quá hạn.`);
-    } else {
-      console.log(`Không có giao dịch payOS nào quá hạn cần hủy.`);
-    }
-  } catch (error) {
-    console.error("Lỗi khi hủy giao dịch payOS quá hạn:", error);
-  }
-};
 
 const checkOverdueRentals = async () => {
   console.log(" Đang quét kiểm tra các đơn hàng quá hạn trả đồ...");
@@ -91,7 +67,7 @@ const checkOverdueRentals = async () => {
 
 const startCronJobs = () => {
   cleanupPendingUsers();
-  cleanupPendingTransactions();
+
   checkOverdueRentals();
   autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
   sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
@@ -106,7 +82,6 @@ const startCronJobs = () => {
   cron.schedule('*/15 * * * *', () => {
     sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
   });
-  cron.schedule('*/15 * * * *', cleanupPendingTransactions);
 
   console.log("Cron jobs initialized.");
 };

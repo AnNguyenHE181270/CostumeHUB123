@@ -8,7 +8,7 @@ const roleRoute = require("./role.route")
 const cartRoute = require('./cart.route')
 const staffRoute = require('./staff.route')
 const ghnRoute = require('./ghn.route');
-const payosRoute = require('./payos.route')
+const vnpayRoute = require('./vnpay.route');
 const issueRoute = require('./issue.route');
 const notificationRoute = require('./notification.route');
 const chatRoute = require('./chat.route');
@@ -22,7 +22,7 @@ router.use("/rentals", rentalRoute)
 router.use("/roles", roleRoute)
 router.use("/carts", cartRoute)
 router.use("/staff", staffRoute)
-router.use("/payos", payosRoute)
+router.use("/vnpay", vnpayRoute);
 router.use("/ghn", ghnRoute);
 router.use("/issues", issueRoute);
 router.use("/notifications", notificationRoute);

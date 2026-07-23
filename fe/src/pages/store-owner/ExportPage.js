@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilePdf, faFileWord, faFileExcel, faChartLine, faBoxes,
   faSpinner, faCalendarAlt, faDownload, faChevronDown,
-  faUsers, faExclamationTriangle, faWallet, faCreditCard,
+  faUsers, faExclamationTriangle, faCreditCard,
   faCheckCircle, faTimesCircle, faShoppingBag, faWarehouse,
   faArrowTrendUp,
 } from "@fortawesome/free-solid-svg-icons";
@@ -87,7 +87,7 @@ export default function ExportPage() {
     try {
       const wb = XLSX.utils.book_new();
       const now = new Date().toLocaleString("vi-VN");
-      const { revenue, topCostumes, lifecycle, inventory, customers, issues, wallet } = fullReport;
+      const { revenue, topCostumes, lifecycle, inventory, customers, issues } = fullReport;
 
       // ── Sheet 1: Tổng quan ──
       const wsSummary = XLSX.utils.aoa_to_sheet([
@@ -104,9 +104,6 @@ export default function ExportPage() {
         ["Thời gian thuê trung bình", `${lifecycle?.avgRentalDays || 0} ngày`, ""],
         ["Tổng phí trễ hạn (lateFee)", lifecycle?.totalLateFee || 0, fmtVND(lifecycle?.totalLateFee)],
         ["Tổng phí hư hỏng (damageFee)", lifecycle?.totalDamageFee || 0, fmtVND(lifecycle?.totalDamageFee)],
-        ["Tổng nạp ví", wallet?.totalTransaction || 0, fmtVND(wallet?.totalTransaction)],
-        ["Giao dịch nạp thành công", wallet?.successCount || 0, `${wallet?.successRate || 0}%`],
-        ["Giao dịch nạp thất bại", wallet?.failedCount || 0, ""],
         ["Tổng đơn có khiếu nại", issues?.total || 0, `Tỷ lệ: ${issues?.issueRate || 0}%`],
         ["Khách hàng mới trong kỳ", customers?.newCustomers || 0, ""],
       ]);
@@ -267,23 +264,8 @@ export default function ExportPage() {
         XLSX.utils.book_append_sheet(wb, wsIssue, "Khieu nai");
       }
 
-      // ── Sheet 11: Ví điện tử ──
-      if (wallet) {
-        const wsWallet = XLSX.utils.aoa_to_sheet([
-          ["BÁO CÁO NẠP VÍ ĐIỆN TỬ"],
-          [],
-          ["Tổng giao dịch nạp", wallet.total],
-          ["Thành công", wallet.successCount, `${wallet.successRate}%`],
-          ["Thất bại", wallet.failedCount, ""],
-          ["Đang chờ", wallet.pendingCount, ""],
-          ["Tổng tiền nạp thành công", wallet.totalTransaction, fmtVND(wallet.totalTransaction)],
-        ]);
-        wsWallet["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 16 }];
-        XLSX.utils.book_append_sheet(wb, wsWallet, "Vi dien tu");
-      }
-
       XLSX.writeFile(wb, `Bao_cao_toan_dien_CostumeHUB_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      setToast({ isVisible: true, type: "success", message: "Xuất Excel thành công! 11 sheets dữ liệu." });
+      setToast({ isVisible: true, type: "success", message: "Xuất Excel thành công! 10 sheets dữ liệu." });
     } catch (err) {
       console.error(err);
       setToast({ isVisible: true, type: "error", message: "Lỗi khi xuất Excel." });
@@ -296,7 +278,7 @@ export default function ExportPage() {
   const generateFullReportHTML = () => {
     if (!fullReport) return "";
     const now = new Date().toLocaleString("vi-VN");
-    const { revenue, topCostumes, lifecycle, inventory, customers, issues, wallet } = fullReport;
+    const { revenue, topCostumes, lifecycle, inventory, customers, issues } = fullReport;
 
     const section = (num, title) =>
       `<div style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;
@@ -413,14 +395,6 @@ export default function ExportPage() {
       { label: "Tỷ lệ đơn có Issue", value: fmtPct(issues?.issueRate) },
       { label: "Đổi/trả hàng", value: `${(issues?.resolutionBreakdown || []).find(r => r.resolution?.includes('return'))?.count || 0} đơn` },
       { label: "Đổi hàng", value: `${(issues?.resolutionBreakdown || []).find(r => r.resolution?.includes('exchange'))?.count || 0} đơn` },
-    ])}
-
-    ${section(8, "Ví điện tử — Nạp ví")}
-    ${kpiTable([
-      { label: "Tổng giao dịch", value: `${fmtNum(wallet?.total)} lần` },
-      { label: "Thành công", value: `${fmtNum(wallet?.successCount)} (${wallet?.successRate || 0}%)` },
-      { label: "Thất bại", value: `${fmtNum(wallet?.failedCount)} lần` },
-      { label: "Tổng tiền nạp", value: fmtVND(wallet?.totalTransaction) },
     ])}
 
     <table class="sig-table">
@@ -599,9 +573,9 @@ export default function ExportPage() {
                 </div>
                 <div>
                   <h2 className="font-bold text-[#1a1a1a] text-base">Báo cáo Toàn diện Kinh doanh</h2>
-                  <p className="text-xs text-[#777] mt-0.5">Doanh thu · Vận hành · Trang phục · Khách hàng · Khiếu nại · Ví · Thanh toán</p>
+                  <p className="text-xs text-[#777] mt-0.5">Doanh thu · Vận hành · Trang phục · Khách hàng · Khiếu nại · Thanh toán</p>
                 </div>
-                <span className="ml-auto px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">11 sheets Excel</span>
+                <span className="ml-auto px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">10 sheets Excel</span>
               </div>
 
               {/* KPI Row 1: Doanh thu */}
@@ -620,12 +594,9 @@ export default function ExportPage() {
                 { icon: faExclamationTriangle, label: "Tỷ lệ khiếu nại", value: fmtPct(r?.issues?.issueRate), color: "text-yellow-600", bg: "bg-yellow-50", sub: `${r?.issues?.total || 0} đơn` },
               ]} />
 
-              {/* KPI Row 3: Ví & Thanh toán */}
               <KpiGrid items={[
-                { icon: faWallet, label: "Tổng nạp ví", value: fmtVND(r?.wallet?.totalTransaction), color: "text-teal-600", bg: "bg-teal-50" },
-                { icon: faCheckCircle, label: "GD nạp thành công", value: `${fmtNum(r?.wallet?.successCount)} (${r?.wallet?.successRate || 0}%)`, color: "text-emerald-600", bg: "bg-emerald-50" },
-                { icon: faCreditCard, label: "payOS", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "payOS")?.total), color: "text-blue-500", bg: "bg-blue-50" },
-                { icon: faCreditCard, label: "WALLET / Cash", value: fmtVND((r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "WALLET")?.total || 0) + (r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "Cash")?.total || 0)), color: "text-violet-600", bg: "bg-violet-50" },
+                { icon: faCreditCard, label: "VNPAY", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "VNPAY")?.total), color: "text-blue-500", bg: "bg-blue-50" },
+                { icon: faCreditCard, label: "Tiền mặt (Cash)", value: fmtVND(r?.revenue?.revenueByPaymentMethod?.find(p => p.method === "Cash")?.total), color: "text-violet-600", bg: "bg-violet-50" },
               ]} />
 
               {/* Top costumes preview */}

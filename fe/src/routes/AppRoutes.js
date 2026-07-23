@@ -22,7 +22,6 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
-import WithdrawalsPage from "../pages/store-owner/WithdrawalsPage";
 
 import OrdersPage from "../pages/shared/OrdersPage";
 import ExportPage from "../pages/store-owner/ExportPage";
@@ -40,7 +39,6 @@ import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage";
-import TransactionHistoryPage from "../pages/customer/TransactionHistoryPage";
 import TransactionSuccessPage from "../pages/customer/TransactionSuccessPage";
 import { ROUTES } from "./routePaths";
 
@@ -76,7 +74,6 @@ function AppRoutes() {
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />
             <Route path={ROUTES.MY_PROFILE} element={<ProfilePage />} />
-            <Route path="/user/transactions" element={<TransactionHistoryPage />} />
             <Route path="/user/transaction-success" element={<TransactionSuccessPage />} />
           </Route>
         </Route>
@@ -116,7 +113,6 @@ function AppRoutes() {
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
           <Route path={ROUTES.STORE_OWNER_EXPORT} element={<ExportPage />} />
           <Route path={ROUTES.STORE_OWNER_ISSUES} element={<IssuesManagePage />} />
-          <Route path="withdrawals" element={<WithdrawalsPage />} />
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />

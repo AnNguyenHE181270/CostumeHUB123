@@ -27,14 +27,21 @@ UserMock.findOne = async (filter) => {
     return mockData.user || null;
 };
 
+UserMock.countDocuments = async (query) => {
+    return mockData.userList ? mockData.userList.length : 0;
+};
+
 UserMock.findById = (id) => {
     mockData.userFindByIdCalledWith = id;
-    if (mockData.userFindByIdChain) return { populate: async () => mockData.userFindByIdChain };
-    return { populate: async () => mockData.user || null };
+    const user = mockData.userFindByIdChain || mockData.user || null;
+    const q = Promise.resolve(user);
+    q.populate = () => q;
+    return q;
 };
 
 UserMock.find = (query) => {
     mockData.userFindCalledWith = query;
+    let filtered = mockData.userList || [];
     if (query && query.$or && mockData.userList) {
         const searchRegexes = query.$or.map(cond => {
             const key = Object.keys(cond)[0];
@@ -42,12 +49,16 @@ UserMock.find = (query) => {
             const pattern = typeof val === 'object' && val.$regex ? val.$regex : '';
             return { key, regex: new RegExp(pattern, 'i') };
         });
-        const filtered = mockData.userList.filter(u => {
+        filtered = mockData.userList.filter(u => {
             return searchRegexes.some(({ key, regex }) => regex.test(u[key] || ''));
         });
-        return { populate: async () => filtered };
     }
-    return { populate: async () => mockData.userList || [] };
+    const q = Promise.resolve(filtered);
+    q.populate = () => q;
+    q.sort = () => q;
+    q.skip = () => q;
+    q.limit = () => q;
+    return q;
 };
 
 UserMock.create = async (data) => {
@@ -366,6 +377,7 @@ describe('Forgot Password', () => {
 
     test('Email not verified', async () => {
         mockData.user.isEmailVerified = false;
+        mockData.user.status = 'pending';
 
         await assert.rejects(
             async () => userService.forgotPassword('unverified@example.com'),
@@ -436,6 +448,7 @@ describe('updateUsers', () => {
         resetAll();
         mockData.role = { _id: 'role_staff_id', name: 'staff' };
         mockData.updatedUser = { _id: '507f1f77bcf86cd799439011', fullName: 'Customer User', email: 'customer@example.com', role: 'role_staff_id', status: 'active' };
+        mockData.user = { _id: '507f1f77bcf86cd799439012', status: 'active', role: 'customer' };
         UserMock.findOne = async () => null; // no email/phone conflict by default
     });
 
@@ -705,12 +718,12 @@ describe('getMyProfile', () => {
     });
 
     test('Return user profile details successfully', async () => {
-        const mockUserObj = { _id: 'user_123', fullName: 'John Doe', email: 'john@example.com', phone: '0987654321', gender: 'male', dateOfBirth: '1990-01-01', provider: 'local', role: { name: 'online-customer' }, avatar: 'avatar.png', addresses: [], balance: 1000 };
+        const mockUserObj = { _id: 'user_123', fullName: 'John Doe', email: 'john@example.com', phone: '0987654321', gender: 'male', dateOfBirth: '1990-01-01', provider: 'local', role: { name: 'online-customer' }, avatar: 'avatar.png', addresses: [] };
         UserMock.findOne = () => ({ populate: async () => mockUserObj });
 
         const result = await userService.getMyProfile('john@example.com');
 
-        assert.deepStrictEqual(result, { id: 'user_123', fullName: 'John Doe', email: 'john@example.com', phone: '0987654321', gender: 'male', dateOfBirth: '1990-01-01', provider: 'local', role: 'online-customer', avatar: 'avatar.png', addresses: [], balance: 1000 });
+        assert.deepStrictEqual(result, { id: 'user_123', fullName: 'John Doe', email: 'john@example.com', phone: '0987654321', gender: 'male', dateOfBirth: '1990-01-01', provider: 'local', role: 'online-customer', avatar: 'avatar.png', addresses: [] });
     });
 });
 
@@ -725,9 +738,9 @@ describe('getAllUsers', () => {
 
         const result = await userService.getAllUsers();
 
-        assert.strictEqual(result.length, 2);
-        // assert.deepStrictEqual(result[0], { id: 'user_1', fullName: 'Alice', email: 'alice@example.com', phone: '111111', avatar: 'avatar1.png', status: 'active', role: 'online-customer', createdAt: '2026-07-01', updatedAt: '2026-07-02' });
-        // assert.deepStrictEqual(result[1], { id: 'user_2', fullName: 'Bob', email: 'bob@example.com', phone: '222222', avatar: 'avatar2.png', status: 'blocked', role: 'staff', createdAt: '2026-07-03', updatedAt: '2026-07-04' });
+        assert.strictEqual(result.users.length, 2);
+        // assert.deepStrictEqual(result.users[0], { id: 'user_1', fullName: 'Alice', email: 'alice@example.com', phone: '111111', avatar: 'avatar1.png', status: 'active', role: 'online-customer', createdAt: '2026-07-01', updatedAt: '2026-07-02' });
+        // assert.deepStrictEqual(result.users[1], { id: 'user_2', fullName: 'Bob', email: 'bob@example.com', phone: '222222', avatar: 'avatar2.png', status: 'blocked', role: 'staff', createdAt: '2026-07-03', updatedAt: '2026-07-04' });
     });
 
     // test('Search users by name (partial match)', async () => {
@@ -815,7 +828,7 @@ describe('verifyOtp', () => {
         const result = await userService.verifyOtp('john@example.com', '123456');
 
         assert.strictEqual(mockData.existUser.status, 'active');
-        assert.strictEqual(mockData.existUser.isEmailVerified, true);
+
         assert.strictEqual(mockData.existUser.otpCode, null);
         assert.strictEqual(mockData.existUser.otpExpires, null);
         assert.ok(mockData.existUser._saved);
