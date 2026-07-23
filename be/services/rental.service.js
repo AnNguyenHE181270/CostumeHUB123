@@ -602,22 +602,40 @@ const getTotalRevenue = async (startDate, endDate) => {
   const orders = await Rental.find({
     status: { $in: validStatuses },
     ...buildDateRangeFilter(startDate, endDate),
-  }, 'totalAmount createdAt');
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  }, 'totalRentalPrice totalDeposit shippingFee lateFee damageFee replacementFee createdAt');
 
-  // Gom nhóm doanh thu theo tháng (dựa trên ngày tạo đơn) để vẽ biểu đồ xu hướng
+  let totalRevenue = 0;
+  let totalRentalPrice = 0;
+  let totalDeposit = 0;
+  let totalDeductedDeposit = 0;
+
   const monthlyMap = {};
   orders.forEach((o) => {
+    const rent = o.totalRentalPrice || 0;
+    const deposit = o.totalDeposit || 0;
+    const fines = (o.lateFee || 0) + (o.damageFee || 0) + (o.replacementFee || 0);
+    const shipping = o.shippingFee || 0;
+    const orderRevenue = rent + shipping + fines;
+
+    totalRevenue += orderRevenue;
+    totalRentalPrice += rent;
+    totalDeposit += deposit;
+    totalDeductedDeposit += fines;
+
     const d = new Date(o.createdAt);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    monthlyMap[key] = (monthlyMap[key] || 0) + o.totalAmount;
+    monthlyMap[key] = (monthlyMap[key] || 0) + orderRevenue;
   });
+
   const revenueByMonth = Object.entries(monthlyMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, total]) => ({ month, total }));
 
   return {
     totalRevenue,
+    totalRentalPrice,
+    totalDeposit,
+    totalDeductedDeposit,
     orderCount: orders.length,
     revenueByMonth,
   };

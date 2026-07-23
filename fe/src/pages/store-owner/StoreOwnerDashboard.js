@@ -4,7 +4,7 @@ import {
   faFilePdf, faFileWord, faFileExcel, faSpinner, faChevronDown,
   faChartLine, faBoxes, faExclamationTriangle, faMotorcycle,
   faCheckCircle, faTimesCircle, faClock, faWarehouse, faFire,
-  faSnowflake, faUsers, faArrowUp, faArrowDown, faMinus,
+  faSnowflake, faUsers, faArrowUp, faArrowDown, faMinus, faWallet, faCoins,
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
@@ -132,6 +132,9 @@ export default function FrappeStyleDashboard() {
 
   // Legacy dashboard data (tab Doanh thu - top section)
   const [revenue,                    setRevenue]                    = useState(0);
+  const [deposit,                    setDeposit]                    = useState(0);
+  const [totalRentalPrice,           setTotalRentalPrice]           = useState(0);
+  const [totalDeductedDeposit,       setTotalDeductedDeposit]       = useState(0);
   const [activeOrdersCount,          setActiveOrdersCount]          = useState(0);
   const [totalActiveCostumes,        setTotalActiveCostumes]        = useState(0);
   const [inventoryUtilizationPercentage, setInventoryUtilizationPercentage] = useState(0);
@@ -176,6 +179,9 @@ export default function FrappeStyleDashboard() {
       if (resRev.ok) {
         const d = await resRev.json();
         setRevenue(d.totalRevenue || 0);
+        setDeposit(d.totalDeposit || 0);
+        setTotalRentalPrice(d.totalRentalPrice || 0);
+        setTotalDeductedDeposit(d.totalDeductedDeposit || 0);
         setRevenueByMonth(d.revenueByMonth || []);
       }
       if (resActive.ok) {
@@ -265,13 +271,14 @@ export default function FrappeStyleDashboard() {
       title = "BÁO CÁO DOANH THU & TÀI CHÍNH";
       tabTitle = "Doanh thu";
       bodyContent = `
-        ${s(1,"Tổng quan tài chính")}${kpi([
-          {label:"Tổng doanh thu",value:fmtVND(revenue)},
-          {label:"Số đơn phát sinh",value:`${fmtNum(activeOrdersCount)} đơn`},
-          {label:"Trang phục đang thuê",value:`${fmtNum(currentlyRented)} bộ`},
-          {label:"Tổng kho",value:`${fmtNum(totalStock)} bộ`}
+        ${s(1,"Tổng quan tài chính & bóc tách dòng tiền")}${kpi([
+          {label:"Tổng doanh thu thực tế",value:fmtVND(revenue)},
+          {label:"Thuần tiền thuê",value:fmtVND(totalRentalPrice || rev?.totalRentalPrice)},
+          {label:"Tiền cọc (giữ hộ)",value:fmtVND(deposit || rev?.totalDeposit)},
+          {label:"Cọc giữ lại do lỗi",value:fmtVND(totalDeductedDeposit || rev?.totalDeductedDeposit)},
+          {label:"Số đơn phát sinh",value:`${fmtNum(activeOrdersCount)} đơn`}
         ])}
-        ${s(2,"Doanh thu theo phương thức thanh toán")}${rev?.revenueByPaymentMethod?.length ? tbl(["Phương thức","Số đơn","Doanh thu"],rev.revenueByPaymentMethod.map(p=>[p.method,fmtNum(p.count),fmtVND(p.total)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
+        ${s(2,"Doanh thu & Dòng tiền theo phương thức thanh toán")}${rev?.revenueByPaymentMethod?.length ? tbl(["Phương thức","Số đơn","Doanh thu thực tế","Thuần tiền thuê","Tiền cọc (hoàn lại)","Cọc giữ lại do lỗi","Tổng tiền thu về"],rev.revenueByPaymentMethod.map(p=>[p.method,fmtNum(p.count),fmtVND(p.total),fmtVND(p.rent),fmtVND(p.deposit),fmtVND(p.fines),fmtVND(p.totalCollected)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
         ${s(3,"Xu hướng doanh thu theo tháng")}${revenueTrend?.length ? tbl(["Tháng","Doanh thu"],revenueTrend.map(m=>[`T${Number(m.month.split("-")[1])}/${m.month.split("-")[0]}`,fmtVND(m.total)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
         ${s(4,"Top trang phục thuê nhiều nhất")}${topCostumes?.topByRental?.length?tbl(["#","Tên trang phục","Lượt thuê","Doanh thu"],topCostumes.topByRental.slice(0,10).map((c,i)=>[i+1,c.name,fmtNum(c.rentalCount),fmtVND(c.revenue)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
         ${s(5,"Top trang phục doanh thu cao nhất")}${topCostumes?.topByRevenue?.length?tbl(["#","Tên trang phục","Doanh thu"],topCostumes.topByRevenue.slice(0,10).map((c,i)=>[i+1,c.name,fmtVND(c.revenue)])) : "<p style='color:#999;font-size:12px;'>Không có dữ liệu</p>"}
@@ -370,6 +377,7 @@ export default function FrappeStyleDashboard() {
           [],
           ["CHỈ SỐ", "GIÁ TRỊ", "GHI CHÚ"],
           ["Tổng doanh thu", revenue || 0, fmtVND(revenue)],
+          ["Tổng tiền cọc", deposit || rev?.totalDeposit || 0, fmtVND(deposit || rev?.totalDeposit)],
           ["Số đơn phát sinh", activeOrdersCount || 0, ""],
           ["Trang phục đang thuê", currentlyRented || 0, ""],
           ["Tổng kho", totalStock || 0, ""],
@@ -380,12 +388,15 @@ export default function FrappeStyleDashboard() {
 
         if (rev?.revenueByPaymentMethod?.length) {
           const ws = XLSX.utils.json_to_sheet(rev.revenueByPaymentMethod.map(p => ({
-            "Phương thức": p.method,
+            "Phương thức thanh toán": p.method,
             "Số đơn": p.count,
-            "Doanh thu (đ)": p.total,
-            "Doanh thu": fmtVND(p.total)
+            "Doanh thu thực tế (đ)": p.total,
+            "Thuần tiền thuê (đ)": p.rent || 0,
+            "Tiền cọc hoàn trả (đ)": p.deposit || 0,
+            "Cọc giữ lại do lỗi (đ)": p.fines || 0,
+            "Tổng tiền thu về (đ)": p.totalCollected || 0,
           })));
-          ws["!cols"] = [{ wch: 16 }, { wch: 10 }, { wch: 18 }, { wch: 22 }];
+          ws["!cols"] = [{ wch: 24 }, { wch: 10 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 22 }];
           XLSX.utils.book_append_sheet(wb, ws, "Theo phuong thuc TT");
         }
 
@@ -744,9 +755,40 @@ export default function FrappeStyleDashboard() {
         {/* ── TAB 1: DOANH THU ───────────────────────────────────────────── */}
         {!tabLoading && activeTab === "revenue" && (
           <div className="flex flex-col gap-5">
-            <SectionTitle>Tổng quan tài chính</SectionTitle>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard icon={faChartLine} label="Tổng doanh thu" value={fmtVND(revenue)} color="blue" />
+            <SectionTitle>Tổng quan tài chính & bóc tách dòng tiền</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                icon={faChartLine}
+                label="Tổng doanh thu thực tế"
+                value={fmtVND(revenue)}
+                color="blue"
+                sub="Thuần tiền thuê + Cọc giữ lại do lỗi"
+              />
+              <StatCard
+                icon={faCoins}
+                label="Thuần tiền thuê trang phục"
+                value={fmtVND(totalRentalPrice || r?.revenue?.totalRentalPrice)}
+                color="teal"
+                sub="Giá trị cho thuê thực tế của đơn"
+              />
+              <StatCard
+                icon={faWallet}
+                label="Tổng tiền cọc (giữ hộ khách)"
+                value={fmtVND(deposit || r?.revenue?.totalDeposit)}
+                color="purple"
+                sub="Hoàn trả cho khách khi nhận lại đồ"
+              />
+              <StatCard
+                icon={faExclamationTriangle}
+                label="Cọc giữ lại do phạt / lỗi"
+                value={fmtVND(totalDeductedDeposit || r?.revenue?.totalDeductedDeposit)}
+                color="amber"
+                sub="Thu từ trễ hạn & hư hỏng (cộng Doanh thu)"
+              />
+            </div>
+
+            <SectionTitle>Vận hành & Tồn kho</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
               <StatCard icon={faChartBar} label="Số đơn phát sinh" value={`${fmtNum(activeOrdersCount)} đơn`} color="amber" />
               <StatCard icon={faCheckCircle} label="Trang phục đang thuê" value={`${fmtNum(currentlyRented)} bộ`} color="emerald" />
               <StatCard icon={faWarehouse} label="Tổng kho" value={`${fmtNum(totalStock)} bộ`} color="slate" sub={`Hiệu suất: ${inventoryUtilizationPercentage}%`} />
@@ -755,15 +797,62 @@ export default function FrappeStyleDashboard() {
             {/* Thanh toán */}
             {r?.revenue?.revenueByPaymentMethod?.length > 0 && (
               <>
-                <SectionTitle>Doanh thu theo phương thức thanh toán</SectionTitle>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {r.revenue.revenueByPaymentMethod.map(p => (
-                    <div key={p.method} className="bg-white border border-[#eaeaea] rounded-xl p-4 shadow-sm">
-                      <div className="text-xs font-bold text-[#999] uppercase tracking-wide mb-1">{p.method}</div>
-                      <div className="text-xl font-bold text-[#1a1a1a]">{fmtVND(p.total)}</div>
-                      <div className="text-xs text-[#bbb] mt-1">{fmtNum(p.count)} đơn</div>
-                    </div>
-                  ))}
+                <SectionTitle>Doanh thu & Dòng tiền theo phương thức thanh toán</SectionTitle>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {r.revenue.revenueByPaymentMethod.map(p => {
+                    const methodName = p.method === "VNPAY" || p.method.includes("VNPAY") || p.method === "WALLET" || p.method.includes("Ví") || p.method.includes("Online") ? "Thanh toán Online (VNPAY / CK)"
+                      : p.method === "CASH" || p.method === "Cash" || p.method.includes("cửa hàng") || p.method.includes("Tiền mặt") ? "Thanh toán tại cửa hàng (Tiền mặt / CK)"
+                      : p.method === "payOS" || p.method.includes("payOS") ? "Cổng payOS"
+                      : p.method;
+
+                    return (
+                      <div key={p.method} className="bg-white border border-[#eaeaea] rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between border-b border-[#f0f0f0] pb-2 mb-2.5">
+                            <span className="text-xs font-bold text-[#555] uppercase tracking-wider">{methodName}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">{fmtNum(p.count)} đơn</span>
+                          </div>
+
+                          {/* Doanh thu thực tế */}
+                          <div className="mb-3">
+                            <div className="text-[11px] font-bold text-[#888] uppercase tracking-wide">Doanh thu thực tế</div>
+                            <div className="text-xl font-bold text-blue-600 leading-tight mt-0.5">
+                              {fmtVND(p.total)}
+                            </div>
+                            <div className="text-[10px] text-[#999] mt-0.5">(Thuần thuê + Phí giữ lại do lỗi)</div>
+                          </div>
+
+                          {/* Bóc tách chi tiết */}
+                          <div className="space-y-1.5 pt-2 border-t border-[#f5f5f5] text-xs">
+                            <div className="flex justify-between items-center text-[#555]">
+                              <span>Thuần tiền thuê:</span>
+                              <span className="font-semibold text-[#1a1a1a]">{fmtVND(p.rent || 0)}</span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-[#555]">
+                              <span>Tiền cọc (hoàn lại):</span>
+                              <span className="font-semibold text-purple-600">{fmtVND(p.deposit || 0)}</span>
+                            </div>
+
+                            {p.fines > 0 && (
+                              <div className="flex justify-between items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                <span>Cọc giữ lại do lỗi:</span>
+                                <span className="font-bold">+{fmtVND(p.fines)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dòng tiền thực thu */}
+                        {p.totalCollected > 0 && (
+                          <div className="mt-3 pt-2 border-t border-dashed border-[#e5e5e5] flex justify-between items-center text-xs text-[#777]">
+                            <span>Tổng thực thu (gồm cọc):</span>
+                            <span className="font-semibold text-[#444]">{fmtVND(p.totalCollected)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
