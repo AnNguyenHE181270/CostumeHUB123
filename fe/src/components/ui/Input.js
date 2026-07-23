@@ -12,14 +12,15 @@ export default function Input({
   rightIcon,
   onRightIconClick,
   className = "",
+  error,
   children,
   ...props
 }) {
   const baseInputClasses = `
-    w-full bg-surface border border-borderorder rounded-xl
+    w-full bg-surface border ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-borderorder focus:border-primary-500 focus:ring-primary-500"} rounded-xl
     px-4 py-3 text-sm text-text-primary outline-none
     transition-all duration-200
-    focus:border-primary-500 focus:bg-background focus:ring-1 focus:ring-primary-500
+    focus:bg-background focus:ring-1
     placeholder:text-text-muted
     ${leftIcon ? "pl-10" : ""}
     ${rightIcon ? "pr-10" : ""}
@@ -28,7 +29,7 @@ export default function Input({
 
   return (
     <div className="space-y-1.5">
-        {label && (
+      {label && (
         <label htmlFor={name} className="block text-sm font-medium text-text-secondary">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -66,6 +67,8 @@ export default function Input({
           </button>
         )}
       </div>
+
+      {error && <p className="text-red-500 text-xs font-medium mt-1">{error}</p>}
     </div>
   );
 }
