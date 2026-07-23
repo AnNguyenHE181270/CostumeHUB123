@@ -152,21 +152,49 @@ const getOrderDetail = async (orderId, customerId) => {
 
   const order = await Rental.findOne({ _id: orderId, customerId })
     .populate('customerId', 'fullName phone email')
-    .populate('items.costume', 'name images price pricePerDay minRentalDays maxRentalDays');
+    .populate('items.costume', 'name images price pricePerDay lateFeePerDay minRentalDays maxRentalDays');
 
   if (!order) throw new HttpError('Orders not found.', 404);
 
   const issue = await Issue.findOne({ rentalId: orderId });
+
+  // Ước tính phí trễ hạn NGAY TỪ LÚC khách còn xem đơn (chưa trả) — để khách luôn biết trước sẽ bị
+  // trừ bao nhiêu nếu trả ở đúng thời điểm hiện tại, không phải đợi đến lúc inspectReturn chốt mới
+  // biết. Đơn có khiếu nại trả hàng/hoàn tiền ĐÃ ĐƯỢC DUYỆT thì không tính trễ hạn (khớp đúng logic
+  // thật ở inspectReturn — lỗi thuộc sản phẩm, không phải khách trễ hẹn).
+  const lateFeeWaived = issue?.status === 'accepted' && issue?.resolution === 'return_refund';
+  let estimatedLateFee = 0;
+  let estimatedDaysLate = 0;
+  if (!lateFeeWaived && ['renting', 'overdue'].includes(order.status)) {
+    const scheduledReturn = new Date(order.endDate);
+    const now = new Date();
+    if (now > scheduledReturn) {
+      estimatedDaysLate = Math.ceil((now.getTime() - scheduledReturn.getTime()) / (1000 * 3600 * 24));
+      order.items.forEach((item) => {
+        estimatedLateFee += estimatedDaysLate * (item.costume?.lateFeePerDay || 0) * item.quantity;
+      });
+    }
+  }
 
   return {
     orderId,
     status: order.status,
     hasIssue: !!issue,
     issueStatus: issue?.status || null,
+    issueResolution: issue?.resolution || null,
     deliveredAt: order.deliveredAt,
     rentingAt: order.rentingAt,
     cancelReason: order.cancelReason,
     refundAmount: order.refundAmount,
+    // Số liệu phí đã CHỐT (chỉ có giá trị thật sau khi inspectReturn xử lý xong, tức status='completed')
+    lateFee: order.lateFee,
+    damageFee: order.damageFee,
+    damageTier: order.damageTier,
+    damagePercent: order.damagePercent,
+    replacementFee: order.replacementFee,
+    // Số liệu ƯỚC TÍNH — chỉ có ý nghĩa khi đơn còn đang thuê/quá hạn, chưa trả
+    estimatedLateFee,
+    estimatedDaysLate,
     startDate: order.startDate,
     endDate: order.endDate,
     customer: {
@@ -586,6 +614,16 @@ const updateOrderStatus = async (id, status) => {
     } catch (ghnError) {
       console.error('Failed to push to GHN:', ghnError);
     }
+  }
+
+  // Đánh dấu 'đã giao' — chỉ hợp lệ khi đơn đang thực sự 'delivering', và PHẢI ghi deliveredAt
+  // (trước đây thiếu bước này khiến cơ chế tự-động-xác-nhận-sau-5-tiếng ở autoUpdateDeliveredStatus
+  // không bao giờ chạy được, đơn bị kẹt vĩnh viễn ở 'delivered' cho tới khi khách tự bấm xác nhận).
+  if (status === 'delivered') {
+    if (order.status !== 'delivering') {
+      throw new HttpError('Đơn phải đang ở trạng thái Đang giao mới có thể đánh dấu Đã giao.', 400);
+    }
+    order.deliveredAt = new Date();
   }
 
   order.status = status;

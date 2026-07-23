@@ -7,7 +7,7 @@ import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
 import { OrderTrackingModal } from './OrderTrackingModal'
-import { tabs } from '../../constants/statusOrder'
+import { tabs, isReturnRefundOrder } from '../../constants/statusOrder'
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
 import { faBox, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
@@ -69,16 +69,23 @@ function RentalHistory() {
         fetchOrders();
     }, []);
 
-    // Đơn thuộc tab "Trả hàng": khách đã gửi yêu cầu Trả hàng/hoàn tiền (có Issue resolution return_refund)
-    const isReturnRefundOrder = (order) => order.issue && order.issue.resolution === "return_refund";
-
+    // "Đang giao đến bạn" gồm cả 'delivering' lẫn 'delivered' — đơn đã được giao vẫn tính là "đang
+    // giao" cho tới khi CHÍNH khách bấm "Đã nhận hàng" (hoặc tự động sau 5 tiếng) mới thật sự
+    // chuyển sang "Đang thuê". "Đang thuê" chỉ còn tính đúng status='renting' thuần.
     const filteredOrders = activeTab === "all"
         ? rentalOrders
-        : activeTab === "renting"
-            ? rentalOrders.filter(order => ["delivered", "renting"].includes(order.status))
-            : activeTab === "return_refund"
-                ? rentalOrders.filter(isReturnRefundOrder)
-                : rentalOrders.filter(order => order.status === activeTab)
+        : activeTab === "delivering"
+            ? rentalOrders.filter(order => ["delivering", "delivered"].includes(order.status))
+            : activeTab === "renting"
+                ? rentalOrders.filter(order => order.status === "renting")
+                : activeTab === "return_refund"
+                    ? rentalOrders.filter(isReturnRefundOrder)
+                    // "Đã thuê" chỉ tính đơn hoàn tất qua luồng thuê-trả BÌNH THƯỜNG — đơn hoàn tất do
+                    // khiếu nại/hoàn tiền dù rental.status cũng là 'completed' vẫn thuộc về tab "Trả hàng"
+                    // duy nhất, không hiện lặp ở cả 2 nơi.
+                    : activeTab === "completed"
+                        ? rentalOrders.filter(order => order.status === "completed" && !isReturnRefundOrder(order))
+                        : rentalOrders.filter(order => order.status === activeTab)
 
     const totalCount = filteredOrders.length;
     const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -88,10 +95,16 @@ function RentalHistory() {
 
     const getOrderCount = (status) => {
         if (status === "all") return rentalOrders.length
+        if (status === "delivering") {
+            return rentalOrders.filter(order => ["delivering", "delivered"].includes(order.status)).length
+        }
         if (status === "renting") {
-            return rentalOrders.filter(order => ["delivered", "renting"].includes(order.status)).length
+            return rentalOrders.filter(order => order.status === "renting").length
         }
         if (status === "return_refund") return rentalOrders.filter(isReturnRefundOrder).length
+        if (status === "completed") {
+            return rentalOrders.filter(order => order.status === "completed" && !isReturnRefundOrder(order)).length
+        }
         return rentalOrders.filter(order => order.status === status).length
     }
 

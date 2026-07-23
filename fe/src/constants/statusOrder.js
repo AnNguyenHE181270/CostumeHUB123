@@ -37,15 +37,25 @@ export function getIssueBadge(order) {
     if (issue.status === "pending" || issue.status === "escalated") {
         return { label: "Chờ xử lí", className: "text-amber-600" };
     }
-    if (issue.status === "accepted") return { label: "Đã xử lí", className: "text-emerald-600" };
-    if (issue.status === "cancelled") return { label: "Khiếu nại đã hủy", className: "text-gray-500" };
-    if (issue.status === "rejected") return { label: "Khiếu nại bị từ chối", className: "text-red-500" };
+    if (issue.status === "accepted") return { label: "Đã xử lí hoàn tiền", className: "text-emerald-600" };
+    if (issue.status === "cancelled") return { label: "Yêu cầu bị hủy", className: "text-gray-500" };
+    if (issue.status === "rejected") return { label: "Yêu cầu bị từ chối", className: "text-red-500" };
     return null;
 }
 
-// Nhãn trạng thái đơn chính — LUÔN dùng nguyên nhãn 'returning' = "Đang trả hàng" cho mọi lý do trả
-// hàng (bình thường hay do khiếu nại). Ngữ cảnh khiếu nại chỉ hiện ở badge con (getIssueBadge, ngay
-// trên card đơn) — không nhân đôi thông tin ra nhãn trạng thái chính để tránh rối.
+// Đơn có khiếu nại Trả hàng/hoàn tiền (return_refund) LUÔN thuộc nhóm "Trả hàng" — bất kể
+// rental.status thực tế là 'returning' (còn đang xử lý) hay đã 'completed' (đã kiểm tra + hoàn
+// tiền xong). "Đang trả hàng" (tím, từ statusOrder.returning) chỉ còn dùng cho đúng nghĩa đen của
+// nó: đơn còn đang di chuyển/chưa xử lý xong (status thực sự = 'returning'), không áp cho đơn loại
+// này nữa — nhãn pill chính đổi thành "Trả hàng" cố định, tiến độ chi tiết xem ở badge con
+// (getIssueBadge) hiển thị riêng cạnh giá.
+export function isReturnRefundOrder(order) {
+    return order?.issue?.resolution === "return_refund";
+}
+
 export function getOrderStatusLabel(order) {
+    if (isReturnRefundOrder(order)) {
+        return { label: "Trả hàng", className: "bg-purple-100 text-purple-800 border-purple-200" };
+    }
     return statusOrder[order?.status];
 }

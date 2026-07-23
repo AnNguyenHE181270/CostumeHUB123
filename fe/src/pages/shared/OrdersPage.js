@@ -689,6 +689,19 @@ export default function OrdersPage() {
                     Theo dõi
                   </button>
                 )}
+                {/* Xác nhận hàng đã tới tay khách (shipper/GHN báo giao xong) — ghi deliveredAt để
+                    hẹn giờ tự động chuyển 'Đang thuê' sau 5 tiếng nếu khách không tự xác nhận. */}
+                {selectedOrder.status === 'delivering' && (
+                  <button
+                    className="flex-1 sm:flex-none px-4 py-2 bg-teal-100 text-teal-700 font-medium rounded hover:bg-teal-200 transition-colors text-sm"
+                    onClick={() => {
+                      handleUpdateStatus(selectedOrder._id, 'delivered');
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Xác nhận đã giao
+                  </button>
+                )}
                 {selectedOrder.status === 'returning' && (
                   ['pending', 'escalated'].includes(selectedOrder.issue?.status) ? (
                     <span

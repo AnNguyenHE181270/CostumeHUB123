@@ -8,13 +8,9 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
     if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
         status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
     }
-    // Đơn có yêu cầu Trả hàng/hoàn tiền -> gộp trạng thái con (Chờ xử lí / Đã xử lí / ...) NGAY vào
-    // pill trạng thái chính (giữ tông màu tím của "Đang trả hàng"), không tách badge riêng bên
-    // cạnh giá nữa — tránh lặp 2 chỗ hiển thị trạng thái trên cùng 1 thẻ đơn.
+    // Pill trạng thái chính giờ luôn tĩnh "Trả hàng" cho đơn loại này (xem getOrderStatusLabel) —
+    // tiến độ chi tiết (Chờ xử lí / Đã xử lí hoàn tiền / ...) hiện riêng ở góc phải cạnh giá.
     const issueBadge = getIssueBadge(order);
-    if (issueBadge) {
-        status = { label: issueBadge.label, className: "bg-purple-100 text-purple-800 border-purple-200" };
-    }
     // Chỉ tin số tiền hoàn THỰC TẾ (order.refundAmount) khi đơn đã 'completed' (đã kiểm tra hàng
     // xong) — trước đó (còn 'returning'/chờ duyệt) chỉ hiện số tiền DỰ KIẾN (= tổng đơn ban đầu).
     const refundValue = (order.issue?.status === "accepted" && order.status === "completed")
@@ -91,6 +87,11 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                         </div>
                         {!isCompact && (
                             <div className="text-right shrink-0">
+                                {issueBadge && (
+                                    <p className={"text-xs font-semibold mb-0.5 " + issueBadge.className}>
+                                        {issueBadge.label}
+                                    </p>
+                                )}
                                 <p className="text-lg font-semibold text-foreground">{formatPrice(order.totalPrice)}</p>
                                 {issueBadge ? (
                                     <p className="text-xs text-muted-foreground">
@@ -201,6 +202,9 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                     {isCompact && (
                         <span className="mt-1.5 text-sm font-semibold text-foreground">
                             {formatPrice(order.totalPrice)}
+                            {issueBadge && (
+                                <span className={"ml-2 text-xs font-semibold " + issueBadge.className}>{issueBadge.label}</span>
+                            )}
                         </span>
                     )}
                 </div>
