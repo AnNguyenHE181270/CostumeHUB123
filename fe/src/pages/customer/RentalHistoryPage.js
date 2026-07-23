@@ -69,11 +69,16 @@ function RentalHistory() {
         fetchOrders();
     }, []);
 
+    // Đơn thuộc tab "Trả hàng": khách đã gửi yêu cầu Trả hàng/hoàn tiền (có Issue resolution return_refund)
+    const isReturnRefundOrder = (order) => order.issue && order.issue.resolution === "return_refund";
+
     const filteredOrders = activeTab === "all"
         ? rentalOrders
         : activeTab === "renting"
             ? rentalOrders.filter(order => ["delivered", "renting"].includes(order.status))
-            : rentalOrders.filter(order => order.status === activeTab)
+            : activeTab === "return_refund"
+                ? rentalOrders.filter(isReturnRefundOrder)
+                : rentalOrders.filter(order => order.status === activeTab)
 
     const totalCount = filteredOrders.length;
     const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -86,6 +91,7 @@ function RentalHistory() {
         if (status === "renting") {
             return rentalOrders.filter(order => ["delivered", "renting"].includes(order.status)).length
         }
+        if (status === "return_refund") return rentalOrders.filter(isReturnRefundOrder).length
         return rentalOrders.filter(order => order.status === status).length
     }
 

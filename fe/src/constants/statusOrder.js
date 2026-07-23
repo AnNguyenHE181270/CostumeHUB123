@@ -1,4 +1,4 @@
-import { faCube, faBoxOpen, faTruck, faRotateLeft, faClock, faCheckCircle, faCircleXmark, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faCube, faBoxOpen, faTruck, faRotateLeft, faClock, faCheckCircle, faCircleXmark, faTriangleExclamation, faMoneyBillTransfer } from "@fortawesome/free-solid-svg-icons";
 
 export const statusOrder = {
     pending: { label: "Chờ xác nhận", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -22,4 +22,17 @@ export const tabs = [
     { id: "overdue", label: "Quá hạn", icon: faTriangleExclamation },
     { id: "completed", label: "Đã thuê", icon: faCheckCircle },
     { id: "cancelled", label: "Đã hủy", icon: faCircleXmark },
+    // Tab kiểu Shopee: gom mọi đơn khách đã gửi yêu cầu "Trả hàng/hoàn tiền" (Issue resolution
+    // return_refund), bất kể đơn đang ở trạng thái nào — trạng thái con lấy từ issue.status.
+    { id: "return_refund", label: "Trả hàng", icon: faMoneyBillTransfer },
 ];
+
+// Trạng thái con của yêu cầu Trả hàng/hoàn tiền — hiển thị ở góc thẻ đơn (thay vị trí giá)
+// và trong tab "Trả hàng". Map từ issue.status (pending/escalated gộp thành "Đang chờ duyệt").
+export const issueStatusBadge = {
+    pending: { label: "Đang chờ duyệt", className: "text-amber-600" },
+    escalated: { label: "Đang chờ duyệt", className: "text-amber-600" },
+    accepted: { label: "Đã hoàn tiền", className: "text-emerald-600" },
+    cancelled: { label: "Khiếu nại đã hủy", className: "text-gray-500" },
+    rejected: { label: "Khiếu nại bị từ chối", className: "text-red-500" },
+};

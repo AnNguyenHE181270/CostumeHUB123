@@ -103,7 +103,19 @@ const getRentalHistory = async (userId) => {
     .populate('items.costume', 'name images pricePerDay price minRentalDays maxRentalDays')
     .sort({ createdAt: -1 });
 
+  // Gắn khiếu nại (nếu có) vào từng đơn — tab "Trả hàng" phía khách lọc theo đơn có yêu cầu
+  // trả hàng/hoàn tiền và hiển thị trạng thái con (chờ duyệt / đã hủy / đã hoàn tiền).
+  // Mỗi đơn tối đa 1 khiếu nại (đã chặn trùng ở createIssue).
+  const issues = await Issue.find({ rentalId: { $in: orders.map((o) => o._id) } });
+  const issueByRental = new Map(issues.map((is) => [is.rentalId.toString(), is]));
+
   return orders.map((order) => ({
+    issue: (() => {
+      const is = issueByRental.get(order._id.toString());
+      return is
+        ? { id: is._id, status: is.status, resolution: is.resolution, reason: is.reason, createdAt: is.createdAt }
+        : null;
+    })(),
     id: order._id,
     costumeName: order.items[0]?.costume?.name || 'Đơn hàng thuê',
     costumeImage: order.items[0]?.costume?.images?.[0] || '',
