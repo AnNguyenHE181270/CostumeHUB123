@@ -9,7 +9,6 @@ import {
   faMoneyBillWave,
   faClipboardCheck,
   faCommentDots,
-  faWallet,
   faCircleCheck,
   faCrown,
   faCircleExclamation,
@@ -88,9 +87,9 @@ const PROCESS_STEPS = [
   },
   {
     step: "04",
-    icon: faWallet,
-    title: "Hoàn Cọc Vào Ví",
-    desc: "Số tiền cọc còn lại được hoàn trực tiếp vào Ví CostumeHUB của bạn trong vài phút.",
+    icon: faMoneyBillWave,
+    title: "Hoàn Tiền Cọc",
+    desc: "Số tiền cọc còn lại được hoàn trả sau khi trừ các khoản phí phát sinh (nếu có).",
   },
 ];
 

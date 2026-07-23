@@ -9,7 +9,6 @@ import {
   faTruck,
   faCheck,
   faCreditCard,
-  faWallet,
   faGem,
   faArrowRight,
   faStore,
@@ -21,9 +20,9 @@ import Button from "../../components/ui/Button";
 import Radio from "../../components/ui/Radio";
 import Input from "../../components/ui/Input";
 import Toast from "../../components/ui/Toast";
-import QuickTopUpModal from "../../components/customer/QuickTopUpModal";
 import { formatPrice, formatDateNoHours, getRentalDays, getRentalPriceFactor } from "../../utils/formatters";
 import rentalService from "../../services/rental.service";
+import axiosClient from "../../api/axiosClient";
 
 const SERIF = { fontFamily: "'Cormorant Garamond', serif" };
 
@@ -36,13 +35,12 @@ export function Checkout() {
   const { cartItems, clearCart, removeFromCart } = useCart();
   const { user, refreshProfile } = useAuth();
   const [deliveryOption, setDeliveryOption] = useState("delivery");
-  const [paymentMethod, setPaymentMethod] = useState("WALLET");
+  const [paymentMethod, setPaymentMethod] = useState("VNPAY");
   const [address, setAddress] = useState({ name: "", phone: "", detail: "" });
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [deliveryEstimate, setDeliveryEstimate] = useState({ loading: false, date: null, isLate: false });
-  const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [lateDeliveryModal, setLateDeliveryModal] = useState({ show: false, message: "" });
 
   useEffect(() => {
@@ -108,10 +106,6 @@ export function Checkout() {
 
   const deliveryFee = 0; // Miễn phí giao hàng trọn gói
   const total = totalRental + totalDeposit + deliveryFee;
-
-  // Phát hiện sớm số dư ví không đủ ngay khi vào Checkout, thay vì đợi khách bấm xác nhận mới báo.
-  const walletBalance = user?.balance || 0;
-  const walletShortfall = paymentMethod === "WALLET" ? Math.max(0, total - walletBalance) : 0;
 
   // Hiện ngay dự kiến giao hàng GHN khi đã có địa chỉ + ngày nhận, không đợi tới lúc ấn xác nhận đặt thuê.
   useEffect(() => {
@@ -193,7 +187,7 @@ export function Checkout() {
         confirmLateDelivery
       };
 
-      await rentalService.createOrder(payload);
+      const response = await rentalService.createOrder(payload);
 
       if (checkoutItems.length === cartItems.length) {
         await clearCart();
@@ -208,7 +202,25 @@ export function Checkout() {
         }
       }
       await refreshProfile();
-      showToast("Thanh toán thành công! Đơn hàng đã được tạo.", "success");
+
+      if (paymentMethod === "VNPAY") {
+        try {
+          const vnpayRes = await axiosClient.post("/api/vnpay/create-payment-url", {
+            amount: total,
+            orderInfo: response.order._id
+          });
+          if (vnpayRes.success && vnpayRes.paymentUrl) {
+            window.location.href = vnpayRes.paymentUrl;
+            return;
+          }
+        } catch (vnpayErr) {
+          showToast("Tạo yêu cầu thanh toán VNPay thất bại.");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      showToast("Đặt hàng thành công! Đơn hàng đã được tạo.", "success");
       setTimeout(() => {
         navigate("/rental-history");
       }, 1800);
@@ -513,67 +525,34 @@ export function Checkout() {
 
             <div className="space-y-3">
               <label
-                htmlFor="wallet"
-                className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${paymentMethod === "WALLET"
+                htmlFor="vnpay"
+                className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${paymentMethod === "VNPAY"
                   ? "border-[#c9a869] bg-white ring-2 ring-[#c9a869]/20 shadow-sm"
                   : "border-[#e2d5bd] bg-white/70 hover:bg-white"
                   }`}
               >
                 <Radio
-                  value="WALLET"
-                  id="wallet"
+                  value="VNPAY"
+                  id="vnpay"
                   name="paymentMethod"
-                  checked={paymentMethod === "WALLET"}
+                  checked={paymentMethod === "VNPAY"}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="mt-1 accent-[#b8935a]"
                 />
                 <div className="flex-1 flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faWallet} className="text-[#d4af37]" />
-                      <span className="font-bold text-[#1a1a1a] text-[14px]">Thanh toán bằng Số Dư Ví CostumeHUB</span>
+                      <FontAwesomeIcon icon={faCreditCard} className="text-[#d4af37]" />
+                      <span className="font-bold text-[#1a1a1a] text-[14px]">Thanh toán bằng VNPay</span>
                     </div>
                     <p className="text-[12px] text-[#8a7d63] mt-1">
-                      Thanh toán tức thì, tự động hoàn cọc trực tiếp về ví khi hoàn trả sản phẩm
+                      Thanh toán an toàn qua quét mã QR hoặc thẻ ngân hàng
                     </p>
                   </div>
-                  {user?.balance !== undefined && (
-                    <span className="text-[13px] font-extrabold text-[#1a1a1a] bg-[#faf6f0] border border-[#e2d5bd] px-3 py-1 rounded-xl shrink-0">
-                      Số dư: {formatPrice(user.balance)}
-                    </span>
-                  )}
                 </div>
               </label>
             </div>
-
-            {walletShortfall > 0 && (
-              <div className="mt-4 p-4 rounded-2xl border border-red-200 bg-red-50 flex items-center justify-between">
-                <div className="text-red-700 text-[13px]">
-                  <div className="font-bold flex items-center gap-1.5 mb-1">
-                    <FontAwesomeIcon icon={faTriangleExclamation} className="text-red-600" />
-                    Số dư ví không đủ
-                  </div>
-                  Bạn cần nạp thêm <span className="font-bold">{formatPrice(walletShortfall)}</span> để có thể đặt thuê.
-                </div>
-                <Button
-                  onClick={() => setShowTopUpModal(true)}
-                  className="bg-red-600 text-white text-[12px] h-9 px-4 rounded-xl font-bold hover:bg-red-700 transition-colors"
-                >
-                  Nạp Nhanh
-                </Button>
-              </div>
-            )}
           </div>
-
-          <QuickTopUpModal
-            isOpen={showTopUpModal}
-            onClose={() => setShowTopUpModal(false)}
-            requiredAmount={walletShortfall}
-            onSuccess={() => {
-              setShowTopUpModal(false);
-              showToast("Nạp tiền thành công! Bạn có thể tiếp tục đặt thuê.", "success");
-            }}
-          />
 
           {/* RIGHT: Order Summary Box */}
           <div className="w-full lg:w-1/3 bg-[#faf6f0]/90 rounded-3xl border border-[#e6dcab] p-6 mt-12 lg:p-8 shadow-md sticky top-[100px] space-y-6">
@@ -628,15 +607,13 @@ export function Checkout() {
               <Button
                 onClick={handleCheckout}
                 loading={isLoading}
-                disabled={isLoading || walletShortfall > 0}
+                disabled={isLoading}
                 className="w-full py-4 rounded-2xl text-[12px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 border border-[#c9a869]/40 luxury-btn-gold-shine"
               >
                 {isLoading
                   ? "Đang xử lý tạo đơn..."
-                  : walletShortfall > 0
-                    ? "Số Dư Không Đủ — Vui Lòng Nạp Thêm"
-                    : "Xác Nhận Đặt Thuê Ngay"}
-                {!isLoading && walletShortfall === 0 && (
+                  : "Xác Nhận & Thanh Toán VNPay"}
+                {!isLoading && (
                   <FontAwesomeIcon icon={faArrowRight} className="text-[12px] text-[#d4af37]" />
                 )}
               </Button>

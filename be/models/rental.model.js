@@ -79,8 +79,8 @@ const rentalSchema = new mongoose.Schema(
 
         paymentMethod: {
             type: String,
-            enum: ["payOS", "Cash", "WALLET"],
-            default: "WALLET",
+            enum: ["VNPAY", "Cash"],
+            default: "VNPAY",
         },
 
         paymentStatus: {

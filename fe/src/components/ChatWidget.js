@@ -172,7 +172,7 @@ const ChatWidget = () => {
           cartEndDate: rentData.endDate,
         }],
         shippingFee: 0,
-        paymentMethod: "WALLET",
+        paymentMethod: "VNPAY",
         shippingAddress: {
           receiverName: rentData.receiverName || defaultAddress?.receiverName || user?.fullName || "Khách",
           receiverPhone: rentData.receiverPhone || defaultAddress?.receiverPhone || user?.phone || "",
@@ -186,12 +186,18 @@ const ChatWidget = () => {
         }
       };
 
-      await rentalService.createOrder(payload);
-      if (refreshProfile) await refreshProfile();
-      setMessages(prev => [...prev, { role: 'model', text: 'Thanh toán thành công! Đơn hàng của bạn đã được tạo tự động. Vui lòng vào Lịch sử đơn hàng để xem chi tiết.'}]);
-      setTimeout(() => navigate('/rental-history'), 1500);
+      const response = await rentalService.createOrder(payload);
+      if (response.success && response.paymentUrl) {
+        window.location.href = response.paymentUrl;
+      } else if (response.success) {
+        if (refreshProfile) await refreshProfile();
+        setMessages(prev => [...prev, { role: 'model', text: 'Thanh toán thành công! Đơn hàng của bạn đã được tạo tự động. Vui lòng vào Lịch sử đơn hàng để xem chi tiết.'}]);
+        setTimeout(() => navigate('/rental-history'), 1500);
+      } else {
+        throw new Error(response.message || "Lỗi tạo đơn hàng");
+      }
     } catch(err) {
-      setMessages(prev => [...prev, { role: 'model', text: `Rất tiếc, có lỗi xảy ra: ${err.response?.data?.message || err.message || 'Số dư có thể không đủ hoặc lỗi hệ thống.'}` }]);
+      setMessages(prev => [...prev, { role: 'model', text: `Rất tiếc, có lỗi xảy ra: ${err.response?.data?.message || err.message || 'Lỗi hệ thống.'}` }]);
     } finally {
       setIsLoading(false);
     }

@@ -25,11 +25,5 @@ export const profile = [
       { id: "returned", title: "Trả hàng", path: "/rental-history?status=returned" },
       { id: "cancelled", title: "Đã hủy", path: "/rental-history?status=cancelled" }
     ]
-  },
-  {
-    id: "transactions",
-    title: "Lịch sử giao dịch",
-    role: "all",
-    path: "/user/transactions"
   }
 ];

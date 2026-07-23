@@ -139,9 +139,6 @@ export default function Header() {
               {/* Invisible bridge prevents onMouseLeave firing in the gap between icon and panel */}
               <div className="absolute top-full left-0 right-0 h-4" />
               <div className={`absolute right-0 top-full mt-4 w-48 bg-white border border-gray-100 shadow-lg rounded-md transition-all duration-200 z-50 py-2 ${profileDropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
-                <div className="px-4 py-2 text-[13px] text-gray-800 font-bold border-b border-gray-100 mb-1">
-                  Số dư: <span className="text-primary">{formatPrice(user.balance || 0)}</span>
-                </div>
                 <Link to="/user/my-profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-black transition-colors">
                   Hồ sơ của tôi
                 </Link>
