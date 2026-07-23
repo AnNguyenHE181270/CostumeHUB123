@@ -5,7 +5,7 @@ const {
   getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes,
-  createOfflineOrder, estimateDelivery, updateRentalDates
+  createOfflineOrder, estimateDelivery, updateRentalDates, sendCancelOtp, confirmRefund
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner, isStaffOrOwner } = require('../middlewares/check-auth.middleware'); // Assuming isStaffOrOwner exists or needs to be added
 const upload = require('../middlewares/upload.middleware');
@@ -29,12 +29,14 @@ router.put('/:id/status', checkAuth, isStaffOrOwner, updateOrderStatusValidator,
 router.put('/:id/confirm', checkAuth, confirmPreparationValidator, validate, confirmPreparation); // Staff xác nhận chuẩn bị đồ xong -> Đang giao
 router.get('/rental-history', checkAuth, getRentalHistory); // Đã thêm checkAuth
 router.get('/order-detail/:orderId', checkAuth, getOrderDetailValidator, validate, orderDetail);
+router.post('/cancel-otp', checkAuth, sendCancelOtp); // Send OTP for cancellation refund
 router.put('/:id/cancel', checkAuth, cancelOrderValidator, validate, cancellOrrder);
 router.put('/:id/request-return', checkAuth, requestReturnValidator, validate, requestReturn); // KAN-124: Khách yêu cầu trả đồ
 router.put('/:id/inspect-return', checkAuth, upload.uploadReturnEvidence, inspectReturnValidator, validate, inspectReturn); // KAN-125: Staff kiểm tra đồ trả và chốt đơn
 router.put('/:id/confirm-receipt', checkAuth, confirmReceiptValidator, validate, confirmReceipt); // Khách hàng xác nhận nhận hàng
 router.put('/:id/extend', checkAuth, extendRentalValidator, validate, extendRental); // Khách hàng yêu cầu gia hạn thuê và thanh toán ví
 router.put('/:id/update-dates', checkAuth, isStaffOrOwner, updateRentalDatesValidator, validate, updateRentalDates); // NEW ROUTE
+router.put('/:id/confirm-refund', checkAuth, isOwner, confirmRefund);
 
 // Dashboard APIs
 router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);

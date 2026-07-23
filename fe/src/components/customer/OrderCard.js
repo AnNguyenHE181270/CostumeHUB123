@@ -1,10 +1,13 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { statusOrder } from "../../constants/statusOrder"
-import { formatOrderId } from "../../utils/formatters"
+import { formatOrderId, formatPrice } from "../../utils/formatters"
 
 function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
-    const status = statusOrder[order.status]
+    let status = statusOrder[order.status]
+    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
+        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
+    }
 
     return (
         <div
@@ -76,7 +79,7 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                         </div>
                         {!isCompact && (
                             <div className="text-right shrink-0">
-                                <p className="text-lg font-semibold text-foreground">{order.totalPrice}</p>
+                                <p className="text-lg font-semibold text-foreground">{formatPrice(order.totalPrice)}</p>
                                 <p className="text-xs text-muted-foreground">Thuê {order.rentalPeriod}</p>
                             </div>
                         )}
@@ -178,7 +181,7 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
 
                     {/* Compact view - Price on right */}
                     {isCompact && (
-                        <span className="mt-1.5 text-sm font-semibold text-foreground">{order.totalPrice}</span>
+                        <span className="mt-1.5 text-sm font-semibold text-foreground">{formatPrice(order.totalPrice)}</span>
                     )}
                 </div>
             </div>

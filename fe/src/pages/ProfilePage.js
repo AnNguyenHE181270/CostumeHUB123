@@ -5,19 +5,13 @@ import Button from "../components/ui/Button";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Toast from "../components/ui/Toast";
-import { formatPrice } from "../utils/formatters";
 import userService from "../services/user.service";
-import paymentService from "../services/payment.service";
-import WithdrawModal from "../components/customer/WithdrawModal";
 
 export default function ProfilePage() {
   const { loading, user, token, login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [avatarFile, setAvatarFile] = useState(null);
-  const [transactionAmount, setTransactionAmount] = useState("");
-  const [isToppingUp, setIsToppingUp] = useState(false);
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   
   const [form, setForm] = useState({
       fullName: "",
@@ -90,34 +84,6 @@ export default function ProfilePage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleTransaction = async () => {
-    if (!transactionAmount || isNaN(transactionAmount) || Number(transactionAmount) < 10000) {
-      setToast({ isVisible: true, type: "error", message: "Số tiền nạp tối thiểu là 10.000 VNĐ" });
-      return;
-    }
-    
-    try {
-      setIsToppingUp(true);
-      const data = await paymentService.createPaymentUrl(Number(transactionAmount));
-      if (data.success && data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        setToast({ isVisible: true, type: "error", message: data.message || "Không thể tạo liên kết nạp tiền" });
-      }
-    } catch (err) {
-      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối khi nạp tiền" });
-    } finally {
-      setIsToppingUp(false);
-    }
-  };
-
-  const handleWithdrawSuccess = async (message) => {
-    setIsWithdrawModalOpen(false);
-    setToast({ isVisible: true, type: "success", message });
-    // Refetch profile to update balance
-    await login(token, true);
   };
 
   if (loading || !user) {
@@ -235,43 +201,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Wallet Section (occupying full width!) */}
-      <div className="mt-8">
-        <h4 className="text-xl font-bold text-[#1a1a1a] mb-6 pl-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-          Ví Điện Tử
-        </h4>
-        <div className="bg-[#fcfaf5] border border-[#f0e6d3] p-6 rounded-xl flex flex-col md:flex-row md:items-center justify-start gap-12 lg:gap-24">
-          <div>
-            <p className="text-[12px] text-[#858585] tracking-[0.1em] uppercase mb-1">Số dư hiện tại</p>
-            <p className="text-3xl font-bold text-[#1a1a1a]">{formatPrice(user.balance || 0)}</p>
-          </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <input 
-              type="number" 
-              placeholder="Nhập số tiền" 
-              value={transactionAmount}
-              onChange={(e) => setTransactionAmount(e.target.value)}
-              className="w-full md:w-48 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-[#1a1a1a] outline-none focus:border-black focus:ring-1 focus:ring-black placeholder:text-gray-400"
-            />
-            <Button 
-              type="button"
-              onClick={handleTransaction} 
-              disabled={isToppingUp}
-              className="!rounded-lg whitespace-nowrap px-6 py-3.5 bg-[#1b1b1b] text-white font-semibold text-[11px] uppercase tracking-wider hover:bg-black shadow-sm"
-            >
-              {isToppingUp ? "Đang xử lý..." : "NẠP TIỀN"}
-            </Button>
-            <Button 
-              type="button"
-              variant="secondary"
-              onClick={() => setIsWithdrawModalOpen(true)} 
-              className="!rounded-lg whitespace-nowrap px-6 py-3.5 font-semibold text-[11px] uppercase tracking-wider shadow-sm"
-            >
-              RÚT TIỀN
-            </Button>
-          </div>
-        </div>
-      </div>
+
 
       {/* Submit Button Section */}
       <div className="flex justify-end mt-6 pt-4 border-t border-[#eaeaea]">
@@ -284,13 +214,6 @@ export default function ProfilePage() {
           {submitting ? "Đang lưu..." : "LƯU THAY ĐỔI"}
         </Button>
       </div>
-
-      <WithdrawModal 
-        isOpen={isWithdrawModalOpen}
-        onClose={() => setIsWithdrawModalOpen(false)}
-        user={user}
-        onWithdrawSuccess={handleWithdrawSuccess}
-      />
     </div>
   );
 }

@@ -40,7 +40,11 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
 
     const currentStatus = detailedOrder?.status || order.status
     const deliveredAt = detailedOrder?.deliveredAt
-    const status = statusOrder[currentStatus] || statusOrder[order.status]
+    let status = statusOrder[currentStatus] || statusOrder[order.status]
+    const refundDetails = detailedOrder?.refundDetails || order.refundDetails
+    if (currentStatus === 'cancelled' && refundDetails?.status === 'pending') {
+        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
+    }
 
     let isWithin5Hours = true
     if (deliveredAt) {
@@ -181,7 +185,8 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                 <span>Thanh toán</span>
                             </div>
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' : 
+                                 detailedOrder.payment?.paymentStatus === 'refunded' ? (refundDetails?.status === 'pending' ? 'Chờ hoàn tiền' : 'Đã hoàn tiền') : 'Chưa thanh toán'}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-foreground">
