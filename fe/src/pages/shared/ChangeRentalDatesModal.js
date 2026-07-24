@@ -27,7 +27,7 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
         const end = new Date(newEndDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        if (start < today || end <= start) return null;
+        if (start < today || end < start) return null;
 
         const rentalDays = getRentalDays(newStartDate, newEndDate);
         const priceFactor = getRentalPriceFactor(rentalDays);
@@ -102,8 +102,8 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
             setError("Ngày lấy mới không được ở trong quá khứ.");
             return false;
         }
-        if (end <= start) {
-            setError("Ngày trả phải sau ngày lấy.");
+        if (end < start) {
+            setError("Ngày trả phải từ ngày lấy trở đi.");
             return false;
         }
 
@@ -291,7 +291,7 @@ export function ChangeRentalDatesModal({ order, onClose, onUpdate }) {
                     <button
                         onClick={handleSubmit}
                         className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] text-white text-sm font-semibold hover:bg-[#333] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={loading || !newStartDate || !newEndDate || (new Date(newEndDate) <= new Date(newStartDate))}
+                        disabled={loading || !newStartDate || !newEndDate || (new Date(newEndDate) < new Date(newStartDate))}
                     >
                         {loading && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
                         {difference > 0 ? "Xác nhận đã thanh toán" : "Cập nhật"}
