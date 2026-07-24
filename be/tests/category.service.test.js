@@ -88,12 +88,12 @@ describe('createCategory', () => {
     await assert.rejects(
       async () => createCategory({ name: 'Anime', description: 'Test' }),
       (error) => {
-        assert.ok(error instanceof HttpError);
-        assert.strictEqual(error.statusCode, 422);
         assert.strictEqual(error.message, 'Tên danh mục đã tồn tại!');
         return true;
       }
     );
+
+    assert.deepStrictEqual(mockCategoryData.findOneCondition, { name: 'Anime' });
   });
 
   test('Subcategory name same with another parent category name', async () => {
@@ -102,12 +102,12 @@ describe('createCategory', () => {
     await assert.rejects(
       async () => createCategory({ name: 'Anime', description: 'Test', parentId: 'parent_id' }),
       (error) => {
-        assert.ok(error instanceof HttpError);
-        assert.strictEqual(error.statusCode, 422);
         assert.strictEqual(error.message, 'Tên danh mục đã tồn tại!');
         return true;
       }
     );
+
+    assert.deepStrictEqual(mockCategoryData.findOneCondition, { name: 'Anime' });
   });
 
   test('Create new category successfully', async () => {

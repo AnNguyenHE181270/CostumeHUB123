@@ -92,18 +92,19 @@ const sendCancelOtp = async (req, res, next) => {
       // Send email
       await sendEmail({
           to: user.email,
-          subject: "Mã OTP Xác Nhận Hủy Đơn & Hoàn Tiền - CostumeHUB",
-          html: `
-              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                  <h2>Xác Nhận Hủy Đơn & Hoàn Tiền</h2>
-                  <p>Chào ${user.fullName},</p>
+          subject: "CostumeHUB — Mã OTP xác nhận hủy đơn & hoàn tiền",
+          text: `Chào ${user.fullName}, mã OTP xác nhận hủy đơn & hoàn tiền của bạn là: ${otpCode}. Mã có hiệu lực trong 5 phút.`,
+          html: sendEmail.renderEmailHtml({
+              heading: 'Xác nhận hủy đơn & hoàn tiền',
+              bodyHtml: `
                   <p>Bạn đã yêu cầu hủy đơn hàng và hoàn tiền tại CostumeHUB. Vui lòng sử dụng mã OTP dưới đây để xác nhận:</p>
-                  <h1 style="color: #4CAF50; font-size: 32px; letter-spacing: 5px;">${otpCode}</h1>
-                  <p>Mã này có hiệu lực trong 5 phút.</p>
-                  <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ ngay lập tức.</p>
-                  <p>Trân trọng,<br/>Đội ngũ CostumeHUB</p>
-              </div>
-          `
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+                    <tr><td style="background:#f4f4f4; padding:16px 24px; border-radius:6px; font-size:32px; font-weight:700; letter-spacing:8px; color:#111111;">${otpCode}</td></tr>
+                  </table>
+                  <p>Mã này có hiệu lực trong <b>5 phút</b>.</p>
+              `,
+              footerNote: 'Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ ngay lập tức.',
+          }),
       });
 
       return res.status(200).json({ success: true, message: "Mã OTP đã được gửi đến email của bạn" });
@@ -200,7 +201,7 @@ const requestReturn = async (req, res, next) => {
 
 const inspectReturn = async (req, res, next) => {
   try {
-    const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || []);
+    const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || [], req.userData.id);
     res.status(200).json({ message: 'Kiểm tra và khấu trừ cọc thành công', data: result });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi kiểm tra đồ', 500));

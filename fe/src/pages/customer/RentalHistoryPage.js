@@ -7,12 +7,13 @@ import OrderCard from '../../components/customer/OrderCard'
 import { OrderDetail } from './RentalDetail'
 import { CancelOrderModal } from './CancelRentalModal'
 import { OrderTrackingModal } from './OrderTrackingModal'
-import { tabs } from '../../constants/statusOrder'
+import { tabs, isReturnRefundOrder } from '../../constants/statusOrder'
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import { IssuesModal } from "./IssuesPage"
 import { faBox, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import rentalService from '../../services/rental.service'
 import Pagination from '../../components/ui/Pagination'
+import ConfirmModal from '../../components/ui/ConfirmModal'
 
 function RentalHistory() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +26,7 @@ function RentalHistory() {
     const [extendOrderTarget, setExtendOrderTarget] = useState(null);
     const [cancelOrderTarget, setCancelOrderTarget] = useState(null);
     const [trackingOrderTarget, setTrackingOrderTarget] = useState(null);
+    const [returnConfirmTarget, setReturnConfirmTarget] = useState(null);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isIssuesOpen, setIsIssuesOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +43,15 @@ function RentalHistory() {
             setActiveTab(status);
         }
     }, [searchParams]);
+
+    // Hỗ trợ deep-link từ email (?order=<id>) — tự động mở đúng panel chi tiết đơn hàng khi khách
+    // bấm nút CTA trong mail, không cần tự tìm lại đơn trong danh sách.
+    useEffect(() => {
+        const orderIdParam = searchParams.get("order");
+        if (!orderIdParam || rentalOrders.length === 0 || selectedOrder) return;
+        const match = rentalOrders.find((o) => o.id === orderIdParam);
+        if (match) setSelectedOrder(match);
+    }, [rentalOrders, searchParams, selectedOrder]);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
@@ -69,11 +80,29 @@ function RentalHistory() {
         fetchOrders();
     }, []);
 
+    // "Đang giao đến bạn" gồm cả 'delivering' lẫn 'delivered' — đơn đã được giao vẫn tính là "đang
+    // giao" cho tới khi CHÍNH khách bấm "Đã nhận hàng" (hoặc tự động sau 5 tiếng) mới thật sự
+    // chuyển sang "Đang thuê". "Đang thuê" chỉ còn tính đúng status='renting' thuần.
     const filteredOrders = activeTab === "all"
         ? rentalOrders
-        : activeTab === "renting"
-            ? rentalOrders.filter(order => ["delivered", "renting"].includes(order.status))
-            : rentalOrders.filter(order => order.status === activeTab)
+        : activeTab === "delivering"
+            ? rentalOrders.filter(order => ["delivering", "delivered"].includes(order.status))
+            : activeTab === "renting"
+                ? rentalOrders.filter(order => order.status === "renting")
+                : activeTab === "return_refund"
+                    ? rentalOrders.filter(isReturnRefundOrder)
+                    // "Đã thuê" chỉ tính đơn hoàn tất qua luồng thuê-trả BÌNH THƯỜNG — đơn hoàn tất do
+                    // khiếu nại/hoàn tiền dù rental.status cũng là 'completed' vẫn thuộc về tab "Trả hàng"
+                    // duy nhất, không hiện lặp ở cả 2 nơi.
+                    : activeTab === "completed"
+                        ? rentalOrders.filter(order => order.status === "completed" && !isReturnRefundOrder(order))
+                        // "Đang trả hàng" chỉ dành cho đơn trả hàng BÌNH THƯỜNG (không khiếu nại) — đơn có
+                        // khiếu nại trả hàng/hoàn tiền dù rental.status cũng đang là 'returning' vẫn thuộc
+                        // riêng về tab "Trả hàng" (khách chỉ cần biết đã gửi yêu cầu, không cần thấy nhảy
+                        // qua "Đang trả hàng" nữa — trạng thái vật lý chi tiết đó chỉ staff mới cần xem).
+                        : activeTab === "returning"
+                            ? rentalOrders.filter(order => order.status === "returning" && !isReturnRefundOrder(order))
+                            : rentalOrders.filter(order => order.status === activeTab)
 
     const totalCount = filteredOrders.length;
     const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -83,8 +112,18 @@ function RentalHistory() {
 
     const getOrderCount = (status) => {
         if (status === "all") return rentalOrders.length
+        if (status === "delivering") {
+            return rentalOrders.filter(order => ["delivering", "delivered"].includes(order.status)).length
+        }
         if (status === "renting") {
-            return rentalOrders.filter(order => ["delivered", "renting"].includes(order.status)).length
+            return rentalOrders.filter(order => order.status === "renting").length
+        }
+        if (status === "return_refund") return rentalOrders.filter(isReturnRefundOrder).length
+        if (status === "completed") {
+            return rentalOrders.filter(order => order.status === "completed" && !isReturnRefundOrder(order)).length
+        }
+        if (status === "returning") {
+            return rentalOrders.filter(order => order.status === "returning" && !isReturnRefundOrder(order)).length
         }
         return rentalOrders.filter(order => order.status === status).length
     }
@@ -121,8 +160,14 @@ function RentalHistory() {
         setSelectedOrder(null);
     };
 
-    const handleRequestReturn = async (order) => {
-        if (!window.confirm("Bạn có chắc muốn gửi yêu cầu trả hàng?")) return;
+    const handleRequestReturn = (order) => {
+        setReturnConfirmTarget(order);
+    };
+
+    const confirmRequestReturn = async () => {
+        const order = returnConfirmTarget;
+        if (!order) return;
+        setReturnConfirmTarget(null);
         try {
             await rentalService.requestReturn(order.id);
             showToast("Đã gửi yêu cầu trả hàng thành công!", "success");
@@ -357,6 +402,15 @@ function RentalHistory() {
                 open={!!trackingOrderTarget}
                 onOpenChange={(val) => { if (!val) setTrackingOrderTarget(null) }}
                 order={trackingOrderTarget}
+            />
+
+            <ConfirmModal
+                isOpen={!!returnConfirmTarget}
+                title="Xác nhận trả hàng"
+                message="Bạn có chắc muốn gửi yêu cầu trả hàng cho đơn này?"
+                onConfirm={confirmRequestReturn}
+                onCancel={() => setReturnConfirmTarget(null)}
+                zIndex="z-[9990]"
             />
 
             <ExtendRentalModal

@@ -57,9 +57,62 @@ const pickAvailableInstances = (variant, count) => {
   return free.slice(0, count);
 };
 
+// Gán N unit rảnh cho 1 đơn thuê: đánh dấu 'rented' và trả về danh sách unitCode để lưu vào
+// rental.items[].instanceCodes — nhờ đó hủy đơn/trả hàng/khiếu nại nhả ra ĐÚNG unit đã cho thuê.
+// Trả về null nếu không đủ hàng (caller tự báo lỗi với message phù hợp ngữ cảnh).
+const markInstancesRented = (variant, count) => {
+  backfillInstancesFromCounts(variant);
+  const picked = pickAvailableInstances(variant, count);
+  if (!picked) return null;
+  picked.forEach((inst) => { inst.status = 'rented'; });
+  syncVariantFromInstances(variant);
+  return picked.map((inst) => inst.unitCode);
+};
+
+// Nhả unit đã cho thuê về kho (hủy đơn: 'available' / trả hàng, khiếu nại: 'maintenance' /
+// khách làm mất-hỏng toàn bộ: 'retired'). Ưu tiên nhả đúng các unitCode đã gán cho đơn;
+// đơn cũ chưa có instanceCodes thì fallback nhả các unit 'rented' cũ nhất cho đủ số lượng.
+const releaseRentedInstances = (variant, unitCodes, quantity, toStatus = 'available') => {
+  backfillInstancesFromCounts(variant);
+  let released = 0;
+  if (Array.isArray(unitCodes) && unitCodes.length > 0) {
+    variant.instances.forEach((inst) => {
+      if (unitCodes.includes(inst.unitCode) && inst.status === 'rented') {
+        inst.status = toStatus;
+        released += 1;
+      }
+    });
+  }
+  if (released < quantity) {
+    variant.instances
+      .filter((i) => i.status === 'rented')
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(0, quantity - released)
+      .forEach((inst) => { inst.status = toStatus; released += 1; });
+  }
+  syncVariantFromInstances(variant);
+  return released;
+};
+
+// Tính lại status tổng của costume từ các variant — dùng chung cho MỌI luồng (thuê, trả,
+// khiếu nại, bảo trì, nhập/xuất kho) để không còn mỗi nơi tự suy một kiểu. 'hidden' là
+// trạng thái khoá thủ công của chủ shop nên không bao giờ bị ghi đè tự động.
+const syncCostumeStatusFromVariants = (costume) => {
+  if (costume.status === 'hidden') return;
+  const hasAvailable = costume.variants.some(
+    (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
+  );
+  const hasMaintenance = costume.variants.some(
+    (v) => v.status === 'maintenance' || (v.instances || []).some((i) => i.status === 'maintenance')
+  );
+  if (hasAvailable) costume.status = 'available';
+  else if (hasMaintenance) costume.status = 'maintenance';
+  else costume.status = 'out_of_stock';
+};
+
 const getAllCostumes = async (query) => {
   const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = query;
-  
+
   // By default, exclude hidden costumes unless 'hidden' is explicitly requested
   let includeHidden = false;
   if (status) {
@@ -169,6 +222,20 @@ const getAllCostumes = async (query) => {
   };
 };
 
+// Danh sách kho cho trang quản trị — KHÁC getAllCostumes (dành cho khách duyệt shop):
+// không kẹp limit 50, không loại sản phẩm 'hidden', không lọc theo danh mục đang active,
+// để chủ shop luôn kiểm kê được toàn bộ hàng vật lý đang có trong kho.
+const getInventoryCostumes = async (query = {}) => {
+  // Sản phẩm đã ẩn (status='hidden') không còn bán/cho thuê nữa -> không tính vào kho quản lý tồn
+  // (chủ shop không cần theo dõi tồn kho của cái đã ẩn khỏi web nữa).
+  const filter = { status: { $ne: 'hidden' } };
+  if (query.search) filter.name = { $regex: query.search, $options: 'i' };
+  const costumes = await Costume.find(filter)
+    .populate('categoryId', 'name')
+    .sort({ createdAt: -1 });
+  return { costumes };
+};
+
 const getCostumeById = async (id) => {
   const costume = await Costume.findById(id).populate('categoryId', 'name');
   if (!costume) throw new HttpError('Costume not found.', 404);
@@ -211,9 +278,12 @@ const createCostume = async (data, userId) => {
   return newCostume;
 };
 
-const updateCostume = async (id, data) => {
+const updateCostume = async (id, data, userId) => {
   const costume = await Costume.findById(id);
   if (!costume) throw new HttpError('Costume not found.', 404);
+  // Mọi thay đổi tồn kho qua form sửa sản phẩm cũng phải để lại vết trong lịch sử Nhập/Xuất
+  // (stock_correction_*) — nếu không, lịch sử kho sẽ không khớp với biến động tồn thực tế.
+  const stockAdjustments = [];
 
   const fields = [
     'name', 'slug', 'sku', 'categoryId', 'description', 'images',
@@ -254,11 +324,31 @@ const updateCostume = async (id, data) => {
             .forEach((inst) => { inst.status = 'retired'; });
         }
         syncVariantFromInstances(variant);
+        if (diff !== 0) {
+          stockAdjustments.push({
+            size: variant.size,
+            type: diff > 0 ? 'in' : 'out',
+            reason: diff > 0 ? 'stock_correction_in' : 'stock_correction_out',
+            quantity: Math.abs(diff),
+            beforeStock: oldTotal,
+            afterStock: variant.totalStock,
+          });
+        }
         return variant;
       }
       const variant = { ...incoming, availableStock: 0, totalStock: 0, instances: [] };
       addInstances(variant, incoming.totalStock || 0);
       syncVariantFromInstances(variant);
+      if ((variant.totalStock || 0) > 0) {
+        stockAdjustments.push({
+          size: variant.size,
+          type: 'in',
+          reason: 'purchase_new',
+          quantity: variant.totalStock,
+          beforeStock: 0,
+          afterStock: variant.totalStock,
+        });
+      }
       return variant;
     });
     costume.variants = newVariants;
@@ -275,6 +365,19 @@ const updateCostume = async (id, data) => {
   }
 
   await costume.save();
+
+  if (userId && stockAdjustments.length > 0) {
+    const StockTransaction = require('../models/stockTransaction.model');
+    await StockTransaction.insertMany(
+      stockAdjustments.map((adj) => ({
+        costumeId: costume._id,
+        ...adj,
+        note: 'Điều chỉnh từ form sửa sản phẩm',
+        performedBy: userId,
+      }))
+    );
+  }
+
   return costume;
 };
 
@@ -340,18 +443,7 @@ const completeMaintenance = async (id, size, unitCode) => {
   }
 
   // Cập nhật lại status costume tổng thể
-  const hasMaintenance = costume.variants.some((v) => v.status === 'maintenance');
-  const hasAvailable = costume.variants.some(
-    (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
-  );
-
-  if (hasAvailable) {
-    costume.status = 'available';
-  } else if (hasMaintenance) {
-    costume.status = 'maintenance';
-  } else {
-    costume.status = 'out_of_stock';
-  }
+  syncCostumeStatusFromVariants(costume);
 
   await costume.save();
   return costume;
@@ -359,16 +451,20 @@ const completeMaintenance = async (id, size, unitCode) => {
 
 module.exports = {
   getAllCostumes,
+  getInventoryCostumes,
   getCostumeById,
   createCostume,
   updateCostume,
   deleteCostume,
   getMaintenanceCostumes,
   completeMaintenance,
-  // Instance helpers — dùng lại ở rental.service.js và stockTransaction.service.js
+  // Instance helpers — dùng lại ở rental.service.js, issue.service.js và stockTransaction.service.js
   generateUnitCode,
   syncVariantFromInstances,
   addInstances,
   pickAvailableInstances,
   backfillInstancesFromCounts,
+  markInstancesRented,
+  releaseRentedInstances,
+  syncCostumeStatusFromVariants,
 };

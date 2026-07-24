@@ -4,10 +4,16 @@ const Rental = require('../models/rental.model');
 const HttpError = require('../models/http-error.model');
 const { uploadIssueMedia } = require('./cloudinary.service');
 const User = require('../models/user.model');
-const Costume = require('../models/costume.model');
 const sendEmail = require('./email.service');
 const notificationService = require('./notification.service');
-const { syncVariantFromInstances, backfillInstancesFromCounts } = require('./costume.service');
+const { buildOrderLink, notifyOrderStatus, inspectReturn } = require('./rental.service');
+
+// Thời hạn khách được phép gửi khiếu nại kể từ lúc đơn bắt đầu 'renting' — CỐ Ý tách riêng khỏi
+// hằng số 5 tiếng dùng cho auto-confirm-đã-nhận-hàng (autoUpdateDeliveredStatus trong rental.service.js),
+// vì đây là 2 chính sách hoàn toàn khác nhau (1 cái xác nhận đã giao hàng, 1 cái là hạn khiếu nại/đổi trả).
+// TODO xác nhận lại với chủ shop: 3 tiếng là rất ngắn so với chính sách đổi trả thông thường (thường
+// tính bằng ngày) — cân nhắc tăng lên nếu chủ shop muốn khách có nhiều thời gian phát hiện lỗi hơn.
+const ISSUE_REPORT_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
   const cleanupFiles = () => {
@@ -48,11 +54,10 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
   }
 
   if (rental.rentingAt) {
-    const threeHoursMs = 3 * 60 * 60 * 1000;
-    // Dùng ">" vì chúng ta muốn NÉM LỖI (chặn) khi thời gian đã vượt quá 3 tiếng
-    if (Date.now() - new Date(rental.rentingAt).getTime() > threeHoursMs) {
+    // Dùng ">" vì chúng ta muốn NÉM LỖI (chặn) khi thời gian đã vượt quá hạn khiếu nại
+    if (Date.now() - new Date(rental.rentingAt).getTime() > ISSUE_REPORT_WINDOW_MS) {
       cleanupFiles();
-      throw new HttpError('Đơn hàng đã quá hạn hoàn trả (tối đa 3 tiếng kể từ khi bắt đầu thuê).', 400);
+      throw new HttpError(`Đơn hàng đã quá hạn khiếu nại (tối đa ${ISSUE_REPORT_WINDOW_MS / 3600000} tiếng kể từ khi bắt đầu thuê).`, 400);
     }
   }
 
@@ -78,6 +83,16 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
 
   const newIssue = new Issue({ rentalId, reason, resolution, evidence: evidenceUrls, note: note || '' });
   await newIssue.save();
+
+  // Khách bấm gửi khiếu nại (trả hàng/hoàn tiền) -> đơn vào 'returning' NGAY, không đợi shop duyệt.
+  // 'returning' chỉ là cờ vật lý "đơn đang cần xử lý trả hàng" — giống hệt khi khách bấm "Yêu cầu
+  // trả hàng" bình thường (requestReturn). Nếu sau đó shop từ chối khiếu nại, handleIssue() sẽ trả
+  // đơn về 'renting'. Không ảnh hưởng tồn kho — instances[] chỉ được thu hồi ở inspectReturn.
+  rental.status = 'returning';
+  await rental.save();
+  const { notifyOrderStatus } = require('./rental.service');
+  await notifyOrderStatus(rental, 'returning');
+
   return newIssue;
 };
 
@@ -111,11 +126,17 @@ const cancelIssue = async (id, userId) => {
   return issue;
 };
 
-const getAllIssues = async (query) => {
+const getAllIssues = async (query, userRole) => {
   const { status } = query || {};
   const filter = {};
   if (status && status !== 'all') {
     filter.status = status;
+  }
+  // Owner chỉ thấy khiếu nại staff đã đẩy lên (escalatedAt có giá trị, dù status hiện tại đã
+  // accepted/rejected sau khi owner xử lý) — khiếu nại staff tự xử lý trực tiếp (không escalate)
+  // không hiển thị ở owner, tránh làm phiền owner với những việc staff đã tự lo được.
+  if (userRole === 'owner') {
+    filter.escalatedAt = { $ne: null };
   }
   return Issue.find(filter)
     .populate({
@@ -156,97 +177,59 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     }
   }
 
-  // Tải bằng chứng chụp bởi nhân viên / chủ cửa hàng
-  const evidenceUrls = [];
-  for (const file of files) {
-    try {
-      const url = await uploadIssueMedia(file.path);
-      evidenceUrls.push(url);
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-    } catch (uploadError) {
-      console.error('Lỗi khi tải lên Cloudinary:', uploadError);
-      cleanupFiles();
-      throw new HttpError('Có lỗi xảy ra khi tải ảnh/video lên đám mây.', 500);
-    }
-  }
-
-  const { notifyOrderStatus } = require('./rental.service');
-
   if (action === 'escalate') {
     if (userRole !== 'staff') {
       throw new HttpError('Chỉ nhân viên mới có quyền đẩy khiếu nại lên chủ cửa hàng.', 403);
     }
+    // Tải bằng chứng nhân viên chụp lúc nhận lại đồ (nếu có) — CHỈ escalate/reject mới cần bằng
+    // chứng ngay lúc này; accept không thu thập ảnh ở bước này nữa (xem comment ở nhánh accept).
+    const evidenceUrls = [];
+    for (const file of files) {
+      try {
+        const url = await uploadIssueMedia(file.path);
+        evidenceUrls.push(url);
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error('Lỗi khi tải lên Cloudinary:', uploadError);
+        cleanupFiles();
+        throw new HttpError('Có lỗi xảy ra khi tải ảnh/video lên đám mây.', 500);
+      }
+    }
     issue.status = 'escalated';
-    issue.rejectEvidence = evidenceUrls; // Lưu hình ảnh/video khi nhận lại đồ từ khách hàng
+    issue.rejectEvidence = evidenceUrls;
+    issue.escalatedAt = new Date();
     await issue.save();
     return issue;
   }
 
   if (action === 'accept') {
-    // 1. Hoàn tiền cọc và tiền thuê (thực hiện offline hoặc VNPAY)
-    const user = await User.findById(rental.customerId);
-    if (user) {
+    if (['completed', 'cancelled'].includes(rental.status)) {
+      cleanupFiles();
+      throw new HttpError('Đơn hàng đã kết thúc, không thể xử lý khiếu nại này.', 400);
     }
-
-    // 2. Thu hồi unit vật lý đã gán cho đơn này — khiếu nại đã được chấp nhận nghĩa là sản phẩm
-    // có vấn đề (hư hỏng/khiếu nại), nên đưa vào 'maintenance' để staff kiểm tra trước khi cho thuê lại,
-    // không trả thẳng về 'available' như luồng trả hàng bình thường không có khiếu nại.
-    for (const item of rental.items) {
-      const costume = await Costume.findById(item.costume);
-      if (costume) {
-        const variant = costume.variants.find((v) => v.size === item.size);
-        if (variant) {
-          backfillInstancesFromCounts(variant);
-          if (item.instanceCodes && item.instanceCodes.length > 0) {
-            variant.instances.forEach((inst) => {
-              if (item.instanceCodes.includes(inst.unitCode) && inst.status === 'rented') {
-                inst.status = 'maintenance';
-              }
-            });
-          } else {
-            variant.instances
-              .filter((i) => i.status === 'rented')
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-              .slice(0, item.quantity)
-              .forEach((inst) => { inst.status = 'maintenance'; });
-          }
-          syncVariantFromInstances(variant);
-        }
-
-        // Cập nhật lại status costume tổng thể: còn ít nhất 1 biến thể sẵn sàng -> available;
-        // nếu không, còn biến thể đang bảo trì -> maintenance; ngược lại -> out_of_stock.
-        const hasAvailableVariant = costume.variants.some(
-          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
-        );
-        const hasMaintenanceVariant = costume.variants.some((v) => v.status === 'maintenance');
-        if (hasAvailableVariant) {
-          costume.status = 'available';
-        } else if (hasMaintenanceVariant) {
-          costume.status = 'maintenance';
-        } else {
-          costume.status = 'out_of_stock';
-        }
-
-        await costume.save();
-      }
-    }
+    // "Đồng ý" nghĩa là cửa hàng CHẤP NHẬN khiếu nại và coi như đã nhận lại hàng để hoàn tiền luôn —
+    // KHÔNG còn park ở 'returning' chờ 1 bước "Kiểm tra đồ trả" riêng nữa (thiết kế cũ khiến đơn có
+    // thể bị kẹt vĩnh viễn ở 'returning' nếu không ai nhớ vào kiểm tra tay). Gọi thẳng inspectReturn()
+    // với damageTier mặc định 'none' (không trừ hư hỏng) — nó tự nhận diện đơn có khiếu nại 'accepted'
+    // để áp đúng chính sách "hoàn cả tiền thuê + tiền cọc, không tính phí trễ hạn", và lo luôn việc
+    // nhả instance kho + đổi rental.status thẳng sang 'completed'.
+    cleanupFiles();
 
     issue.status = 'accepted';
     await issue.save();
 
-    rental.status = 'completed';
-    rental.paymentStatus = 'refunded';
-    rental.refundAmount = rental.totalAmount;
+    rental.status = 'returning';
     await rental.save();
-    await notifyOrderStatus(rental, 'completed');
+    await inspectReturn(rental._id, { damageTier: 'none', damagePercent: 0, actualReturnDate: new Date() }, [], userId);
 
+    const user = await User.findById(rental.customerId);
     try {
       await notificationService.createNotification({
         userId: rental.customerId,
-        type: 'issue_refund_accepted',
+        type: 'issue_accepted_awaiting_return',
         title: `Khiếu nại đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
-        message: `Đơn của bạn đã được chấp nhận hoàn tiền. Số tiền ${rental.totalAmount.toLocaleString('vi-VN')}đ đã được hoàn vào ví của bạn.`,
-        link: '/user/transactions',
+        message: 'Cửa hàng đã chấp nhận khiếu nại của bạn và xử lý hoàn tất. Tiền thuê và tiền cọc sẽ được hoàn qua chuyển khoản trong thời gian sớm nhất.',
+        link: '/rental-history',
         relatedId: rental._id,
       });
     } catch (notifyError) {
@@ -258,9 +241,19 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
       if (user?.email) {
         await sendEmail({
           to: user.email,
-          subject: 'CostumeHUB — Khiếu nại đơn hàng đã được chấp nhận',
-          text: `Chào ${user.fullName},\n\nKhiếu nại cho đơn hàng ${rental._id} của bạn đã được chấp nhận. Hệ thống đã hoàn trả đầy đủ ${rental.totalAmount.toLocaleString('vi-VN')} đ (bao gồm cả tiền cọc và tiền thuê) vào tài khoản ví của bạn.`,
-          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Khiếu nại cho đơn hàng <b>${rental._id}</b> của bạn đã được chấp nhận.</p><p>Hệ thống đã hoàn trả đầy đủ <b>${rental.totalAmount.toLocaleString('vi-VN')} đ</b> (bao gồm tiền cọc và tiền thuê) vào tài khoản ví của bạn.</p>`,
+          subject: `CostumeHUB — Khiếu nại đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} đã được chấp nhận`,
+          text: `Chào ${user.fullName}, khiếu nại cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} của bạn đã được chấp nhận và xử lý hoàn tất. Chúng tôi sẽ hoàn trả đầy đủ tiền thuê và tiền cọc qua tài khoản ngân hàng của bạn trong thời gian sớm nhất.`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Khiếu nại của bạn đã được chấp nhận và xử lý hoàn tất',
+            badgeText: 'Đã chấp nhận',
+            badgeColor: 'success',
+            bodyHtml: `
+              <p>Khiếu nại cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> của bạn đã được cửa hàng chấp nhận và xử lý hoàn tất.</p>
+              <p>Chúng tôi sẽ hoàn trả đầy đủ <b>tiền thuê và tiền cọc</b> qua tài khoản ngân hàng của bạn trong thời gian sớm nhất.</p>
+            `,
+            ctaText: 'Xem đơn hàng',
+            ctaUrl: buildOrderLink(rental._id, 'return_refund'),
+          }),
         });
       }
     } catch (mailError) {
@@ -268,6 +261,20 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     }
 
     return issue;
+  }
+
+  // Tải bằng chứng chụp bởi nhân viên / chủ cửa hàng (nhánh reject)
+  const evidenceUrls = [];
+  for (const file of files) {
+    try {
+      const url = await uploadIssueMedia(file.path);
+      evidenceUrls.push(url);
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    } catch (uploadError) {
+      console.error('Lỗi khi tải lên Cloudinary:', uploadError);
+      cleanupFiles();
+      throw new HttpError('Có lỗi xảy ra khi tải ảnh/video lên đám mây.', 500);
+    }
   }
 
   if (action === 'reject') {
@@ -290,12 +297,23 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
     const user = await User.findById(rental.customerId);
     try {
       if (user?.email) {
-        const mediaList = evidenceUrls.map(url => `<li><a href="${url}">${url.endsWith('.mp4') ? 'Xem Video' : 'Xem Ảnh'}</a></li>`).join('');
+        const mediaList = evidenceUrls.map(url => `<li><a href="${url}" style="color:#111111;">${url.endsWith('.mp4') ? 'Xem Video' : 'Xem Ảnh'}</a></li>`).join('');
         await sendEmail({
           to: user.email,
-          subject: 'CostumeHUB — Khiếu nại đơn hàng bị từ chối',
-          text: `Chào ${user.fullName},\n\nKhiếu nại cho đơn hàng ${rental._id} của bạn đã bị từ chối.\nLý do từ chối: ${rejectReason}\nBằng chứng đính kèm: ${evidenceUrls.join(', ')}`,
-          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Khiếu nại cho đơn hàng <b>${rental._id}</b> của bạn đã bị từ chối.</p><p>Lý do từ chối: <span style="color:red">${rejectReason}</span></p><p>Bằng chứng đính kèm từ cửa hàng:</p><ul>${mediaList}</ul>`,
+          subject: `CostumeHUB — Khiếu nại đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} bị từ chối`,
+          text: `Chào ${user.fullName}, khiếu nại cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} của bạn đã bị từ chối. Lý do: ${rejectReason}. Bằng chứng đính kèm: ${evidenceUrls.join(', ')}`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Khiếu nại của bạn đã bị từ chối',
+            badgeText: 'Bị từ chối',
+            badgeColor: 'danger',
+            bodyHtml: `
+              <p>Khiếu nại cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> của bạn đã bị từ chối.</p>
+              <p>Lý do từ chối: <b>${rejectReason}</b></p>
+              ${mediaList ? `<p>Bằng chứng đính kèm từ cửa hàng:</p><ul style="padding-left:20px;">${mediaList}</ul>` : ''}
+            `,
+            ctaText: 'Xem đơn hàng',
+            ctaUrl: buildOrderLink(rental._id, 'renting'),
+          }),
         });
       }
     } catch (mailError) {

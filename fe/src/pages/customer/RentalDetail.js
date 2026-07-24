@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faCalendarDays, faMapMarkerAlt, faCreditCard, faClock, faUser, faFileLines, faTruck, faCircleXmark, faExclamationCircle, faLocationDot } from "@fortawesome/free-solid-svg-icons"
-import { statusOrder } from "../../constants/statusOrder"
+import { getOrderStatusLabel } from "../../constants/statusOrder"
 import { PAYMENT_METHOD_LABELS } from "../../constants/paymentMethod"
 import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { OrderTrackingModal } from "./OrderTrackingModal"
@@ -39,20 +39,19 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
     if (!order || !open) return null
 
     const currentStatus = detailedOrder?.status || order.status
-    const deliveredAt = detailedOrder?.deliveredAt
-    let status = statusOrder[currentStatus] || statusOrder[order.status]
+    const currentIssue = detailedOrder?.hasIssue
+        ? { status: detailedOrder.issueStatus, resolution: detailedOrder.issueResolution }
+        : order.issue
+    let status = getOrderStatusLabel({ status: currentStatus, issue: currentIssue })
     const refundDetails = detailedOrder?.refundDetails || order.refundDetails
     if (currentStatus === 'cancelled' && refundDetails?.status === 'pending') {
         status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
     }
-
-    let isWithin5Hours = true
-    if (deliveredAt) {
-        const deliveredTime = new Date(deliveredAt).getTime()
-        const now = Date.now()
-        const hoursDiff = (now - deliveredTime) / (1000 * 60 * 60)
-        isWithin5Hours = hoursDiff < 5
-    }
+    // Đơn trả hàng/hoàn tiền do khiếu nại ĐÃ được xử lý xong (status='completed' — staff đã kiểm tra
+    // đồ trả ở inspectReturn) coi như đã kết thúc trọn vẹn với khách hàng — không hiện "Chờ hoàn tiền"
+    // gây hiểu lầm là chưa xong nữa (refundDetails.status='pending' lúc này chỉ còn là việc NỘI BỘ
+    // của cửa hàng — chờ owner tự tay xác nhận đã chuyển khoản — khách không cần thấy trạng thái đó).
+    const isCompletedReturnRefund = currentStatus === 'completed' && currentIssue?.resolution === 'return_refund'
 
     let isWithin3HoursRenting = true
     const rentingAt = detailedOrder?.rentingAt || order?.rentingAt
@@ -185,8 +184,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                 <span>Thanh toán</span>
                             </div>
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' : 
-                                 detailedOrder.payment?.paymentStatus === 'refunded' ? (refundDetails?.status === 'pending' ? 'Chờ hoàn tiền' : 'Đã hoàn tiền') : 'Chưa thanh toán'}
+                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                                    detailedOrder.payment?.paymentStatus === 'refunded'
+                                        ? (isCompletedReturnRefund || refundDetails?.status !== 'pending' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền')
+                                        : 'Chưa thanh toán'}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-foreground">
@@ -215,11 +216,73 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                         </div>
                     </div>
 
+                    {/* Phí trễ hạn ƯỚC TÍNH — hiện ngay khi đơn còn đang thuê/quá hạn và chưa trả, để
+                        khách biết trước sẽ mất bao nhiêu nếu trả đúng lúc này (số này còn tăng theo
+                        từng ngày trễ thêm, chỉ chốt thật khi trả hàng xong). */}
+                    {['renting', 'overdue'].includes(currentStatus) && detailedOrder.estimatedLateFee > 0 && (
+                        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-orange-800">
+                                <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
+                                <span>Phí trễ hạn hiện tại (ước tính)</span>
+                            </div>
+                            <p className="mt-1 text-xs text-orange-700">
+                                Đơn {formatOrderId(order.id)} đã trễ {detailedOrder.estimatedDaysLate} ngày so với hạn trả. Số phí dưới đây sẽ tiếp tục tăng mỗi ngày cho tới khi bạn trả hàng — số tiền chính xác cuối cùng sẽ được chốt khi cửa hàng kiểm tra đồ trả.
+                            </p>
+                            <p className="mt-2 text-lg font-bold text-orange-800">
+                                {formatPrice(detailedOrder.estimatedLateFee)}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Phí đã CHỐT + số tiền hoàn — chỉ hiện khi đơn đã hoàn tất (đã kiểm tra đồ trả
+                        xong), gắn rõ với đúng mã đơn này để khách đối chiếu không nhầm giữa các đơn. */}
+                    {currentStatus === 'completed' && (
+                        <div className="rounded-lg border border-border p-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <FontAwesomeIcon icon={faFileLines} className="h-4 w-4" />
+                                <span>Phí phát sinh & Hoàn tiền — Đơn {formatOrderId(order.id)}</span>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Phí trễ hạn</span>
+                                    <span className={detailedOrder.lateFee > 0 ? "font-medium text-red-600" : "text-foreground"}>
+                                        {detailedOrder.lateFee > 0 ? "-" : ""}{formatPrice(detailedOrder.lateFee)}
+                                    </span>
+                                </div>
+                                {detailedOrder.damageFee > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Phí hư hỏng ({detailedOrder.damagePercent}% cọc)</span>
+                                        <span className="font-medium text-red-600">-{formatPrice(detailedOrder.damageFee)}</span>
+                                    </div>
+                                )}
+                                {detailedOrder.replacementFee > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Phí bồi thường vượt cọc</span>
+                                        <span className="font-medium text-red-600">-{formatPrice(detailedOrder.replacementFee)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between border-t border-border pt-2">
+                                    <span className="font-medium text-foreground">Số tiền hoàn lại cho bạn</span>
+                                    <span className="text-lg font-semibold text-emerald-600">
+                                        {formatPrice(Math.max(0, (detailedOrder.refundAmount || 0) - (detailedOrder.replacementFee || 0)))}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground pt-1">
+                                    {isCompletedReturnRefund || refundDetails?.status === "completed"
+                                        ? "Cửa hàng đã xử lý hoàn tiền cho đơn này."
+                                        : "Yêu cầu hoàn tiền cho đơn này đang chờ cửa hàng xử lý chuyển khoản."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3 pt-4 mt-auto items-center justify-evenly">
 
-                        {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store) */}
-                        {!['renting', 'overdue'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
+                        {/* Theo dõi đơn hàng — chỉ hiện khi giao hàng (không phải nhận tại store).
+                            Không hiện cho 'delivered' (đã tới nơi, chỉ cần khách xác nhận), 'completed'
+                            hay 'cancelled' (đơn đã kết thúc, theo dõi vận chuyển không còn ý nghĩa). */}
+                        {!['renting', 'overdue', 'delivered', 'completed', 'cancelled'].includes(currentStatus) && detailedOrder.shippingAddress.addressDetail !== "Nhận tại cửa hàng" && (
                             <button
                                 onClick={() => setIsTrackingOpen(true)}
                                 className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
@@ -240,28 +303,23 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </button>
                         )}
 
-                        {/* Nếu đơn ở trạng thái delivered và trong vòng 5 tiếng */}
-                        {currentStatus === "delivered" && isWithin5Hours && (
-                            <>
-                                <button
-                                    onClick={() => onRequestReturn && onRequestReturn(order)}
-                                    className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
-                                >
-                                    <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
-                                    Hoàn trả hàng
-                                </button>
-                                <button
-                                    onClick={() => onConfirmReceipt && onConfirmReceipt(order)}
-                                    className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
-                                >
-                                    <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
-                                    Đã nhận hàng
-                                </button>
-                            </>
+                        {/* Đơn đã giao — CHỈ còn 1 việc khách cần làm: xác nhận đã nhận hàng. Không cho
+                            "Hoàn trả hàng"/"Trả hàng" ở bước này nữa (chưa xác nhận nhận hàng thì
+                            chưa có gì để trả) — khách xác nhận xong, đơn mới sang 'renting' và lúc
+                            đó mới thấy nút Trả hàng. Không thể trả — sau 5 tiếng đơn tự động sang
+                            'renting' (autoUpdateDeliveredStatus), nút Trả hàng tự xuất hiện lúc đó. */}
+                        {currentStatus === "delivered" && (
+                            <button
+                                onClick={() => onConfirmReceipt && onConfirmReceipt(order)}
+                                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                            >
+                                <FontAwesomeIcon icon={faBox} className="h-4 w-4" />
+                                Đã nhận hàng
+                            </button>
                         )}
 
-                        {/* Trả hàng sau khi sử dụng (renting, overdue) hoặc sau 5 tiếng từ lúc delivered */}
-                        {(['renting', 'overdue'].includes(currentStatus) || (currentStatus === 'delivered' && !isWithin5Hours)) && onRequestReturn && (
+                        {/* Trả hàng sau khi sử dụng (renting, overdue) */}
+                        {['renting', 'overdue'].includes(currentStatus) && onRequestReturn && (
                             <button
                                 onClick={() => onRequestReturn(order)}
                                 className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -284,7 +342,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             </button>
                         )}
 
-                        {((currentStatus === 'renting' && isWithin3HoursRenting && detailedOrder?.shippingAddress?.addressDetail !== "Nhận tại cửa hàng") || detailedOrder?.hasIssue) && (
+                        {/* "Xem đơn hoàn trả" chỉ còn ý nghĩa khi khiếu nại CHƯA xử lý xong hoàn toàn —
+                            đơn đã 'completed' nghĩa là staff đã kiểm tra hàng trả xong, không còn gì
+                            để "xem" nữa, chỉ cần nút Thuê lại ở dưới. */}
+                        {((currentStatus === 'renting' && isWithin3HoursRenting && detailedOrder?.shippingAddress?.addressDetail !== "Nhận tại cửa hàng") || (detailedOrder?.hasIssue && currentStatus !== 'completed')) && (
                             <button
                                 onClick={() => onRequestIssue?.()}
                                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${detailedOrder?.hasIssue

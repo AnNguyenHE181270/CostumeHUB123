@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell, faBoxOpen, faTruck, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faBoxOpen, faTruck, faCircleCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import notificationService from "../../services/notification.service";
 import { formatTime } from "../../utils/formatters";
@@ -14,6 +14,7 @@ const NOTIFICATION_ICON_MAP = {
   order_created: { icon: faBoxOpen, className: "bg-blue-50 text-blue-600" },
   order_status: { icon: faTruck, className: "bg-amber-50 text-amber-600" },
   issue_refund_accepted: { icon: faCircleCheck, className: "bg-emerald-50 text-emerald-600" },
+  issue_accepted_awaiting_return: { icon: faRotateLeft, className: "bg-blue-50 text-blue-600" },
 };
 const DEFAULT_NOTIFICATION_ICON = { icon: faBell, className: "bg-gray-100 text-gray-500" };
 

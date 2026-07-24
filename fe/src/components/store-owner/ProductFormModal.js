@@ -124,7 +124,20 @@ const ProductFormModal = ({
     const newVariants = [...formData.variants];
     newVariants[index] = { ...newVariants[index], [field]: value };
     setFormData(prev => ({ ...prev, variants: newVariants }));
-    setErrors(prev => ({ ...prev, variants: "" }));
+    setErrors(prev => {
+      const copy = { ...prev, variants: "" };
+      if (copy.variantErrors && copy.variantErrors[index]) {
+        const updatedVarErr = { ...copy.variantErrors };
+        const curItemErr = { ...updatedVarErr[index], [field]: "" };
+        if (Object.values(curItemErr).every(val => !val)) {
+          delete updatedVarErr[index];
+        } else {
+          updatedVarErr[index] = curItemErr;
+        }
+        copy.variantErrors = updatedVarErr;
+      }
+      return copy;
+    });
   };
 
   const handleRemoveVariant = (index) => {
@@ -168,8 +181,22 @@ const ProductFormModal = ({
 
     if (formData.variants.length === 0) {
       newErrors.variants = "Vui lòng thêm ít nhất một kích cỡ (Size).";
-    } else if (formData.variants.some(v => !v.size || !v.totalStock || Number(v.totalStock) < 1)) {
-      newErrors.variants = "Cần chọn Size và nhập Số lượng (tối thiểu 1) cho tất cả biến thể.";
+    } else {
+      const vErrors = {};
+      formData.variants.forEach((v, index) => {
+        const itemErr = {};
+        if (!v.size) itemErr.size = "Vui lòng chọn Size.";
+        if (v.totalStock === "" || v.totalStock === null || v.totalStock === undefined || Number(v.totalStock) < 1) {
+          itemErr.totalStock = "Số lượng tối thiểu là 1.";
+        }
+        if (Object.keys(itemErr).length > 0) {
+          vErrors[index] = itemErr;
+        }
+      });
+      if (Object.keys(vErrors).length > 0) {
+        newErrors.variantErrors = vErrors;
+        newErrors.variants = "Vui lòng kiểm tra lại thông tin các biến thể.";
+      }
     }
 
     if (formData.images.length === 0) {
@@ -238,10 +265,7 @@ const ProductFormModal = ({
             <h3 className="text-sm font-semibold text-[#555] uppercase tracking-wider mb-5 border-b border-[#eaeaea] pb-2">Thông tin chung</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
-              <div className="flex flex-col gap-1">
-                <Input label="Tên sản phẩm" name="name" value={formData.name} onChange={handleChange} required />
-                {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
-              </div>
+              <Input label="Tên sản phẩm" name="name" value={formData.name} onChange={handleChange} error={errors.name} required />
               
               <Input label="Slug (đường dẫn)" name="slug" value={formData.slug} onChange={handleChange} />
 
@@ -302,29 +326,27 @@ const ProductFormModal = ({
             <h3 className="text-sm font-semibold text-[#555] uppercase tracking-wider mb-5 border-b border-[#eaeaea] pb-2">Định giá</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
               
-              <div className="flex flex-col gap-1">
-                <Input
-                  label="Giá thuê / ngày (VNĐ)"
-                  name="pricePerDay"
-                  type="number"
-                  min="0"
-                  value={formData.pricePerDay}
-                  onChange={handleChange}
-                />
-                {errors.pricePerDay && <p className="text-red-500 text-xs">{errors.pricePerDay}</p>}
-              </div>
+              <Input
+                label="Giá thuê / ngày (VNĐ)"
+                name="pricePerDay"
+                type="number"
+                min="0"
+                value={formData.pricePerDay}
+                onChange={handleChange}
+                error={errors.pricePerDay}
+                required
+              />
               
-              <div className="flex flex-col gap-1">
-                <Input
-                  label="Tiền cọc ký quỹ (VNĐ)"
-                  name="deposit"
-                  type="number"
-                  min="0"
-                  value={formData.deposit}
-                  onChange={handleChange}
-                />
-                {errors.deposit && <p className="text-red-500 text-xs">{errors.deposit}</p>}
-              </div>
+              <Input
+                label="Tiền cọc ký quỹ (VNĐ)"
+                name="deposit"
+                type="number"
+                min="0"
+                value={formData.deposit}
+                onChange={handleChange}
+                error={errors.deposit}
+                required
+              />
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Phí trễ hẹn / ngày</label>
@@ -382,29 +404,39 @@ const ProductFormModal = ({
                     className="bg-[#faf9f7] border border-[#eaeaea] rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-end gap-4"
                   >
                     <div className="flex flex-col gap-1 flex-1">
-                              <label className="text-xs font-medium text-gray-600">Kích cỡ</label>
+                      <label className="text-xs font-medium text-gray-600">Kích cỡ <span className="text-red-500">*</span></label>
                       <select
                         value={variant.size}
                         onChange={(e) => handleVariantChange(index, "size", e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:border-[#1a1a1a] outline-none text-sm bg-white"
+                        className={`px-3 py-2 border rounded-md outline-none text-sm bg-white transition-colors ${
+                          errors.variantErrors?.[index]?.size ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-[#1a1a1a]"
+                        }`}
                       >
                         <option value="">-- Chọn --</option>
                         {SIZES.map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
+                      {errors.variantErrors?.[index]?.size && (
+                        <p className="text-red-500 text-xs font-medium mt-0.5">{errors.variantErrors[index].size}</p>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-1 flex-1">
-                      <label className="text-xs font-medium text-gray-600">Tổng số lượng</label>
+                      <label className="text-xs font-medium text-gray-600">Tổng số lượng <span className="text-red-500">*</span></label>
                       <input
                         type="number"
                         min="1"
                         value={variant.totalStock}
                         onChange={(e) => handleVariantChange(index, "totalStock", e.target.value)}
                         placeholder="VD: 3"
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:border-[#1a1a1a] outline-none text-sm bg-white"
+                        className={`px-3 py-2 border rounded-md outline-none text-sm bg-white transition-colors ${
+                          errors.variantErrors?.[index]?.totalStock ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-[#1a1a1a]"
+                        }`}
                       />
+                      {errors.variantErrors?.[index]?.totalStock && (
+                        <p className="text-red-500 text-xs font-medium mt-0.5">{errors.variantErrors[index].totalStock}</p>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-1 flex-1">

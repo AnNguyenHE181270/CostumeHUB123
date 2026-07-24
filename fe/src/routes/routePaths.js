@@ -27,7 +27,6 @@ export const ROUTES = {
   STORE_OWNER_CATEGORIES: "categories",
   STORE_OWNER_INVENTORY: "inventory",
   STORE_OWNER_ORDERS: "orders",
-  STORE_OWNER_EXPORT: "export",
   STORE_OWNER_ISSUES: "issues",
 
   // Staff Routes

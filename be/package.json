@@ -6,8 +6,8 @@
   "scripts": {
     "start": "nodemon server.js",
     "dev": "nodemon server.js",
-    "test": "node --test tests/",
-    "coverage": "node --experimental-test-coverage --test tests/"
+    "test": "node --test",
+    "coverage": "node --experimental-test-coverage --test"
   },
   "keywords": [],
   "author": "",

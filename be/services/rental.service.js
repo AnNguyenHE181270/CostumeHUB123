@@ -11,6 +11,22 @@ const fs = require('fs');
 const { getRentalPriceFactor } = require('../utils/pricing.util');
 const notificationService = require('./notification.service');
 const { uploadReturnEvidence } = require('./cloudinary.service');
+const StockTransaction = require('../models/stockTransaction.model');
+// instances[] là nguồn sự thật duy nhất của tồn kho — luồng thuê phải đánh dấu/nhả từng unit
+// qua các helper này, không được cộng/trừ thẳng availableStock (sẽ lệch với luồng kho/bảo trì).
+const {
+  markInstancesRented,
+  releaseRentedInstances,
+  syncCostumeStatusFromVariants,
+} = require('./costume.service');
+
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+
+// Link email trỏ thẳng về đúng tab + đơn hàng cần xem trên trang lịch sử thuê của khách —
+// FE (RentalHistoryPage) đọc query param "order" để tự mở đúng panel chi tiết đơn đó.
+function buildOrderLink(orderId, statusTab) {
+  return `${CLIENT_URL}/rental-history?status=${statusTab}&order=${orderId}`;
+}
 
 // Bảng đền bù hư hỏng (khớp nội dung công khai ở trang "Về Chúng Tôi") — staff chọn mức, không tự nhập số tiền
 const DAMAGE_TIER_RANGES = {
@@ -87,6 +103,62 @@ const sendAutoConfirmReminders = async () => {
   }
 };
 
+// Nhắc khách trước 12 tiếng khi đơn sắp quá hạn trả — quét trong cửa sổ 12h-12h15' để khớp với
+// nhịp cron 15 phút, dùng thêm cờ upcomingOverdueReminderSent làm lưới an toàn phòng khi cron
+// bị trễ nhịp (đơn trôi khỏi cửa sổ thời gian mà vẫn chưa được nhắc).
+const sendUpcomingOverdueReminders = async () => {
+  const twelveHoursFromNow = new Date(Date.now() + 12 * 60 * 60 * 1000);
+  const twelveHoursFifteenFromNow = new Date(Date.now() + 12.25 * 60 * 60 * 1000);
+
+  const rentals = await Rental.find({
+    status: 'renting',
+    upcomingOverdueReminderSent: { $ne: true },
+    endDate: { $gte: twelveHoursFromNow, $lt: twelveHoursFifteenFromNow },
+  }).populate('customerId', 'email fullName');
+
+  for (const rental of rentals) {
+    rental.upcomingOverdueReminderSent = true;
+    await rental.save();
+
+    try {
+      await notificationService.createNotification({
+        userId: rental.customerId,
+        type: 'order_status',
+        title: `Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        message: 'Đơn hàng của bạn sẽ quá hạn trả trong 12 tiếng nữa. Vui lòng chuẩn bị trả hàng đúng hạn.',
+        link: '/rental-history',
+        relatedId: rental._id,
+      });
+    } catch (notifyError) {
+      console.error('[Notification Error]', notifyError);
+    }
+
+    const user = rental.customerId;
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: `CostumeHUB — Đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} sắp đến hạn trả (còn 12 tiếng)`,
+          text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} sẽ đến hạn trả vào ${new Date(rental.endDate).toLocaleString('vi-VN')}. Vui lòng chuẩn bị trả hàng đúng hạn. Xem đơn tại: ${buildOrderLink(rental._id, 'renting')}`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn sắp đến hạn trả',
+            badgeText: 'Còn 12 tiếng',
+            badgeColor: 'warning',
+            bodyHtml: `
+              <p>Đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> sẽ đến hạn trả vào lúc <b>${new Date(rental.endDate).toLocaleString('vi-VN')}</b> — còn khoảng 12 tiếng nữa.</p>
+              <p>Vui lòng sắp xếp trả hàng đúng hạn để tránh phát sinh phí trễ hạn. Nếu cần thêm thời gian, bạn có thể gia hạn ngay trong ứng dụng trước khi đơn quá hạn.</p>
+            `,
+            ctaText: 'Xem đơn hàng',
+            ctaUrl: buildOrderLink(rental._id, 'renting'),
+          }),
+        });
+      } catch (mailError) {
+        console.error('Lỗi khi gửi email nhắc sắp quá hạn:', mailError);
+      }
+    }
+  }
+};
+
 const getRentalHistory = async (userId) => {
   await autoUpdateDeliveredStatus();
 
@@ -94,7 +166,19 @@ const getRentalHistory = async (userId) => {
     .populate('items.costume', 'name images pricePerDay price minRentalDays maxRentalDays')
     .sort({ createdAt: -1 });
 
+  // Gắn khiếu nại (nếu có) vào từng đơn — tab "Trả hàng" phía khách lọc theo đơn có yêu cầu
+  // trả hàng/hoàn tiền và hiển thị trạng thái con (chờ duyệt / đã hủy / đã hoàn tiền).
+  // Mỗi đơn tối đa 1 khiếu nại (đã chặn trùng ở createIssue).
+  const issues = await Issue.find({ rentalId: { $in: orders.map((o) => o._id) } });
+  const issueByRental = new Map(issues.map((is) => [is.rentalId.toString(), is]));
+
   return orders.map((order) => ({
+    issue: (() => {
+      const is = issueByRental.get(order._id.toString());
+      return is
+        ? { id: is._id, status: is.status, resolution: is.resolution, reason: is.reason, createdAt: is.createdAt }
+        : null;
+    })(),
     id: order._id,
     costumeName: order.items[0]?.costume?.name || 'Đơn hàng thuê',
     costumeImage: order.items[0]?.costume?.images?.[0] || '',
@@ -132,21 +216,49 @@ const getOrderDetail = async (orderId, customerId) => {
 
   const order = await Rental.findOne({ _id: orderId, customerId })
     .populate('customerId', 'fullName phone email')
-    .populate('items.costume', 'name images price pricePerDay minRentalDays maxRentalDays');
+    .populate('items.costume', 'name images price pricePerDay lateFeePerDay minRentalDays maxRentalDays');
 
   if (!order) throw new HttpError('Orders not found.', 404);
 
   const issue = await Issue.findOne({ rentalId: orderId });
+
+  // Ước tính phí trễ hạn NGAY TỪ LÚC khách còn xem đơn (chưa trả) — để khách luôn biết trước sẽ bị
+  // trừ bao nhiêu nếu trả ở đúng thời điểm hiện tại, không phải đợi đến lúc inspectReturn chốt mới
+  // biết. Đơn có khiếu nại trả hàng/hoàn tiền ĐÃ ĐƯỢC DUYỆT thì không tính trễ hạn (khớp đúng logic
+  // thật ở inspectReturn — lỗi thuộc sản phẩm, không phải khách trễ hẹn).
+  const lateFeeWaived = issue?.status === 'accepted' && issue?.resolution === 'return_refund';
+  let estimatedLateFee = 0;
+  let estimatedDaysLate = 0;
+  if (!lateFeeWaived && ['renting', 'overdue'].includes(order.status)) {
+    const scheduledReturn = new Date(order.endDate);
+    const now = new Date();
+    if (now > scheduledReturn) {
+      estimatedDaysLate = Math.ceil((now.getTime() - scheduledReturn.getTime()) / (1000 * 3600 * 24));
+      order.items.forEach((item) => {
+        estimatedLateFee += estimatedDaysLate * (item.costume?.lateFeePerDay || 0) * item.quantity;
+      });
+    }
+  }
 
   return {
     orderId,
     status: order.status,
     hasIssue: !!issue,
     issueStatus: issue?.status || null,
+    issueResolution: issue?.resolution || null,
     deliveredAt: order.deliveredAt,
     rentingAt: order.rentingAt,
     cancelReason: order.cancelReason,
     refundAmount: order.refundAmount,
+    // Số liệu phí đã CHỐT (chỉ có giá trị thật sau khi inspectReturn xử lý xong, tức status='completed')
+    lateFee: order.lateFee,
+    damageFee: order.damageFee,
+    damageTier: order.damageTier,
+    damagePercent: order.damagePercent,
+    replacementFee: order.replacementFee,
+    // Số liệu ƯỚC TÍNH — chỉ có ý nghĩa khi đơn còn đang thuê/quá hạn, chưa trả
+    estimatedLateFee,
+    estimatedDaysLate,
     startDate: order.startDate,
     endDate: order.endDate,
     customer: {
@@ -261,6 +373,14 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays < minDays) {
+      throw new HttpError(
+        `Phải thuê ít nhất ${minDays} ngày đối với sản phẩm ${costume.name}.`,
+        400
+      );
+    }
+
     const maxDays = costume.maxRentalDays || 7;
     if (rentalDays > maxDays) {
       throw new HttpError(
@@ -284,18 +404,30 @@ const createOrder = async (customerId, body) => {
     totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
     totalDeposit += depositPrice * item.quantity;
 
-    formattedItems.push({
+    const formattedItem = {
       costume: costume._id,
       size: item.size,
       quantity: item.quantity,
       rentalPricePerDay: costume.pricePerDay,
       depositPrice,
-    });
-    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity });
+      instanceCodes: [],
+    };
+    formattedItems.push(formattedItem);
+    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity, formattedItem });
   }
 
   for (const update of costumesToUpdate) {
-    update.variant.availableStock -= update.quantityToDeduct;
+    // Đánh dấu đúng N unit vật lý là 'rented' và lưu unitCode vào đơn — khi hủy/trả/khiếu nại
+    // sẽ nhả ra đúng các unit này, giữ instances[] và availableStock luôn khớp nhau.
+    const codes = markInstancesRented(update.variant, update.quantityToDeduct);
+    if (!codes) {
+      throw new HttpError(
+        `Sản phẩm ${update.costume.name} (Size ${update.variant.size}) không đủ số lượng để thuê lúc này. Chỉ còn sẵn ${update.variant.availableStock} bộ.`,
+        400
+      );
+    }
+    update.formattedItem.instanceCodes = codes;
+    syncCostumeStatusFromVariants(update.costume);
     await update.costume.save();
   }
 
@@ -407,7 +539,9 @@ const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
     if (costume) {
       const variant = costume.variants.find((v) => v.size === item.size);
       if (variant) {
-        variant.availableStock += item.quantity;
+        // Đơn chưa giao mà hủy -> unit chưa rời kho, trả thẳng về 'available'
+        releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+        syncCostumeStatusFromVariants(costume);
         await costume.save();
       }
     }
@@ -418,9 +552,18 @@ const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
     if (emailUser?.email) {
       await sendEmail({
         to: emailUser.email,
-        subject: 'CostumeHUB — Thông báo hủy đơn hàng',
-        text: `Chào ${emailUser.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy.\nLý do: ${order.cancelReason}`,
-        html: `<p>Chào <b>${emailUser.fullName}</b>,</p><p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy.</p><p>Lý do: <span style="color:red">${order.cancelReason}</span></p>`,
+        subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`,
+        text: `Chào ${emailUser.fullName}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã bị hủy. Lý do: ${order.cancelReason}`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Đơn hàng của bạn đã bị hủy',
+          badgeText: 'Đã hủy',
+          badgeColor: 'danger',
+          bodyHtml: `
+            <p>Đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> của bạn đã bị hủy.</p>
+            <p>Lý do: <b>${order.cancelReason}</b></p>
+          `,
+          footerNote: 'Nếu đơn hàng đã được thanh toán, khoản tiền sẽ được cửa hàng hoàn trả theo chính sách hiện hành.',
+        }),
       });
     }
   } catch (mailError) {
@@ -457,10 +600,23 @@ const checkAvailability = async ({ costumeId, startDate, endDate, quantity, size
 };
 
 const getAllOrders = async (startDate, endDate) => {
-  return Rental.find(buildDateRangeFilter(startDate, endDate))
+  const orders = await Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
     .populate('items.costume', 'name images')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Gắn khiếu nại liên kết (nếu có) vào từng đơn — để staff/owner xem chi tiết đơn hàng thấy ngay
+  // đây là 'đơn hoàn tiền do khiếu nại' thay vì tưởng nhầm là đơn trả hàng bình thường bị kẹt.
+  const issues = await Issue.find({ rentalId: { $in: orders.map((o) => o._id) } })
+    .select('rentalId status resolution reason createdAt');
+  const issueByRental = new Map(issues.map((is) => [is.rentalId.toString(), is]));
+  orders.forEach((o) => {
+    const is = issueByRental.get(o._id.toString());
+    o.issue = is ? { id: is._id, status: is.status, resolution: is.resolution, reason: is.reason, createdAt: is.createdAt } : null;
+  });
+
+  return orders;
 };
 
 const updateOrderStatus = async (id, status) => {
@@ -474,13 +630,14 @@ const updateOrderStatus = async (id, status) => {
 
     // 1. Hoàn tiền nếu đã thanh toán (Cần handle offline)
 
-    // 2. Hoàn trả tồn kho trang phục
+    // 2. Hoàn trả tồn kho trang phục — nhả đúng các unit đã gán cho đơn về 'available'
     for (const item of order.items) {
       const costume = await Costume.findById(item.costume);
       if (costume) {
         const variant = costume.variants.find((v) => v.size === item.size);
         if (variant) {
-          variant.availableStock += item.quantity;
+          releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+          syncCostumeStatusFromVariants(costume);
           await costume.save();
         }
       }
@@ -493,13 +650,23 @@ const updateOrderStatus = async (id, status) => {
     await order.save();
 
     // 4. Gửi email thông báo cho khách hàng
+    const user = await User.findById(order.customerId);
     try {
       if (user?.email) {
         await sendEmail({
           to: user.email,
-          subject: 'CostumeHUB — Thông báo hủy đơn hàng',
-          text: `Chào ${user.fullName},\n\nĐơn hàng ${order._id} của bạn đã bị hủy bởi cửa hàng.\nLý do: Cửa hàng hủy đơn`,
-          html: `<p>Chào <b>${user.fullName}</b>,</p><p>Đơn hàng <b>${order._id}</b> của bạn đã bị hủy bởi cửa hàng.</p><p>Lý do: <span style="color:red">Cửa hàng hủy đơn</span></p>`,
+          subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`,
+          text: `Chào ${user.fullName}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã bị hủy bởi cửa hàng. Lý do: Cửa hàng hủy đơn.`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn đã bị hủy bởi cửa hàng',
+            badgeText: 'Đã hủy',
+            badgeColor: 'danger',
+            bodyHtml: `
+              <p>Đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> của bạn đã bị hủy bởi cửa hàng.</p>
+              <p>Lý do: <b>Cửa hàng hủy đơn</b></p>
+            `,
+            footerNote: 'Nếu đơn hàng đã được thanh toán, khoản tiền sẽ được cửa hàng hoàn trả theo chính sách hiện hành. Mọi thắc mắc vui lòng liên hệ bộ phận hỗ trợ.',
+          }),
         });
       }
     } catch (mailError) {
@@ -533,9 +700,48 @@ const updateOrderStatus = async (id, status) => {
     }
   }
 
+  // Đánh dấu 'đã giao' — chỉ hợp lệ khi đơn đang thực sự 'delivering', và PHẢI ghi deliveredAt
+  // (trước đây thiếu bước này khiến cơ chế tự-động-xác-nhận-sau-5-tiếng ở autoUpdateDeliveredStatus
+  // không bao giờ chạy được, đơn bị kẹt vĩnh viễn ở 'delivered' cho tới khi khách tự bấm xác nhận).
+  if (status === 'delivered') {
+    if (order.status !== 'delivering') {
+      throw new HttpError('Đơn phải đang ở trạng thái Đang giao mới có thể đánh dấu Đã giao.', 400);
+    }
+    order.deliveredAt = new Date();
+  }
+
   order.status = status;
   await order.save();
   await notifyOrderStatus(order, status);
+
+  // Gửi email báo "đã giao tới nơi" kèm link xác nhận nhận hàng trực tiếp trong mail.
+  if (status === 'delivered') {
+    const user = await User.findById(order.customerId);
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã giao tới nơi`,
+          text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã được giao. Vui lòng xác nhận đã nhận hàng tại: ${buildOrderLink(order._id, 'delivering')}`,
+          html: sendEmail.renderEmailHtml({
+            heading: 'Đơn hàng của bạn đã được giao tới nơi',
+            badgeText: 'Đã giao hàng',
+            badgeColor: 'success',
+            bodyHtml: `
+              <p>Đơn vị vận chuyển báo đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> đã giao thành công đến địa chỉ của bạn.</p>
+              <p>Vui lòng kiểm tra trang phục và nhấn nút bên dưới để <b>xác nhận đã nhận hàng</b>. Nếu sau 5 tiếng bạn không xác nhận, hệ thống sẽ tự động xác nhận giúp bạn.</p>
+            `,
+            ctaText: 'Xác nhận đã nhận hàng',
+            ctaUrl: buildOrderLink(order._id, 'delivering'),
+            footerNote: 'Nếu trang phục nhận được có vấn đề (sai mẫu, hư hỏng...), vui lòng liên hệ cửa hàng hoặc gửi yêu cầu trả hàng/hoàn tiền ngay trong ứng dụng trước khi xác nhận.',
+          }),
+        });
+      } catch (mailError) {
+        console.error('Lỗi khi gửi email đã giao hàng:', mailError);
+      }
+    }
+  }
+
   return order;
 };
 
@@ -545,6 +751,32 @@ const confirmPreparation = async (id) => {
   if (order.status !== 'pending') {
     throw new HttpError('Đơn hàng chưa ở trạng thái Chờ xử lý', 400);
   }
+
+  const user = await User.findById(order.customerId);
+  const sendDeliveringEmail = async () => {
+    if (!user?.email) return;
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đang được giao đến bạn`,
+        text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đang được giao${order.trackingCode ? ` (mã vận đơn: ${order.trackingCode})` : ''}. Theo dõi tại: ${buildOrderLink(order._id, 'delivering')}`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Đơn hàng của bạn đang được giao đến bạn',
+          badgeText: 'Đang giao hàng',
+          badgeColor: 'warning',
+          bodyHtml: `
+            <p>Cửa hàng đã xác nhận và bàn giao đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> cho đơn vị vận chuyển.</p>
+            ${order.trackingCode ? `<p>Mã vận đơn: <b>${order.trackingCode}</b></p>` : ''}
+            <p>Vui lòng chú ý điện thoại để nhận hàng. Sau khi nhận được, hãy xác nhận trong ứng dụng để hoàn tất giao dịch.</p>
+          `,
+          ctaText: 'Theo dõi đơn hàng',
+          ctaUrl: buildOrderLink(order._id, 'delivering'),
+        }),
+      });
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email đang giao hàng:', mailError);
+    }
+  };
 
   if (!order.trackingCode && order.shippingAddress?.districtId) {
     try {
@@ -566,6 +798,7 @@ const confirmPreparation = async (id) => {
       order.status = 'delivering';
       await order.save();
       await notifyOrderStatus(order, 'delivering');
+      await sendDeliveringEmail();
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
       throw new HttpError(`Lỗi tạo đơn GHN: ${ghnError.message}`, 400);
@@ -581,6 +814,7 @@ const confirmPreparation = async (id) => {
       order.status = 'delivering';
       await order.save();
       await notifyOrderStatus(order, 'delivering');
+      await sendDeliveringEmail();
       return { message: 'Đã chuyển trạng thái sang đang giao (Không tạo đơn GHN).', order };
     }
   }
@@ -600,22 +834,40 @@ const getTotalRevenue = async (startDate, endDate) => {
   const orders = await Rental.find({
     status: { $in: validStatuses },
     ...buildDateRangeFilter(startDate, endDate),
-  }, 'totalAmount createdAt');
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  }, 'totalRentalPrice totalDeposit shippingFee lateFee damageFee replacementFee createdAt');
 
-  // Gom nhóm doanh thu theo tháng (dựa trên ngày tạo đơn) để vẽ biểu đồ xu hướng
+  let totalRevenue = 0;
+  let totalRentalPrice = 0;
+  let totalDeposit = 0;
+  let totalDeductedDeposit = 0;
+
   const monthlyMap = {};
   orders.forEach((o) => {
+    const rent = o.totalRentalPrice || 0;
+    const deposit = o.totalDeposit || 0;
+    const fines = (o.lateFee || 0) + (o.damageFee || 0) + (o.replacementFee || 0);
+    const shipping = o.shippingFee || 0;
+    const orderRevenue = rent + shipping + fines;
+
+    totalRevenue += orderRevenue;
+    totalRentalPrice += rent;
+    totalDeposit += deposit;
+    totalDeductedDeposit += fines;
+
     const d = new Date(o.createdAt);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    monthlyMap[key] = (monthlyMap[key] || 0) + o.totalAmount;
+    monthlyMap[key] = (monthlyMap[key] || 0) + orderRevenue;
   });
+
   const revenueByMonth = Object.entries(monthlyMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, total]) => ({ month, total }));
 
   return {
     totalRevenue,
+    totalRentalPrice,
+    totalDeposit,
+    totalDeductedDeposit,
     orderCount: orders.length,
     revenueByMonth,
   };
@@ -711,7 +963,7 @@ const requestReturn = async (id) => {
   return rental;
 };
 
-const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = []) => {
+const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = [], performedBy = null) => {
   const cleanupFiles = () => {
     for (const file of files) {
       if (fs.existsSync(file.path)) {
@@ -723,6 +975,22 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   const rental = await Rental.findById(id).populate('items.costume');
   if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn thuê', 404); }
   if (rental.status !== 'returning') { cleanupFiles(); throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400); }
+
+  // returning là trạng thái THUẦN VẬT LÝ, dùng chung cho cả trả hàng bình thường lẫn trả hàng do
+  // khiếu nại. Đơn vào 'returning' ngay khi khách gửi khiếu nại (xem issue.service.js createIssue),
+  // TRƯỚC CẢ khi shop duyệt — nên phải chặn kiểm tra hàng nếu khiếu nại chưa được duyệt, bắt staff
+  // xử lý khiếu nại (đồng ý/từ chối) trước, tránh lỡ tay tính phí trễ hạn/không hoàn tiền thuê cho
+  // một đơn thực chất là khiếu nại hợp lệ chỉ vì chưa kịp bấm "Chấp nhận" ở trang Khiếu nại.
+  const pendingIssue = await Issue.findOne({ rentalId: id, status: { $in: ['pending', 'escalated'] } });
+  if (pendingIssue) {
+    cleanupFiles();
+    throw new HttpError('Đơn này có khiếu nại chưa xử lý — vui lòng đồng ý hoặc từ chối khiếu nại ở trang Khiếu nại trước khi kiểm tra hàng trả.', 400);
+  }
+
+  // Đơn có khiếu nại đã duyệt thì kiểm tra hàng vẫn quét đúng 1 quy trình này, nhưng áp chính sách
+  // khác: hoàn cả tiền thuê (không chỉ cọc) và không tính phí trễ hạn (lỗi thuộc về sản phẩm, không
+  // phải khách trễ hẹn).
+  const linkedIssue = await Issue.findOne({ rentalId: id, status: 'accepted' });
 
   const tier = damageTier || 'none';
   const tierRange = DAMAGE_TIER_RANGES[tier];
@@ -745,7 +1013,8 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   let daysLate = 0;
   let totalLateFee = 0;
 
-  if (actualReturn > scheduledReturn) {
+  // Trả trễ do khiếu nại sản phẩm lỗi không tính là "khách trễ hẹn" — bỏ qua phí trễ hạn.
+  if (!linkedIssue && actualReturn > scheduledReturn) {
     const timeDiff = actualReturn.getTime() - scheduledReturn.getTime();
     daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
     rental.items.forEach((item) => {
@@ -766,7 +1035,9 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   }
 
   const totalFine = totalLateFee + finalDamageFee;
-  const refundAmount = Math.max(0, originalDeposit - totalFine);
+  // Trả hàng do khiếu nại được duyệt: cửa hàng đã thừa nhận sản phẩm lỗi -> hoàn cả tiền thuê
+  // (rental.totalRentalPrice), không chỉ tiền cọc như trả hàng bình thường.
+  const refundAmount = Math.max(0, originalDeposit - totalFine) + (linkedIssue ? (rental.totalRentalPrice || 0) : 0);
 
   // Tải ảnh/video bằng chứng lên Cloudinary làm bằng chứng đơn hàng đã được kiểm tra đúng hiện trạng
   const evidenceUrls = [];
@@ -792,12 +1063,28 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   rental.returnEvidence = evidenceUrls;
   rental.refundAmount = refundAmount;
   if (missingNotes) rental.cancelReason = missingNotes;
+
+  // Không còn ví để cộng tiền tự động — mọi khoản hoàn tiền giờ là YÊU CẦU gửi tới chủ shop, xử lý
+  // thủ công qua chuyển khoản (giống hệt cơ chế refundDetails đã dùng ở luồng huỷ đơn/cancelOrder).
+  // Chủ shop xác nhận đã chuyển khoản xong qua PUT /:id/confirm-refund (confirmRefund bên dưới).
+  const netRefund = Math.max(0, refundAmount - replacementFee);
+  if (netRefund > 0) {
+    rental.refundDetails = { ...(rental.refundDetails ? rental.refundDetails.toObject?.() ?? rental.refundDetails : {}), status: 'pending' };
+  }
+  if (linkedIssue) {
+    // Khiếu nại được duyệt -> hoàn cả tiền thuê nên coi như khoản thanh toán ban đầu đã được hoàn.
+    rental.paymentStatus = 'refunded';
+  }
+
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
 
-  // Hoàn tiền qua VNPAY / Offline
-
-
+  // Nhả đúng các unit đã cho thuê của đơn này:
+  // - Trả hàng bình thường/hư hỏng nhẹ -> 'maintenance' (giặt là/kiểm tra xong staff bấm
+  //   "Hoàn tất bảo trì" mới quay lại 'available' — khớp luồng MaintenancePage).
+  // - Mất/hỏng toàn bộ (total_loss) -> 'retired' (loại vĩnh viễn) + ghi lịch sử xuất kho 'lost'
+  //   để số liệu kho và lịch sử Nhập/Xuất luôn khớp với thực tế.
+  const returnedStatus = tier === 'total_loss' ? 'retired' : 'maintenance';
   const CostumeModel = mongoose.model('Costume');
   for (const item of rental.items) {
     if (item.costume) {
@@ -805,31 +1092,29 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
       if (costumeToUpdate) {
         const variant = costumeToUpdate.variants.find((v) => v.size === item.size);
         if (variant) {
-          // Chỉ chuyển trạng thái bảo trì cho size/biến thể cụ thể được hoàn trả này
-          variant.status = 'maintenance';
-          variant.availableStock += item.quantity;
+          const beforeStock = variant.totalStock || 0;
+          releaseRentedInstances(variant, item.instanceCodes, item.quantity, returnedStatus);
+          if (tier === 'total_loss' && performedBy) {
+            await StockTransaction.create({
+              costumeId: costumeToUpdate._id,
+              size: item.size,
+              type: 'out',
+              reason: 'lost',
+              quantity: item.quantity,
+              note: `Khách làm mất/hỏng toàn bộ — đơn #${rental._id.toString().slice(-6).toUpperCase()}`,
+              beforeStock,
+              afterStock: variant.totalStock || 0,
+              performedBy,
+            });
+          }
         }
-
-        // Cập nhật trạng thái costume tổng thể:
-        // Nếu còn ít nhất 1 biến thể sẵn sàng -> costume.status = 'available'
-        // Nếu tất cả biến thể đều bảo trì -> costume.status = 'maintenance'
-        const hasAvailableVariant = costumeToUpdate.variants.some(
-          (v) => (v.status === 'available' || !v.status) && (v.availableStock || 0) > 0
-        );
-
-        if (hasAvailableVariant) {
-          costumeToUpdate.status = 'available';
-        } else {
-          const allMaintenance = costumeToUpdate.variants.every((v) => v.status === 'maintenance');
-          costumeToUpdate.status = allMaintenance ? 'maintenance' : 'out_of_stock';
-        }
-
+        syncCostumeStatusFromVariants(costumeToUpdate);
         await costumeToUpdate.save();
       }
     }
   }
 
-  return { totalFine, refundAmount, damageFee: finalDamageFee, replacementFee };
+  return { totalFine, refundAmount, damageFee: finalDamageFee, replacementFee, hasLinkedIssue: !!linkedIssue };
 };
 
 const extendRental = async (id, customerId, newEndDate) => {
@@ -873,7 +1158,9 @@ const extendRental = async (id, customerId, newEndDate) => {
   let totalExtendCost = 0;
   for (const item of rental.items) {
     const costume = item.costume;
-    const pricePerDay = item.rentalPricePerDay || (costume ? (costume.pricePerDay || costume.price) : 0) || 0;
+    // Dùng ?? thay vì || — rentalPricePerDay = 0 là giá trị hợp lệ (VD: sản phẩm khuyến mãi miễn phí
+    // thuê), || sẽ coi 0 là falsy rồi fallback nhầm sang giá gốc costume, tính phí gia hạn sai.
+    const pricePerDay = item.rentalPricePerDay ?? (costume ? (costume.pricePerDay ?? costume.price) : 0) ?? 0;
     totalExtendCost += pricePerDay * (newPriceFactor - oldPriceFactor) * item.quantity;
   }
 
@@ -883,6 +1170,7 @@ const extendRental = async (id, customerId, newEndDate) => {
   rental.endDate = newEnd;
   rental.totalRentalPrice += totalExtendCost;
   rental.totalAmount += totalExtendCost;
+  rental.upcomingOverdueReminderSent = false;
   await rental.save();
 
   if (totalExtendCost > 0) {
@@ -973,6 +1261,7 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   rental.endDate = end;
   rental.totalRentalPrice = newTotalRentalPrice;
   rental.totalAmount += difference;
+  rental.upcomingOverdueReminderSent = false;
 
   await rental.save();
   return rental;
@@ -1001,17 +1290,23 @@ const confirmRefund = async (orderId) => {
     
     // Gửi email thông báo hoàn tiền thành công
     if (rental.customerId && rental.customerId.email) {
+      const bank = rental.refundDetails || {};
       await sendEmail({
         to: rental.customerId.email,
-        subject: `[CostumeHUB] Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
-        html: `
-          <h3>Xin chào ${rental.customerId.fullName || 'bạn'},</h3>
-          <p>Cửa hàng đã hoàn tất việc chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
-          <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn.</p>
-          <br/>
-          <p>Trân trọng,</p>
-          <p>Đội ngũ CostumeHUB</p>
-        `
+        subject: `CostumeHUB — Hoàn tiền thành công cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}`,
+        text: `Chào ${rental.customerId.fullName || 'bạn'}, cửa hàng đã hoàn tất chuyển khoản hoàn tiền cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()}. Vui lòng kiểm tra tài khoản ngân hàng của bạn.`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Hoàn tiền thành công',
+          badgeText: 'Đã hoàn tiền',
+          badgeColor: 'success',
+          bodyHtml: `
+            <p>Cửa hàng đã hoàn tất chuyển khoản hoàn tiền cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b>.</p>
+            ${bank.accountNumber ? `<p>Số tiền đã được chuyển đến tài khoản <b>${bank.accountNumber}</b>${bank.bankName ? ` (${bank.bankName})` : ''}${bank.accountName ? ` — chủ tài khoản: ${bank.accountName}` : ''}.</p>` : ''}
+            <p>Vui lòng kiểm tra tài khoản ngân hàng của bạn. Nếu chưa nhận được tiền sau 1-2 ngày làm việc, vui lòng liên hệ cửa hàng để được hỗ trợ.</p>
+          `,
+          ctaText: 'Xem đơn hàng',
+          ctaUrl: buildOrderLink(rental._id, 'return_refund'),
+        }),
       });
     }
   } catch (err) {
@@ -1043,5 +1338,7 @@ module.exports = {
   getTopRentedCostumes,
   autoUpdateDeliveredStatus,
   sendAutoConfirmReminders,
+  sendUpcomingOverdueReminders,
   confirmRefund,
+  buildOrderLink,
 };

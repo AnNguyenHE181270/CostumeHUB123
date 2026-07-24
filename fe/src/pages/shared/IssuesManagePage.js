@@ -313,7 +313,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                     onClick={() => setAction("accept")}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                   >
-                    <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                    <FontAwesomeIcon icon={faCheck} /> Đồng ý — yêu cầu trả hàng
                   </button>
                   <button
                     onClick={() => setAction("reject")}
@@ -327,7 +327,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                   <div className="flex items-center gap-2">
                     {action === "accept" ? (
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
-                        <FontAwesomeIcon icon={faCheck} /> Đồng ý hoàn tiền
+                        <FontAwesomeIcon icon={faCheck} /> Đồng ý — yêu cầu trả hàng
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-700">

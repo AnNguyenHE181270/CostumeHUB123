@@ -22,36 +22,58 @@ const getRevenueReport = async (startDate, endDate) => {
 
   const orders = await Rental.find(
     { status: { $in: validStatuses }, ...dateFilter },
-    'totalAmount createdAt paymentMethod'
+    'totalRentalPrice totalDeposit shippingFee lateFee damageFee replacementFee createdAt paymentMethod'
   );
 
-  const totalRevenue = orders.reduce((s, o) => s + o.totalAmount, 0);
+  let totalRevenue = 0;
+  let totalRentalPrice = 0;
+  let totalDeposit = 0;
+  let totalDeductedDeposit = 0;
   const orderCount = orders.length;
 
-  // Theo tháng
   const monthlyMap = {};
+  const paymentMap = {};
+
   orders.forEach(o => {
+    const rent = o.totalRentalPrice || 0;
+    const deposit = o.totalDeposit || 0;
+    const fines = (o.lateFee || 0) + (o.damageFee || 0) + (o.replacementFee || 0);
+    const shipping = o.shippingFee || 0;
+    const orderRevenue = rent + shipping + fines;
+
+    totalRevenue += orderRevenue;
+    totalRentalPrice += rent;
+    totalDeposit += deposit;
+    totalDeductedDeposit += fines;
+
     const d = new Date(o.createdAt);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    monthlyMap[key] = (monthlyMap[key] || 0) + o.totalAmount;
+    monthlyMap[key] = (monthlyMap[key] || 0) + orderRevenue;
+
+    const rawPm = o.paymentMethod || 'Khác';
+    let pm = rawPm;
+    if (rawPm.toUpperCase() === 'VNPAY' || rawPm.toUpperCase() === 'WALLET') pm = 'Thanh toán Online (VNPAY / CK)';
+    else if (rawPm.toUpperCase() === 'CASH' || rawPm.toUpperCase() === 'TIỀN MẶT') pm = 'Thanh toán tại cửa hàng (Tiền mặt / CK)';
+    else if (rawPm.toLowerCase() === 'payos') pm = 'Cổng payOS';
+
+    if (!paymentMap[pm]) paymentMap[pm] = { count: 0, total: 0, rent: 0, deposit: 0, fines: 0, totalCollected: 0 };
+    paymentMap[pm].count++;
+    paymentMap[pm].total += orderRevenue;
+    paymentMap[pm].rent += (rent + shipping);
+    paymentMap[pm].deposit += deposit;
+    paymentMap[pm].fines += fines;
+    paymentMap[pm].totalCollected += (rent + shipping + deposit);
   });
+
   const revenueByMonth = Object.entries(monthlyMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, total]) => ({ month, total }));
 
-  // Theo phương thức thanh toán
-  const paymentMap = {};
-  orders.forEach(o => {
-    const pm = o.paymentMethod || 'Unknown';
-    if (!paymentMap[pm]) paymentMap[pm] = { count: 0, total: 0 };
-    paymentMap[pm].count++;
-    paymentMap[pm].total += o.totalAmount;
-  });
   const revenueByPaymentMethod = Object.entries(paymentMap).map(([method, v]) => ({
-    method, count: v.count, total: v.total,
+    method, count: v.count, total: v.total, rent: v.rent, deposit: v.deposit, fines: v.fines, totalCollected: v.totalCollected,
   }));
 
-  return { totalRevenue, orderCount, revenueByMonth, revenueByPaymentMethod };
+  return { totalRevenue, totalRentalPrice, totalDeposit, totalDeductedDeposit, orderCount, revenueByMonth, revenueByPaymentMethod };
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -150,7 +172,8 @@ const getRentalLifecycleReport = async (startDate, endDate) => {
 // 4. TỒN KHO — theo từng costume/size
 // ─────────────────────────────────────────────────────────────────
 const getInventoryDetailReport = async () => {
-  const costumes = await Costume.find({}, 'name variants categoryId').populate('categoryId', 'name');
+  // Sản phẩm đã ẩn không còn bán/cho thuê -> không tính vào báo cáo tồn kho tổng quan.
+  const costumes = await Costume.find({ status: { $ne: 'hidden' } }, 'name variants categoryId').populate('categoryId', 'name');
 
   const rows = [];
   let grandTotal = 0, grandAvailable = 0, grandRented = 0, grandMaintenance = 0;
