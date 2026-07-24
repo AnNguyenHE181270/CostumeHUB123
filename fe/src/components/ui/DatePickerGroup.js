@@ -5,7 +5,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false, disableStart = false, disableEnd = false, maxRentalDays }) {
+export default function DatePickerGroup({ startDate, setStartDate, endDate, setEndDate, disabled = false, disableStart = false, disableEnd = false, maxRentalDays, minEndDateProp, maxEndDateProp }) {
     const [activePicker, setActivePicker] = useState(null);
     const pickerRef = useRef(null);
 
@@ -18,8 +18,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
 
     const allowedMaxDays = Math.max(1, Number(maxRentalDays) || 7) - 1;
     const start = new Date(startDate);
-    const minEndDate = new Date(start);
-    minEndDate.setDate(minEndDate.getDate());
+    const minEndDate = minEndDateProp ? new Date(minEndDateProp) : new Date(start);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -30,8 +29,11 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-    const maxEndDate = new Date(start);
-    maxEndDate.setDate(maxEndDate.getDate() + allowedMaxDays); // MAXIMUM logic
+    const maxEndDate = maxEndDateProp ? new Date(maxEndDateProp) : (() => {
+        const d = new Date(start);
+        d.setDate(d.getDate() + allowedMaxDays);
+        return d;
+    })();
 
     return (
         <>
@@ -124,7 +126,7 @@ export default function DatePickerGroup({ startDate, setStartDate, endDate, setE
                                         setActivePicker(null);
                                     }}
                                     value={new Date(endDate)}
-                                    minDate={new Date(startDate)}
+                                    minDate={minEndDate}
                                     maxDate={maxEndDate}
                                     className="border-none text-[13px] font-sans w-full"
                                 />

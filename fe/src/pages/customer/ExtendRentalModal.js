@@ -42,12 +42,17 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   const maxExtendableDays = Math.max(0, maxAllowedTotalDays - currentRentalDays);
   const isExtendable = maxExtendableDays > 0;
 
+  const getLocalISOString = (date) => {
+    if (!date) return "";
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+  };
+
   // Ngày trả tối thiểu (ngày trả hiện tại + 1 ngày)
   const minDateString = endZero
     ? (() => {
       const nextDay = new Date(endZero);
       nextDay.setDate(nextDay.getDate() + 1);
-      return nextDay.toISOString().split("T")[0];
+      return getLocalISOString(nextDay);
     })()
     : "";
 
@@ -55,7 +60,7 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   const maxEndDateObj = endZero && isExtendable
     ? new Date(endZero.getTime() + maxExtendableDays * 24 * 60 * 60 * 1000)
     : null;
-  const maxDateString = maxEndDateObj ? maxEndDateObj.toISOString().split("T")[0] : minDateString;
+  const maxDateString = maxEndDateObj ? getLocalISOString(maxEndDateObj) : minDateString;
 
   useEffect(() => {
     if (open) {
@@ -191,24 +196,19 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
         {isExtendable && (
           <div className="pt-1">
             <DatePickerGroup
-              startDate={endZero ? endZero.toISOString().split("T")[0] : ""}
+              startDate={getLocalISOString(startZero)}
               setStartDate={() => { }} // Disabled start date doesn't need handler
               endDate={newEndDate}
               setEndDate={(val) => setNewEndDate(val)}
               disableStart={true}
-              maxRentalDays={maxAllowedTotalDays}
+              maxRentalDays={999}
+              minEndDateProp={minDateString}
+              maxEndDateProp={maxDateString}
             />
           </div>
         )}
 
-        {isOverMaxLimit && (
-          <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
-            <FontAwesomeIcon icon={faTriangleExclamation} />
-            Ngày bạn chọn vượt quá hạn mức tối đa cho phép ({maxAllowedTotalDays} ngày). Vui lòng chọn lại.
-          </p>
-        )}
-
-        {isExtendable && extendDays > 0 && !isOverMaxLimit && (
+        {isExtendable && extendDays > 0 && (
           <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 p-4 rounded-xl border border-amber-200/80 space-y-2 shadow-sm">
             <div className="flex justify-between text-xs text-amber-900 font-medium">
               <span>Số ngày gia hạn thêm:</span>
@@ -238,8 +238,8 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
         </button>
         <button
           onClick={handleConfirmExtend}
-          disabled={!isExtendable || extendDays <= 0 || isOverMaxLimit || isSubmitting}
-          className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-md ${isExtendable && extendDays > 0 && !isOverMaxLimit && !isSubmitting
+          disabled={!isExtendable || extendDays <= 0 || isSubmitting}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-md ${isExtendable && extendDays > 0 && !isSubmitting
             ? "bg-[#1a1a1a] text-[#f5e6ca] hover:bg-amber-600 hover:text-white"
             : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
             }`}

@@ -236,8 +236,8 @@ export default function CartPage() {
                   key={itemId}
                   onClick={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
                   className={`bg-white rounded-3xl border p-5 sm:p-6 flex flex-col sm:flex-row gap-6 relative group shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer items-stretch ${isSelected
-                      ? "border-[#c9a869] ring-2 ring-[#c9a869]/20 bg-[#fffdf9]"
-                      : "border-[#e6dcab]/80"
+                    ? "border-[#c9a869] ring-2 ring-[#c9a869]/20 bg-[#fffdf9]"
+                    : "border-[#e6dcab]/80"
                     } ${itemOutOfStock ? "bg-[#faf9f7] opacity-75" : ""}`}
                 >
                   {/* Delete Button */}
@@ -255,161 +255,161 @@ export default function CartPage() {
                   <div className="flex flex-col flex-1 min-w-0 gap-4 sm:gap-2">
                     <div className="flex flex-col sm:flex-row gap-6 items-stretch w-full">
                       {/* Checkbox */}
-                  <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      disabled={itemCheckboxDisabled}
-                      onChange={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
-                      className="w-5 h-5 cursor-pointer accent-[#b8935a] border-[#e2d5bd] rounded-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    />
-                  </div>
+                      <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={itemCheckboxDisabled}
+                          onChange={() => !itemCheckboxDisabled && toggleItemSelection(itemId)}
+                          className="w-5 h-5 cursor-pointer accent-[#b8935a] border-[#e2d5bd] rounded-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        />
+                      </div>
 
-                  {/* Image */}
-                  <div className="w-[110px] sm:w-[130px] aspect-[3/4] rounded-2xl overflow-hidden bg-[#f5f3f0] border border-[#e6dcab]/60 flex-shrink-0 self-start relative shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
-                    <img
-                      src={item.image}
-                      alt={item.costumeName}
-                      className={`w-full h-full object-cover ${itemOutOfStock ? "grayscale" : ""}`}
-                    />
-                    {itemOutOfStock && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-1 text-center">
-                        <span className="text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-rose-600 rounded-md shadow">
-                          Tạm hết hàng
+                      {/* Image */}
+                      <div className="w-[110px] sm:w-[130px] aspect-[3/4] rounded-2xl overflow-hidden bg-[#f5f3f0] border border-[#e6dcab]/60 flex-shrink-0 self-start relative shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
+                        <img
+                          src={item.image}
+                          alt={item.costumeName}
+                          className={`w-full h-full object-cover ${itemOutOfStock ? "grayscale" : ""}`}
+                        />
+                        {itemOutOfStock && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-1 text-center">
+                            <span className="text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-rose-600 rounded-md shadow">
+                              Tạm hết hàng
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details Container */}
+                      <div className="flex flex-col flex-1 min-w-0 pr-8">
+                        {item.category && (
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-[#b8935a] font-bold mb-1">
+                            {item.category}
+                          </p>
+                        )}
+                        <Link
+                          to={`/product/${item.costumeId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[18px] sm:text-[20px] font-bold text-[#1a1a1a] hover:text-[#b8935a] transition-colors line-clamp-1 mb-3 block"
+                          style={SERIF}
+                        >
+                          {item.costumeName}
+                        </Link>
+
+                        {/* Size & Quantity Controls */}
+                        <div className="flex flex-wrap items-center gap-6 mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a7d63]">Size:</span>
+                            <Selector
+                              value={item.size}
+                              variants={item.variants}
+                              disabled={itemOutOfStock}
+                              onChange={(newSize) => {
+                                if (updateCartItem && newSize !== item.size)
+                                  updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, newSize, item.quantity);
+                              }}
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a7d63]">Số lượng:</span>
+                            <div className="flex items-center gap-2 bg-[#faf6f0] border border-[#e2d5bd] rounded-full p-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
+                                }}
+                                disabled={itemOutOfStock || item.quantity <= 1}
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40 transition-colors font-bold text-xs shadow-sm"
+                              >
+                                -
+                              </button>
+                              <span className="text-[13px] font-bold min-w-[20px] text-center text-[#1a1a1a]">{item.quantity}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
+                                }}
+                                disabled={itemOutOfStock || (item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false)}
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40 transition-colors font-bold text-xs shadow-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div onClick={(e) => e.stopPropagation()} className="mt-1">
+                          <DatePickerGroup
+                            startDate={pendingStartRef.current[itemId] || item.startDate}
+                            disabled={itemOutOfStock}
+                            minRentalDays={item.minRentalDays}
+                            setStartDate={(newStart) => {
+                              pendingStartRef.current[itemId] = newStart;
+                              clearItemError(itemId);
+                              if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
+                              pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
+                                const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
+                                const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
+                                if (updateCartItem) {
+                                  const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
+                                  if (result?.error) setItemError(itemId, result.error);
+                                  else {
+                                    clearItemError(itemId);
+                                    delete pendingStartRef.current[itemId];
+                                    delete pendingEndRef.current[itemId];
+                                  }
+                                }
+                              }, 400);
+                            }}
+                            endDate={pendingEndRef.current[itemId] || item.endDate}
+                            setEndDate={(newEnd) => {
+                              pendingEndRef.current[itemId] = newEnd;
+                              // Force re-render to update UI immediately
+                              clearItemError(itemId);
+
+                              // Clear any existing timeout
+                              if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
+
+                              pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
+                                const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
+                                const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
+                                if (updateCartItem) {
+                                  const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
+                                  if (result?.error) setItemError(itemId, result.error);
+                                  else {
+                                    clearItemError(itemId);
+                                    delete pendingStartRef.current[itemId];
+                                    delete pendingEndRef.current[itemId];
+                                  }
+                                }
+                              }, 400);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {itemDateInvalidMessage && (
+                      <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
+                        <span>⚠️ {itemDateInvalidMessage}</span>
+                      </div>
+                    )}
+
+                    {!itemDateInvalidMessage && addressEstimate.date && new Date(item.startDate) < addressEstimate.date && (
+                      <div className="flex items-start gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
+                        <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 shrink-0" />
+                        <span className="flex-1">
+                          Đơn hàng dự kiến được giao tới địa chỉ mặc định của bạn vào{" "}
+                          {addressEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                          , hãy nới ngày nhận cho phù hợp để được hỗ trợ tốt nhất.
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Details Container */}
-                  <div className="flex flex-col flex-1 min-w-0 pr-8">
-                    {item.category && (
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-[#b8935a] font-bold mb-1">
-                        {item.category}
-                      </p>
-                    )}
-                    <Link
-                      to={`/product/${item.costumeId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[18px] sm:text-[20px] font-bold text-[#1a1a1a] hover:text-[#b8935a] transition-colors line-clamp-1 mb-3 block"
-                      style={SERIF}
-                    >
-                      {item.costumeName}
-                    </Link>
-
-                    {/* Size & Quantity Controls */}
-                    <div className="flex flex-wrap items-center gap-6 mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a7d63]">Size:</span>
-                        <Selector
-                          value={item.size}
-                          variants={item.variants}
-                          disabled={itemOutOfStock}
-                          onChange={(newSize) => {
-                            if (updateCartItem && newSize !== item.size)
-                              updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, newSize, item.quantity);
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a7d63]">Số lượng:</span>
-                        <div className="flex items-center gap-2 bg-[#faf6f0] border border-[#e2d5bd] rounded-full p-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity - 1);
-                            }}
-                            disabled={itemOutOfStock || item.quantity <= 1}
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40 transition-colors font-bold text-xs shadow-sm"
-                          >
-                            -
-                          </button>
-                          <span className="text-[13px] font-bold min-w-[20px] text-center text-[#1a1a1a]">{item.quantity}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (updateCartItem) updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity + 1);
-                            }}
-                            disabled={itemOutOfStock || (item.variant?.availableStock ? item.quantity >= item.variant.availableStock : false)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40 transition-colors font-bold text-xs shadow-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div onClick={(e) => e.stopPropagation()} className="mt-1">
-                      <DatePickerGroup
-                        startDate={pendingStartRef.current[itemId] || item.startDate}
-                        disabled={itemOutOfStock}
-                        minRentalDays={item.minRentalDays}
-                        setStartDate={(newStart) => {
-                          pendingStartRef.current[itemId] = newStart;
-                          clearItemError(itemId);
-                          if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
-                          pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
-                            const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
-                            const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
-                            if (updateCartItem) {
-                              const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
-                              if (result?.error) setItemError(itemId, result.error);
-                              else {
-                                clearItemError(itemId);
-                                delete pendingStartRef.current[itemId];
-                                delete pendingEndRef.current[itemId];
-                              }
-                            }
-                          }, 400);
-                        }}
-                        endDate={pendingEndRef.current[itemId] || item.endDate}
-                        setEndDate={(newEnd) => {
-                          pendingEndRef.current[itemId] = newEnd;
-                          // Force re-render to update UI immediately
-                          clearItemError(itemId);
-
-                          // Clear any existing timeout
-                          if (pendingStartRef.current[`timer_${itemId}`]) clearTimeout(pendingStartRef.current[`timer_${itemId}`]);
-
-                          pendingStartRef.current[`timer_${itemId}`] = setTimeout(async () => {
-                            const effectiveStart = pendingStartRef.current[itemId] || item.startDate;
-                            const effectiveEnd = pendingEndRef.current[itemId] || item.endDate;
-                            if (updateCartItem) {
-                              const result = await updateCartItem(item.costumeId || item._id, item.size, item.startDate, item.endDate, item.size, item.quantity, effectiveStart, effectiveEnd);
-                              if (result?.error) setItemError(itemId, result.error);
-                              else {
-                                clearItemError(itemId);
-                                delete pendingStartRef.current[itemId];
-                                delete pendingEndRef.current[itemId];
-                              }
-                            }
-                          }, 400);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  </div>
-
-                  {itemDateInvalidMessage && (
-                    <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
-                      <span>⚠️ {itemDateInvalidMessage}</span>
-                    </div>
-                  )}
-
-                  {!itemDateInvalidMessage && addressEstimate.date && new Date(item.startDate) < addressEstimate.date && (
-                    <div className="flex items-start gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[12px] font-semibold">
-                      <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 shrink-0" />
-                      <span className="flex-1">
-                        Đơn hàng dự kiến được giao tới địa chỉ mặc định của bạn vào{" "}
-                        {addressEstimate.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                        , hãy nới ngày nhận cho phù hợp để được hỗ trợ tốt nhất.
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Pricing Summary For Item */}
+                  {/* Pricing Summary For Item */}
                   <div className="w-full sm:w-[210px] flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-[#f0e9d5] pt-4 sm:pt-0 sm:pl-6 shrink-0">
                     {(() => {
                       const factor = getRentalPriceFactor(rentalDays);
@@ -496,8 +496,8 @@ export default function CartPage() {
                 onClick={() => navigate("/checkout", { state: { selectedIds } })}
                 disabled={selectedIds.length === 0}
                 className={`w-full py-4 rounded-2xl text-[12px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${selectedIds.length === 0
-                    ? "bg-[#e5e0d8] text-[#a0988a] cursor-not-allowed shadow-none"
-                    : "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 border border-[#c9a869]/40 luxury-btn-gold-shine"
+                  ? "bg-[#e5e0d8] text-[#a0988a] cursor-not-allowed shadow-none"
+                  : "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 border border-[#c9a869]/40 luxury-btn-gold-shine"
                   }`}
               >
                 Tiến Hành Đặt Thuê {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
