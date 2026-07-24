@@ -514,13 +514,13 @@ const updateOrderStatus = async (id, status) => {
     try {
       const ghnRes = await ghnService.createOrder({
         payment_type_id: 1,
-        note: 'Cho xem hàng, không thử',
-        required_note: 'CHOXEMHANGKHONGTHU',
+        note: 'Cho xem hàng, cho thử',
+        required_note: 'CHOTHUHANG',
         to_name: order.shippingAddress.receiverName,
         to_phone: order.shippingAddress.receiverPhone,
         to_address: order.shippingAddress.addressDetail || 'Không có địa chỉ chi tiết',
-        to_ward_code: order.shippingAddress.wardCode,
-        to_district_id: order.shippingAddress.districtId,
+        to_ward_code: String(order.shippingAddress.wardCode),
+        to_district_id: Number(order.shippingAddress.districtId),
         weight: 500,
         length: 20, width: 20, height: 10,
         service_type_id: 2,
@@ -529,6 +529,7 @@ const updateOrderStatus = async (id, status) => {
       order.trackingCode = ghnRes.order_code;
     } catch (ghnError) {
       console.error('Failed to push to GHN:', ghnError);
+      throw new HttpError(`Không tạo được vận đơn GHN: ${ghnError.message}`, 400);
     }
   }
 
@@ -554,8 +555,8 @@ const confirmPreparation = async (id) => {
         to_name: order.shippingAddress.receiverName,
         to_phone: order.shippingAddress.receiverPhone,
         to_address: order.shippingAddress.addressDetail || 'Không có địa chỉ chi tiết',
-        to_ward_code: order.shippingAddress.wardCode,
-        to_district_id: order.shippingAddress.districtId,
+        to_ward_code: String(order.shippingAddress.wardCode),
+        to_district_id: Number(order.shippingAddress.districtId),
         weight: 500,
         length: 20, width: 20, height: 10,
         service_type_id: 2,
@@ -567,10 +568,7 @@ const confirmPreparation = async (id) => {
       await notifyOrderStatus(order, 'delivering');
       return { message: 'Xác nhận thành công. Đã tạo đơn trên GHN.', order };
     } catch (ghnError) {
-      order.status = 'delivering';
-      await order.save();
-      await notifyOrderStatus(order, 'delivering');
-      return { message: 'Đã chuyển sang đang giao (Lỗi kết nối GHN nên không tạo được vận đơn).', order };
+      throw new HttpError(`Lỗi tạo đơn GHN: ${ghnError.message}`, 400);
     }
   } else {
     if (order.shippingAddress?.addressDetail === "Nhận tại cửa hàng") {
