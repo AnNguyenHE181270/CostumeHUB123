@@ -2,13 +2,82 @@ const { describe, test, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const mock = require('mock-require');
 
-// ============================
-// Mock State
-// ============================
+const MOCK_COSTUMES = [
+  {
+    _id: 'costume_id_123',
+    name: 'Áo Dài Truyền Thống',
+    slug: 'ao-dai-truyen-thong',
+    sku: 'AD-001',
+    categoryId: 'category_id_123',
+    description: 'Áo dài lụa tơ tằm cao cấp',
+    images: ['image1.jpg'],
+    size: 'M',
+    color: 'Đỏ',
+    condition: 'Mới 100%',
+    pricePerDay: 150000,
+    price: 500000,
+    deposit: 300000,
+    minRentalDays: 1,
+    lateFeePerDay: 50000,
+    status: 'available',
+    specifications: { weight: '0.5kg' },
+    variants: [
+      {
+        _id: 'variant_1',
+        size: 'M',
+        availableStock: 5,
+        totalStock: 5,
+        status: 'available',
+        instances: [
+          { unitCode: 'M-001', status: 'available' }
+        ]
+      }
+    ],
+    createdBy: 'user_id_1'
+  },
+  {
+    _id: 'costume_id_456',
+    name: 'Áo Tấc Ngũ Thân',
+    slug: 'ao-tac-ngu-than',
+    sku: 'AT-001',
+    categoryId: 'category_id_124',
+    description: 'Áo tấc truyền thống Việt Nam',
+    images: ['image2.jpg'],
+    size: 'L',
+    color: 'Xanh dương',
+    condition: 'Mới 90%',
+    pricePerDay: 200000,
+    price: 600000,
+    deposit: 400000,
+    minRentalDays: 1,
+    lateFeePerDay: 60000,
+    status: 'available',
+    specifications: { weight: '0.7kg' },
+    variants: [
+      {
+        _id: 'variant_2',
+        size: 'L',
+        availableStock: 2,
+        totalStock: 3,
+        status: 'available',
+        instances: [
+          { unitCode: 'L-001', status: 'available' },
+          { unitCode: 'L-002', status: 'available' },
+          { unitCode: 'L-003', status: 'rented' }
+        ]
+      }
+    ],
+    createdBy: 'user_id_1'
+  }
+];
 
-let mockData = {};
+let mockData = {
+  costumes: JSON.parse(JSON.stringify(MOCK_COSTUMES)),
+  totalItems: MOCK_COSTUMES.length,
+  costume: JSON.parse(JSON.stringify(MOCK_COSTUMES[0])),
+  childCategories: [],
+};
 
-// ---- CostumeMock ----
 const CostumeMock = function (data) {
   Object.assign(this, data);
   this.save = async () => {
@@ -41,7 +110,6 @@ CostumeMock.countDocuments = async (filter) => {
 
 CostumeMock.findById = defaultCostumeFindById;
 
-// ---- CategoryMock ----
 const CategoryMock = function (data) {
   Object.assign(this, data);
 };
@@ -77,7 +145,12 @@ const HttpError = require('../models/http-error.model');
 
 describe('getAllCostumes', () => {
   beforeEach(() => {
-    mockData = {};
+    mockData = {
+      costumes: JSON.parse(JSON.stringify(MOCK_COSTUMES)),
+      totalItems: MOCK_COSTUMES.length,
+      costume: JSON.parse(JSON.stringify(MOCK_COSTUMES[0])),
+      childCategories: [],
+    };
     CostumeMock.findById = defaultCostumeFindById;
     CostumeMock.find = defaultCostumeFind;
   });
@@ -122,7 +195,7 @@ describe('getAllCostumes', () => {
     mockData.activeCategories = [{ _id: 'category_id_123' }, { _id: 'subcategory_id_456' }];
     mockData.childCategories = [{ _id: 'subcategory_id_456', parentId: 'category_id_123' }];
 
-    await getAllCostumes({ categoryId: 'category_id_123678' });
+    await getAllCostumes({ categoryId: 'category_id_123' });
 
     // Category.find phải được gọi để lấy sub-categories
     assert.ok(mockData.categoryFindFilter !== undefined);
@@ -133,22 +206,44 @@ describe('getAllCostumes', () => {
     );
   });
 
-  test('Filter costume list by price range', async () => {
+  test('Get all costume (all status)', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ minPrice: '100000', maxPrice: '200000' });
+    await getAllCostumes({ status: 'all' });
+
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
+  });
+
+  test('Get all costumes list', async () => {
+    const result = await getAllCostumes({});
+
+    assert.ok(result.costumes);
+    assert.deepStrictEqual(result.pagination, {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 2,
+      limit: 9,
+    });
+  });
+
+  test('Filter costume list by price range', async () => {
+    const result = await getAllCostumes({ minPrice: '100000', maxPrice: '200000' });
 
     assert.deepStrictEqual(mockData.costumeFilter.pricePerDay, { $gte: 100000, $lte: 200000 });
+    assert.strictEqual(result.costumes.length, 2);
+    assert.strictEqual(result.pagination.totalItems, 2);
   });
 
   test('Search costume list by name using regex', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ search: 'Ao Dai' });
+    const result = await getAllCostumes({ search: 'Ao Dai' });
 
     assert.deepStrictEqual(mockData.costumeFilter.name, { $regex: 'Ao Dai', $options: 'i' });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 
   test('Sort costume list by price ascending', async () => {
@@ -166,50 +261,58 @@ describe('getAllCostumes', () => {
       };
     };
 
-    await getAllCostumes({ sort: 'price_asc' });
+    const result = await getAllCostumes({ sort: 'price_asc' });
 
     assert.deepStrictEqual(capturedSort, { pricePerDay: 1, _id: 1 });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 
   test('Pagination: page=2, limit=5 → skip=5', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ page: '2', limit: '5' });
+    const result = await getAllCostumes({ page: '2', limit: '5' });
 
     assert.strictEqual(mockData.skipValue, 5);   // (2-1)*5
     assert.strictEqual(mockData.limitValue, 5);
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 
-  test('Filter by specific status list (available,maintenance)', async () => {
+  test('Filter by specific status list (hidden)', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ status: 'available,maintenance' });
+    const result = await getAllCostumes({ status: 'hidden' });
 
-    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['available', 'maintenance'] });
+    assert.deepStrictEqual(mockData.costumeFilter.status, { $in: ['hidden'] });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 
-  test('Get all costume (all status)', async () => {
+  test('Filter by specific status list (available)', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({ status: 'all' });
+    const result = await getAllCostumes({ status: 'available' });
 
-    // status='all' vẫn ẩn 'hidden' theo mặc định — tránh lộ sản phẩm chủ shop đã ẩn ra API công khai
-    // chỉ vì FE truyền status=all. (Muốn thấy cả hidden, dùng endpoint riêng getInventoryCostumes.)
     assert.deepStrictEqual(mockData.costumeFilter.status, { $ne: 'hidden' });
-    assert.strictEqual(mockData.costumeFilter['variants.availableStock'], undefined);
+    assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 
   test('Get all costume without hidden status and with available stock', async () => {
     mockData.costumes = [];
     mockData.totalItems = 0;
 
-    await getAllCostumes({});
+    const result = await getAllCostumes({});
 
     assert.strictEqual(mockData.costumeFilter.status, 'available');
     assert.deepStrictEqual(mockData.costumeFilter['variants.availableStock'], { $gt: 0 });
+    assert.deepStrictEqual(result.costumes, []);
+    assert.strictEqual(result.pagination.totalItems, 0);
   });
 });
 

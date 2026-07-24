@@ -17,6 +17,7 @@ const fourDaysLaterStr = getFutureDateStr(4);
 
 const RentalMock = function (data) {
     Object.assign(this, data);
+    if (!this._id) this._id = 'mocked_rental_id_123';
     this.save = async function () { this._saved = true; return this; };
 };
 
@@ -163,7 +164,7 @@ mock('../services/notification.service', notificationServiceMock);
 // transaction đã được mock ở trên (không thao tác DB thật), nên chỉ cần session giả chạy callback trực tiếp.
 mongoose.startSession = async () => ({
     withTransaction: async (fn) => fn(),
-    endSession: async () => {},
+    endSession: async () => { },
 });
 
 const rentalService = require('../services/rental.service');
@@ -375,9 +376,7 @@ describe('cancelOrder', () => {
     });
 });
 
-// ============================
-// describe: getAllOrders
-// ============================
+
 
 describe('getAllOrders', () => {
     test('Get all orders successfully', async () => {
@@ -532,10 +531,6 @@ describe('checkAvailability', () => {
         assert.deepStrictEqual(result, { isAvailable: true, availableQty: 5 });
     });
 });
-
-// ============================
-// describe: updateOrderStatus
-// ============================
 
 describe('updateOrderStatus', () => {
     test('Throw 404 when order not found', async () => {
@@ -806,6 +801,8 @@ describe('extendRental', () => {
         mockData.rental.status = 'renting';
         mockData.rental.items[0].costume = buildMockCostume();
         mockData.rental.items[0].rentalPricePerDay = 0;
+        mockData.rental.items[0].costume.pricePerDay = 0;
+        mockData.rental.items[0].costume.price = 0;
 
         let callCount = 0;
         RentalMock.findOne = (filter) => {

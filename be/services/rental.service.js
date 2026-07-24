@@ -373,17 +373,18 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays < minDays) {
+      throw new HttpError(
+        `Phải thuê ít nhất ${minDays} ngày đối với sản phẩm ${costume.name}.`,
+        400
+      );
+    }
+
     const maxDays = costume.maxRentalDays || 7;
     if (rentalDays > maxDays) {
       throw new HttpError(
         `Chỉ được thuê tối đa ${maxDays} ngày đối với sản phẩm ${costume.name}.`,
-        400
-      );
-    }
-    const minDays = costume.minRentalDays || 1;
-    if (rentalDays < minDays) {
-      throw new HttpError(
-        `Phải thuê tối thiểu ${minDays} ngày đối với sản phẩm ${costume.name}.`,
         400
       );
     }

@@ -112,7 +112,7 @@ const syncCostumeStatusFromVariants = (costume) => {
 
 const getAllCostumes = async (query) => {
   const { categoryId, subCategoryIds, minPrice, maxPrice, status, sort, page = 1, limit = 9, search } = query;
-  
+
   // By default, exclude hidden costumes unless 'hidden' is explicitly requested
   let includeHidden = false;
   if (status) {
