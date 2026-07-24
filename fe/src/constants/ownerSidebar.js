@@ -5,7 +5,6 @@ import {
   faBox,
   faShirt,
   faWarehouse,
-  faFileExport,
   faCircleExclamation,
   faMoneyBillTransfer,
 } from "@fortawesome/free-solid-svg-icons";
@@ -54,15 +53,8 @@ const ownerSidebar = [
     subtitle: "Theo dõi tồn kho, ghi nhận nhập/xuất kho và xem lịch sử giao dịch",
     icon: faWarehouse
   },
-  { 
-    path: "/owner/export", 
-    label: "Xuất file", 
-    title: "Xuất file", 
-    subtitle: "Xuất dữ liệu hệ thống ra file báo cáo", 
-    icon: faFileExport 
-  },
-  { 
-    path: "/owner/issues", 
+  {
+    path: "/owner/issues",
     label: "Xử lý khiếu nại", 
     title: "Xử lý khiếu nại", 
     subtitle: "Tiếp nhận và giải quyết các phản hồi, sự cố từ khách hàng", 

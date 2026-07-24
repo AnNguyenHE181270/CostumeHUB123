@@ -1,13 +1,21 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDays, faLocationDot, faBox, faChevronRight } from '@fortawesome/free-solid-svg-icons'
-import { statusOrder } from "../../constants/statusOrder"
+import { getOrderStatusLabel, getIssueBadge } from "../../constants/statusOrder"
 import { formatOrderId, formatPrice } from "../../utils/formatters"
 
 function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
-    let status = statusOrder[order.status]
+    let status = getOrderStatusLabel(order)
     if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
         status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
     }
+    // Pill trạng thái chính giờ luôn tĩnh "Trả hàng" cho đơn loại này (xem getOrderStatusLabel) —
+    // tiến độ chi tiết (Chờ xử lí / Đã xử lí hoàn tiền / ...) hiện riêng ở góc phải cạnh giá.
+    const issueBadge = getIssueBadge(order);
+    // Chỉ tin số tiền hoàn THỰC TẾ (order.refundAmount) khi đơn đã 'completed' (đã kiểm tra hàng
+    // xong) — trước đó (còn 'returning'/chờ duyệt) chỉ hiện số tiền DỰ KIẾN (= tổng đơn ban đầu).
+    const refundValue = (order.issue?.status === "accepted" && order.status === "completed")
+        ? (order.refundAmount ?? order.totalPrice)
+        : order.totalPrice;
 
     return (
         <div
@@ -79,8 +87,19 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
                         </div>
                         {!isCompact && (
                             <div className="text-right shrink-0">
+                                {issueBadge && (
+                                    <p className={"text-xs font-semibold mb-0.5 " + issueBadge.className}>
+                                        {issueBadge.label}
+                                    </p>
+                                )}
                                 <p className="text-lg font-semibold text-foreground">{formatPrice(order.totalPrice)}</p>
-                                <p className="text-xs text-muted-foreground">Thuê {order.rentalPeriod}</p>
+                                {issueBadge ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        Số tiền hoàn: <span className="font-semibold text-[#b8935a]">{formatPrice(refundValue)}</span>
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">Thuê {order.rentalPeriod}</p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -181,7 +200,12 @@ function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, on
 
                     {/* Compact view - Price on right */}
                     {isCompact && (
-                        <span className="mt-1.5 text-sm font-semibold text-foreground">{formatPrice(order.totalPrice)}</span>
+                        <span className="mt-1.5 text-sm font-semibold text-foreground">
+                            {formatPrice(order.totalPrice)}
+                            {issueBadge && (
+                                <span className={"ml-2 text-xs font-semibold " + issueBadge.className}>{issueBadge.label}</span>
+                            )}
+                        </span>
                     )}
                 </div>
             </div>

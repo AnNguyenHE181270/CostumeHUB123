@@ -53,13 +53,18 @@ const defaultRentalFindOne = (filter) => {
         return result;
     }
 
-    return {
+    // .select() phải chainable như Mongoose thật (query builder trả về chính nó) — cancelOrder()
+    // gọi Rental.findOne(...).select("+cancelOtpCode ..."); thiếu method này mock ném TypeError
+    // "select is not a function", khiến MỌI test cancelOrder fail vì lỗi hạ tầng test chứ không
+    // phải vì service sai — che mất kết quả thật của assertion.
+    const chain = {
         populate: function () { return this; },
         select: function () { return this; },
         then: function (resolve, reject) {
             resolve(result);
         }
     };
+    return chain;
 };
 RentalMock.findOne = defaultRentalFindOne;
 RentalMock.findById = (id) => {
@@ -117,6 +122,11 @@ const sendEmailMock = async (opts) => {
     sendEmailCalledWith = opts;
     return true;
 };
+// email.service.js export thật là sendEmail() có gắn thêm renderEmailHtml() (helper dựng layout mail
+// chung) như 1 property trên chính hàm — mock cũng phải có property này, nếu không code gọi
+// sendEmail.renderEmailHtml(...) sẽ ném lỗi bị try/catch nuốt mất, khiến sendEmail() không bao giờ
+// thực sự được gọi (bug ẩn từng khiến test "Cancel order" fail sau khi thêm template mail chung).
+sendEmailMock.renderEmailHtml = (opts) => `<mock-email>${JSON.stringify(opts)}</mock-email>`;
 
 // ---- ghnService mock ----
 let ghnCreateOrderImpl = async () => { throw new Error('ghn not configured'); };
@@ -124,14 +134,30 @@ const ghnMock = {
     createOrder: async (payload) => ghnCreateOrderImpl(payload),
 };
 
+// ---- notificationService mock ----
+// notifyOrderStatus() trong rental.service.js gọi notificationService.createNotification() bọc trong
+// try/catch (chỉ console.error, không ném lỗi ra ngoài) — nếu KHÔNG mock module này, nó gọi thẳng
+// Notification.create() thật (model Mongoose thật, không có kết nối DB trong test) khiến Mongoose
+// buffer lệnh ghi rồi timeout sau ~10s (bufferTimeoutMS mặc định), lỗi đó bị try/catch nuốt mất nên
+// test vẫn pass — chỉ chậm âm thầm và không bao giờ phát hiện được bug thật trong luồng thông báo.
+let notificationCalls = [];
+const notificationServiceMock = {
+    createNotification: async (payload) => { notificationCalls.push(payload); return payload; },
+};
+
 mock('../models/rental.model', RentalMock);
 mock('../models/costume.model', CostumeMock);
 mock('../models/user.model', UserMock);
 mock('../models/cart.model', CartMock);
-mock('../models/issue.model', { findOne: async () => null });
+mock('../models/issue.model', {
+    findOne: async () => null,
+    // getAllOrders() gọi Issue.find({rentalId:{$in:...}}).select(...) để gắn khiếu nại liên kết vào
+    // từng đơn — mặc định không có khiếu nại nào (mảng rỗng) trừ khi 1 test cụ thể tự override.
+    find: () => ({ select: async () => [] }),
+});
 mock('../services/email.service', sendEmailMock);
 mock('../services/ghn.service', ghnMock);
-mock('../services/notification.service', { createNotification: async () => true });
+mock('../services/notification.service', notificationServiceMock);
 
 // createOrder chạy trong mongoose transaction (session.withTransaction) — không có DB thật/replica set
 // trong môi trường test nên mongoose.startSession() thật sẽ treo rồi timeout. Toàn bộ model trong
@@ -202,6 +228,7 @@ function buildMockCart() {
 beforeEach(() => {
     mockData = {};
     sendEmailCalledWith = null;
+    notificationCalls = [];
     ghnCreateOrderImpl = async () => { throw new Error('ghn not configured'); };
 
     mockData.costume = buildMockCostume();
@@ -245,8 +272,12 @@ describe('createOrder', () => {
         );
     });
 
-
-
+    // Đã bỏ 2 test cũ "Costume already booked... / overlaps another order..." — chúng test khả năng
+    // gộp số lượng của các đơn KHÁC trùng khoảng ngày qua Rental.find() (mockData.rentalList), một cơ
+    // chế đặt-theo-khung-ngày đã bị thay thế hoàn toàn từ khi createOrder chuyển sang chấm dứt/giữ chỗ
+    // qua instances[] (markInstancesRented) — availableStock giờ LUÔN phản ánh đúng tồn kho thời gian
+    // thực, không cần tự cộng dồn các đơn khác nữa. Coverage tương đương đã có ở
+    // 'Quantity exceeds available stock → throws 400' bên dưới.
 
     test('Requested size does not exist → throws 404', async () => {
         const mockBody = { startDate: tomorrowStr, endDate: fourDaysLaterStr, items: [{ costume: '60d5ec49c6934c1a48c48a12', size: 'M', quantity: 1 }] };
@@ -306,13 +337,21 @@ describe('createOrder', () => {
 
 describe('cancelOrder', () => {
     test('Cancel order successfully → restock, send email', async () => {
+        // paymentStatus chỉ được set 'refunded' nếu đơn ĐÃ thanh toán — dùng Cash (không phải VNPAY)
+        // để bỏ qua nhánh xác thực OTP hoàn tiền ngân hàng, giữ test tập trung vào cancel + restock.
+        mockData.rental.paymentMethod = 'Cash';
         mockData.rental.paymentStatus = 'paid';
+        // Đơn thuê 1 chiếc size L đang giữ chỗ -> mô phỏng đúng trạng thái kho trước khi hủy: kho còn
+        // 4/5 sẵn sàng (1 chiếc đang gắn cho đơn này). Hủy đơn phải nhả đúng 1 chiếc đó về kho, tổng
+        // không bao giờ vượt totalStock=5 — bug cũ ("5 → 6") từng cho phép vượt do nhả sai instance.
+        mockData.costume.variants[0].availableStock = 4;
+
         const result = await rentalService.cancelOrder('507f191e810c19729de860ea', '507f1f77bcf86cd799439011', 'Changed my mind');
 
         assert.strictEqual(result.status, 'cancelled');
         assert.strictEqual(result.paymentStatus, 'refunded');
         assert.strictEqual(result.cancelReason, 'Changed my mind');
-        assert.strictEqual(mockData.costume.variants[0].availableStock, 6); // 5+1
+        assert.strictEqual(mockData.costume.variants[0].availableStock, 5); // 4+1, không vượt totalStock=5
         assert.ok(mockData.costume._saved);
         assert.ok(sendEmailCalledWith);
         assert.strictEqual(sendEmailCalledWith.to, 'customer@gmail.com');
@@ -352,9 +391,14 @@ describe('getAllOrders', () => {
                     mockData[`populateCall_${populateCallCount}`] = path;
                     return this;
                 },
-                sort: async (s) => {
+                // getAllOrders() giờ gọi thêm .lean() sau .sort() (để gắn thêm order.issue mà không
+                // cần Mongoose document) — trả object vừa chainable (.lean()) vừa await trực tiếp được.
+                sort: (s) => {
                     mockData.rentalSortCalledWith = s;
-                    return mockOrders;
+                    return {
+                        lean: async () => mockOrders,
+                        then: (resolve) => resolve(mockOrders),
+                    };
                 },
             };
         };
@@ -459,15 +503,33 @@ describe('checkAvailability', () => {
         );
     });
 
+    // checkAvailability() giờ chỉ đọc thẳng variant.availableStock (nguồn sự thật thời gian thực từ
+    // instances[]) — không còn tự cộng dồn các đơn khác trùng ngày qua Rental.find() nữa, nên không
+    // cần mock RentalMock.find ở đây (đã xoá test "overlapping rentals" cũ dựa trên cơ chế cũ đó).
     test('Return true when costume is available with enough stock', async () => {
-        mockData.rentalList = [];
-        RentalMock.find = async () => [];
-
         const result = await rentalService.checkAvailability({ costumeId: '60d5ec49c6934c1a48c48a12', startDate: tomorrowStr, endDate: fourDaysLaterStr, quantity: 2 });
 
         assert.deepStrictEqual(result, { isAvailable: true, availableQty: 5 });
     });
 
+    test('Return false when requested quantity exceeds availableStock', async () => {
+        mockData.costume.variants[0].availableStock = 1;
+
+        const result = await rentalService.checkAvailability({ costumeId: '60d5ec49c6934c1a48c48a12', startDate: tomorrowStr, endDate: fourDaysLaterStr, quantity: 2 });
+
+        assert.deepStrictEqual(result, { isAvailable: false, availableQty: 1 });
+    });
+
+    test('No size specified → sum availableStock across all variants', async () => {
+        mockData.costume.variants = [
+            { size: 'S', totalStock: 3, availableStock: 2 },
+            { size: 'L', totalStock: 5, availableStock: 3 },
+        ];
+
+        const result = await rentalService.checkAvailability({ costumeId: '60d5ec49c6934c1a48c48a12', startDate: tomorrowStr, endDate: fourDaysLaterStr, quantity: 4 });
+
+        assert.deepStrictEqual(result, { isAvailable: true, availableQty: 5 });
+    });
 });
 
 describe('updateOrderStatus', () => {
@@ -582,24 +644,27 @@ describe('confirmPreparation', () => {
 // ============================
 
 describe('Dashboard Analytics', () => {
+    // getTotalRevenue() tính doanh thu từ totalRentalPrice + shippingFee + phí phát sinh (KHÔNG gồm
+    // tiền cọc — cọc là tiền giữ hộ, sẽ hoàn lại nên không phải doanh thu thật), khác totalAmount cũ
+    // (gộp cả cọc). Fixture phải khớp field thật sự được đọc, nếu không mọi thứ cộng dồn ra 0.
     test('Get total revenue successfully', async () => {
         RentalMock.find = async (filter) => {
             mockData.rentalFindFilter = filter;
             return [
-                { totalRentalPrice: 100000, totalDeposit: 50000, shippingFee: 0, createdAt: new Date('2026-01-15') },
-                { totalRentalPrice: 250000, totalDeposit: 100000, shippingFee: 0, createdAt: new Date('2026-01-20') },
+                { totalRentalPrice: 100000, totalDeposit: 50000, shippingFee: 20000, lateFee: 5000, damageFee: 0, replacementFee: 0, createdAt: new Date('2026-01-15') },
+                { totalRentalPrice: 200000, totalDeposit: 80000, shippingFee: 30000, lateFee: 0, damageFee: 10000, replacementFee: 0, createdAt: new Date('2026-01-20') },
             ];
         };
 
         const result = await rentalService.getTotalRevenue();
 
         assert.deepStrictEqual(result, {
-            totalRevenue: 350000,
-            totalRentalPrice: 350000,
-            totalDeposit: 150000,
-            totalDeductedDeposit: 0,
+            totalRevenue: 365000,        // (100000+20000+5000) + (200000+30000+10000)
+            totalRentalPrice: 300000,
+            totalDeposit: 130000,
+            totalDeductedDeposit: 15000, // tổng lateFee+damageFee+replacementFee
             orderCount: 2,
-            revenueByMonth: [{ month: '2026-01', total: 350000 }],
+            revenueByMonth: [{ month: '2026-01', total: 365000 }],
         });
     });
 
@@ -709,7 +774,9 @@ describe('extendRental', () => {
         );
     });
 
-
+    // Đã bỏ test "Overlap with another reservation during extension window" — extendRental() giờ chỉ
+    // gọi Rental.findOne() ĐÚNG 1 LẦN (không còn truy vấn lần 2 tìm đơn khác trùng ngày để chặn gia
+    // hạn); giới hạn duy nhất còn lại là costume.maxRentalDays, đã có test riêng phía trên.
 
     test('Payment required → return payload with paymentRequired=true', async () => {
         mockData.rental.status = 'renting';

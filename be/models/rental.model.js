@@ -130,6 +130,13 @@ const rentalSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+
+        // Đánh dấu đã gửi email nhắc trước 12 tiếng khi sắp quá hạn — reset về false mỗi khi
+        // endDate thay đổi (gia hạn) để đơn được nhắc lại đúng theo hạn mới.
+        upcomingOverdueReminderSent: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

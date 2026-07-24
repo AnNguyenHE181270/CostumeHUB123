@@ -33,7 +33,7 @@ const getAllIssues = async (req, res, next) => {
     if (!['staff', 'owner'].includes(req.userData.role)) {
       throw new HttpError('Bạn không có quyền thực hiện hành động này.', 403);
     }
-    const issues = await issueService.getAllIssues(req.query);
+    const issues = await issueService.getAllIssues(req.query, req.userData.role);
     res.status(200).json({ success: true, issues });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message || 'Lấy danh sách khiếu nại thất bại.', 500));

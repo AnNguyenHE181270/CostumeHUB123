@@ -22,8 +22,7 @@ export function computeVariantBreakdown(variant) {
   return { total, available, rented, maintenance };
 }
 
-// Dùng chung cho cả trang "Xuất báo cáo" (ExportPage) và nút "Xuất báo cáo tồn kho" ngay trong
-// trang "Kho hàng" (InventoryPage) — đảm bảo 2 nơi luôn xuất ra cùng một định dạng, cùng một cách tính.
+// Dùng cho nút "Xuất báo cáo tồn kho" ở trang "Kho hàng" (InventoryPage).
 export function buildInventoryWorkbook(products) {
   const detailRows = [];
   let tStock = 0, tAvail = 0, tRented = 0, tMaintenance = 0;
