@@ -224,6 +224,46 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                         </div>
                     </div>
 
+                    {/* Tracking Codes */}
+                    {(detailedOrder.trackingCode || detailedOrder.returnTrackingCode) && (
+                        <div className="rounded-lg border border-border p-4 bg-gray-50">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
+                                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                                <span>Mã vận đơn (GHN)</span>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {detailedOrder.trackingCode && (
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Giao đến khách</p>
+                                        <p className="text-sm font-mono font-medium text-foreground">{detailedOrder.trackingCode}</p>
+                                    </div>
+                                )}
+                                {detailedOrder.returnTrackingCode && (
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Khách hoàn trả</p>
+                                        <p className="text-sm font-mono font-medium text-foreground">{detailedOrder.returnTrackingCode}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {(currentStatus === 'returning' || detailedOrder.actualReturnDate) && (
+                        <div className={`rounded-lg border p-4 ${detailedOrder.actualReturnDate ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50'}`}>
+                            <div className={`flex items-center gap-2 text-sm font-semibold ${detailedOrder.actualReturnDate ? 'text-blue-800' : 'text-orange-800'}`}>
+                                <FontAwesomeIcon icon={faTruck} className="h-4 w-4" />
+                                <span>Trạng thái vận chuyển hàng hoàn</span>
+                            </div>
+                            <p className={`mt-2 text-sm font-medium ${detailedOrder.actualReturnDate ? 'text-blue-900' : 'text-orange-900'}`}>
+                                {detailedOrder.actualReturnDate ? (
+                                    <>Shipper đã nhận hàng lúc: <span className="font-bold">{new Date(detailedOrder.actualReturnDate).toLocaleString('vi-VN')}</span> - Đang hoàn trả đồ về cho shop</>
+                                ) : (
+                                    "Đang đợi shipper đến lấy đồ để hoàn trả về shop..."
+                                )}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Payment Info */}
                     <div className="rounded-lg border border-border p-4">
                         <div className="flex items-center justify-between">

@@ -48,6 +48,8 @@ const CURRENT_STATUS_LABEL = {
     renting: "Đang sử dụng dịch vụ",
     overdue: "Đã quá hạn trả — vui lòng trả sớm",
     returning: "Đã gửi yêu cầu trả hàng",
+    picked_up: "Shipper đã lấy hàng hoàn",
+    inspection: "Cửa hàng đang kiểm tra trang phục trả",
     completed: "Hoàn tất trả hàng",
     cancelled: "Đơn hàng đã hủy",
 }
@@ -58,7 +60,9 @@ const CURRENT_STATUS_SUBTITLE = {
     delivered: "Đơn hàng đã được giao thành công",
     renting: "Đơn hàng đã được giao thành công",
     overdue: "Vui lòng hoàn trả trang phục cho cửa hàng",
-    returning: "Đang chờ cửa hàng nhận lại và kiểm tra trang phục",
+    returning: "Đang đợi shipper đến lấy đồ để hoàn trả về shop...",
+    picked_up: "Shipper đang trên đường giao đồ hoàn về shop",
+    inspection: "Cửa hàng đã nhận được trang phục và đang trong quá trình kiểm tra",
     completed: "Giao dịch đã hoàn tất thành công",
     cancelled: "Đơn hàng đã bị hủy",
 }
@@ -68,7 +72,7 @@ function getTrackingSteps(status) {
     if (status === 'pending') currentStep = 1;
     else if (status === 'delivering') currentStep = 2;
     else if (['delivered', 'renting', 'overdue'].includes(status)) currentStep = 3;
-    else if (status === 'returning') currentStep = 4;
+    else if (['returning', 'picked_up', 'inspection'].includes(status)) currentStep = 4;
     else if (status === 'completed') currentStep = 5;
 
     return STEP_DEFINITIONS.map((step) => ({
@@ -104,11 +108,18 @@ export function OrderTrackingModal({ open, onOpenChange, order }) {
 
     if (!order) return null
 
-    const trackingSteps = getTrackingSteps(status)
-    const currentStepTitle = CURRENT_STATUS_LABEL[status] ?? "Đang xử lý"
-    const statusSubtitle = ['pending', 'delivering'].includes(status) && estimatedDate
+    let effectiveStatus = status;
+    if (status === 'returning' && order.actualReturnDate) {
+        effectiveStatus = 'picked_up';
+    }
+
+    const trackingSteps = getTrackingSteps(effectiveStatus)
+    const currentStepTitle = CURRENT_STATUS_LABEL[effectiveStatus] ?? "Đang xử lý"
+    const statusSubtitle = ['pending', 'delivering'].includes(effectiveStatus) && estimatedDate
         ? `Dự kiến giao: ${new Date(estimatedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
-        : CURRENT_STATUS_SUBTITLE[status] ?? "Đang cập nhật hành trình"
+        : (['returning', 'picked_up'].includes(effectiveStatus) && order.actualReturnDate)
+            ? `Shipper đã nhận hàng từ khách lúc ${new Date(order.actualReturnDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})} ngày ${new Date(order.actualReturnDate).toLocaleDateString('vi-VN')} - Đang hoàn trả đồ về cho shop`
+            : CURRENT_STATUS_SUBTITLE[effectiveStatus] ?? "Đang cập nhật hành trình"
 
     const items = Array.isArray(order.items)
         ? order.items

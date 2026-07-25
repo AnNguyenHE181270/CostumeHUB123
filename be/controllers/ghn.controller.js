@@ -42,21 +42,47 @@ const handleWebhook = async (req, res, next) => {
             return res.status(400).json({ message: "Thiếu dữ liệu OrderCode hoặc Status" });
         }
 
-        // Tìm đơn hàng theo mã vận đơn
-        const rentalOrder = await Rental.findOne({ trackingCode: OrderCode });
+        // Tìm đơn hàng theo mã vận đơn đi hoặc mã vận đơn hoàn
+        let isReturnOrder = false;
+        let rentalOrder = await Rental.findOne({ trackingCode: OrderCode });
+
+        if (!rentalOrder) {
+            rentalOrder = await Rental.findOne({ returnTrackingCode: OrderCode });
+            isReturnOrder = true;
+        }
 
         if (!rentalOrder) {
             // Vẫn trả về 200 để báo cho GHN là đã nhận nhưng không làm gì cả
             return res.status(200).json({ message: "Không tìm thấy đơn hàng trong hệ thống" });
         }
 
-        // GHN giao hàng thành công -> chuyển sang 'delivered', chờ khách xác nhận
-        // (hoặc tự động chuyển sang 'renting' sau 5 tiếng, xem autoUpdateDeliveredStatus)
-        if (Status === "delivered" && rentalOrder.status === "delivering") {
-            rentalOrder.status = "delivered";
-            rentalOrder.deliveredAt = new Date();
-            await rentalOrder.save();
-            console.log(`[Webhook] Đơn hàng ${rentalOrder._id} đã được cập nhật sang delivered`);
+        if (isReturnOrder) {
+            if (Status === "picked_up" || Status === "picked") {
+                // Đã lấy hàng hoàn, chốt actualReturnDate
+                if (!rentalOrder.actualReturnDate) {
+                    rentalOrder.actualReturnDate = new Date();
+                    await rentalOrder.save();
+                    console.log(`[Webhook] Đơn hàng hoàn ${rentalOrder._id} đã được GHN lấy, chốt actualReturnDate`);
+                }
+            } else if (Status === "pick_up_failed" || Status === "picking_fail") {
+                console.warn(`[Webhook] Đơn hàng hoàn ${rentalOrder._id} lấy hàng thất bại bởi GHN.`);
+                // Có thể lưu log hoặc notify nhân viên
+            } else if (Status === "delivered") {
+                // GHN giao hàng hoàn thành công cho shop
+                if (rentalOrder.status === "returning") {
+                    rentalOrder.status = "inspection";
+                    await rentalOrder.save();
+                    console.log(`[Webhook] Đơn hàng hoàn ${rentalOrder._id} đã giao cho shop, chuyển sang inspection`);
+                }
+            }
+        } else {
+            // GHN giao hàng thành công -> chuyển sang 'delivered', chờ khách xác nhận
+            if (Status === "delivered" && rentalOrder.status === "delivering") {
+                rentalOrder.status = "delivered";
+                rentalOrder.deliveredAt = new Date();
+                await rentalOrder.save();
+                console.log(`[Webhook] Đơn hàng ${rentalOrder._id} đã được cập nhật sang delivered`);
+            }
         }
         
         // Luôn trả về 200 OK cho Webhook

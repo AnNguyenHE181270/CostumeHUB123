@@ -10,7 +10,9 @@ export const statusOrder = {
     // Màu cam đậm — cố tình KHÁC tông đỏ của "cancelled" vì ý nghĩa trái ngược nhau
     // (quá hạn cần khách hành động ngay; đã hủy là trạng thái kết thúc, không cần làm gì thêm).
     overdue: { label: "Quá hạn", className: "bg-orange-100 text-orange-800 border-orange-300" },
-    returning: { label: "Đang trả hàng", className: "bg-purple-100 text-purple-800 border-purple-200" }
+    returning: { label: "Đang trả hàng", className: "bg-purple-100 text-purple-800 border-purple-200" },
+    picked_up: { label: "Đã lấy hàng hoàn", className: "bg-blue-100 text-blue-800 border-blue-200" },
+    inspection: { label: "Đang kiểm tra", className: "bg-orange-100 text-orange-800 border-orange-200" }
 };
 
 export const tabs = [
@@ -56,6 +58,9 @@ export function isReturnRefundOrder(order) {
 export function getOrderStatusLabel(order) {
     if (isReturnRefundOrder(order)) {
         return { label: "Trả hàng", className: "bg-purple-100 text-purple-800 border-purple-200" };
+    }
+    if (order?.status === 'returning' && order?.actualReturnDate) {
+        return statusOrder['picked_up'];
     }
     return statusOrder[order?.status];
 }

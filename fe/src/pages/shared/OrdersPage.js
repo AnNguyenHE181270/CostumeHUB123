@@ -329,7 +329,8 @@ export default function OrdersPage() {
       case 'delivered': return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'renting': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'returning': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'inspection': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'completed': return 'bg-gray-50 text-gray-700 border-gray-200';
       case 'cancelled': return 'bg-[#faf9f7] text-[#999] border-[#eaeaea]';
       case 'overdue': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-white text-[#555] border-[#eaeaea]';
@@ -346,6 +347,7 @@ export default function OrdersPage() {
       case 'delivered': return 'Đã giao';
       case 'renting': return 'Đang thuê';
       case 'returning': return 'Đang trả hàng';
+      case 'inspection': return 'Chờ kiểm tra';
       case 'completed': return 'Hoàn tất';
       case 'cancelled': return 'Đã hủy';
       case 'overdue': return 'Quá hạn';
@@ -440,6 +442,7 @@ export default function OrdersPage() {
             <option value="pending">Chờ xử lý</option>
             <option value="renting">Đang thuê</option>
             <option value="returning">Đang trả hàng</option>
+            <option value="inspection">Chờ kiểm tra</option>
             <option value="completed">Hoàn tất</option>
             <option value="cancelled">Đã hủy</option>
             <option value="refund_pending">Chờ hoàn tiền</option>
@@ -616,6 +619,23 @@ export default function OrdersPage() {
                   {selectedOrder.endDate ? new Date(selectedOrder.endDate).toLocaleDateString('vi-VN') : "-"}
                 </p>
               </div>
+              
+              {/* Vận đơn GHN */}
+              <div className="col-span-2 flex flex-wrap gap-4 mt-2">
+                {selectedOrder.trackingCode && (
+                  <div className="bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mã vận đơn (Giao đi)</p>
+                    <p className="font-mono text-sm font-bold text-gray-800 mt-0.5">{selectedOrder.trackingCode}</p>
+                  </div>
+                )}
+                {selectedOrder.returnTrackingCode && (
+                  <div className="bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mã vận đơn (Hoàn về)</p>
+                    <p className="font-mono text-sm font-bold text-gray-800 mt-0.5">{selectedOrder.returnTrackingCode}</p>
+                  </div>
+                )}
+              </div>
+
               {selectedOrder.shippingAddress && (
                 <div className="col-span-2 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Địa chỉ nhận hàng</p>
@@ -626,6 +646,18 @@ export default function OrdersPage() {
                       selectedOrder.shippingAddress.district,
                       selectedOrder.shippingAddress.province
                     ].filter(Boolean).join(', ') || "Chưa cập nhật địa chỉ"}
+                  </p>
+                </div>
+              )}
+              {(selectedOrder.status === 'returning' || selectedOrder.actualReturnDate) && (
+                <div className={`col-span-2 p-3 rounded-lg border mt-1 ${selectedOrder.actualReturnDate ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${selectedOrder.actualReturnDate ? 'text-blue-600' : 'text-orange-600'}`}>Trạng thái vận chuyển hàng hoàn</p>
+                  <p className={`text-sm font-medium mt-1 leading-relaxed ${selectedOrder.actualReturnDate ? 'text-blue-700' : 'text-orange-700'}`}>
+                    {selectedOrder.actualReturnDate ? (
+                        <>Shipper đã nhận hàng từ khách lúc: <span className="font-bold">{new Date(selectedOrder.actualReturnDate).toLocaleString('vi-VN')}</span> - Đang hoàn trả đồ về cho shop</>
+                    ) : (
+                        "Đang đợi shipper đến lấy đồ từ khách để hoàn trả về shop..."
+                    )}
                   </p>
                 </div>
               )}
@@ -728,16 +760,25 @@ export default function OrdersPage() {
                     </span>
                   ) : (
                     <button
-                      className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
-                      onClick={() => {
-                        setInspectReturnOrder(selectedOrder);
-                        setSelectedOrder(null);
-                      }}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-indigo-100 text-indigo-700 font-medium rounded hover:bg-indigo-200 transition-colors text-sm"
+                      onClick={() => handleUpdateStatus(selectedOrder._id, 'inspection')}
                     >
-                      Kiểm tra đồ trả
+                      Xác nhận đã nhận hàng hoàn
                     </button>
                   )
                 )}
+                {selectedOrder.status === 'inspection' && (
+                  <button
+                    className="flex-1 sm:flex-none px-4 py-2 bg-purple-100 text-purple-700 font-medium rounded hover:bg-purple-200 transition-colors text-sm"
+                    onClick={() => {
+                      setInspectReturnOrder(selectedOrder);
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Kiểm tra đồ trả
+                  </button>
+                )}
+
               </div>
             )}
           </div>

@@ -241,6 +241,9 @@ const getRentalHistory = async (userId) => {
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
     rentingAt: order.rentingAt,
+    actualReturnDate: order.actualReturnDate,
+    trackingCode: order.trackingCode,
+    returnTrackingCode: order.returnTrackingCode,
     totalPrice: order.totalAmount,
     refundAmount: order.refundAmount,
     replacementFee: order.replacementFee,
@@ -299,6 +302,7 @@ const getOrderDetail = async (orderId, customerId) => {
     issueResolution: issue?.resolution || null,
     deliveredAt: order.deliveredAt,
     rentingAt: order.rentingAt,
+    actualReturnDate: order.actualReturnDate,
     cancelReason: order.cancelReason,
     refundAmount: order.refundAmount,
     // Số liệu phí đã CHỐT (chỉ có giá trị thật sau khi inspectReturn xử lý xong, tức status='completed')
@@ -326,6 +330,8 @@ const getOrderDetail = async (orderId, customerId) => {
       total: order.totalAmount,
     },
     shippingAddress: order.shippingAddress,
+    trackingCode: order.trackingCode,
+    returnTrackingCode: order.returnTrackingCode,
     orderDate: order.createdAt,
     refundDetails: order.refundDetails,
     rentalPeriod: Math.ceil((order.endDate - order.startDate) / (1000 * 60 * 60 * 24)) + 1,
@@ -863,6 +869,7 @@ const updateOrderStatus = async (id, status) => {
         weight: 500,
         length: 20, width: 20, height: 10,
         service_type_id: 2,
+        client_order_code: `${order._id.toString()}-DELIVERY`,
         items: [{ name: 'Trang phục thuê', quantity: 1, weight: 500 }],
       });
       order.trackingCode = ghnRes.order_code;
@@ -1137,6 +1144,37 @@ const requestReturn = async (id, refundData) => {
       accountName: refundData.accountName,
       status: 'pending'
     };
+  }
+
+  // Tạo đơn GHN thu hồi nếu có địa chỉ
+  if (rental.shippingAddress && rental.shippingAddress.districtId) {
+    try {
+      const ghnRes = await ghnService.createOrder({
+        payment_type_id: 2, // Người nhận trả (Shop trả phí)
+        note: 'Hoàn trả đồ thuê CostumeHUB',
+        required_note: 'CHOTHUHANG',
+        from_name: rental.shippingAddress.receiverName,
+        from_phone: rental.shippingAddress.receiverPhone,
+        from_address: rental.shippingAddress.addressDetail || 'Không có địa chỉ chi tiết',
+        from_ward_code: String(rental.shippingAddress.wardCode),
+        from_district_id: Number(rental.shippingAddress.districtId),
+        to_name: 'Shop CostumeHUB',
+        to_phone: '0987654321', 
+        to_address: 'Đại học FPT Hòa Lạc, Thạch Thất, Hà Nội',
+        to_ward_code: ghnService.SHOP_ORIGIN.ward_code,
+        to_district_id: ghnService.SHOP_ORIGIN.district_id,
+        weight: 500,
+        length: 20, width: 20, height: 10,
+        service_type_id: 2,
+        client_order_code: `${rental._id.toString()}-RETURN`,
+        items: [{ name: 'Trang phục thuê hoàn trả', quantity: 1, weight: 500 }],
+      });
+      
+      rental.returnTrackingCode = ghnRes.order_code;
+    } catch (ghnError) {
+      console.error('Failed to create GHN return order:', ghnError);
+      throw new HttpError(`Không tạo được vận đơn thu hồi GHN: ${ghnError.message}`, 400);
+    }
   }
   
   rental.status = 'returning';
