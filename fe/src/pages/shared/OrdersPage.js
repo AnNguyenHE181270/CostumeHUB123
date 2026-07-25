@@ -158,8 +158,15 @@ export default function OrdersPage() {
   const hasSelectedItem = offlineData.items.some(item => item.costume && item.size);
   const dayConstraints = getRentalDayConstraints();
   const currentRentalDays = offlineData.startDate && offlineData.endDate
-    ? Math.ceil((new Date(offlineData.endDate) - new Date(offlineData.startDate)) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(offlineData.endDate) - new Date(offlineData.startDate)) / (1000 * 60 * 60 * 24)) + 1
     : null;
+
+  const getMaxEndDateStr = () => {
+    if (!offlineData.startDate || !dayConstraints?.maxDays) return undefined;
+    const start = new Date(offlineData.startDate);
+    start.setDate(start.getDate() + (dayConstraints.maxDays - 1));
+    return start.toISOString().split("T")[0];
+  };
   const rentalDaysOutOfRange = !!(
     dayConstraints?.valid &&
     currentRentalDays !== null &&
@@ -235,11 +242,12 @@ export default function OrdersPage() {
       return;
     }
 
-    const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    if (rentalDays <= 0) {
-      setToast({ show: true, message: "Ngày kết thúc thuê phải sau ngày bắt đầu thuê.", type: "error" });
+    if (end < start) {
+      setToast({ show: true, message: "Ngày kết thúc thuê không được trước ngày bắt đầu thuê.", type: "error" });
       return;
     }
+
+    const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
     for (const item of offlineData.items) {
       const costume = costumesList.find(c => c._id === item.costume);
@@ -953,8 +961,18 @@ export default function OrdersPage() {
                       value={offlineData.startDate}
                       onChange={e => {
                         const newStart = e.target.value;
-                        // Nếu ngày kết thúc đang trước ngày bắt đầu mới thì đẩy theo luôn, tránh khoảng ngày âm.
-                        const newEnd = offlineData.endDate && offlineData.endDate < newStart ? newStart : offlineData.endDate;
+                        let newEnd = offlineData.endDate;
+                        if (!newEnd || newEnd < newStart) {
+                          newEnd = newStart;
+                        }
+                        if (dayConstraints?.maxDays && newStart) {
+                          const maxEnd = new Date(newStart);
+                          maxEnd.setDate(maxEnd.getDate() + (dayConstraints.maxDays - 1));
+                          const maxEndStr = maxEnd.toISOString().split("T")[0];
+                          if (newEnd > maxEndStr) {
+                            newEnd = maxEndStr;
+                          }
+                        }
                         setOfflineData({ ...offlineData, startDate: newStart, endDate: newEnd });
                       }}
                       className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a] disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -967,6 +985,7 @@ export default function OrdersPage() {
                       required
                       disabled={!hasSelectedItem || !offlineData.startDate}
                       min={offlineData.startDate || getTodayStr()}
+                      max={getMaxEndDateStr()}
                       value={offlineData.endDate}
                       onChange={e => setOfflineData({ ...offlineData, endDate: e.target.value })}
                       className="w-full border border-[#eaeaea] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a1a] disabled:bg-gray-100 disabled:cursor-not-allowed"
