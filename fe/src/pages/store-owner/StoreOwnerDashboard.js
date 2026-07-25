@@ -106,6 +106,7 @@ const STATUS_STYLES = {
   overdue: "bg-orange-100 text-orange-700", renting: "bg-blue-100 text-blue-700",
   pending: "bg-gray-100 text-gray-600", delivering: "bg-amber-100 text-amber-700",
   returning: "bg-purple-100 text-purple-700", delivered: "bg-teal-100 text-teal-700",
+  inspection: "bg-orange-100 text-orange-700"
 };
 function StatusPill({ status }) {
   return (
