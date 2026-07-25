@@ -11,6 +11,16 @@ axiosClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Content-Type mặc định của instance là 'application/json'. Khi body là FormData (upload
+  // avatar/ảnh...), header này phải được gỡ bỏ để trình duyệt tự set 'multipart/form-data;
+  // boundary=...'. Nếu không, axios sẽ nghĩ đây là request JSON và âm thầm JSON.stringify()
+  // FormData thành object rỗng, khiến file không bao giờ được gửi lên server (mất dữ liệu file,
+  // đôi khi kéo theo lỗi 400 bị FE hiển thị nhầm thành "Lỗi kết nối mạng").
+  if (config.data instanceof FormData) {
+    config.headers.delete('Content-Type');
+  }
+
   return config;
 });
 
