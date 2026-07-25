@@ -314,10 +314,10 @@ export default function ProductDetailPage() {
                               disabled={isOutOfStock}
                               onClick={() => setSelectedVariant(v)}
                               className={`min-w-[42px] px-3 py-1.5 text-[12px] font-bold uppercase rounded-xl transition-all ${isSelected
-                                  ? "bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] border border-[#c9a869] shadow-md"
-                                  : isOutOfStock
-                                    ? "border border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
-                                    : "border border-[#e2d5bd] bg-[#faf9f7] text-[#1a1a1a] hover:border-[#b8935a]"
+                                ? "bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[#f5e6ca] border border-[#c9a869] shadow-md"
+                                : isOutOfStock
+                                  ? "border border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                  : "border border-[#e2d5bd] bg-[#faf9f7] text-[#1a1a1a] hover:border-[#b8935a]"
                                 }`}
                               title={isMaintenance ? "Kích thước này đang bảo trì / giặt là" : ""}
                             >
@@ -353,7 +353,7 @@ export default function ProductDetailPage() {
                     Thời Gian Thuê
                   </h4>
                   <span className="text-[11px] text-[#b8935a] font-medium">
-                    ({costume.minRentalDays > 1 ? `Tối thiểu: ${costume.minRentalDays} ngày - ` : ""}Tối đa: {costume.maxRentalDays || 7} ngày)
+                    (Tối đa: {costume.maxRentalDays || 7} ngày)
                   </span>
                 </div>
 
@@ -439,10 +439,6 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays < (costume.minRentalDays || 1)) {
-                        showToast(`Yêu cầu thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
-                        return;
-                      }
                       if (rentalDays > (costume.maxRentalDays || 7)) {
                         showToast(`Chỉ được phép thuê tối đa ${costume.maxRentalDays || 7} ngày.`, "error");
                         return;
@@ -472,8 +468,8 @@ export default function ProductDetailPage() {
                     }
                   }}
                   className={`flex-1 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 shadow-md ${costume.status === "available"
-                      ? "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 luxury-btn-gold-shine border border-[#c9a869]/40"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-[#1a1a1a] via-[#2d2d2d] to-[#121212] text-[#f5e6ca] hover:brightness-125 luxury-btn-gold-shine border border-[#c9a869]/40"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}
                   disabled={costume.status !== "available" || !selectedVariant || isBuying}
                 >
@@ -483,10 +479,6 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     if (costume.status === "available") {
-                      if (rentalDays < (costume.minRentalDays || 1)) {
-                        showToast(`Yêu cầu thuê tối thiểu ${costume.minRentalDays || 1} ngày.`, "error");
-                        return;
-                      }
                       if (rentalDays > (costume.maxRentalDays || 7)) {
                         showToast(`Chỉ được phép thuê tối đa ${costume.maxRentalDays || 7} ngày.`, "error");
                         return;
@@ -502,8 +494,8 @@ export default function ProductDetailPage() {
                     }
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[12px] uppercase tracking-[0.12em] font-bold transition-all duration-300 border-2 ${costume.status === "available"
-                      ? "border-[#b8935a] bg-white text-[#8a6a3c] hover:bg-[#faf1dd] shadow-sm"
-                      : "border-gray-200 bg-white text-gray-300 cursor-not-allowed"
+                    ? "border-[#b8935a] bg-white text-[#8a6a3c] hover:bg-[#faf1dd] shadow-sm"
+                    : "border-gray-200 bg-white text-gray-300 cursor-not-allowed"
                     }`}
                   disabled={costume.status !== "available"}
                 >

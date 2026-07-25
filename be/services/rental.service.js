@@ -345,7 +345,7 @@ const createOrder = async (customerId, body) => {
   // Kiểm tra ngày bắt đầu thuê không ở trong quá khứ và không được đặt trước quá 5 ngày
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   if (start < today) {
     throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
   }
@@ -373,13 +373,6 @@ const createOrder = async (customerId, body) => {
   for (const item of items) {
     const costume = await Costume.findById(item.costume);
     if (!costume) throw new HttpError('Costume not found.', 404);
-    const minDays = costume.minRentalDays || 1;
-    if (rentalDays < minDays) {
-      throw new HttpError(
-        `Phải thuê ít nhất ${minDays} ngày đối với sản phẩm ${costume.name}.`,
-        400
-      );
-    }
 
     const maxDays = costume.maxRentalDays || 7;
     if (rentalDays > maxDays) {
@@ -498,37 +491,37 @@ const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
   if (!['pending'].includes(order.status)) throw new HttpError('Không thể hủy đơn hàng ở trạng thái này.', 400);
 
   if (order.paymentStatus === 'paid' && order.paymentMethod === 'VNPAY') {
-      if (!refundData || !refundData.otp) throw new HttpError('Vui lòng nhập mã OTP để xác nhận hủy đơn.', 400);
-      if (!order.cancelOtpCode || order.cancelOtpCode !== refundData.otp || order.cancelOtpExpires < Date.now()) {
-          throw new HttpError("Mã OTP không hợp lệ hoặc đã hết hạn", 400);
-      }
-      
-      if (!refundData.bankName || !refundData.accountNumber || !refundData.accountName) {
-          throw new HttpError("Vui lòng cung cấp đầy đủ thông tin ngân hàng để hoàn tiền", 400);
-      }
-      
-      order.refundDetails = {
-          bankName: refundData.bankName,
-          accountNumber: refundData.accountNumber,
-          accountName: refundData.accountName,
-          status: 'pending'
-      };
+    if (!refundData || !refundData.otp) throw new HttpError('Vui lòng nhập mã OTP để xác nhận hủy đơn.', 400);
+    if (!order.cancelOtpCode || order.cancelOtpCode !== refundData.otp || order.cancelOtpExpires < Date.now()) {
+      throw new HttpError("Mã OTP không hợp lệ hoặc đã hết hạn", 400);
+    }
 
-      // Clear OTP
-      order.cancelOtpCode = undefined;
-      order.cancelOtpExpires = undefined;
-      order.cancelOtpCooldownUntil = undefined;
+    if (!refundData.bankName || !refundData.accountNumber || !refundData.accountName) {
+      throw new HttpError("Vui lòng cung cấp đầy đủ thông tin ngân hàng để hoàn tiền", 400);
+    }
+
+    order.refundDetails = {
+      bankName: refundData.bankName,
+      accountNumber: refundData.accountNumber,
+      accountName: refundData.accountName,
+      status: 'pending'
+    };
+
+    // Clear OTP
+    order.cancelOtpCode = undefined;
+    order.cancelOtpExpires = undefined;
+    order.cancelOtpCooldownUntil = undefined;
   }
 
   order.status = 'cancelled';
   order.cancelReason = cancelReason || 'Người dùng hủy đơn';
-  
+
   if (order.paymentStatus === 'paid') {
-      // Keep as paid but mark refund pending via refundDetails, or mark as refund pending?
-      // Let's keep it 'paid' for now until admin processes refund, or change to 'refunded' if it's done. 
-      // The old code changed it to 'refunded', but actually we should just leave it or change to a new status.
-      // But paymentStatus enum only has: "pending", "paid", "failed", "refunded".
-      order.paymentStatus = 'refunded'; // We'll just set it to refunded, and admin tracks refundDetails.
+    // Keep as paid but mark refund pending via refundDetails, or mark as refund pending?
+    // Let's keep it 'paid' for now until admin processes refund, or change to 'refunded' if it's done. 
+    // The old code changed it to 'refunded', but actually we should just leave it or change to a new status.
+    // But paymentStatus enum only has: "pending", "paid", "failed", "refunded".
+    order.paymentStatus = 'refunded'; // We'll just set it to refunded, and admin tracks refundDetails.
   }
 
   await order.save();
@@ -1270,11 +1263,11 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
 const confirmRefund = async (orderId) => {
   const rental = await Rental.findById(orderId).populate('customerId', 'email fullName');
   if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
-  
+
   if (!rental.refundDetails || rental.refundDetails.status === 'completed') {
     throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền hoặc đã hoàn tất hoàn tiền.', 400);
   }
-  
+
   rental.refundDetails.status = 'completed';
   await rental.save();
 
@@ -1287,7 +1280,7 @@ const confirmRefund = async (orderId) => {
       link: "/rental-history",
       relatedId: rental._id,
     });
-    
+
     // Gửi email thông báo hoàn tiền thành công
     if (rental.customerId && rental.customerId.email) {
       const bank = rental.refundDetails || {};

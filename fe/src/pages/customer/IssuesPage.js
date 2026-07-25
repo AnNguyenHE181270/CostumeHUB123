@@ -497,7 +497,9 @@ export function IssuesModal({ open, onOpenChange, order, onSuccess }) {
                         <div className="flex gap-3 pt-1">
                             <Button
                                 type="button"
+                                variant="secondary"
                                 onClick={() => onOpenChange(false)}
+                                className="!bg-white !text-black border border-gray-300 hover:!bg-gray-100"
                             >
                                 Hủy
                             </Button>
