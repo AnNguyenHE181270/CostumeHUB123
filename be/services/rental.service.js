@@ -1,6 +1,7 @@
 const Rental = require('../models/rental.model');
 const Costume = require('../models/costume.model');
 const User = require('../models/user.model');
+const Role = require('../models/role.model');
 const Issue = require('../models/issue.model');
 const Cart = require('../models/cart.model');
 const HttpError = require('../models/http-error.model');
@@ -528,6 +529,130 @@ const createOrder = async (customerId, body) => {
   } catch (cartError) {
     console.error('[Cart Cleanup Error]', cartError);
   }
+
+  return newOrder;
+};
+
+// Staff tạo đơn thuê tại quầy (khách vãng lai) — thanh toán trực tiếp (Cash), đơn được tạo thẳng
+// ở trạng thái 'renting' + đã thanh toán, vì khách nhận đồ ngay tại cửa hàng, không qua bước giao hàng.
+const createOfflineOrder = async (staffId, body) => {
+  const { startDate, endDate, items, customerName, customerPhone, customerAddress } = body;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (start < today) {
+    throw new HttpError('Ngày bắt đầu thuê không được ở trong quá khứ.', 400);
+  }
+
+  if (end < start) {
+    throw new HttpError('Ngày kết thúc thuê không được trước ngày bắt đầu thuê.', 400);
+  }
+
+  const diffTime = end - start;
+  let rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (rentalDays === 0) rentalDays = 1;
+
+  // Find or create dummy offline customer user
+  let offlineCustomer = await User.findOne({ email: 'offline-customer@costumehub.com' });
+  if (!offlineCustomer) {
+    let roleCust = await Role.findOne({ name: 'online-customer' });
+    offlineCustomer = new User({
+      fullName: 'Khách mua Offline',
+      email: 'offline-customer@costumehub.com',
+      password: 'offline-dummy-password-hash',
+      role: roleCust ? roleCust._id : null,
+      status: 'active',
+      isEmailVerified: true
+    });
+    await offlineCustomer.save();
+  }
+
+  let totalRentalPrice = 0;
+  let totalDeposit = 0;
+  const formattedItems = [];
+  const costumesToUpdate = [];
+
+  for (const item of items) {
+    const costume = await Costume.findById(item.costume);
+    if (!costume) throw new HttpError('Costume not found.', 404);
+
+    const minDays = costume.minRentalDays || 1;
+    if (rentalDays < minDays) {
+      throw new HttpError(`Sản phẩm "${costume.name}" yêu cầu thuê tối thiểu ${minDays} ngày.`, 400);
+    }
+    const maxDays = costume.maxRentalDays || 7;
+    if (rentalDays > maxDays) {
+      throw new HttpError(`Sản phẩm "${costume.name}" giới hạn thuê tối đa ${maxDays} ngày.`, 400);
+    }
+
+    const variant = costume.variants.find((v) => v.size === item.size);
+    if (!variant) throw new HttpError(`Sản phẩm ${costume.name} không có size ${item.size}.`, 404);
+
+    if (item.quantity > variant.availableStock) {
+      throw new HttpError(
+        `Sản phẩm ${costume.name} (Size ${item.size}) không đủ số lượng để thuê lúc này. Chỉ còn sẵn ${variant.availableStock} bộ.`,
+        400
+      );
+    }
+
+    const depositPrice = costume.deposit || costume.price || 0;
+    const priceFactor = getRentalPriceFactor(rentalDays);
+    totalRentalPrice += (costume.pricePerDay * priceFactor) * item.quantity;
+    totalDeposit += depositPrice * item.quantity;
+
+    const formattedItem = {
+      costume: costume._id,
+      size: item.size,
+      quantity: item.quantity,
+      rentalPricePerDay: costume.pricePerDay,
+      depositPrice,
+      instanceCodes: [],
+    };
+    formattedItems.push(formattedItem);
+    costumesToUpdate.push({ costume, variant, quantityToDeduct: item.quantity, formattedItem });
+  }
+
+  for (const update of costumesToUpdate) {
+    const codes = markInstancesRented(update.variant, update.quantityToDeduct);
+    if (!codes) {
+      throw new HttpError(
+        `Sản phẩm ${update.costume.name} (Size ${update.variant.size}) không đủ số lượng để thuê lúc này. Chỉ còn sẵn ${update.variant.availableStock} bộ.`,
+        400
+      );
+    }
+    update.formattedItem.instanceCodes = codes;
+    syncCostumeStatusFromVariants(update.costume);
+    await update.costume.save();
+  }
+
+  const totalAmount = totalRentalPrice + totalDeposit;
+
+  const newOrder = new Rental({
+    customerId: offlineCustomer._id,
+    items: formattedItems,
+    startDate,
+    endDate,
+    shippingFee: 0,
+    paymentMethod: 'Cash',
+    paymentStatus: 'paid',
+    shippingAddress: {
+      receiverName: customerName,
+      receiverPhone: customerPhone,
+      addressDetail: customerAddress || 'Mua trực tiếp tại cửa hàng',
+    },
+    totalRentalPrice,
+    totalDeposit,
+    totalAmount,
+    status: 'renting',
+    rentingAt: new Date(),
+  });
+  await newOrder.save();
 
   return newOrder;
 };
@@ -1403,6 +1528,7 @@ module.exports = {
   inspectReturn,
   extendRental,
   updateRentalDates,
+  createOfflineOrder,
   notifyOrderStatus,
   getTopRentedCostumes,
   autoUpdateDeliveredStatus, autoCancelExpiredVnpayOrders,
