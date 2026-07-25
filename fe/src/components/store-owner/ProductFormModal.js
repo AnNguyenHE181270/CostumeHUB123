@@ -28,7 +28,7 @@ const ProductFormModal = ({
     name: "", slug: "", categoryId: "",
     pricePerDay: "", deposit: "",
     minRentalDays: 1, maxRentalDays: 7, description: "",
-    images: [], material: "", includedAccessories: "",
+    images: [],
     variants: []
   });
 
@@ -66,8 +66,6 @@ const ProductFormModal = ({
         maxRentalDays: initialData.maxRentalDays || 7,
         description: initialData.description || "",
         images: initialData.images || [],
-        material: initialData.specifications?.material || "",
-        includedAccessories: initialData.specifications?.includedAccessories?.join(", ") || "",
         variants: (initialData.variants || []).map(v => ({
           _id: v._id,
           size: v.size || "",
@@ -82,7 +80,7 @@ const ProductFormModal = ({
         name: "", slug: "", categoryId: "",
         pricePerDay: "", deposit: "",
         minRentalDays: 1, maxRentalDays: 7, description: "",
-        images: [], material: "", includedAccessories: "",
+        images: [],
         variants: []
       });
     }
@@ -228,12 +226,6 @@ const ProductFormModal = ({
       maxRentalDays: Number(formData.maxRentalDays) || 7,
       description: formData.description,
       images: formData.images,
-      specifications: {
-        material: formData.material,
-        includedAccessories: formData.includedAccessories
-          ? formData.includedAccessories.split(",").map(i => i.trim()).filter(Boolean)
-          : [],
-      },
       variants: formData.variants.map(v => ({
         ...(v._id ? { _id: v._id } : {}),
         size: v.size,
@@ -309,9 +301,6 @@ const ProductFormModal = ({
                 </select>
                 {errors.categoryId && <p className="text-red-500 text-xs">{errors.categoryId}</p>}
               </div>
-
-              <Input label="Chất liệu (VD: Nhung, Tơ tằm)" name="material" value={formData.material} onChange={handleChange} />
-              <Input label="Phụ kiện đi kèm (VD: Kiềng bạc, nơ)" name="includedAccessories" value={formData.includedAccessories} onChange={handleChange} />
 
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">Mô tả chi tiết</label>

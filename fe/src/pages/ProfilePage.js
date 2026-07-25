@@ -79,8 +79,8 @@ export default function ProfilePage() {
       await login(token, true);
 
       setToast({ isVisible: true, type: "success", message: "Cập nhật thông tin thành công!" });
-    } catch {
-      setToast({ isVisible: true, type: "error", message: "Lỗi kết nối mạng. Vui lòng thử lại." });
+    } catch (err) {
+      setToast({ isVisible: true, type: "error", message: err.message || "Lỗi kết nối mạng. Vui lòng thử lại." });
     } finally {
       setSubmitting(false);
     }
