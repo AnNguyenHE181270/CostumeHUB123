@@ -348,7 +348,7 @@ const findUserById = async (id) => {
 };
 
 const updateUsers = async (id, data, currentUserId) => {
-  const { email, phone, fullName, gender, dateOfBirth, avatar, role, status } = data;
+  const { email, phone, fullName, gender, dateOfBirth, role, status } = data;
 
   if (!ObjectId.isValid(id)) throw new HttpError('ID không hợp lệ', 400);
   if (currentUserId && id === currentUserId) throw new HttpError('Bạn không thể thay đổi vai trò hoặc trạng thái của chính mình', 403);
@@ -381,15 +381,15 @@ const updateUsers = async (id, data, currentUserId) => {
     if (phoneExists) throw new HttpError('Số điện thoại đã được sử dụng', 400);
   }
 
-  let newAvatar = avatar;
+  // Admin/Owner không được phép đổi avatar hộ người dùng khác — avatar chỉ do chính chủ tự đổi
+  // qua updateMyProfile. Bỏ qua hoàn toàn file/URL avatar gửi lên từ trang quản trị.
   if (data.file) {
-    newAvatar = await uploadImage(data.file.path);
     fs.unlinkSync(data.file.path);
   }
 
   const user = await User.findByIdAndUpdate(
     id,
-    { email, phone, fullName, gender, dateOfBirth, status, avatar: newAvatar, role: findRole._id },
+    { email, phone, fullName, gender, dateOfBirth, status, role: findRole._id },
     { new: true }
   );
   if (!user) throw new HttpError('Không tìm thấy người dùng', 404);

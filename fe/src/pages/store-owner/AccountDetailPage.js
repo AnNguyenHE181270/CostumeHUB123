@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faSave, faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars, faCamera, faShieldAlt, faToggleOn } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faSave, faUser, faEnvelope, faPhone, faCalendarDay, faVenusMars, faShieldAlt, faToggleOn } from "@fortawesome/free-solid-svg-icons";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useEffect, useState } from "react";
@@ -23,7 +23,6 @@ export default function AccountDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [availableRoles, setAvailableRoles] = useState([]);
-  const [avatarFile, setAvatarFile] = useState(null);
 
   const [initialStatus, setInitialStatus] = useState("");
   const [form, setForm] = useState({
@@ -71,18 +70,6 @@ export default function AccountDetailPage() {
     }
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, avatar: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -94,17 +81,12 @@ export default function AccountDetailPage() {
 
       const formData = new FormData();
 
+      // Admin không được đổi avatar hộ người dùng khác -> không gửi field avatar lên.
       Object.keys(form).forEach(key => {
         if (key !== 'avatar' && form[key] !== null && form[key] !== undefined) {
           formData.append(key, form[key]);
         }
       });
-
-      if (avatarFile) {
-        formData.append("avatar", avatarFile);
-      } else if (form.avatar && !form.avatar.startsWith("data:image")) {
-        formData.append("avatar", form.avatar);
-      }
 
       await userService.updateUser(id, formData);
       setToast({ isVisible: true, type: "success", message: "Cập nhật tài khoản thành công!" });
@@ -144,7 +126,7 @@ export default function AccountDetailPage() {
             <div className="flex flex-col lg:w-[280px] shrink-0 border-r-0 lg:border-r border-[#eaeaea] lg:pr-12">
 
               <div className="flex flex-col items-center mb-10">
-                <div className="relative group mb-6">
+                <div className="relative mb-6">
                   <div className="w-40 h-40 rounded-full border border-[#eaeaea] bg-[#faf9f7] text-[#1a1a1a] flex items-center justify-center font-bold text-4xl overflow-hidden relative shadow-sm">
                     {form.avatar ? (
                       <img src={form.avatar} alt="User Avatar" className="w-full h-full object-cover" />
@@ -153,12 +135,6 @@ export default function AccountDetailPage() {
                         {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
                       </span>
                     )}
-
-                    <label className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
-                      <FontAwesomeIcon icon={faCamera} className="text-[#1a1a1a] text-2xl mb-2" />
-                      <span className="text-[#1a1a1a] text-[11px] font-bold uppercase tracking-wider">Chọn ảnh</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                    </label>
                   </div>
                 </div>
                 <div className="text-center">
