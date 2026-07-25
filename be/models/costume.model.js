@@ -140,6 +140,15 @@ const costumeSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // Tổng số lượt (đơn vị: số bộ) đã từng được thuê thành công, cộng dồn khi tạo đơn ở
+    // createOrder và trừ lại khi đơn đó bị huỷ trước khi giao (rental.service.js — mọi chỗ đụng
+    // tồn kho qua markInstancesRented/releaseRentedInstances đều cập nhật kèm field này để luôn
+    // khớp nhau). Dùng cho sort 'popular' — tránh phải aggregate lại từ Rental mỗi lần load trang.
+    totalRentals: {
+      type: Number,
+      default: 0,
+    },
+
     isFeatured: {
       type: Boolean,
       default: false,
