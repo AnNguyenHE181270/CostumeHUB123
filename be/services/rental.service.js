@@ -64,6 +64,54 @@ async function notifyOrderStatus(rental, status) {
   }
 }
 
+const autoCancelExpiredVnpayOrders = async () => {
+  try {
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const expiredOrders = await Rental.find({
+      status: "pending",
+      paymentMethod: "VNPAY",
+      paymentStatus: "pending",
+      createdAt: { $lt: fifteenMinsAgo }
+    }).populate('customerId', 'email fullName');
+
+    for (const order of expiredOrders) {
+      order.status = 'cancelled';
+      order.cancelReason = 'Đã hết thời gian thanh toán VNPAY (15 phút)';
+      order.paymentStatus = 'failed';
+      await order.save();
+
+      for (const item of order.items) {
+        const costume = await Costume.findById(item.costume);
+        if (costume) {
+          const variant = costume.variants.find((v) => v.size === item.size);
+          if (variant) {
+            releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+            syncCostumeStatusFromVariants(costume);
+            await costume.save();
+          }
+        }
+      }
+
+      const user = order.customerId;
+      if (user?.email) {
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: `CostumeHUB — Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`,
+            text: `Chào ${user.fullName || 'bạn'}, đơn hàng #${order._id.toString().slice(-6).toUpperCase()} của bạn đã bị hủy do không hoàn tất thanh toán VNPAY trong 15 phút.`,
+            html: sendEmail.renderEmailHtml({
+              heading: 'Đơn hàng bị hủy do hết hạn thanh toán',
+              bodyHtml: `<p>Đơn hàng <b>#${order._id.toString().slice(-6).toUpperCase()}</b> đã tự động bị hủy do bạn không hoàn tất thanh toán VNPAY trong thời gian quy định (15 phút).</p>`,
+            }),
+          });
+        } catch (mailError) {}
+      }
+    }
+  } catch (error) {
+    console.error("Lỗi khi hủy đơn VNPAY quá hạn:", error);
+  }
+};
+
 const autoUpdateDeliveredStatus = async () => {
   const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
   const expiredRentals = await Rental.find({
@@ -1212,8 +1260,11 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   start.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (rentalDays < 1) throw new HttpError('Ngày kết thúc phải sau ngày bắt đầu.', 400);
+  if (end < start) throw new HttpError('Ngày kết thúc không được trước ngày bắt đầu.', 400);
+
+  const diffTime = end - start;
+  let rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (rentalDays === 0) rentalDays = 1;
 
   for (const item of rental.items) {
     const costume = item.costume;
@@ -1329,7 +1380,7 @@ module.exports = {
   updateRentalDates,
   notifyOrderStatus,
   getTopRentedCostumes,
-  autoUpdateDeliveredStatus,
+  autoUpdateDeliveredStatus, autoCancelExpiredVnpayOrders,
   sendAutoConfirmReminders,
   sendUpcomingOverdueReminders,
   confirmRefund,

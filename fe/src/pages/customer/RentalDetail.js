@@ -8,12 +8,14 @@ import { formatPrice, formatDate, formatOrderId } from "../../utils/formatters"
 import { OrderTrackingModal } from "./OrderTrackingModal"
 import { ExtendRentalModal } from "./ExtendRentalModal"
 import rentalService from "../../services/rental.service"
-
+import paymentService from "../../services/payment.service"
 export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onRequestReturn, onConfirmReceipt, onRequestIssue, onExtendSuccess, onRentAgain, onExtendOrder }) {
     const [detailedOrder, setDetailedOrder] = useState(null)
     const [loading, setLoading] = useState(false)
     const [isTrackingOpen, setIsTrackingOpen] = useState(false)
     const [isExtendOpen, setIsExtendOpen] = useState(false)
+    const [timeLeft, setTimeLeft] = useState(0)
+    const [isPaymentExpired, setIsPaymentExpired] = useState(false)
     const navigate = useNavigate()
 
     const fetchDetail = async () => {
@@ -35,6 +37,52 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
             setDetailedOrder(null)
         }
     }, [open, order])
+    useEffect(() => {
+        if (!detailedOrder || detailedOrder.status !== 'pending' || detailedOrder.payment?.paymentMethod !== 'VNPAY' || detailedOrder.payment?.paymentStatus !== 'pending') {
+            setTimeLeft(0);
+            return;
+        }
+
+        const calculateTimeLeft = () => {
+            const orderTime = new Date(detailedOrder.orderDate).getTime();
+            const now = Date.now();
+            const difference = (orderTime + 15 * 60 * 1000) - now;
+            
+            if (difference > 0) {
+                setTimeLeft(difference);
+                setIsPaymentExpired(false);
+            } else {
+                setTimeLeft(0);
+                setIsPaymentExpired(true);
+            }
+        };
+
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 1000);
+        return () => clearInterval(timer);
+    }, [detailedOrder]);
+
+    const formatTimeLeft = (ms) => {
+        if (ms <= 0) return "00:00";
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const handlePayNow = async () => {
+        try {
+            const res = await paymentService.createPaymentUrl({
+                amount: detailedOrder.payment.total,
+                orderInfo: order.id
+            });
+            if (res.success && res.paymentUrl) {
+                window.location.href = res.paymentUrl;
+            }
+        } catch (error) {
+            console.error("Lỗi khi tạo link thanh toán:", error);
+        }
+    };
 
     if (!order || !open) return null
 
@@ -193,6 +241,28 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                         <p className="mt-2 text-sm text-foreground">
                             {PAYMENT_METHOD_LABELS[detailedOrder.payment?.paymentMethod] || detailedOrder.payment?.paymentMethod || 'Chưa xác định'}
                         </p>
+
+                        {detailedOrder.status === 'pending' && detailedOrder.payment?.paymentMethod === 'VNPAY' && detailedOrder.payment?.paymentStatus === 'pending' && (
+                            <div className="mt-3 rounded-lg bg-orange-50 border border-orange-200 p-3">
+                                {isPaymentExpired ? (
+                                    <p className="text-sm font-medium text-red-600">
+                                        Đã quá hạn thanh toán. Đơn hàng sẽ bị hủy.
+                                    </p>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        <p className="text-sm font-medium text-orange-800">
+                                            Vui lòng hoàn tất thanh toán trong: <span className="text-red-600 font-bold">{formatTimeLeft(timeLeft)}</span>
+                                        </p>
+                                        <button 
+                                            onClick={handlePayNow}
+                                            className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-1.5 px-4 rounded text-sm w-max transition-colors"
+                                        >
+                                            Thanh toán ngay
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="mt-4 space-y-2 border-t border-border pt-4">
                             <div className="flex justify-between text-sm">

@@ -3,7 +3,7 @@ const User = require('../models/user.model');
 const Rental = require('../models/rental.model');
 const notificationService = require('./notification.service');
 const sendEmail = require('./email.service');
-const { autoUpdateDeliveredStatus, sendAutoConfirmReminders, sendUpcomingOverdueReminders, buildOrderLink } = require('./rental.service');
+const { autoUpdateDeliveredStatus, sendAutoConfirmReminders, sendUpcomingOverdueReminders, buildOrderLink, autoCancelExpiredVnpayOrders } = require('./rental.service');
 
 
 const cleanupPendingUsers = async () => {
@@ -97,6 +97,7 @@ const startCronJobs = () => {
   autoUpdateDeliveredStatus().catch((err) => console.error('Lỗi khi tự động chuyển trạng thái đơn đã giao:', err));
   sendAutoConfirmReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở tự động xác nhận:', err));
   sendUpcomingOverdueReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở sắp quá hạn:', err));
+  autoCancelExpiredVnpayOrders().catch((err) => console.error('Lỗi khi hủy đơn VNPAY quá hạn:', err));
 
   cron.schedule('0 0 * * *', cleanupPendingUsers);
   // Quét đơn quá hạn và đơn đã giao mỗi 15 phút thay vì chỉ 1 lần/ngày lúc 0h — tránh đơn quá hạn
@@ -110,6 +111,9 @@ const startCronJobs = () => {
   });
   cron.schedule('*/15 * * * *', () => {
     sendUpcomingOverdueReminders().catch((err) => console.error('Lỗi khi gửi nhắc nhở sắp quá hạn:', err));
+  });
+  cron.schedule('* * * * *', () => {
+    autoCancelExpiredVnpayOrders().catch((err) => console.error('Lỗi khi tự động hủy đơn VNPAY quá hạn:', err));
   });
 
   console.log("Cron jobs initialized.");
