@@ -248,7 +248,8 @@ const CategoriesPage = () => {
                 <FontAwesomeIcon icon={faEdit} />
               </button>
 
-              {node.isActive && (
+              {/* Chỉ danh mục gốc (level 0) mới được thêm danh mục con — không cho lồng thêm cấp con trong con */}
+              {node.isActive && level === 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleOpenAddChild(node); }}
                   className="p-2 text-[#1a1a1a] hover:bg-[#eaeaea] rounded-full transition-colors flex items-center justify-center w-8 h-8"
@@ -326,6 +327,7 @@ const CategoriesPage = () => {
                   >
                     <option value="">-- Không có (Danh mục gốc) --</option>
                     {categories
+                      .filter(c => !c.parentId) // Chỉ danh mục gốc mới được chọn làm cha — không lồng con trong con
                       .filter(c => !editingCategory || c._id !== editingCategory._id) // Tránh tự chọn bản thân làm cha
                       .map(c => (
                         <option key={c._id} value={c._id}>{c.name}</option>
