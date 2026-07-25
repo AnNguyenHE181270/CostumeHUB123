@@ -12,7 +12,7 @@ const processChat = async (message, history) => {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // 1. Lấy thông tin trang phục
+    //1.Lấy thông tin trang phục
     const costumes = await Costume.find({}).select('name price pricePerDay variants.size variants.availableStock description').lean();
     
     // 2. Lấy thông tin các đơn thuê đang active để tính toán lịch trống
@@ -70,7 +70,7 @@ Hướng dẫn kiểm tra lịch trống (CHỈ DÙNG ĐỂ TÍNH TOÁN TRONG Đ
 Khi khách hỏi thuê từ ngày A đến ngày B, hãy đối chiếu với [Đã có lịch khách thuê: ...] của sản phẩm đó. 
 Nếu tổng số lượng khách đã thuê trong khoảng ngày A-B bằng hoặc vượt quá "Tổng kho", hãy báo là hết hàng. 
 Nếu vẫn còn dư so với "Tổng kho", hãy báo khách là CÒN TRỐNG.`;
-
+//1
     const chatModel = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       systemInstruction: systemPrompt
@@ -92,7 +92,7 @@ Nếu vẫn còn dư so với "Tổng kho", hãy báo khách là CÒN TRỐNG.`;
 
     const result = await chat.sendMessage(message);
     const text = result.response.text();
-
+//2
     let finalReply = text;
     let recommendedProductId = null;
     let rentNowData = null;
@@ -120,11 +120,13 @@ Nếu vẫn còn dư so với "Tổng kho", hãy báo khách là CÒN TRỐNG.`;
       if (!recommendedProductId) recommendedProductId = matches[0][1];
       finalReply = finalReply.replace(productRegex, '').trim();
     }
+    //3
     
     let recommendedProduct = null;
     if (recommendedProductId) {
        recommendedProduct = await Costume.findById(recommendedProductId).select('name images price pricePerDay deposit _id').lean();
     }
+    
 
     return { reply: finalReply, product: recommendedProduct, rentNowData };
   } catch (error) {

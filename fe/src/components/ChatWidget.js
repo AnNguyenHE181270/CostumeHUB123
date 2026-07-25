@@ -6,7 +6,10 @@ import axios from 'axios';
 import chatbotIcon from '../assets/chatbot.png';
 import { useAuth } from '../context/AuthContext';
 import rentalService from '../services/rental.service';
+import paymentService from '../services/payment.service';
 import { getRentalDays, getRentalPriceFactor, formatDateNoHours } from '../utils/formatters';
+
+const PENDING_CHAT_ORDER_KEY = 'pendingChatOrder';
 
 const RentConfirmCard = ({ rentNowData, product, user, handleConfirmRent, navigate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -85,6 +88,21 @@ const RentConfirmCard = ({ rentNowData, product, user, handleConfirmRent, naviga
     </div>
   );
 };
+//Dieu huong khach vang lai dang nhap de hoan tat don hang da luu trong sessionStorage. Sau khi dang nhap xong, useEffect theo doi user se tu dong doc lai va hoan tat don hang cho khach.
+const LoginRequiredCard = ({ onLoginClick }) => (
+  <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-300 shadow-sm flex flex-col w-full text-[13px] text-gray-700">
+    <p className="mb-3 leading-relaxed">
+      Bạn cần <b>đăng nhập</b> hoặc <b>đăng ký</b> tài khoản để tiếp tục thanh toán đơn thuê này.
+      Đơn hàng sẽ được giữ lại — chỉ cần đăng nhập xong, mình sẽ tự động hoàn tất thanh toán giúp bạn.
+    </p>
+    <button
+      onClick={onLoginClick}
+      className="py-2 bg-gradient-to-r from-[#d4af37] to-[#b8935a] text-white font-bold text-xs rounded-lg hover:brightness-110 shadow-md transition-all"
+    >
+      Đăng nhập / Đăng ký ngay
+    </button>
+  </div>
+);
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,7 +114,7 @@ const ChatWidget = () => {
   const messagesEndRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, refreshProfile } = useAuth();
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,6 +123,33 @@ const ChatWidget = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Sau khi guest bấm "Đăng nhập / Đăng ký ngay" từ LoginRequiredCard, họ được điều hướng qua
+  // /login (hoặc /register -> verify-otp -> /login) rồi quay lại app với `user` đã có giá trị.
+  // Effect này theo dõi đúng thời điểm đó để tự động hoàn tất đơn đã lưu, không bắt khách phải
+  // thao tác lại từ đầu trong chat. Phải đặt effect này TRƯỚC early-return theo `isExcluded` bên
+  // dưới — nếu không sẽ vi phạm Rules of Hooks (số hook gọi ra thay đổi giữa các lần render).
+  useEffect(() => {
+    if (!user) return;
+    const pendingRaw = sessionStorage.getItem(PENDING_CHAT_ORDER_KEY);
+    if (!pendingRaw) return;
+    sessionStorage.removeItem(PENDING_CHAT_ORDER_KEY);
+
+    let rentData;
+    try {
+      rentData = JSON.parse(pendingRaw);
+    } catch {
+      return;
+    }
+
+    setIsOpen(true);
+    setMessages(prev => [...prev, {
+      role: 'model',
+      text: `Chào mừng ${user.fullName || 'bạn'} quay lại! Mình đang tiếp tục xử lý đơn thuê trước đó cho bạn...`,
+    }]);
+    submitRentOrder(rentData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const toggleChat = () => setIsOpen(!isOpen);
 
@@ -133,6 +178,83 @@ const ChatWidget = () => {
     }
   };
 
+  const submitRentOrder = async (rentData) => {
+    setIsLoading(true);
+    try {
+      const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+      const addressDetail = defaultAddress
+        ? `${defaultAddress.addressDetail}, ${defaultAddress.ward}, ${defaultAddress.district}, ${defaultAddress.province}`
+        : "Nhận tại cửa hàng";
+
+      const payload = {
+        startDate: new Date(rentData.startDate).toISOString(),
+        endDate: new Date(rentData.endDate).toISOString(),
+        items: [{
+          costume: rentData.costumeId,
+          size: rentData.size,
+          color: "Mặc định",
+          quantity: 1,
+          cartStartDate: rentData.startDate,
+          cartEndDate: rentData.endDate,
+        }],
+        shippingFee: 0,
+        paymentMethod: "VNPAY",
+        shippingAddress: {
+          // Không lấy tên/SĐT do khách tự gõ lúc còn là guest thì mới fallback về tên tài khoản
+          // vừa đăng nhập -> đúng yêu cầu "tự động lấy tên theo account mới đăng nhập".
+          receiverName: rentData.receiverName || defaultAddress?.receiverName || user?.fullName || "Khách",
+          receiverPhone: rentData.receiverPhone || defaultAddress?.receiverPhone || user?.phone || "",
+          addressDetail: addressDetail,
+          provinceId: defaultAddress?.provinceId || null,
+          districtId: defaultAddress?.districtId || null,
+          wardCode: defaultAddress?.wardCode || null,
+          province: defaultAddress?.province || null,
+          district: defaultAddress?.district || null,
+          ward: defaultAddress?.ward || null,
+        }
+      };
+
+      const response = await rentalService.createOrder(payload);
+      const order = response.order;
+
+      const vnpayRes = await paymentService.createPaymentUrl({
+        amount: order.totalAmount,
+        orderInfo: order._id,
+      });
+
+      if (vnpayRes.success && vnpayRes.paymentUrl) {
+        window.location.href = vnpayRes.paymentUrl;
+      } else {
+        throw new Error(vnpayRes.message || 'Tạo yêu cầu thanh toán VNPay thất bại.');
+      }
+    } catch(err) {
+      setMessages(prev => [...prev, { role: 'model', text: `Rất tiếc, có lỗi xảy ra: ${err.response?.data?.message || err.message || 'Lỗi hệ thống.'}` }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Guest bấm "T.Toán Ngay" nhưng chưa đăng nhập -> không gọi API luôn (sẽ 401), mà lưu lại
+  // rentData vào sessionStorage + hiện thẻ yêu cầu đăng nhập. Sau khi đăng nhập/đăng ký xong quay
+  // lại trang, useEffect ở trên (theo dõi `user`) sẽ tự động đọc lại và hoàn tất đơn cho họ.
+  const handleConfirmRent = (rentData) => {
+    if (!user) {
+      setMessages(prev => [...prev, {
+        role: 'model',
+        text: 'Bạn cần đăng nhập để tiếp tục thanh toán đơn thuê này.',
+        authRequired: true,
+        pendingRentData: rentData,
+      }]);
+      return;
+    }
+    submitRentOrder(rentData);
+  };
+
+  const handleLoginRedirect = (rentData) => {
+    sessionStorage.setItem(PENDING_CHAT_ORDER_KEY, JSON.stringify(rentData));
+    navigate('/login');
+  };
+
   // Chỉ ẩn khung chat ở các trang đặc biệt (đăng nhập, profile, lịch sử, trang quản lý)
   const excludePaths = [
     '/login', '/register', '/verify', '/forgot-password', '/reset-password',
@@ -150,57 +272,6 @@ const ChatWidget = () => {
     // Replace newlines with <br/>
     formatted = formatted.replace(/\n/g, '<br/>');
     return formatted;
-  };
-
-  const handleConfirmRent = async (rentData) => {
-    setIsLoading(true);
-    try {
-      const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
-      const addressDetail = defaultAddress 
-        ? `${defaultAddress.addressDetail}, ${defaultAddress.ward}, ${defaultAddress.district}, ${defaultAddress.province}` 
-        : "Nhận tại cửa hàng";
-      
-      const payload = {
-        startDate: new Date(rentData.startDate).toISOString(),
-        endDate: new Date(rentData.endDate).toISOString(),
-        items: [{
-          costume: rentData.costumeId,
-          size: rentData.size,
-          color: "Mặc định",
-          quantity: 1,
-          cartStartDate: rentData.startDate,
-          cartEndDate: rentData.endDate,
-        }],
-        shippingFee: 0,
-        paymentMethod: "VNPAY",
-        shippingAddress: {
-          receiverName: rentData.receiverName || defaultAddress?.receiverName || user?.fullName || "Khách",
-          receiverPhone: rentData.receiverPhone || defaultAddress?.receiverPhone || user?.phone || "",
-          addressDetail: addressDetail,
-          provinceId: defaultAddress?.provinceId || null,
-          districtId: defaultAddress?.districtId || null,
-          wardCode: defaultAddress?.wardCode || null,
-          province: defaultAddress?.province || null,
-          district: defaultAddress?.district || null,
-          ward: defaultAddress?.ward || null,
-        }
-      };
-
-      const response = await rentalService.createOrder(payload);
-      if (response.success && response.paymentUrl) {
-        window.location.href = response.paymentUrl;
-      } else if (response.success) {
-        if (refreshProfile) await refreshProfile();
-        setMessages(prev => [...prev, { role: 'model', text: 'Thanh toán thành công! Đơn hàng của bạn đã được tạo tự động. Vui lòng vào Lịch sử đơn hàng để xem chi tiết.'}]);
-        setTimeout(() => navigate('/rental-history'), 1500);
-      } else {
-        throw new Error(response.message || "Lỗi tạo đơn hàng");
-      }
-    } catch(err) {
-      setMessages(prev => [...prev, { role: 'model', text: `Rất tiếc, có lỗi xảy ra: ${err.response?.data?.message || err.message || 'Lỗi hệ thống.'}` }]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -241,13 +312,15 @@ const ChatWidget = () => {
                 }`}>
                   <div dangerouslySetInnerHTML={{ __html: formatMessageText(msg.text) }} />
                   {msg.rentNowData && msg.product ? (
-                    <RentConfirmCard 
-                      rentNowData={msg.rentNowData} 
-                      product={msg.product} 
-                      user={user} 
-                      handleConfirmRent={handleConfirmRent} 
-                      navigate={navigate} 
+                    <RentConfirmCard
+                      rentNowData={msg.rentNowData}
+                      product={msg.product}
+                      user={user}
+                      handleConfirmRent={handleConfirmRent}
+                      navigate={navigate}
                     />
+                  ) : msg.authRequired ? (
+                    <LoginRequiredCard onLoginClick={() => handleLoginRedirect(msg.pendingRentData)} />
                   ) : msg.product && (
                     <div className="mt-4 p-3 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center transform hover:scale-[1.02] transition-transform duration-200">
                        <img src={msg.product.images?.[0] || 'https://via.placeholder.com/150'} alt={msg.product.name} className="w-28 h-28 object-cover rounded-lg mb-3 shadow-sm border border-gray-50" />
