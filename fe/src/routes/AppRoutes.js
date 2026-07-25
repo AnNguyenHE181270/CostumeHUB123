@@ -22,6 +22,7 @@ import AccountDetailPage from "../pages/store-owner/AccountDetailPage";
 import ProductsPage from "../pages/store-owner/ProductsPage";
 import CategoriesPage from "../pages/store-owner/CategoriesPage";
 import InventoryPage from "../pages/store-owner/InventoryPage";
+import AuditLogsPage from "../pages/owner/AuditLogsPage";
 
 import OrdersPage from "../pages/shared/OrdersPage";
 import IssuesManagePage from "../pages/shared/IssuesManagePage";
@@ -111,6 +112,7 @@ function AppRoutes() {
           <Route path={ROUTES.STORE_OWNER_INVENTORY} element={<InventoryPage />} />
           <Route path={ROUTES.STORE_OWNER_ORDERS} element={<OrdersPage />} />
           <Route path={ROUTES.STORE_OWNER_ISSUES} element={<IssuesManagePage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
 
           {/* Thêm dòng này để đón đường dẫn từ Sidebar */}
           <Route path="rentals" element={<OrdersPage />} />

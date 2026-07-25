@@ -629,6 +629,14 @@ export default function OrdersPage() {
                   </p>
                 </div>
               )}
+              {role === 'owner' && selectedOrder.inspectedBy && (
+                <div className="col-span-2 bg-purple-50 p-3 rounded-lg border border-purple-100 mt-1">
+                  <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-1">Nhật ký kiểm tra đồ trả</p>
+                  <p className="text-sm font-medium text-purple-700 mt-1 leading-relaxed">
+                    Nhân viên kiểm tra: <span className="font-bold">{selectedOrder.inspectedBy.fullName || selectedOrder.inspectedBy.email}</span>
+                  </p>
+                </div>
+              )}
               {role === 'owner' && selectedOrder.refundDetails && (
                 <div className="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100 mt-1">
                   <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Thông tin nhận hoàn tiền</p>
