@@ -19,7 +19,7 @@ const registerValidator = [
     .notEmpty()
     .withMessage("Password is required")
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .withMessage("Mật khẩu phải có ít nhất 6 ký tự"),
 
   body("phone")
     .notEmpty()
@@ -42,6 +42,15 @@ const registerValidator = [
     .custom((value) => {
       if (value > new Date()) {
         throw new Error("Date of birth cannot be in the future");
+      }
+      const today = new Date();
+      let age = today.getFullYear() - value.getFullYear();
+      const hasHadBirthdayThisYear =
+        today.getMonth() > value.getMonth() ||
+        (today.getMonth() === value.getMonth() && today.getDate() >= value.getDate());
+      if (!hasHadBirthdayThisYear) age--;
+      if (age < 16) {
+        throw new Error("Bạn phải đủ 16 tuổi trở lên để đăng ký");
       }
       return true;
     }),
@@ -89,7 +98,7 @@ const resetPasswordValidator = [
     .notEmpty()
     .withMessage("Password is required")
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .withMessage("Mật khẩu phải có ít nhất 6 ký tự"),
 ];
 
 const findUserByIdValidator = [
