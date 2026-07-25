@@ -1354,6 +1354,7 @@ const extendRental = async (id, customerId, newEndDate) => {
     const pricePerDay = item.rentalPricePerDay ?? (costume ? (costume.pricePerDay ?? costume.price) : 0) ?? 0;
     totalExtendCost += pricePerDay * (newPriceFactor - oldPriceFactor) * item.quantity;
   }
+  totalExtendCost = Math.round(totalExtendCost);
 
   const user = await User.findById(customerId);
   if (!user) throw new HttpError('Không tìm thấy thông tin khách hàng.', 404);
