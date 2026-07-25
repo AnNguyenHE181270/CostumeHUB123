@@ -192,8 +192,10 @@ const getInventoryUtilization = async (req, res, next) => {
 
 const requestReturn = async (req, res, next) => {
   try {
-    const rental = await rentalService.requestReturn(req.params.id);
-    res.status(200).json({ message: 'Đã gửi yêu cầu trả hàng. Vui lòng chờ cửa hàng xác nhận.', data: rental });
+    const { id } = req.params;
+    const { refundData } = req.body;
+    const rental = await rentalService.requestReturn(id, refundData);
+    res.json({ message: 'Yêu cầu trả hàng thành công.', rental });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi yêu cầu trả đồ', 500));
   }
@@ -249,7 +251,8 @@ const createOfflineOrder = async (req, res, next) => {
 const confirmRefund = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const order = await rentalService.confirmRefund(id);
+    const { transactionRef } = req.body;
+    const order = await rentalService.confirmRefund(id, transactionRef);
     res.status(200).json({ message: 'Xác nhận hoàn tiền thành công.', order });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message || 'Xác nhận hoàn tiền thất bại.', 500));
