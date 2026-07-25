@@ -58,6 +58,12 @@ export default function RegisterPage() {
       setError("Ngày sinh không được ở trong tương lai.");
       return;
     }
+    const minAgeDate = new Date();
+    minAgeDate.setFullYear(minAgeDate.getFullYear() - 16);
+    if (new Date(form.dateOfBirth) > minAgeDate) {
+      setError("Bạn phải đủ 16 tuổi trở lên để đăng ký.");
+      return;
+    }
     if (form.password !== matchPassword) {
       setError("Mật khẩu không khớp.");
       return;
@@ -148,7 +154,7 @@ export default function RegisterPage() {
                 value={form.dateOfBirth}
                 onChange={handleChange}
                 className={inputBase}
-                max={new Date().toISOString().split("T")[0]}
+                max={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split("T")[0]}
                 required
               />
             </Input>
