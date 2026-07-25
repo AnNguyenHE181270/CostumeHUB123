@@ -193,11 +193,12 @@ const getInventoryUtilization = async (req, res, next) => {
 const requestReturn = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { refundData } = req.body;
+    const { refundData } = req.body || {};
     const rental = await rentalService.requestReturn(id, refundData);
     res.json({ message: 'Yêu cầu trả hàng thành công.', rental });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi yêu cầu trả đồ', 500));
+    if (!(err instanceof HttpError)) console.error('[requestReturn] Lỗi không xác định:', err);
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lỗi hệ thống khi yêu cầu trả đồ', 500));
   }
 };
 
@@ -206,7 +207,8 @@ const inspectReturn = async (req, res, next) => {
     const result = await rentalService.inspectReturn(req.params.id, req.body, req.files || [], req.userData.id);
     res.status(200).json({ message: 'Kiểm tra và khấu trừ cọc thành công', data: result });
   } catch (err) {
-    next(err instanceof HttpError ? err : new HttpError('Lỗi hệ thống khi kiểm tra đồ', 500));
+    if (!(err instanceof HttpError)) console.error('[inspectReturn] Lỗi không xác định:', err);
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Lỗi hệ thống khi kiểm tra đồ', 500));
   }
 };
 

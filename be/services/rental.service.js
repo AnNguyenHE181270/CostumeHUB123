@@ -87,6 +87,7 @@ const autoCancelExpiredVnpayOrders = async () => {
           const variant = costume.variants.find((v) => v.size === item.size);
           if (variant) {
             releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+            costume.totalRentals = Math.max(0, (costume.totalRentals || 0) - item.quantity);
             syncCostumeStatusFromVariants(costume);
             await costume.save();
           }
@@ -470,6 +471,7 @@ const createOrder = async (customerId, body) => {
       );
     }
     update.formattedItem.instanceCodes = codes;
+    update.costume.totalRentals = (update.costume.totalRentals || 0) + update.quantityToDeduct;
     syncCostumeStatusFromVariants(update.costume);
     await update.costume.save();
   }
@@ -708,6 +710,7 @@ const cancelOrder = async (orderId, customerId, cancelReason, refundData) => {
       if (variant) {
         // Đơn chưa giao mà hủy -> unit chưa rời kho, trả thẳng về 'available'
         releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+        costume.totalRentals = Math.max(0, (costume.totalRentals || 0) - item.quantity);
         syncCostumeStatusFromVariants(costume);
         await costume.save();
       }
@@ -805,6 +808,7 @@ const updateOrderStatus = async (id, status) => {
         const variant = costume.variants.find((v) => v.size === item.size);
         if (variant) {
           releaseRentedInstances(variant, item.instanceCodes, item.quantity, 'available');
+          costume.totalRentals = Math.max(0, (costume.totalRentals || 0) - item.quantity);
           syncCostumeStatusFromVariants(costume);
           await costume.save();
         }
