@@ -10,7 +10,7 @@ const getAllCarts = async (userId) => {
     })
     .lean();
 
-  if (carts.length === 0) throw new HttpError('Cart is empty.', 404);
+  if (carts.length === 0) return [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

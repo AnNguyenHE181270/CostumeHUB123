@@ -11,7 +11,10 @@ export function CartProvider({ children }) {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([])
   const fetchCart = async () => {
-    if (!token) return;
+    if (!token) {
+      setCartItems([]);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/carts`, {
@@ -25,9 +28,14 @@ export function CartProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         setCartItems(data);
+      } else {
+        // Giỏ trống hoặc lỗi tạm thời -> không được giữ nguyên dữ liệu cũ (VD: của account
+        // vừa đăng xuất), nếu không UI sẽ hiển thị nhầm giỏ hàng của tài khoản trước đó.
+        setCartItems([]);
       }
     } catch (error) {
       console.error("Lỗi khi tải giỏ hàng từ máy chủ:", error);
+      setCartItems([]);
     }
   };
 
