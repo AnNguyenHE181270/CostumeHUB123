@@ -13,9 +13,9 @@ const { buildOrderLink, notifyOrderStatus, inspectReturn } = require('./rental.s
 // vì đây là 2 chính sách hoàn toàn khác nhau (1 cái xác nhận đã giao hàng, 1 cái là hạn khiếu nại/đổi trả).
 // TODO xác nhận lại với chủ shop: 3 tiếng là rất ngắn so với chính sách đổi trả thông thường (thường
 // tính bằng ngày) — cân nhắc tăng lên nếu chủ shop muốn khách có nhiều thời gian phát hiện lỗi hơn.
-const ISSUE_REPORT_WINDOW_MS = 3 * 60 * 60 * 1000;
+const ISSUE_REPORT_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
-const createIssue = async ({ rentalId, reason, resolution, note }, files, userId, userRole) => {
+const createIssue = async ({ rentalId, reason, resolution, note, refundData }, files, userId, userRole) => {
   const cleanupFiles = () => {
     for (const file of files) {
       if (fs.existsSync(file.path)) {
@@ -23,6 +23,14 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
       }
     }
   };
+
+  if (typeof refundData === 'string') {
+    try {
+      refundData = JSON.parse(refundData);
+    } catch (e) {
+      console.warn('Lỗi parse refundData:', e);
+    }
+  }
 
   if (!rentalId) { cleanupFiles(); throw new HttpError('Mã đơn hàng thuê là bắt buộc.', 400); }
   if (!reason) { cleanupFiles(); throw new HttpError('Lý do khiếu nại là bắt buộc.', 400); }
@@ -57,7 +65,7 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
     // Dùng ">" vì chúng ta muốn NÉM LỖI (chặn) khi thời gian đã vượt quá hạn khiếu nại
     if (Date.now() - new Date(rental.rentingAt).getTime() > ISSUE_REPORT_WINDOW_MS) {
       cleanupFiles();
-      throw new HttpError(`Đơn hàng đã quá hạn khiếu nại (tối đa ${ISSUE_REPORT_WINDOW_MS / 3600000} tiếng kể từ khi bắt đầu thuê).`, 400);
+      throw new HttpError(`Đơn hàng đã quá hạn khiếu nại (tối đa ${ISSUE_REPORT_WINDOW_MS / (24 * 3600000)} ngày kể từ khi bắt đầu thuê).`, 400);
     }
   }
 
@@ -82,6 +90,16 @@ const createIssue = async ({ rentalId, reason, resolution, note }, files, userId
   }
 
   const newIssue = new Issue({ rentalId, reason, resolution, evidence: evidenceUrls, note: note || '' });
+
+  if (refundData && (refundData.bankName || refundData.accountNumber || refundData.accountName)) {
+    rental.refundDetails = {
+      bankName: refundData.bankName,
+      accountNumber: refundData.accountNumber,
+      accountName: refundData.accountName,
+      status: 'pending'
+    };
+  }
+
   await newIssue.save();
 
   // Khách bấm gửi khiếu nại (trả hàng/hoàn tiền) -> đơn vào 'returning' NGAY, không đợi shop duyệt.

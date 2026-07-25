@@ -264,7 +264,8 @@ const getOrderDetail = async (orderId, customerId) => {
 
   const order = await Rental.findOne({ _id: orderId, customerId })
     .populate('customerId', 'fullName phone email')
-    .populate('items.costume', 'name images price pricePerDay lateFeePerDay minRentalDays maxRentalDays');
+    .populate('items.costume', 'name images price pricePerDay lateFeePerDay minRentalDays maxRentalDays')
+    .populate('inspectedBy', 'fullName email');
 
   if (!order) throw new HttpError('Orders not found.', 404);
 
@@ -644,6 +645,7 @@ const getAllOrders = async (startDate, endDate) => {
   const orders = await Rental.find(buildDateRangeFilter(startDate, endDate))
     .populate('customerId', 'fullName email phone')
     .populate('items.costume', 'name images')
+    .populate('inspectedBy', 'fullName email')
     .sort({ createdAt: -1 })
     .lean();
 
@@ -992,12 +994,22 @@ const getInventoryUtilization = async (startDate, endDate) => {
   };
 };
 
-const requestReturn = async (id) => {
+const requestReturn = async (id, refundData) => {
   const rental = await Rental.findById(id);
   if (!rental) throw new HttpError('Không tìm thấy đơn thuê', 404);
   if (!['delivering', 'delivered', 'renting', 'overdue'].includes(rental.status)) {
     throw new HttpError('Đơn hàng phải ở trạng thái Đang giao, Đã giao, Đang thuê hoặc Quá hạn', 400);
   }
+  
+  if (refundData && (refundData.bankName || refundData.accountNumber || refundData.accountName)) {
+    rental.refundDetails = {
+      bankName: refundData.bankName,
+      accountNumber: refundData.accountNumber,
+      accountName: refundData.accountName,
+      status: 'pending'
+    };
+  }
+  
   rental.status = 'returning';
   await rental.save();
   await notifyOrderStatus(rental, 'returning');
@@ -1098,6 +1110,9 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   rental.actualReturnDate = actualReturn;
   rental.lateFee = totalLateFee;
   rental.damageFee = finalDamageFee;
+  if (performedBy) {
+    rental.inspectedBy = performedBy;
+  }
   rental.replacementFee = replacementFee;
   rental.damageTier = tier;
   rental.damagePercent = finalPercent;
@@ -1111,8 +1126,14 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   const netRefund = Math.max(0, refundAmount - replacementFee);
   if (netRefund > 0) {
     rental.refundDetails = { ...(rental.refundDetails ? rental.refundDetails.toObject?.() ?? rental.refundDetails : {}), status: 'pending' };
-  }
-  if (linkedIssue) {
+    
+    // Hạn hoàn tiền: 3 ngày kể từ lúc kiểm tra xong
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 3);
+    rental.refundDetails.refundDeadline = deadline;
+
+    rental.paymentStatus = 'pending_refund';
+  } else if (linkedIssue) {
     // Khiếu nại được duyệt -> hoàn cả tiền thuê nên coi như khoản thanh toán ban đầu đã được hoàn.
     rental.paymentStatus = 'refunded';
   }
@@ -1308,7 +1329,7 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   return rental;
 };
 
-const confirmRefund = async (orderId) => {
+const confirmRefund = async (orderId, transactionRef) => {
   const rental = await Rental.findById(orderId).populate('customerId', 'email fullName');
   if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
 
@@ -1317,6 +1338,10 @@ const confirmRefund = async (orderId) => {
   }
 
   rental.refundDetails.status = 'completed';
+  if (transactionRef) {
+    rental.refundDetails.transactionRef = transactionRef;
+  }
+  rental.paymentStatus = 'refunded';
   await rental.save();
 
   try {

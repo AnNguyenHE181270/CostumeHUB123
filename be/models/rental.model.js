@@ -89,6 +89,7 @@ const rentalSchema = new mongoose.Schema(
                 "pending",
                 "paid",
                 "failed",
+                "pending_refund",
                 "refunded"
             ],
             default: "pending"
@@ -113,6 +114,8 @@ const rentalSchema = new mongoose.Schema(
             bankName: { type: String },
             accountNumber: { type: String },
             accountName: { type: String },
+            transactionRef: { type: String },
+            refundDeadline: { type: Date },
             status: { type: String, enum: ["pending", "completed"], default: "pending" }
         },
 
@@ -136,6 +139,11 @@ const rentalSchema = new mongoose.Schema(
         upcomingOverdueReminderSent: {
             type: Boolean,
             default: false,
+        },
+
+        inspectedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
         },
     },
     {
