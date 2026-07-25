@@ -1212,8 +1212,11 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   start.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
-  const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  if (rentalDays < 1) throw new HttpError('Ngày kết thúc phải sau ngày bắt đầu.', 400);
+  if (end < start) throw new HttpError('Ngày kết thúc không được trước ngày bắt đầu.', 400);
+
+  const diffTime = end - start;
+  let rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (rentalDays === 0) rentalDays = 1;
 
   for (const item of rental.items) {
     const costume = item.costume;
