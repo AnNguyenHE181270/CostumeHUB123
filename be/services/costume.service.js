@@ -242,11 +242,38 @@ const getCostumeById = async (id) => {
   return costume;
 };
 
+const generateSlug = (text) => {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/đ/g, 'd')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+};
+
 const createCostume = async (data, userId) => {
   const {
     name, slug, sku, categoryId, description, images, size, color, condition,
     pricePerDay, price, deposit, minRentalDays, maxRentalDays, lateFeePerDay, status, specifications, variants,
   } = data;
+
+  const finalSlug = (slug && slug.trim()) ? generateSlug(slug) : generateSlug(name);
+
+  if (!finalSlug) {
+    throw new HttpError('Tên sản phẩm hoặc đường dẫn (slug) không hợp lệ.', 400);
+  }
+
+  const existingSlug = await Costume.findOne({ slug: finalSlug });
+  if (existingSlug) {
+    throw new HttpError('Đường dẫn (slug) đã tồn tại. Vui lòng nhập slug hoặc tên sản phẩm khác.', 400);
+  }
 
   let processedVariants = [];
   if (variants && Array.isArray(variants)) {
@@ -259,9 +286,15 @@ const createCostume = async (data, userId) => {
   }
 
   const newCostume = new Costume({
-    name, slug, sku, categoryId, description,
+    name,
+    slug: finalSlug,
+    sku,
+    categoryId,
+    description,
     images: images || [],
-    size, color, condition,
+    size,
+    color,
+    condition,
     pricePerDay: pricePerDay || 0,
     price: price || 0,
     deposit: deposit || 0,
@@ -285,8 +318,23 @@ const updateCostume = async (id, data, userId) => {
   // (stock_correction_*) — nếu không, lịch sử kho sẽ không khớp với biến động tồn thực tế.
   const stockAdjustments = [];
 
+  let targetSlug = costume.slug;
+  if (data.slug !== undefined && data.slug.trim() !== '') {
+    targetSlug = generateSlug(data.slug);
+  } else if (data.name !== undefined && data.name.trim() !== '' && (!costume.slug || data.slug === '')) {
+    targetSlug = generateSlug(data.name);
+  }
+
+  if (targetSlug && targetSlug !== costume.slug) {
+    const existingSlug = await Costume.findOne({ slug: targetSlug, _id: { $ne: id } });
+    if (existingSlug) {
+      throw new HttpError('Đường dẫn (slug) đã tồn tại. Vui lòng nhập slug hoặc tên sản phẩm khác.', 400);
+    }
+    costume.slug = targetSlug;
+  }
+
   const fields = [
-    'name', 'slug', 'sku', 'categoryId', 'description', 'images',
+    'name', 'sku', 'categoryId', 'description', 'images',
     'size', 'color', 'condition', 'pricePerDay', 'price', 'deposit',
     'minRentalDays', 'maxRentalDays', 'lateFeePerDay', 'status', 'specifications',
   ];

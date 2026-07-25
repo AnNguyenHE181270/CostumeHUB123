@@ -100,7 +100,12 @@ const ProductFormModal = ({
       setFormData(prev => ({
         ...prev,
         name: value,
-        slug: (!initialData || !prev.slug) ? generateSlug(value) : prev.slug
+        slug: (!initialData || !prev.slug || prev.slug === generateSlug(prev.name)) ? generateSlug(value) : prev.slug
+      }));
+    } else if (name === "slug") {
+      setFormData(prev => ({
+        ...prev,
+        slug: generateSlug(value)
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -210,10 +215,11 @@ const ProductFormModal = ({
     }
 
     const computedLateFee = Math.round(Number(formData.deposit) * 0.1);
+    const finalSlug = (formData.slug && formData.slug.trim()) ? generateSlug(formData.slug) : generateSlug(formData.name);
 
     const submitData = {
       name: formData.name,
-      slug: formData.slug,
+      slug: finalSlug,
       categoryId: formData.categoryId,
       pricePerDay: Number(formData.pricePerDay) || 0,
       deposit: Number(formData.deposit) || 0,
@@ -267,7 +273,7 @@ const ProductFormModal = ({
               
               <Input label="Tên sản phẩm" name="name" value={formData.name} onChange={handleChange} error={errors.name} required />
               
-              <Input label="Slug (đường dẫn)" name="slug" value={formData.slug} onChange={handleChange} />
+              <Input label="Slug (đường dẫn)" name="slug" value={formData.slug} onChange={handleChange} error={errors.slug} />
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Danh mục cha</label>
