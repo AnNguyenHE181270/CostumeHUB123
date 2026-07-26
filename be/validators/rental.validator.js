@@ -44,7 +44,15 @@ const requestReturnValidator = [
 ];
 
 const inspectReturnValidator = [
-  param("id").isMongoId().withMessage("Invalid order ID")
+  param("id").isMongoId().withMessage("Invalid order ID"),
+  body("staffResponsibilityConfirmed").notEmpty().withMessage("Vui lòng xác nhận đã kiểm tra và chịu trách nhiệm trước khi chốt đơn.")
+];
+
+const submitRefundInfoValidator = [
+  param("id").isMongoId().withMessage("Invalid order ID"),
+  body("bankName").trim().notEmpty().withMessage("Vui lòng chọn ngân hàng."),
+  body("accountNumber").trim().notEmpty().withMessage("Vui lòng nhập số tài khoản."),
+  body("accountName").trim().notEmpty().withMessage("Vui lòng nhập tên chủ tài khoản.")
 ];
 
 const confirmReceiptValidator = [
@@ -73,5 +81,6 @@ module.exports = {
   inspectReturnValidator,
   confirmReceiptValidator,
   extendRentalValidator,
-  updateRentalDatesValidator // NEW EXPORT
+  updateRentalDatesValidator, // NEW EXPORT
+  submitRefundInfoValidator
 };

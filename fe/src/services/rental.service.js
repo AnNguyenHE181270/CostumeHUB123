@@ -43,6 +43,9 @@ const rentalService = {
   confirmRefund: (orderId) =>
     axiosClient.put(`/api/rentals/${orderId}/confirm-refund`),
 
+  submitRefundInfo: (orderId, data) =>
+    axiosClient.put(`/api/rentals/${orderId}/submit-refund-info`, data),
+
   // Dashboard
   getTotalRevenue: () => axiosClient.get('/api/rentals/dashboard/revenue'),
 

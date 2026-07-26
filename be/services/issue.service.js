@@ -167,7 +167,7 @@ const getAllIssues = async (query, userRole) => {
     .sort({ createdAt: -1 });
 };
 
-const handleIssue = async (id, { action, rejectReason }, files, userId, userRole) => {
+const handleIssue = async (id, { action, rejectReason, staffResponsibilityConfirmed }, files, userId, userRole) => {
   const cleanupFiles = () => {
     for (const file of files) {
       if (fs.existsSync(file.path)) {
@@ -225,12 +225,21 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
       cleanupFiles();
       throw new HttpError('Đơn hàng đã kết thúc, không thể xử lý khiếu nại này.', 400);
     }
+    // Staff/owner phải tick "Đã check đơn hàng và sẽ chịu trách nhiệm khi phát sinh" ở modal xử lý
+    // khiếu nại trước khi được đồng ý — cùng ràng buộc với luồng "Kiểm tra đồ trả" (inspectReturn).
+    const confirmed = staffResponsibilityConfirmed === true || staffResponsibilityConfirmed === 'true';
+    if (!confirmed) {
+      cleanupFiles();
+      throw new HttpError('Vui lòng xác nhận đã kiểm tra và chịu trách nhiệm trước khi đồng ý khiếu nại.', 400);
+    }
     // "Đồng ý" nghĩa là cửa hàng CHẤP NHẬN khiếu nại và coi như đã nhận lại hàng để hoàn tiền luôn —
     // KHÔNG còn park ở 'returning' chờ 1 bước "Kiểm tra đồ trả" riêng nữa (thiết kế cũ khiến đơn có
     // thể bị kẹt vĩnh viễn ở 'returning' nếu không ai nhớ vào kiểm tra tay). Gọi thẳng inspectReturn()
     // với damageTier mặc định 'none' (không trừ hư hỏng) — nó tự nhận diện đơn có khiếu nại 'accepted'
     // để áp đúng chính sách "hoàn cả tiền thuê + tiền cọc, không tính phí trễ hạn", và lo luôn việc
-    // nhả instance kho + đổi rental.status thẳng sang 'completed'.
+    // nhả instance kho + đổi rental.status thẳng sang 'completed'. Nó cũng tự gửi email mời khách xem
+    // chi tiết hoàn tiền — KHÔNG tự gửi thêm email ở đây nữa để tránh khách nhận trùng 2 email cho
+    // cùng 1 hành động (xem lịch sử: trước đây có gửi email riêng ở đây, đã gộp vào inspectReturn).
     cleanupFiles();
 
     issue.status = 'accepted';
@@ -238,9 +247,8 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
 
     rental.status = 'returning';
     await rental.save();
-    await inspectReturn(rental._id, { damageTier: 'none', damagePercent: 0, actualReturnDate: new Date() }, [], userId);
+    await inspectReturn(rental._id, { damageTier: 'none', damagePercent: 0, actualReturnDate: new Date(), staffResponsibilityConfirmed: true }, [], userId);
 
-    const user = await User.findById(rental.customerId);
     try {
       await notificationService.createNotification({
         userId: rental.customerId,
@@ -252,30 +260,6 @@ const handleIssue = async (id, { action, rejectReason }, files, userId, userRole
       });
     } catch (notifyError) {
       console.error('[Notification Error]', notifyError);
-    }
-
-    // Gửi email thông báo cho khách hàng
-    try {
-      if (user?.email) {
-        await sendEmail({
-          to: user.email,
-          subject: `CostumeHUB — Khiếu nại đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} đã được chấp nhận`,
-          text: `Chào ${user.fullName}, khiếu nại cho đơn hàng #${rental._id.toString().slice(-6).toUpperCase()} của bạn đã được chấp nhận và xử lý hoàn tất. Chúng tôi sẽ hoàn trả đầy đủ tiền thuê và tiền cọc qua tài khoản ngân hàng của bạn trong thời gian sớm nhất.`,
-          html: sendEmail.renderEmailHtml({
-            heading: 'Khiếu nại của bạn đã được chấp nhận và xử lý hoàn tất',
-            badgeText: 'Đã chấp nhận',
-            badgeColor: 'success',
-            bodyHtml: `
-              <p>Khiếu nại cho đơn hàng <b>#${rental._id.toString().slice(-6).toUpperCase()}</b> của bạn đã được cửa hàng chấp nhận và xử lý hoàn tất.</p>
-              <p>Chúng tôi sẽ hoàn trả đầy đủ <b>tiền thuê và tiền cọc</b> qua tài khoản ngân hàng của bạn trong thời gian sớm nhất.</p>
-            `,
-            ctaText: 'Xem đơn hàng',
-            ctaUrl: buildOrderLink(rental._id, 'return_refund'),
-          }),
-        });
-      }
-    } catch (mailError) {
-      console.error('Lỗi khi gửi email đồng ý khiếu nại:', mailError);
     }
 
     return issue;

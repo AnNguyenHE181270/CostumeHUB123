@@ -5,7 +5,8 @@ const {
   getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, confirmReceipt, extendRental, getTopRentedCostumes,
-  createOfflineOrder, estimateDelivery, updateRentalDates, sendCancelOtp, confirmRefund
+  createOfflineOrder, estimateDelivery, updateRentalDates, sendCancelOtp, confirmRefund,
+  submitRefundInfo
 } = require('../controllers/rental.controller');
 const { checkAuth, isOwner, isStaffOrOwner } = require('../middlewares/check-auth.middleware'); // Assuming isStaffOrOwner exists or needs to be added
 const upload = require('../middlewares/upload.middleware');
@@ -14,7 +15,8 @@ const {
   checkAvailabilityValidator, createOrderValidator, updateOrderStatusValidator,
   confirmPreparationValidator, getOrderDetailValidator, cancelOrderValidator,
   requestReturnValidator, inspectReturnValidator, confirmReceiptValidator,
-  extendRentalValidator, updateRentalDatesValidator // NEW IMPORT
+  extendRentalValidator, updateRentalDatesValidator, // NEW IMPORT
+  submitRefundInfoValidator
 } = require('../validators/rental.validator');
 
 const router = express.Router();
@@ -37,6 +39,7 @@ router.put('/:id/confirm-receipt', checkAuth, confirmReceiptValidator, validate,
 router.put('/:id/extend', checkAuth, extendRentalValidator, validate, extendRental); // Khách hàng yêu cầu gia hạn thuê và thanh toán ví
 router.put('/:id/update-dates', checkAuth, isStaffOrOwner, updateRentalDatesValidator, validate, updateRentalDates); // NEW ROUTE
 router.put('/:id/confirm-refund', checkAuth, isOwner, confirmRefund);
+router.put('/:id/submit-refund-info', checkAuth, submitRefundInfoValidator, validate, submitRefundInfo); // Khách xác nhận + gửi thông tin ngân hàng nhận hoàn tiền
 
 // Dashboard APIs
 router.get('/dashboard/revenue', checkAuth, isOwner, getTotalRevenue);

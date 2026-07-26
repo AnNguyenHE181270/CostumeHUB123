@@ -63,6 +63,7 @@ export default function InspectReturnPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [responsibilityConfirmed, setResponsibilityConfirmed] = useState(false);
 
   const selectedTier = DAMAGE_TIERS.find((t) => t.value === damageTier);
 
@@ -115,6 +116,7 @@ export default function InspectReturnPage() {
       formData.append("damagePercent", damagePercent);
       formData.append("missingNotes", missingNotes);
       formData.append("actualReturnDate", actualReturnDate);
+      formData.append("staffResponsibilityConfirmed", responsibilityConfirmed ? "true" : "false");
       evidenceFiles.forEach((file) => formData.append("evidence", file));
 
       const res = await rentalService.inspectReturn(order._id, formData);
@@ -180,7 +182,7 @@ export default function InspectReturnPage() {
             <p>Số tiền hoàn cọc cho khách: <strong>{(result.refundAmount || 0).toLocaleString("vi-VN")} đ</strong></p>
             {Math.max(0, (result.refundAmount || 0) - (result.replacementFee || 0)) > 0 && (
               <p className="text-emerald-600 font-medium pt-1">
-                Đã cộng tiền vào ví khách hàng và gửi thông báo hoàn tất cho khách.
+                Đã tạo yêu cầu hoàn tiền và gửi email mời khách hàng xem chi tiết, xác nhận thông tin nhận tiền.
               </p>
             )}
           </div>
@@ -320,6 +322,21 @@ export default function InspectReturnPage() {
             />
           </div>
 
+          {/* Xác nhận trách nhiệm — bắt buộc tick trước khi được chốt đơn */}
+          <div className="mb-6">
+            <label className="flex items-start gap-2.5 p-3 border border-[#eaeaea] rounded-lg cursor-pointer hover:bg-[#faf9f7] transition-colors">
+              <input
+                type="checkbox"
+                checked={responsibilityConfirmed}
+                onChange={(e) => setResponsibilityConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm text-[#1a1a1a] font-medium">
+                Đã check đơn hàng và sẽ chịu trách nhiệm khi phát sinh
+              </span>
+            </label>
+          </div>
+
           <div className="flex gap-3">
             <button
               onClick={() => navigate("/staff/orders")}
@@ -330,8 +347,8 @@ export default function InspectReturnPage() {
             </button>
             <button
               onClick={() => setConfirmOpen(true)}
-              disabled={submitting}
-              className="flex-1 px-4 py-3 bg-[#1a1a1a] text-white rounded-lg text-sm font-semibold hover:bg-black disabled:opacity-50 transition-colors"
+              disabled={submitting || !responsibilityConfirmed}
+              className="flex-1 px-4 py-3 bg-[#1a1a1a] text-white rounded-lg text-sm font-semibold hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "Đang xử lý..." : "Xác nhận & Hoàn cọc"}
             </button>

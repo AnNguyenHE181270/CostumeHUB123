@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faArrowRight, faCheck, faEnvelope, faLock } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import ErrorMessage from "../components/ui/ErrorMessage";
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const handleChange = (e) => {
@@ -48,7 +49,12 @@ export default function LoginPage() {
       const userProfile = await login(data.token, remember);
       const userRole = userProfile?.role?.name || userProfile?.role || data?.user?.role?.name || data?.user?.role;
 
-      if (userRole === "owner" || userRole === "storeowner") {
+      // Bị ProtectedRoutes đá về đây từ 1 trang cụ thể (VD: link "Xem chi tiết hoàn tiền" trong
+      // email) -> quay lại đúng trang đó sau khi đăng nhập thành công, thay vì luôn về trang mặc định.
+      const from = location.state?.from;
+      if (from?.pathname) {
+        navigate(`${from.pathname}${from.search || ""}`, { replace: true });
+      } else if (userRole === "owner" || userRole === "storeowner") {
         navigate("/owner");
       } else if (userRole === "staff") {
         navigate("/staff");

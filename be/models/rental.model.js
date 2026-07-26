@@ -53,6 +53,10 @@ const rentalSchema = new mongoose.Schema(
         replacementFee: { type: Number, default: 0 },
         refundAmount: { type: Number, default: 0 },
 
+        // Staff bắt buộc tick "Đã check đơn hàng và sẽ chịu trách nhiệm khi phát sinh" trước khi
+        // chốt kết quả kiểm tra trả hàng (inspectReturn) — lưu lại làm vết audit ai đã xác nhận.
+        staffResponsibilityConfirmed: { type: Boolean, default: false },
+
         // Mức độ hư hỏng khi nhận lại đồ, đối chiếu bảng đền bù ở trang "Về Chúng Tôi"
         damageTier: {
             type: String,
@@ -116,7 +120,12 @@ const rentalSchema = new mongoose.Schema(
             accountName: { type: String },
             transactionRef: { type: String },
             refundDeadline: { type: Date },
-            status: { type: String, enum: ["pending", "completed"], default: "pending" }
+            status: { type: String, enum: ["pending", "completed"], default: "pending" },
+            // Khách đã tự bấm "Chấp nhận" + điền thông tin ngân hàng ở trang xem chi tiết hoàn tiền
+            // (RefundRequestPage) hay chưa — độc lập với `status` (status vẫn 'pending' cho tới khi
+            // staff/owner thật sự bấm "Xác nhận đã chuyển khoản").
+            confirmedByCustomer: { type: Boolean, default: false },
+            confirmedAt: { type: Date },
         },
 
         cancelOtpCode: { type: String, select: false },

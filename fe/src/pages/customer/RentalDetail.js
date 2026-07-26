@@ -90,16 +90,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
     const currentIssue = detailedOrder?.hasIssue
         ? { status: detailedOrder.issueStatus, resolution: detailedOrder.issueResolution }
         : order.issue
-    let status = getOrderStatusLabel({ status: currentStatus, issue: currentIssue })
     const refundDetails = detailedOrder?.refundDetails || order.refundDetails
-    if (currentStatus === 'cancelled' && refundDetails?.status === 'pending') {
-        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
-    }
-    // Đơn trả hàng/hoàn tiền do khiếu nại ĐÃ được xử lý xong (status='completed' — staff đã kiểm tra
-    // đồ trả ở inspectReturn) coi như đã kết thúc trọn vẹn với khách hàng — không hiện "Chờ hoàn tiền"
-    // gây hiểu lầm là chưa xong nữa (refundDetails.status='pending' lúc này chỉ còn là việc NỘI BỘ
-    // của cửa hàng — chờ owner tự tay xác nhận đã chuyển khoản — khách không cần thấy trạng thái đó).
-    const isCompletedReturnRefund = currentStatus === 'completed' && currentIssue?.resolution === 'return_refund'
+    // getOrderStatusLabel tự quyết định "Chờ hoàn tiền" (huỷ đơn HOẶC trả hàng/khiếu nại đã completed
+    // mà refundDetails còn pending) — nguồn chân lý duy nhất, không override cục bộ ở đây nữa.
+    const status = getOrderStatusLabel({ status: currentStatus, issue: currentIssue, refundDetails })
 
     let isWithin3HoursRenting = true
     const rentingAt = detailedOrder?.rentingAt || order?.rentingAt
@@ -234,8 +228,10 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                                 {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' :
                                     detailedOrder.payment?.paymentStatus === 'refunded'
-                                        ? (isCompletedReturnRefund || refundDetails?.status !== 'pending' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền')
-                                        : 'Chưa thanh toán'}
+                                        ? (refundDetails?.status !== 'pending' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền')
+                                        : detailedOrder.payment?.paymentStatus === 'pending_refund'
+                                            ? 'Chờ hoàn tiền'
+                                            : 'Chưa thanh toán'}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-foreground">
@@ -338,9 +334,11 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground pt-1">
-                                    {isCompletedReturnRefund || refundDetails?.status === "completed"
+                                    {refundDetails?.status === "completed"
                                         ? "Cửa hàng đã xử lý hoàn tiền cho đơn này."
-                                        : "Yêu cầu hoàn tiền cho đơn này đang chờ cửa hàng xử lý chuyển khoản."}
+                                        : refundDetails?.confirmedByCustomer
+                                            ? "Bạn đã xác nhận thông tin nhận tiền — đang chờ cửa hàng chuyển khoản."
+                                            : "Yêu cầu hoàn tiền cho đơn này đang chờ bạn xác nhận thông tin nhận tiền."}
                                 </p>
                             </div>
                         </div>

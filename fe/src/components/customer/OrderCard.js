@@ -4,10 +4,7 @@ import { getOrderStatusLabel, getIssueBadge } from "../../constants/statusOrder"
 import { formatOrderId, formatPrice } from "../../utils/formatters"
 
 function OrderCard({ order, onViewDetail, isSelected, isCompact, onRentAgain, onExtendOrder, onCancelOrder, onTrackOrder, onRequestReturn }) {
-    let status = getOrderStatusLabel(order)
-    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
-        status = { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" }
-    }
+    const status = getOrderStatusLabel(order)
     // Pill trạng thái chính giờ luôn tĩnh "Trả hàng" cho đơn loại này (xem getOrderStatusLabel) —
     // tiến độ chi tiết (Chờ xử lí / Đã xử lí hoàn tiền / ...) hiện riêng ở góc phải cạnh giá.
     const issueBadge = getIssueBadge(order);
