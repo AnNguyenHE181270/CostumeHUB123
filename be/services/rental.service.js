@@ -1202,7 +1202,14 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
 
   const rental = await Rental.findById(id).populate('items.costume').populate('customerId', 'email fullName');
   if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn thuê', 404); }
-  if (rental.status !== 'returning') { cleanupFiles(); throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400); }
+  // Đơn tới đây qua 2 lối: (1) issue.service.js gọi thẳng khi vừa duyệt khiếu nại, rental.status
+  // vẫn là 'returning' (chưa qua bước "Xác nhận đã nhận hàng hoàn"); (2) trả hàng bình thường —
+  // staff bấm "Xác nhận đã nhận hàng hoàn" (hoặc GHN webhook báo đã giao hàng hoàn về shop) đã
+  // chuyển rental.status sang 'inspection' trước khi staff mở form kiểm tra này. Cả 2 đều hợp lệ.
+  if (!['returning', 'inspection'].includes(rental.status)) {
+    cleanupFiles();
+    throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng hoặc Chờ kiểm tra', 400);
+  }
 
   // returning là trạng thái THUẦN VẬT LÝ, dùng chung cho cả trả hàng bình thường lẫn trả hàng do
   // khiếu nại. Đơn vào 'returning' ngay khi khách gửi khiếu nại (xem issue.service.js createIssue),
@@ -1571,6 +1578,11 @@ const confirmRefund = async (orderId, transactionRef) => {
 
   if (!rental.refundDetails || rental.refundDetails.status === 'completed') {
     throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền hoặc đã hoàn tất hoàn tiền.', 400);
+  }
+  // Chặn xác nhận trước khi khách tự xác nhận + cung cấp thông tin ngân hàng ở RefundRequestPage —
+  // tránh chủ shop chuyển khoản nhầm tài khoản khi chưa có thông tin thật từ khách.
+  if (!rental.refundDetails.confirmedByCustomer) {
+    throw new HttpError('Khách chưa xác nhận thông tin ngân hàng nhận tiền — chưa thể xác nhận chuyển khoản.', 400);
   }
 
   rental.refundDetails.status = 'completed';

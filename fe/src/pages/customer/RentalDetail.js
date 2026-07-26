@@ -266,9 +266,14 @@ export function OrderDetail({ open, onOpenChange, order, onCancelOrder, onReques
                                 <span>Thanh toán</span>
                             </div>
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                {detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                                {/* Ưu tiên check refundDetails.status trước paymentStatus — có đơn đã hoàn tất
+                                    kiểm tra trả hàng (tạo refundDetails.status='pending') nhưng paymentStatus
+                                    chưa kịp đồng bộ đúng 'pending_refund' (dữ liệu cũ/luồng khiếu nại), tránh
+                                    hiển thị nhầm "Đã thanh toán" trong lúc thực chất đang chờ hoàn tiền. */}
+                                {refundDetails?.status === 'pending' ? 'Chờ hoàn tiền' :
+                                    detailedOrder.payment?.paymentStatus === 'paid' ? 'Đã thanh toán' :
                                     detailedOrder.payment?.paymentStatus === 'refunded'
-                                        ? (refundDetails?.status !== 'pending' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền')
+                                        ? 'Đã hoàn tiền'
                                         : detailedOrder.payment?.paymentStatus === 'pending_refund'
                                             ? 'Chờ hoàn tiền'
                                             : 'Chưa thanh toán'}

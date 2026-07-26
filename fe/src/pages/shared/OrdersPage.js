@@ -745,12 +745,22 @@ export default function OrdersPage() {
                     <span className="text-yellow-600 font-bold">Chờ xử lý</span>
                   </p>
                   {role === 'owner' && (
-                    <button
-                      onClick={() => handleConfirmRefund(selectedOrder._id)}
-                      className="mt-3 px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      Xác nhận đã chuyển khoản hoàn tiền
-                    </button>
+                    selectedOrder.refundDetails.confirmedByCustomer ? (
+                      <button
+                        onClick={() => handleConfirmRefund(selectedOrder._id)}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Xác nhận đã chuyển khoản hoàn tiền
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title="Khách chưa xác nhận thông tin ngân hàng nhận tiền — chưa thể chuyển khoản"
+                        className="mt-3 px-4 py-2 bg-gray-200 text-gray-400 font-medium rounded text-sm cursor-not-allowed"
+                      >
+                        Chờ khách xác nhận trước khi chuyển khoản
+                      </button>
+                    )
                   )}
                 </div>
               )}
