@@ -253,11 +253,22 @@ const createOfflineOrder = async (req, res, next) => {
 const confirmRefund = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { transactionRef } = req.body;
+    const { transactionRef } = req.body || {};
     const order = await rentalService.confirmRefund(id, transactionRef);
     res.status(200).json({ message: 'Xác nhận hoàn tiền thành công.', order });
   } catch (err) {
     next(err instanceof HttpError ? err : new HttpError(err.message || 'Xác nhận hoàn tiền thất bại.', 500));
+  }
+};
+
+const submitRefundInfo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { bankName, accountNumber, accountName } = req.body;
+    const rental = await rentalService.submitRefundInfo(id, req.userData.id, { bankName, accountNumber, accountName });
+    res.status(200).json({ message: 'Đã gửi thông tin nhận hoàn tiền thành công.', rental });
+  } catch (err) {
+    next(err instanceof HttpError ? err : new HttpError(err.message || 'Gửi thông tin nhận hoàn tiền thất bại.', 500));
   }
 };
 
@@ -266,5 +277,5 @@ module.exports = {
   confirmPreparation, getRentalHistory, orderDetail, cancellOrrder,
   getTotalRevenue, getActiveRentals, getInventoryUtilization,
   requestReturn, inspectReturn, extendRental, getTopRentedCostumes, updateRentalDates,
-  createOfflineOrder, estimateDelivery, sendCancelOtp, confirmRefund,
+  createOfflineOrder, estimateDelivery, sendCancelOtp, confirmRefund, submitRefundInfo,
 };

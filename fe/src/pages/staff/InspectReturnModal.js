@@ -27,6 +27,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [responsibilityConfirmed, setResponsibilityConfirmed] = useState(false);
   const [linkedIssue, setLinkedIssue] = useState(null);
   const [issueLoading, setIssueLoading] = useState(true);
 
@@ -82,6 +83,7 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
       formData.append("damagePercent", damagePercent);
       formData.append("missingNotes", missingNotes);
       formData.append("actualReturnDate", actualReturnDate);
+      formData.append("staffResponsibilityConfirmed", responsibilityConfirmed ? "true" : "false");
       evidenceFiles.forEach((file) => formData.append("evidence", file));
 
       const res = await rentalService.inspectReturn(order._id, formData);
@@ -352,6 +354,21 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                 />
               </div>
 
+              {/* Xác nhận trách nhiệm — bắt buộc tick trước khi được chốt đơn */}
+              <div className="mb-4">
+                <label className="flex items-start gap-2.5 p-3.5 border border-[#eaeaea] rounded-xl cursor-pointer hover:bg-[#faf9f7] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={responsibilityConfirmed}
+                    onChange={(e) => setResponsibilityConfirmed(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm text-[#1a1a1a] font-medium">
+                    Đã check đơn hàng và sẽ chịu trách nhiệm khi phát sinh
+                  </span>
+                </label>
+              </div>
+
               <div className="flex gap-3 mt-auto pt-4 border-t border-gray-100">
                 <button
                   onClick={onClose}
@@ -362,8 +379,8 @@ export default function InspectReturnModal({ order, onClose, onSuccess }) {
                 </button>
                 <button
                   onClick={() => setConfirmOpen(true)}
-                  disabled={submitting}
-                  className="flex-[2] px-4 py-3.5 bg-gradient-to-r from-[#1a1a1a] to-[#333] text-white rounded-xl text-sm font-bold hover:brightness-110 disabled:opacity-50 transition-all shadow flex items-center justify-center gap-2"
+                  disabled={submitting || !responsibilityConfirmed}
+                  className="flex-[2] px-4 py-3.5 bg-gradient-to-r from-[#1a1a1a] to-[#333] text-white rounded-xl text-sm font-bold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow flex items-center justify-center gap-2"
                 >
                   {submitting ? "Đang xử lý..." : linkedIssue ? "Xác nhận & Tạo yêu cầu hoàn tiền" : "Xác nhận & Hoàn cọc"}
                 </button>

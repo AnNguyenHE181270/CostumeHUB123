@@ -147,6 +147,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
   });
   const [rejectReason, setRejectReason] = useState("");
   const [files, setFiles] = useState([]);
+  const [responsibilityConfirmed, setResponsibilityConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef();
@@ -228,6 +229,10 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
       setError("Vui lòng nhập lý do từ chối.");
       return;
     }
+    if (action === "accept" && !responsibilityConfirmed) {
+      setError("Vui lòng xác nhận đã kiểm tra và chịu trách nhiệm trước khi đồng ý khiếu nại.");
+      return;
+    }
     if (action !== "accept" && role !== "owner" && files.length === 0) {
       setError("Vui lòng tải lên ít nhất 1 ảnh/video bằng chứng.");
       return;
@@ -239,6 +244,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append("action", action);
       if (rejectReason) formData.append("rejectReason", rejectReason);
+      if (action === "accept") formData.append("staffResponsibilityConfirmed", "true");
       files.forEach((f) => formData.append("evidence", f.file));
       await issueService.handle(issue._id, formData);
       onSuccess();
@@ -341,6 +347,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                       setAction("");
                       setRejectReason("");
                       setFiles([]);
+                      setResponsibilityConfirmed(false);
                     }}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                   >
@@ -348,6 +355,23 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Xác nhận trách nhiệm — bắt buộc tick trước khi được đồng ý khiếu nại */}
+          {action === "accept" && (
+            <div>
+              <label className="flex items-start gap-2.5 p-3 border border-[#e0e0e0] rounded-xl cursor-pointer hover:bg-[#fafafa] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={responsibilityConfirmed}
+                  onChange={(e) => setResponsibilityConfirmed(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-[#1a1a1a] font-medium">
+                  Đã check đơn hàng và sẽ chịu trách nhiệm khi phát sinh
+                </span>
+              </label>
             </div>
           )}
 
@@ -443,7 +467,7 @@ function HandleModal({ issue, role, onClose, onSuccess }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || !action}
+            disabled={submitting || !action || (action === "accept" && !responsibilityConfirmed)}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${action === "escalate"
               ? "bg-violet-600 hover:bg-violet-700 text-white"
               : "bg-[#1a1a1a] hover:bg-[#333] text-white"

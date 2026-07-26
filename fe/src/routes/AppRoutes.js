@@ -37,6 +37,7 @@ import MaintenancePage from "../pages/staff/MaintenancePage";
 import RentCostumePage from "../pages/customer/RentCostumePage";
 import { Checkout } from "../pages/customer/CheckoutPage";
 import RentalHistoryPage from "../pages/customer/RentalHistoryPage";
+import RefundRequestPage from "../pages/customer/RefundRequestPage";
 import AddressPage from "../pages/customer/AddressPage";
 import DetailAddressPage from "../pages/customer/DetailAddressPage";
 import TransactionSuccessPage from "../pages/customer/TransactionSuccessPage";
@@ -70,6 +71,7 @@ function AppRoutes() {
           <Route path={ROUTES.RENT_COSTUME} element={<RentCostumePage />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/rental-history" element={<RentalHistoryPage />} />
+          <Route path={ROUTES.REFUND_REQUEST} element={<RefundRequestPage />} />
           <Route element={<ProfileLayout />}>
             <Route path={ROUTES.MY_ADDRESS} element={<AddressPage />} />
             <Route path={ROUTES.MY_DETAIL_ADDRESS} element={<DetailAddressPage />} />

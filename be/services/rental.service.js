@@ -1183,7 +1183,7 @@ const requestReturn = async (id, refundData) => {
   return rental;
 };
 
-const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate }, files = [], performedBy = null) => {
+const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actualReturnDate, staffResponsibilityConfirmed }, files = [], performedBy = null) => {
   const cleanupFiles = () => {
     for (const file of files) {
       if (fs.existsSync(file.path)) {
@@ -1192,9 +1192,24 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
     }
   };
 
-  const rental = await Rental.findById(id).populate('items.costume');
+  // FormData gửi mọi field dưới dạng string ('true'/'false') — chuẩn hoá lại thành boolean thật
+  // trước khi check, tránh lỗi "chuỗi 'false' vẫn truthy" trong JS.
+  const responsibilityConfirmed = staffResponsibilityConfirmed === true || staffResponsibilityConfirmed === 'true';
+  if (!responsibilityConfirmed) {
+    cleanupFiles();
+    throw new HttpError('Vui lòng xác nhận đã kiểm tra và chịu trách nhiệm trước khi chốt đơn.', 400);
+  }
+
+  const rental = await Rental.findById(id).populate('items.costume').populate('customerId', 'email fullName');
   if (!rental) { cleanupFiles(); throw new HttpError('Không tìm thấy đơn thuê', 404); }
-  if (rental.status !== 'returning') { cleanupFiles(); throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng (returning)', 400); }
+  // Đơn tới đây qua 2 lối: (1) issue.service.js gọi thẳng khi vừa duyệt khiếu nại, rental.status
+  // vẫn là 'returning' (chưa qua bước "Xác nhận đã nhận hàng hoàn"); (2) trả hàng bình thường —
+  // staff bấm "Xác nhận đã nhận hàng hoàn" (hoặc GHN webhook báo đã giao hàng hoàn về shop) đã
+  // chuyển rental.status sang 'inspection' trước khi staff mở form kiểm tra này. Cả 2 đều hợp lệ.
+  if (!['returning', 'inspection'].includes(rental.status)) {
+    cleanupFiles();
+    throw new HttpError('Đơn chưa ở trạng thái Đang trả hàng hoặc Chờ kiểm tra', 400);
+  }
 
   // returning là trạng thái THUẦN VẬT LÝ, dùng chung cho cả trả hàng bình thường lẫn trả hàng do
   // khiếu nại. Đơn vào 'returning' ngay khi khách gửi khiếu nại (xem issue.service.js createIssue),
@@ -1277,6 +1292,7 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
   rental.actualReturnDate = actualReturn;
   rental.lateFee = totalLateFee;
   rental.damageFee = finalDamageFee;
+  rental.staffResponsibilityConfirmed = true;
   if (performedBy) {
     rental.inspectedBy = performedBy;
   }
@@ -1307,6 +1323,37 @@ const inspectReturn = async (id, { damageTier, damagePercent, missingNotes, actu
 
   await rental.save();
   await notifyOrderStatus(rental, 'completed');
+
+  // Có tiền hoàn thực sự -> mời khách bấm vào trang riêng xem chi tiết hư hỏng/trừ tiền/còn lại,
+  // rồi tự xác nhận + gửi thông tin ngân hàng. Dùng chung 1 email cho cả 2 lối vào (trả hàng bình
+  // thường lẫn khiếu nại được duyệt qua handleIssue) — nội dung chỉ khác nhau ở dòng mở đầu.
+  if (netRefund > 0 && rental.customerId?.email) {
+    try {
+      const orderCode = rental._id.toString().slice(-6).toUpperCase();
+      const refundLink = `${CLIENT_URL}/refund-request/${rental._id}`;
+      const intro = linkedIssue
+        ? `Khiếu nại cho đơn hàng <b>#${orderCode}</b> của bạn đã được cửa hàng chấp nhận.`
+        : `Cửa hàng đã kiểm tra xong trang phục bạn trả lại cho đơn hàng <b>#${orderCode}</b>.`;
+      await sendEmail({
+        to: rental.customerId.email,
+        subject: `CostumeHUB — Kết quả kiểm tra & hoàn tiền cho đơn hàng #${orderCode}`,
+        text: `Chào ${rental.customerId.fullName || 'bạn'}, cửa hàng đã có kết quả kiểm tra cho đơn hàng #${orderCode}. Vui lòng bấm vào đường dẫn sau để xem chi tiết số tiền được hoàn và xác nhận thông tin nhận tiền: ${refundLink}`,
+        html: sendEmail.renderEmailHtml({
+          heading: 'Kết quả kiểm tra & yêu cầu hoàn tiền',
+          badgeText: 'Chờ hoàn tiền',
+          badgeColor: 'warning',
+          bodyHtml: `
+            <p>${intro}</p>
+            <p>Vui lòng bấm nút bên dưới để xem chi tiết số tiền bị trừ (nếu có) và số tiền sẽ được hoàn lại, sau đó xác nhận thông tin tài khoản ngân hàng để cửa hàng chuyển khoản.</p>
+          `,
+          ctaText: 'Xem chi tiết hoàn tiền',
+          ctaUrl: refundLink,
+        }),
+      });
+    } catch (mailError) {
+      console.error('Lỗi khi gửi email kết quả kiểm tra trả hàng:', mailError);
+    }
+  }
 
   // Nhả đúng các unit đã cho thuê của đơn này:
   // - Trả hàng bình thường/hư hỏng nhẹ -> 'maintenance' (giặt là/kiểm tra xong staff bấm
@@ -1500,12 +1547,42 @@ const updateRentalDates = async (id, { startDate, endDate }) => {
   return rental;
 };
 
+// Khách bấm "Chấp nhận" ở trang xem chi tiết hoàn tiền (RefundRequestPage) và điền thông tin ngân
+// hàng — chỉ ghi nhận thông tin + đánh dấu đã xác nhận, KHÔNG đổi refundDetails.status (vẫn
+// 'pending' cho tới khi staff/owner thật sự chuyển khoản xong qua confirmRefund bên dưới).
+const submitRefundInfo = async (rentalId, customerId, { bankName, accountNumber, accountName }) => {
+  if (!bankName || !accountNumber || !accountName) {
+    throw new HttpError('Vui lòng nhập đầy đủ tên ngân hàng, số tài khoản và tên chủ tài khoản.', 400);
+  }
+
+  const rental = await Rental.findOne({ _id: rentalId, customerId });
+  if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
+
+  if (!rental.refundDetails || rental.refundDetails.status !== 'pending') {
+    throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền nào đang chờ xử lý.', 400);
+  }
+
+  rental.refundDetails.bankName = bankName;
+  rental.refundDetails.accountNumber = accountNumber;
+  rental.refundDetails.accountName = accountName;
+  rental.refundDetails.confirmedByCustomer = true;
+  rental.refundDetails.confirmedAt = new Date();
+  await rental.save();
+
+  return rental;
+};
+
 const confirmRefund = async (orderId, transactionRef) => {
   const rental = await Rental.findById(orderId).populate('customerId', 'email fullName');
   if (!rental) throw new HttpError('Không tìm thấy đơn hàng.', 404);
 
   if (!rental.refundDetails || rental.refundDetails.status === 'completed') {
     throw new HttpError('Đơn hàng này không có yêu cầu hoàn tiền hoặc đã hoàn tất hoàn tiền.', 400);
+  }
+  // Chặn xác nhận trước khi khách tự xác nhận + cung cấp thông tin ngân hàng ở RefundRequestPage —
+  // tránh chủ shop chuyển khoản nhầm tài khoản khi chưa có thông tin thật từ khách.
+  if (!rental.refundDetails.confirmedByCustomer) {
+    throw new HttpError('Khách chưa xác nhận thông tin ngân hàng nhận tiền — chưa thể xác nhận chuyển khoản.', 400);
   }
 
   rental.refundDetails.status = 'completed';
@@ -1578,5 +1655,6 @@ module.exports = {
   sendAutoConfirmReminders,
   sendUpcomingOverdueReminders,
   confirmRefund,
+  submitRefundInfo,
   buildOrderLink,
 };

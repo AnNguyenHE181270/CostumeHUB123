@@ -320,7 +320,7 @@ export default function OrdersPage() {
   }, [searchTerm, statusFilter]);
 
   const getStatusColor = (order) => {
-    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
+    if (['cancelled', 'completed'].includes(order.status) && order.refundDetails?.status === 'pending') {
       return 'bg-blue-50 text-blue-700 border-blue-200';
     }
     switch (order.status) {
@@ -338,7 +338,7 @@ export default function OrdersPage() {
   };
 
   const getStatusLabel = (order) => {
-    if (order.status === 'cancelled' && order.refundDetails?.status === 'pending') {
+    if (['cancelled', 'completed'].includes(order.status) && order.refundDetails?.status === 'pending') {
       return 'Chờ hoàn tiền';
     }
     switch (order.status) {
@@ -370,7 +370,7 @@ export default function OrdersPage() {
     });
 
     const searchMatch = idMatch || customerMatch || costumeMatch;
-    const statusMatch = statusFilter === "all" || (statusFilter === "refund_pending" ? (order.status === "cancelled" && order.refundDetails?.status === "pending") : order.status === statusFilter);
+    const statusMatch = statusFilter === "all" || (statusFilter === "refund_pending" ? (['cancelled', 'completed'].includes(order.status) && order.refundDetails?.status === "pending") : order.status === statusFilter);
     return searchMatch && statusMatch;
   });
 
@@ -418,7 +418,7 @@ export default function OrdersPage() {
       fetchOrders();
       setSelectedOrder(prev => prev ? { ...prev, refundDetails: { ...prev.refundDetails, status: 'completed' } } : null);
     } catch (error) {
-      setToast({ show: true, message: error.response?.data?.message || "Lỗi xác nhận hoàn tiền", type: "error" });
+      setToast({ show: true, message: error.message || "Lỗi xác nhận hoàn tiền", type: "error" });
     }
   };
   return (
@@ -677,9 +677,46 @@ export default function OrdersPage() {
                   </p>
                 </div>
               )}
-              {role === 'owner' && selectedOrder.refundDetails && (
+              {/* Chỉ hiện panel này khi đơn thực sự đang "Chờ hoàn tiền": đơn phải ở trạng thái
+                  cancelled/completed VÀ refundDetails.status === 'pending'. Chỉ check riêng
+                  refundDetails.status là chưa đủ — dữ liệu cũ có thể còn sót refundDetails.status
+                  = 'pending' trên đơn đang thuê/đang trả hàng, khiến panel hiện nhầm. */}
+              {['cancelled', 'completed'].includes(selectedOrder.status) && selectedOrder.refundDetails?.status === 'pending' && (
                 <div className="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100 mt-1">
                   <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Thông tin nhận hoàn tiền</p>
+
+                  {/* Số tiền cần hoàn — tiền cọc đã thu, trừ đi phí trễ hạn/hư hỏng/bồi thường phát sinh */}
+                  <div className="bg-white rounded-lg border border-blue-100 p-2.5 mb-2 space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Tiền cọc đã thu</span>
+                      <span className="font-medium text-gray-700">{formatPrice(selectedOrder.totalDeposit || 0)}</span>
+                    </div>
+                    {(selectedOrder.lateFee || 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Phí trễ hạn</span>
+                        <span className="font-medium text-red-600">-{formatPrice(selectedOrder.lateFee)}</span>
+                      </div>
+                    )}
+                    {(selectedOrder.damageFee || 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Phí hư hỏng ({selectedOrder.damagePercent}% cọc)</span>
+                        <span className="font-medium text-red-600">-{formatPrice(selectedOrder.damageFee)}</span>
+                      </div>
+                    )}
+                    {(selectedOrder.replacementFee || 0) > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Phí bồi thường vượt cọc</span>
+                        <span className="font-medium text-red-600">-{formatPrice(selectedOrder.replacementFee)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm border-t border-gray-100 pt-1.5 mt-1">
+                      <span className="font-semibold text-gray-800">Số tiền cần chuyển khoản</span>
+                      <span className="font-bold text-blue-700">
+                        {formatPrice(Math.max(0, (selectedOrder.refundAmount || 0) - (selectedOrder.replacementFee || 0)))}
+                      </span>
+                    </div>
+                  </div>
+
                   {selectedOrder.refundDetails.accountNumber ? (
                     <>
                       <p className="text-sm text-gray-800">
@@ -694,22 +731,36 @@ export default function OrdersPage() {
                     </>
                   ) : (
                     <p className="text-sm text-gray-600 italic">
-                      Chưa có thông tin ngân hàng (đơn hoàn tiền qua khiếu nại/kiểm tra trả hàng không thu số tài khoản tự động) — vui lòng liên hệ khách để lấy thông tin chuyển khoản.
+                      Khách chưa gửi thông tin ngân hàng — khách cần bấm "Chấp nhận" ở trang xem chi tiết hoàn tiền (gửi qua email) để cung cấp.
                     </p>
                   )}
                   <p className="text-sm mt-2">
-                    <span className="font-semibold">Trạng thái hoàn tiền:</span>{" "}
-                    <span className={selectedOrder.refundDetails.status === "completed" ? "text-green-600 font-bold" : "text-yellow-600 font-bold"}>
-                      {selectedOrder.refundDetails.status === "completed" ? "Đã hoàn tiền" : "Chờ xử lý"}
+                    <span className="font-semibold">Khách đã xác nhận:</span>{" "}
+                    <span className={selectedOrder.refundDetails.confirmedByCustomer ? "text-green-600 font-bold" : "text-yellow-600 font-bold"}>
+                      {selectedOrder.refundDetails.confirmedByCustomer ? "✅ Đã xác nhận" : "⏳ Đang chờ khách xác nhận"}
                     </span>
                   </p>
-                  {selectedOrder.refundDetails.status === "pending" && (
-                    <button 
-                      onClick={() => handleConfirmRefund(selectedOrder._id)}
-                      className="mt-3 px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      Xác nhận đã chuyển khoản hoàn tiền
-                    </button>
+                  <p className="text-sm mt-1">
+                    <span className="font-semibold">Trạng thái hoàn tiền:</span>{" "}
+                    <span className="text-yellow-600 font-bold">Chờ xử lý</span>
+                  </p>
+                  {role === 'owner' && (
+                    selectedOrder.refundDetails.confirmedByCustomer ? (
+                      <button
+                        onClick={() => handleConfirmRefund(selectedOrder._id)}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Xác nhận đã chuyển khoản hoàn tiền
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title="Khách chưa xác nhận thông tin ngân hàng nhận tiền — chưa thể chuyển khoản"
+                        className="mt-3 px-4 py-2 bg-gray-200 text-gray-400 font-medium rounded text-sm cursor-not-allowed"
+                      >
+                        Chờ khách xác nhận trước khi chuyển khoản
+                      </button>
+                    )
                   )}
                 </div>
               )}

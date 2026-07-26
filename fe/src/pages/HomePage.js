@@ -35,8 +35,8 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const popularRes = await costumeService.getAll({ sort: 'popular', limit: 15 });
-        setRecentProducts(popularRes.costumes || []);
+        const recentRes = await costumeService.getAll({ sort: 'newest', limit: 15 });
+        setRecentProducts(recentRes.costumes || []);
       } catch (err) {
         console.error("Lỗi khi tải sản phẩm:", err.message);
       } finally {

@@ -55,9 +55,22 @@ export function isReturnRefundOrder(order) {
     return order?.issue?.resolution === "return_refund";
 }
 
+// Đơn ('cancelled' hoặc 'completed') còn khoản tiền đang chờ cửa hàng chuyển khoản — dùng chung cho
+// cả 2 nguồn refund: huỷ đơn (status='cancelled') và kiểm tra trả hàng/khiếu nại được duyệt
+// (status='completed', refundDetails do inspectReturn tạo ra).
+export function isRefundPendingOrder(order) {
+    return ["cancelled", "completed"].includes(order?.status) && order?.refundDetails?.status === "pending";
+}
+
 export function getOrderStatusLabel(order) {
+    // Đơn khiếu nại return_refund GIỮ NGUYÊN pill "Trả hàng" tĩnh (xem comment isReturnRefundOrder) —
+    // tiến độ hoàn tiền của loại đơn này đã có badge riêng (getIssueBadge) hiện cạnh giá, không dùng
+    // "Chờ hoàn tiền" ở đây kẻo lấn/trùng ý nghĩa với badge đó.
     if (isReturnRefundOrder(order)) {
         return { label: "Trả hàng", className: "bg-purple-100 text-purple-800 border-purple-200" };
+    }
+    if (isRefundPendingOrder(order)) {
+        return { label: "Chờ hoàn tiền", className: "bg-blue-100 text-blue-800 border-blue-200" };
     }
     if (order?.status === 'returning' && order?.actualReturnDate) {
         return statusOrder['picked_up'];
