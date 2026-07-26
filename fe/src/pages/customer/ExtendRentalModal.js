@@ -91,10 +91,10 @@ export function ExtendRentalModal({ open, onOpenChange, order, onConfirm }) {
   // khi tổng số ngày vượt qua mốc đã tính trước đó (chênh lệch hệ số giá) — phải khớp công thức backend.
   const oldPriceFactor = getRentalPriceFactor(currentRentalDays);
   const newPriceFactor = getRentalPriceFactor(totalDaysAfterExtend);
-  const totalExtendCost = items.reduce((sum, item) => {
+  const totalExtendCost = Math.round(items.reduce((sum, item) => {
     const rate = item.rentalPerDay || 0;
     return sum + rate * (newPriceFactor - oldPriceFactor) * (item.quantity || 1);
-  }, 0);
+  }, 0));
 
   // Validate nếu người dùng cố chọn ngày vượt hạn mức max
   const isOverMaxLimit = extendDays > maxExtendableDays;

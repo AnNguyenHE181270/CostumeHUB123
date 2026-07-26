@@ -74,6 +74,7 @@ const rentalSchema = new mongoose.Schema(
                 "delivered",        // GHN báo giao thành công (Webhook) -> Chờ khách xác nhận đã nhận hàng (hoặc tự động sau 5 tiếng)
                 "renting",          // Khách đã xác nhận nhận hàng, hoặc quá 5 tiếng kể từ lúc giao -> Đang thuê
                 "returning",        // Khách yêu cầu trả đồ, đang chờ store nhận lại
+                "inspection",       // Store nhận lại đồ từ GHN, đang kiểm tra tình trạng
                 "completed",        // Nhận lại đồ, kiểm tra OK, hoàn cọc
                 "cancelled",        // Hủy đơn
                 "overdue"           // Quá hạn
@@ -105,6 +106,11 @@ const rentalSchema = new mongoose.Schema(
         },
 
         trackingCode: {
+            type: String,
+            default: ""
+        },
+
+        returnTrackingCode: {
             type: String,
             default: ""
         },

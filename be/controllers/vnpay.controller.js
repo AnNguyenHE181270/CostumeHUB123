@@ -28,17 +28,22 @@ const sortObject = (obj) => {
 const createPaymentUrl = async (req, res) => {
     try {
         const { amount, orderInfo } = req.body; 
-        const ipAddr = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+        let rawIp = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || req.socket?.remoteAddress || '127.0.0.1';
+        let ipAddr = typeof rawIp === 'string' ? rawIp.split(',')[0].trim().replace('::ffff:', '') : '127.0.0.1';
+        if (!ipAddr || ipAddr === '::1') ipAddr = '127.0.0.1';
 
         let date = new Date();
         let createDate = moment(date).format('YYYYMMDDHHmmss');
         
-        let tmnCode = vnp_TmnCode;
-        let secretKey = vnp_HashSecret;
-        let vnpUrl = vnp_Url;
+        let tmnCode = process.env.VNP_TMNCODE || vnp_TmnCode;
+        let secretKey = process.env.VNP_HASHSECRET || vnp_HashSecret;
+        let vnpUrl = process.env.VNP_URL || vnp_Url;
         let returnUrl = vnp_ReturnUrl;
-        let orderId = moment(date).format('DDHHmmss'); 
+        let txnRef = moment(date).format('YYYYMMDDHHmmss') + Math.floor(100 + Math.random() * 900);
         
+        let roundedAmount = Math.round(Number(amount || 0));
+        let vnpAmount = roundedAmount * 100;
+
         let currCode = 'VND';
         let vnp_Params = {};
         vnp_Params['vnp_Version'] = '2.1.0';
@@ -46,10 +51,10 @@ const createPaymentUrl = async (req, res) => {
         vnp_Params['vnp_TmnCode'] = tmnCode;
         vnp_Params['vnp_Locale'] = 'vn';
         vnp_Params['vnp_CurrCode'] = currCode;
-        vnp_Params['vnp_TxnRef'] = orderId;
-        vnp_Params['vnp_OrderInfo'] = orderInfo;
+        vnp_Params['vnp_TxnRef'] = txnRef;
+        vnp_Params['vnp_OrderInfo'] = String(orderInfo || 'Thanh toan don hang').trim();
         vnp_Params['vnp_OrderType'] = 'other';
-        vnp_Params['vnp_Amount'] = amount * 100;
+        vnp_Params['vnp_Amount'] = vnpAmount;
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_CreateDate'] = createDate;
@@ -58,7 +63,7 @@ const createPaymentUrl = async (req, res) => {
         
         let signData = qs.stringify(vnp_Params, { encode: false });
         let hmac = crypto.createHmac("sha512", secretKey);
-        let signed = hmac.update(new Buffer.from(signData, 'utf-8')).digest("hex"); 
+        let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex"); 
         vnp_Params['vnp_SecureHash'] = signed;
         vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
 

@@ -20,6 +20,8 @@ const STATUS_MAP = {
   delivered: { label: "Đã giao", bg: "bg-teal-100", text: "text-teal-800", color: "#0d9488" },
   renting: { label: "Đang thuê", bg: "bg-emerald-100", text: "text-emerald-800", color: "#10b981" },
   returning: { label: "Đang trả", bg: "bg-purple-100", text: "text-purple-800", color: "#a855f7" },
+  picked_up: { label: "Đã lấy hàng hoàn", bg: "bg-blue-100", text: "text-blue-800", color: "#3b82f6" },
+  inspection: { label: "Chờ kiểm tra", bg: "bg-orange-100", text: "text-orange-800", color: "#f97316" },
   completed: { label: "Hoàn tất", bg: "bg-gray-100", text: "text-gray-800", color: "#6b7280" },
   cancelled: { label: "Đã hủy", bg: "bg-red-100", text: "text-red-800", color: "#ef4444" },
   overdue: { label: "Quá hạn", bg: "bg-red-100", text: "text-red-800", color: "#dc2626" },
@@ -383,7 +385,11 @@ export default function StaffDashboard() {
               </thead>
               <tbody className="text-[#555]">
                 {recentOrders.map((order) => {
-                  const statusInfo = STATUS_MAP[order.status] || { label: order.status, bg: "bg-gray-100", text: "text-gray-700" };
+                  let displayStatus = order.status;
+                  if (order.status === 'returning' && order.actualReturnDate) {
+                      displayStatus = 'picked_up';
+                  }
+                  const statusInfo = STATUS_MAP[displayStatus] || { label: displayStatus, bg: "bg-gray-100", text: "text-gray-700" };
                   return (
                     <tr key={order._id} className="border-b border-[#f0f0f0] hover:bg-[#faf9f7] transition-colors">
                       <td className="py-3 pr-4">

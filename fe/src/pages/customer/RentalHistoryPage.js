@@ -101,7 +101,7 @@ function RentalHistory() {
                         // riêng về tab "Trả hàng" (khách chỉ cần biết đã gửi yêu cầu, không cần thấy nhảy
                         // qua "Đang trả hàng" nữa — trạng thái vật lý chi tiết đó chỉ staff mới cần xem).
                         : activeTab === "returning"
-                            ? rentalOrders.filter(order => order.status === "returning" && !isReturnRefundOrder(order))
+                            ? rentalOrders.filter(order => ["returning", "picked_up", "inspection"].includes(order.status) && !isReturnRefundOrder(order))
                             : rentalOrders.filter(order => order.status === activeTab)
 
     const totalCount = filteredOrders.length;
@@ -123,7 +123,7 @@ function RentalHistory() {
             return rentalOrders.filter(order => order.status === "completed" && !isReturnRefundOrder(order)).length
         }
         if (status === "returning") {
-            return rentalOrders.filter(order => order.status === "returning" && !isReturnRefundOrder(order)).length
+            return rentalOrders.filter(order => ["returning", "picked_up", "inspection"].includes(order.status) && !isReturnRefundOrder(order)).length
         }
         return rentalOrders.filter(order => order.status === status).length
     }
